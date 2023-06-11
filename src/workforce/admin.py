@@ -74,7 +74,7 @@ def display_organizations(edge: NetworkEdge):
         return organizations
     for nf in nfs:
         organizations.append(
-            f'🤝 {nf.organization.name} {"📢" if nf.public_facing else "🔒"}'
+            f'🤝 {nf.organization.name} '
         )
     return organizations
 
@@ -86,7 +86,7 @@ def display_facilities(edge: NetworkEdge):
         return facilities
     for nf in nfs:
         facilities.append(
-            f'🏢 {nf.facility.name} {"📢" if nf.public_facing else "🔒"}'
+            f'🏢 {nf.facility.name}'
         )
     return facilities
 

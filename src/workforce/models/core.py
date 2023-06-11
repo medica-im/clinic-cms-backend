@@ -74,10 +74,6 @@ class WorkforceNetworkedgeOrganizations(models.Model):
         models.DO_NOTHING,
         related_name="networkedge_organizations",
     )
-    public_facing = models.BooleanField(
-        default=False,
-        help_text=_("Should the user node included in this edge be public?")
-    )
     roles = models.ManyToManyField(
         "access.Role",
         blank=True,
@@ -99,10 +95,6 @@ class WorkforceNetworkedgeFacilities(models.Model):
     facility = models.ForeignKey(
         "facility.Facility",
         models.DO_NOTHING
-    )
-    public_facing = models.BooleanField(
-        default=False,
-        help_text=_("Should the user node included in this edge be public?")
     )
 
     class Meta:

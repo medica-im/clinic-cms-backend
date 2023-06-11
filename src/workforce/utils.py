@@ -48,13 +48,11 @@ def occupation(node: NetworkNode, organization: Organization):
         )
         edges = [e for e in path_qs if (organization in e.organizations.all())]
         for edge in edges:
-            public_facing=None
             try:
                 edge_org=WorkforceNetworkedgeOrganizations.objects.get(
                     networkedge=edge,
                     organization=organization,
                 )
-                public_facing=edge_org.public_facing
             except WorkforceNetworkedgeOrganizations.DoesNotExist:
                 pass
             facilities = (
@@ -77,11 +75,9 @@ def occupation(node: NetworkNode, organization: Organization):
                         'S',
                         language
                     ),
-                    "public_facing":public_facing,
                     "facilities": facilities
                 }
             else:
-                dct["public_facing"]=public_facing
                 dct["facilities"]=facilities
         occupations.append(dct)
     return occupations
