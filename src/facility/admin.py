@@ -26,6 +26,7 @@ class OrganizationAdmin(TranslationAdmin):
         'city',
     )
     search_fields = ['name', 'formatted_name', 'city', 'company_name']
+    autocomplete_fields = ['contact',]
 
 
 @admin.register(Category)
@@ -54,3 +55,4 @@ class FacilityAdmin(admin.ModelAdmin):
         'organization',
     )
     search_fields = ['name', 'contact__formatted_name',]
+    autocomplete_fields = ['contact',]
