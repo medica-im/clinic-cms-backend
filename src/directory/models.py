@@ -55,3 +55,11 @@ class RejectSlug(models.Model):
 
     def __str__(self):
         return "RejectSlug %s %s" % (self.id, self.slug)
+
+
+class Asset(models.Model):
+    """An Asset can link an account, an addressbook Contact and a workforce
+    NetworkNode or other categories of entities"""
+
+    def __str__(self):
+        return f"Asset {self.id}"

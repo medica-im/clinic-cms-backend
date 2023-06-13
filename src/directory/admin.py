@@ -5,7 +5,8 @@ from django.utils.safestring import mark_safe
 from facility.models import Organization
 from .models import (
     Slug,
-    RejectSlug
+    RejectSlug,
+    Asset,
 )
 from modeltranslation.admin import TranslationAdmin
 from django.utils.translation import gettext_lazy as _
@@ -39,3 +40,8 @@ class RejectSlugAdmin(admin.ModelAdmin):
         'slug',    
     )
     search_fields = ['slug']
+
+
+@admin.register(Asset)
+class AssetAdmin(admin.ModelAdmin):
+    pass
