@@ -86,8 +86,8 @@ class AppointmentInline(admin.TabularInline):
 class ContactAdmin(admin.ModelAdmin):
     #form = ContactForm
     list_display = (
-        'profile_image_tag',
         'formatted_name',
+        'profile_image_tag',
         'type_tag',
         'user',
         'last_name',

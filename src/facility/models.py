@@ -205,3 +205,58 @@ class Facility(models.Model):
 
     def natural_key(self):
         return (self.name,)
+
+
+class LegalEntity(models.Model):
+    class Type(models.TextChoices):
+        SISA = "SISA", "société interprofessionnelle de soins ambulatoires"
+        ASSO = "ASSO", "association loi 1901"
+
+    type = models.CharField(
+        max_length=4,
+        choices=Type.choices,
+        default=Type.SISA,
+    )
+    name = models.CharField(
+        max_length=255,
+        unique=True
+    )
+    RNA = models.CharField(
+        max_length=10,
+        unique=True,
+        null=True,
+        blank=True,
+    )
+    SIREN = models.CharField(
+        max_length=9,
+        unique=True
+    )
+    SIRET = models.CharField(
+        max_length=14,
+        unique=True
+    )
+    RCS = models.CharField(
+        max_length=255,
+        unique=True,
+        null=True,
+        blank=True,
+    )
+    SHARE_CAPITAL = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+    VAT = models.CharField(
+        max_length=255,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="VAT identification number"
+    )
+    organization = models.OneToOneField(
+        'facility.Organization',
+        on_delete=models.CASCADE,
+        related_name='legal_entity',
+    )
+
+    class Meta:
+        verbose_name_plural = "Legal entities"
