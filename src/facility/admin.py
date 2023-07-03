@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Organization, Category, Facility
+from .models import Organization, Category, Facility, LegalEntity
 from modeltranslation.admin import TranslationAdmin
 
 @admin.register(Organization)
@@ -56,3 +56,12 @@ class FacilityAdmin(admin.ModelAdmin):
     )
     search_fields = ['name', 'contact__formatted_name',]
     autocomplete_fields = ['contact',]
+
+@admin.register(LegalEntity)
+class LegalEntityAdmin(admin.ModelAdmin):
+    list_display = [
+        'name',
+        'organization',
+        'type',
+    ]
+    autocomplete_fields = ['organization',]

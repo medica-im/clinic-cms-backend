@@ -1,13 +1,11 @@
 import logging
-from django.shortcuts import render
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.permissions import AllowAny
 from . import models
 from . import serializers
 from facility.utils import get_organization
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from backend.i18n import activate_locale
 from access.utils import get_role
 from accounts.models import GrammaticalGender
@@ -87,51 +85,22 @@ class WorkforceLabel(APIView):
 
 
 class WorkforceBaseViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.NetworkNode.objects.all()
-    #serializer_class = serializers.WorkforceSerializer
     permission_classes = (AllowAny,)
-
-    def get_queryset(self):
-        #language = self.kwargs.get('language', None)
-        language = self.request.query_params.get('lang')
-        logger.debug(f'kwargs {language=}')
-        activate_locale(language,self.request)
-        organization = get_organization(self.request)
-        logger.debug(f'{organization=}')
-        #user=models.NodeSet.objects.get(name="user")
-        role=get_role(self.request)
-        organization_edge_qs_child_ids= (
-            models.NetworkEdge.objects
-            .filter(
-                organizations=organization,
-                networkedge_organizations__roles=role
-            )
-            .values_list("child_id", flat=True)
-        )
-        return models.NetworkNode.objects.filter(
-            #node_set=user,
-            id__in=organization_edge_qs_child_ids
-        )
+    queryset=models.NodeSet.objects.all()
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['request'] = self.request
-        logger.debug(f'{self.request=}')
         return context
 
 
 class WorkforceUserViewSet(WorkforceBaseViewSet):
-    #queryset = models.NetworkNode.objects.all()
     serializer_class = serializers.WorkforceUserSerializer
-    #permission_classes = (AllowAny,)
 
     def get_queryset(self):
-        #language = self.kwargs.get('language', None)
         language = self.request.query_params.get('lang')
-        logger.debug(f'kwargs {language=}')
         activate_locale(language,self.request)
         organization = get_organization(self.request)
-        logger.debug(f'{organization=}')
         user=models.NodeSet.objects.get(name="user")
         role=get_role(self.request)
         organization_edge_qs_child_ids= (
@@ -149,9 +118,7 @@ class WorkforceUserViewSet(WorkforceBaseViewSet):
 
 
 class WorkforceOccupationViewSet(WorkforceBaseViewSet):
-    #queryset = models.NetworkNode.objects.all()
     serializer_class = serializers.WorkforceOccupationSerializer
-    #permission_classes = (AllowAny,)
 
     def get_queryset(self):
         language = self.request.query_params.get('lang')

@@ -1,6 +1,24 @@
-from facility.models import Organization, Category, Facility
+from facility.models import Organization, Category, Facility, LegalEntity
 from addressbook.serializers import ContactSerializer
 from rest_framework import serializers
+
+
+class LegalEntitySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model= LegalEntity
+        fields= [
+            'id',
+            'name',
+            'type',
+            'get_type_display',
+            'RNA',
+            'SIREN',
+            'SIRET',
+            'RCS',
+            'SHARE_CAPITAL',
+            'VAT',
+        ]
 
 
 class FacilitySerializer(serializers.ModelSerializer):
@@ -19,6 +37,7 @@ class FacilitySerializer(serializers.ModelSerializer):
 class OrganizationSerializer(serializers.ModelSerializer):
     contact = ContactSerializer(many=False, read_only=True)
     facility = FacilitySerializer(many=True, read_only=True)
+    legal_entity = LegalEntitySerializer(many=False, read_only=True)
 
     class Meta:
         model = Organization
@@ -37,6 +56,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'registration',
             'google_site_verification',
             'city',
+            'legal_entity',
         ]
         depth = 4
 
