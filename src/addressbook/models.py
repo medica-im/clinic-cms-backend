@@ -94,6 +94,11 @@ class Contact(models.Model):
     twitter_handle = models.CharField(max_length=15, blank=True, null=True)
     worked_with = models.ManyToManyField('self', blank=True)
     tags = TaggableManager(blank=True,)
+    neomodel_uid = models.UUIDField(
+        null=True,
+        blank=True,
+        unique=True,
+    )
 
     class Meta:
         ordering = ['formatted_name', 'last_name', 'first_name']
@@ -112,10 +117,10 @@ class Address(models.Model):
         HOME = 'Home', pgettext_lazy('Address', 'Home')
         WORK = 'Work', pgettext_lazy('Address', 'Work')
 
-    contact = models.ForeignKey(
+    contact = models.OneToOneField(
         Contact,
         on_delete=models.CASCADE,
-        related_name="addresses",
+        related_name="address",
     )
     roles = models.ManyToManyField(
         Role,
@@ -127,7 +132,11 @@ class Address(models.Model):
     state = models.CharField(max_length=255, null=True, blank=True)
     country = CountryField()
     zip = models.CharField(max_length=255, null=True, blank=True)
-    type = models.CharField(max_length=255, choices=AddressType.choices)
+    type = models.CharField(
+        max_length=255,
+        choices=AddressType.choices,
+        default=AddressType.WORK,
+    )
     public_visible = models.BooleanField(default=False)
     contact_visible = models.BooleanField(default=False)
     latitude = models.DecimalField(

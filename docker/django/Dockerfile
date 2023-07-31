@@ -1,4 +1,4 @@
-FROM python:3.10-bullseye AS prod
+FROM python:3.11-bookworm AS prod
 
 ENV PYTHONUNBUFFERED 1
 ENV DOCKER_CONTAINER 1
@@ -7,7 +7,6 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get clean && apt-get update --allow-insecure-repositories && apt-get install --no-install-recommends -y \
     locales \
     build-essential \
-    python3-yaml \
     binutils \
  && rm -rf /var/lib/apt/lists/*
  

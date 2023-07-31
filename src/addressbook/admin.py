@@ -10,7 +10,11 @@ from simple_history.admin import SimpleHistoryAdmin
 from django.db.models import F
 from django.contrib.postgres.search import SearchVector, SearchQuery
 from constance import config
+from neomodel import db
+from directory.models import Effector, Facility as NeoFacility
+import logging
 
+logger=logging.getLogger(__name__)
 
 class ContactOrganizationFilter(admin.SimpleListFilter):
     title = 'Organization'
@@ -86,20 +90,47 @@ class AppointmentInline(admin.TabularInline):
 class ContactAdmin(admin.ModelAdmin):
     #form = ContactForm
     list_display = (
-        'formatted_name',
+        'name_tag',
         'profile_image_tag',
+        'street_tag',
+        'zip_tag',
+        'city_tag',
+        'gps_tag',
+        'phone_tag',
+        'user_tag',
         'type_tag',
-        'user',
-        'last_name',
-        'first_name',
-        #'middle_name',
         'title',
         'organization',
-        'phone_tag',
         'email_tag',
     )
-    search_fields = ['formatted_name']
-    readonly_fields = ('profile_image_tag',)
+    fields = (
+        'name_tag',
+        'profile_image_tag',
+        'street_tag',
+        'zip_tag',
+        'city_tag',
+        'gps_tag',
+        'phone_tag',
+        'user_tag',
+        'type_tag',
+        'title',
+        'organization',
+        'email_tag',
+    )
+    search_fields = ['formatted_name', 'neomodel_uid']
+    readonly_fields = (
+        'name_tag',
+        'profile_image_tag',
+        'street_tag',
+        'zip_tag',
+        'city_tag',
+        'gps_tag',
+        'phone_tag',
+        'user_tag',
+        'type_tag',
+        'email_tag',
+        'profile_image_tag',
+    )
     autocomplete_fields = ['user']
     inlines = [
         AddressInline,
@@ -112,7 +143,73 @@ class ContactAdmin(admin.ModelAdmin):
     list_filter = [
         ContactOrganizationFilter,
         ContactFacilityFilter,
+        ("neomodel_uid", admin.EmptyFieldListFilter),
     ]
+
+    @admin.display(description='User')
+    def user_tag(self, obj):
+        if not obj.user:
+            return "∅"
+        try:
+            return f"{str(obj.user)[:10]}.."
+        except TypeError:
+            return "∅"
+        
+
+    @admin.display(description='Street')
+    def street_tag(self, obj):
+        return obj.address.street
+        
+    @admin.display(description='zip')
+    def zip_tag(self, obj):
+        return obj.address.zip
+
+    @admin.display(description='City')
+    def city_tag(self, obj):
+        return obj.address.city
+        
+    @admin.display(description='GPS')
+    def gps_tag(self, obj):
+        if obj.address.latitude and obj.address.longitude:
+            return "✔️"
+        else:
+            return "❌"
+
+    @admin.display(description='Name')
+    def name_tag(self, obj):
+        if obj.formatted_name:
+            return obj.formatted_name
+        if not obj.neomodel_uid:
+            return
+        results, meta = db.cypher_query(
+            f"""MATCH (n)
+            WHERE n.uid="{obj.neomodel_uid.hex}"
+            RETURN n"""
+        )
+        if results:
+            f=NeoFacility.inflate(results[0][0])
+            organization_array=f.organization.all()
+            if organization_array:
+                organization=organization_array[0]
+                return f'org: {organization.name_fr or organization.label_fr}'
+        results, meta = db.cypher_query(
+            f"""MATCH (e:Effector)-[l:LOCATION]-(f:Facility)
+            WHERE f.uid="{obj.neomodel_uid.hex}"
+            RETURN e"""
+        )
+        if results:
+            names=[]
+            for e in results:
+                effector=Effector.inflate(e[0])
+                names.append(effector.name_fr or effector.label_fr)
+            return f'facility: {", ".join(names)}'
+        query=f"""MATCH (e:Effector) -[rel:LOCATION {{uid: "{obj.neomodel_uid.hex}"}}]-> (f:Facility)
+            RETURN e"""
+        results, cols = db.cypher_query(query)
+        if results:
+            effector = Effector.inflate(results[0][cols.index('e')])
+            return effector.name_fr
+
 
     @admin.display(description='Phones')
     def phone_tag(self, obj):
@@ -172,6 +269,16 @@ class AppointmentAdmin(admin.ModelAdmin):
     
 @admin.register(Address)
 class AddressAdmin(admin.ModelAdmin):
+    list_display = (
+        "pk",
+        "contact",
+        "street",
+        "zip",
+        "city",
+        "country",
+        "latitude",
+        "longitude",
+    )
     autocomplete_fields = ['contact']
 
 

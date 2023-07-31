@@ -143,8 +143,8 @@ class Category(models.Model):
 class FacilityManager(models.Manager):
     def get_by_natural_key(self, name):
         return self.get(name=name)
- 
-    
+
+
 class Facility(models.Model):
     name = models.CharField(
         max_length=255,

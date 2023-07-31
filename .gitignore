@@ -19,7 +19,10 @@ src/static_root/*
 bvn_images/*
 !bvn_images/.gitkeep
 
+# ENV files
 .env
+.env.assets
+.env.main
 
 # Python compiled byte code
 __pycache__/

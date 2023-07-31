@@ -2,11 +2,13 @@ import logging
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
-from facility.models import Organization
+from facility.models import Organization, Facility
 from .models import (
     Slug,
     RejectSlug,
     Asset,
+    AssetFacility,
+    Directory,
 )
 from modeltranslation.admin import TranslationAdmin
 from django.utils.translation import gettext_lazy as _
@@ -42,6 +44,28 @@ class RejectSlugAdmin(admin.ModelAdmin):
     search_fields = ['slug']
 
 
+class AssetFacilityInline(admin.TabularInline):
+    model = AssetFacility
+    extra = 1
+    fk_name = 'asset'
+
+
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        'name',
+        'neomodel_uid',
+    )
+    inlines = (
+        AssetFacilityInline,
+    )
+
+
+@admin.register(Directory)
+class DirectoryAdmin(admin.ModelAdmin):
+    list_display = (
+        'name',
+        'display_name',
+        'presentation',
+        'slug',
+    )

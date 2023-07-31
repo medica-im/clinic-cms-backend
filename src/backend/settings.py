@@ -2,13 +2,13 @@ import logging, os
 from datetime import timedelta
 from django.utils.log import DEFAULT_LOGGING
 from pathlib import Path
-from decouple import AutoConfig, Csv
+from decouple import Config, RepositoryEnv, AutoConfig, Csv
 from django.utils.translation import gettext_lazy as _
+from neomodel import config as neomodel_config
 
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 CONFIG_DIR = Path(BASE_DIR)
 config = AutoConfig(search_path = CONFIG_DIR)
 
@@ -169,6 +169,7 @@ INSTALLED_APPS = [
     'wagtail',
     'wagtail.api.v2',
     'modelcluster',
+    'debug_toolbar',
     # local apps
     'backend',
     'accounts',
@@ -191,6 +192,7 @@ if DEBUG:
     ]
 
 MIDDLEWARE = [
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -259,11 +261,11 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'fr'
 
 LANGUAGES = [
-    ('en', _('English')),
     ('fr', _('French')),
+    ('en', _('English')),
 ]
 
 TIME_ZONE = 'UTC'
@@ -425,3 +427,14 @@ EMAIL_USE_TLS=True
 
 #Wagtail
 WAGTAIL_SITE_NAME = 'Healthcenter'
+
+# neo4j
+NEO4J_URI = config('NEO4J_URI', default="neo4j://localhost:7687")
+NEO4J_DATABASE = config('NEO4J_DATABASE')
+NEO4J_USERNAME = config('NEO4J_USERNAME', default="neo4j")
+NEO4J_PASSWORD = config('NEO4J_PASSWORD', default="neo4j")
+NEO4J_AUTH = (NEO4J_USERNAME, NEO4J_PASSWORD)
+
+#neomodel
+neomodel_config.DATABASE_URL = f"bolt://{NEO4J_USERNAME}:{NEO4J_PASSWORD}@neo4j:7687"
+logger.debug(neomodel_config.DATABASE_URL)

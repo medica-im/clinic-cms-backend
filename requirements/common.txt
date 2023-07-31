@@ -1,4 +1,4 @@
-django>=4.1,<4.2
+Django==4.1.10
 python-decouple
 djangorestframework
 djangorestframework-simplejwt
@@ -23,3 +23,7 @@ django-contact-form[akismet]
 wagtail==4.2.3
 wagtailsvg
 langcodes[data]
+neomodel
+SPARQLWrapper
+pandas
+https://github.com/django-tastypie/django-tastypie/archive/master.tar.gz    

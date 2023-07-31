@@ -25,8 +25,17 @@ The frontend is a SvelteKit SSR rendered app / website. It gives you the best of
 * Django Rest Framework
 * gunicorn
 * Wagtail (used only to store data for Timeline.js, will be discontinued and replaced by our own timeline editor or a simple json file)
+* neo4j
 
-The main database is Postgres.
+The main database is Postgres. The graph database is neo4j.
+
+## Backup
+
+### neo4j
+
+```
+docker exec --interactive --tty clinic-cms-backend-neo4j-1 bin/neo4j-admin database backup neo4j --to-path=/backup
+```
 
 We are also making use of django-postgresql-dag (Django & Postgresql-based Directed Acyclic Graphs) to build the workforce graph. Each member of the workforce (healthcare professionals, management, administrative and support staff) is included in a graph based on MeSH with metadata such as location, specialty, organization membership. This graph is used to power the addressbook. It may be replaced in the future by a fully fledged graph database such as neo4j.
 
@@ -44,6 +53,3 @@ There is some static content inside +page.svelte files using the French language
 GPL v.3
 
 You are free to use this code to create and sell your own websites but please share bug fixes and improvements with us, as required by the license. This will benefit everyone.
-
-
-
