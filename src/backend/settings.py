@@ -169,7 +169,6 @@ INSTALLED_APPS = [
     'wagtail',
     'wagtail.api.v2',
     'modelcluster',
-    'debug_toolbar',
     # local apps
     'backend',
     'accounts',
@@ -192,7 +191,6 @@ if DEBUG:
     ]
 
 MIDDLEWARE = [
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -437,4 +435,3 @@ NEO4J_AUTH = (NEO4J_USERNAME, NEO4J_PASSWORD)
 
 #neomodel
 neomodel_config.DATABASE_URL = f"bolt://{NEO4J_USERNAME}:{NEO4J_PASSWORD}@neo4j:7687"
-logger.debug(neomodel_config.DATABASE_URL)
