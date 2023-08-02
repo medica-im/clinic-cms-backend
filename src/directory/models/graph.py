@@ -138,7 +138,15 @@ class Effector(StructuredNode):
         language = get_language()
         logger.debug(f"{language=}")
         _types = []
-        for _type in self.type.all():
+        try:
+            types_array = self.type.all()
+        except Exception as e:
+            logger.error(
+                "\n**********************************************************\n"
+                f"* {self.label_fr=} {e=} *\n"
+                "**********************************************************\n")
+            return []
+        for _type in types_array:
             name=getattr(_type, f'concept_{language}', None)
             if not name:
                 name=getattr(_type, f'name_{language}', None)
@@ -152,6 +160,7 @@ class Effector(StructuredNode):
 
     @property
     def communes(self):
+        language = get_language()
         _communes = []
         for _facility in self.facility.all():
             try:

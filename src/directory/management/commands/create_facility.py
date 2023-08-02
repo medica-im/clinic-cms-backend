@@ -127,6 +127,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--commune', type=str)
+        parser.add_argument('--facility', type=str)
 
     def handle(self, *args, **options):
         commune_str=options['commune']
@@ -146,7 +147,14 @@ class Command(BaseCommand):
                 return
             commune=commune_qs[0]
 
-        facility=Facility().save()
+        facility_uid = options["facility"]
+        if facility_uid:
+            try:
+                facility=Facility.nodes.get(uid=facility_uid)
+            except:
+                facility=None
+        if not facility:
+            facility=Facility().save()
         facility.commune.connect(commune)
         try:
             contact, _ = Contact.objects.get_or_create(
@@ -156,13 +164,14 @@ class Command(BaseCommand):
             logger.debug(e)
             return
         try:
-            address, _ = Address.objects.get_or_create(
+            address, created = Address.objects.get_or_create(
                 contact=contact,
                 city=commune.name_fr,
                 country=get_country_code(commune.wikidata),
                 zip=get_postal_code(commune.wikidata)
             )
-            address.roles.set(Role.objects.all())
+            if created:
+                address.roles.set(Role.objects.all())
         except Exception as e:
             logger.debug(e)
             return

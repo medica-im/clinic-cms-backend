@@ -10,6 +10,7 @@ from tastypie.utils import (
     is_valid_jsonp_callback_value, string_to_python,
     trailing_slash,
 )
+from directory.utils import get_addresses
 
 logger=logging.getLogger(__name__)
 
@@ -18,21 +19,32 @@ logger=logging.getLogger(__name__)
 # wrap that.
 
 class EffectorObj(object):
-    def __init__ (self, label_fr, name_fr, uid, types):
+    def __init__ (self, label_fr, name_fr, uid, types, communes, addresses):
         self.label_fr = label_fr
         self.name_fr = name_fr
         self.uid = uid
         self.types = types
+        self.communes = communes
+        self.addresses = addresses
 
 
-def createEffectorRessources(nodes):
+def createEffectorRessources(request, nodes):
     data= []
     for node in nodes:
         label_fr = node.label_fr
         name_fr = node.name_fr
         uid = node.uid
         types = node.types
-        effector = EffectorObj(label_fr, name_fr, uid, types)
+        communes = node.communes
+        addresses = get_addresses(request, node)
+        effector = EffectorObj(
+            label_fr,
+            name_fr,
+            uid,
+            types,
+            communes,
+            addresses
+        )
         data.append(effector)
     return data
 
@@ -43,6 +55,8 @@ class MessageResource(Resource):
     label_fr = fields.CharField(attribute='label_fr')
     name_fr = fields.CharField(attribute='name_fr')
     types = fields.ListField(attribute='types')
+    communes = fields.ListField(attribute='communes')
+    addresses = fields.ListField(attribute='addresses')
 
     class Meta:
         resource_name = 'effectors'
@@ -51,8 +65,6 @@ class MessageResource(Resource):
         authorization = Authorization()
         detail_uri_name = 'uid'
 
-    # The following methods will need overriding regardless of your
-    # data source.
     def detail_uri_kwargs(self, bundle_or_obj):
         kwargs = {}
 
@@ -80,12 +92,11 @@ class MessageResource(Resource):
         ]
 
     def get_object_list(self, request):
-        logger.debug(request)
         directory=get_directory(request)
         logger.debug(directory)
         #effectorNodes = Effector.nodes.all()
         effectorNodes = directory_effectors(directory)
-        effectors = createEffectorRessources(effectorNodes)
+        effectors = createEffectorRessources(request, effectorNodes)
         return effectors
 
     def obj_get_list(self, bundle, **kwargs):

@@ -65,7 +65,7 @@ class ContactSerializer(serializers.ModelSerializer):
             'formatted_name',
             'formatted_name_definite_article',
             'url',
-            'addresses',
+            'address',
             'phonenumbers',
             'socialnetworks',
             'websites',

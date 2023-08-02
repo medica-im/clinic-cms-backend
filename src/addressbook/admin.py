@@ -104,6 +104,10 @@ class ContactAdmin(admin.ModelAdmin):
         'email_tag',
     )
     fields = (
+        'person_type',
+        'formatted_name',
+        'formatted_name_definite_article',
+        'user',
         'name_tag',
         'profile_image_tag',
         'street_tag',
@@ -116,6 +120,8 @@ class ContactAdmin(admin.ModelAdmin):
         'title',
         'organization',
         'email_tag',
+        'profile_image',
+        'neomodel_uid',
     )
     search_fields = ['formatted_name', 'neomodel_uid']
     readonly_fields = (
