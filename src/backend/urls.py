@@ -36,7 +36,6 @@ urlpatterns = [
     path('cms/', include(wagtailadmin_urls)),
     path('documents/', include(wagtaildocs_urls)),
     path('pages/', include(wagtail_urls)),
-    path("debug/", include("debug_toolbar.urls")),
 ]
 
 # Use static() to add url mappings to serve static files during development (only)
