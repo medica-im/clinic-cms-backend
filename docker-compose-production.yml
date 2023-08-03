@@ -59,6 +59,7 @@ services:
     restart: unless-stopped
     ports:
       - 7474:7474
+      - 7473:7473
       - 7687:7687
       - 5000:5000
       - 6000:6000
