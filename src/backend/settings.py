@@ -8,9 +8,7 @@ from django.utils.translation import gettext_lazy as _
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-CONFIG_DIR = Path(BASE_DIR)
-config = AutoConfig(search_path = CONFIG_DIR)
+config = AutoConfig(search_path = BASE_DIR)
 
 # We do not set the SITE_ID so that the http request's host name is used to
 # determine which organization's data to return
@@ -186,7 +184,6 @@ INSTALLED_APPS = [
 
 if DEBUG:
     INSTALLED_APPS += [
-        'django_extensions',
         'corsheaders',
     ]
 
@@ -376,18 +373,14 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
-
 # Redis
-REDIS_HOST = config('REDIS_HOST', default='redis_development')
+REDIS_HOST = config('REDIS_HOST', default='redis')
 REDIS_PORT = config('REDIS_PORT', cast=str, default='6379')
 REDIS_DATABASE_ID = config('REDIS_DATABASE_ID', default='0')
 CACHES = {
     "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://" + REDIS_HOST + ":" + REDIS_PORT + "/" + REDIS_DATABASE_ID,
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://" + REDIS_HOST + ":" + REDIS_PORT + "/" + REDIS_DATABASE_ID#,
     }
 }
 

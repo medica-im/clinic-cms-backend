@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  database_development:
+  database:
     restart: always                                                                      
     image: postgre-non-root
     build:
@@ -27,7 +27,7 @@ services:
       - "${DATABASE_CONF_FILE}:/etc/postgresql.conf"
       - "${DATABASE_BACKUP_DIR}:/backup"
       - "${DATABASE_LOG_DIR}:/var/log/postgresql:z"
-  redis_development:
+  redis:
     restart: always
     image: redis:latest
     sysctls:
@@ -49,8 +49,8 @@ services:
       - ${GUNICORN_LOG}:${GUNICORN_LOG}
       - ${DJANGO_LOG_DIR}:${DJANGO_LOG_DIR}
     depends_on:
-      - database_development
-      - redis_development
+      - database
+      - redis
     working_dir: /backend/src
     ports:
       - "${EXTERNAL_PORT_DEVELOPMENT}:80"

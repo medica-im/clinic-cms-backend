@@ -42,5 +42,4 @@ RUN apt-get clean && apt-get update --allow-insecure-repositories && apt-get ins
     postgresql-client \
     gettext \
  && rm -rf /var/lib/apt/lists/*
-
 RUN pip install --upgrade -r /backend/requirements/development.txt

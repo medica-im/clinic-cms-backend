@@ -17,8 +17,7 @@ vobject
 django-cors-headers
 django-simple-history
 django-constance[database]
-redis==3.5.3
-django-redis==5.0.0
+redis
 django-contact-form[akismet]
 wagtail==4.2.3
 wagtailsvg
