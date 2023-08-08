@@ -148,14 +148,16 @@ class Command(BaseCommand):
             commune=commune_qs[0]
 
         facility_uid = options["facility"]
+        facility: Facility | None = None
         if facility_uid:
             try:
                 facility=Facility.nodes.get(uid=facility_uid)
             except:
-                facility=None
-        if not facility:
+                pass
+        else:
             facility=Facility().save()
-        facility.commune.connect(commune)
+        if facility:
+            facility.commune.connect(commune)
         try:
             contact, _ = Contact.objects.get_or_create(
                 neomodel_uid=facility.uid
