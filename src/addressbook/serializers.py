@@ -1,24 +1,5 @@
-from addressbook.models import Contact, Address, SocialNetwork
+from addressbook.models import Contact, Address, SocialNetwork, PhoneNumber
 from rest_framework import serializers, fields
-
-"""
-class ChoiceField(serializers.ChoiceField):
-
-    def to_representation(self, obj):
-        if obj == '' and self.allow_blank:
-            return obj
-        return self._choices[obj]
-
-    def to_internal_value(self, data):
-        # To support inserts with the value
-        if data == '' and self.allow_blank:
-            return ''
-
-        for key, val in self._choices.items():
-            if val == data:
-                return key
-        self.fail('invalid_choice', input=data)
-"""
 
 class SocialNetworkSerializer(serializers.ModelSerializer):
     #name = serializers.SerializerMethodField()
@@ -35,6 +16,18 @@ class SocialNetworkSerializer(serializers.ModelSerializer):
             'contact_visible',
         ]
         
+        depth = 2
+
+
+class PhoneNumberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PhoneNumber
+        fields = [
+            'id',
+            'phone',
+            'type',
+            'get_type_display',
+        ]
         depth = 2
 
 

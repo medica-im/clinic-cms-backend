@@ -10,7 +10,10 @@ from tastypie.utils import (
     is_valid_jsonp_callback_value, string_to_python,
     trailing_slash,
 )
-from directory.utils import get_addresses
+from directory.utils import (
+    get_addresses,
+    get_phones,
+)
 
 logger=logging.getLogger(__name__)
 
@@ -19,13 +22,23 @@ logger=logging.getLogger(__name__)
 # wrap that.
 
 class EffectorObj(object):
-    def __init__ (self, label_fr, name_fr, uid, types, communes, addresses):
+    def __init__ (
+            self,
+            label_fr,
+            name_fr,
+            uid,
+            types,
+            communes,
+            addresses,
+            phones,
+        ):
         self.label_fr = label_fr
         self.name_fr = name_fr
         self.uid = uid
         self.types = types
         self.communes = communes
         self.addresses = addresses
+        self.phones = phones
 
 
 def createEffectorRessources(request, nodes):
@@ -37,13 +50,15 @@ def createEffectorRessources(request, nodes):
         types = node.types
         communes = node.communes
         addresses = get_addresses(request, node)
+        phones = get_phones(request, node)
         effector = EffectorObj(
             label_fr,
             name_fr,
             uid,
             types,
             communes,
-            addresses
+            addresses,
+            phones
         )
         data.append(effector)
     return data
@@ -57,6 +72,7 @@ class MessageResource(Resource):
     types = fields.ListField(attribute='types')
     communes = fields.ListField(attribute='communes')
     addresses = fields.ListField(attribute='addresses')
+    phones = fields.ListField(attribute='phones')
 
     class Meta:
         resource_name = 'effectors'

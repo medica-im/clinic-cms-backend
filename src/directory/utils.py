@@ -1,9 +1,17 @@
 import logging
 from django.contrib.sites.shortcuts import get_current_site
-from directory.models import Directory, Effector, Facility
+from directory.models import (
+    Directory,
+    Effector,
+    Facility,
+    EffectorFacility,
+)
 from addressbook.models import Contact
 from neomodel import db
-from addressbook.serializers import AddressSerializer
+from addressbook.serializers import (
+    AddressSerializer,
+    PhoneNumberSerializer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +22,43 @@ def get_directory(request):
         return dir
     except Directory.DoesNotExist:
         return
+
+def get_phones(request, effector):
+    directory=get_directory(request)
+    results, cols = db.cypher_query(
+        f"""MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
+        WHERE rel.directories=["{directory.name}"]
+        AND e.uid="{effector.uid}"
+        RETURN f, rel"""
+    )
+    if results:
+        location_facility = []
+        for row in results:
+            _dct = {}
+            location_rel=EffectorFacility.inflate(row[cols.index('rel')])
+            _dct["location_rel"]=location_rel
+            facility=Facility.inflate(row[cols.index('f')])
+            _dct["facility"]=facility
+            location_facility.append(_dct)
+        phones = []
+        for lf in location_facility:
+            try:
+                contact = Contact.objects.get(neomodel_uid=lf["location_rel"].uid)
+                logger.debug(contact);
+            except Contact.DoesNotExist:
+                contact = None
+            if not (contact and contact.phonenumbers.all()):
+                try:
+                    contact = Contact.objects.get(neomodel_uid=lf["facility"].uid)
+                    logger.debug(contact);
+                except Contact.DoesNotExist:
+                    continue
+            serializer = PhoneNumberSerializer(
+                contact.phonenumbers.all(),
+                many=True
+            )
+            phones.extend(serializer.data)
+        return phones
 
 def get_addresses(request, effector):
     directory=get_directory(request)
