@@ -127,7 +127,18 @@ class Address(models.Model):
         blank=True,
         help_text="Roles allowed so see the related object",
     )
-    street = models.CharField(max_length=255, null=True, blank=True)
+    building = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Address line for building name",
+    )
+    street = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Address line for street name and house number",
+    )
     city = models.CharField(max_length=255)
     state = models.CharField(max_length=255, null=True, blank=True)
     country = CountryField()

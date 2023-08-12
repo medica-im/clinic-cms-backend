@@ -92,6 +92,8 @@ class ContactAdmin(admin.ModelAdmin):
     list_display = (
         'name_tag',
         'profile_image_tag',
+        'neomodel_uid',
+        'building_tag',
         'street_tag',
         'zip_tag',
         'city_tag',
@@ -110,6 +112,7 @@ class ContactAdmin(admin.ModelAdmin):
         'user',
         'name_tag',
         'profile_image_tag',
+        'building_tag',
         'street_tag',
         'zip_tag',
         'city_tag',
@@ -127,6 +130,7 @@ class ContactAdmin(admin.ModelAdmin):
     readonly_fields = (
         'name_tag',
         'profile_image_tag',
+        'building_tag',
         'street_tag',
         'zip_tag',
         'city_tag',
@@ -160,9 +164,12 @@ class ContactAdmin(admin.ModelAdmin):
             return f"{str(obj.user)[:10]}.."
         except TypeError:
             return "∅"
-        
 
-    @admin.display(description='Street')
+    @admin.display(description=_('Building'))
+    def building_tag(self, obj):
+        return obj.address.building
+
+    @admin.display(description=_('Street'))
     def street_tag(self, obj):
         return obj.address.street
         
@@ -170,7 +177,7 @@ class ContactAdmin(admin.ModelAdmin):
     def zip_tag(self, obj):
         return obj.address.zip
 
-    @admin.display(description='City')
+    @admin.display(description=_('City'))
     def city_tag(self, obj):
         return obj.address.city
         
