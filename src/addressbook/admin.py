@@ -95,6 +95,7 @@ class ContactAdmin(admin.ModelAdmin):
         'neomodel_uid',
         'building_tag',
         'street_tag',
+        'geographical_complement_tag',
         'zip_tag',
         'city_tag',
         'gps_tag',
@@ -114,6 +115,7 @@ class ContactAdmin(admin.ModelAdmin):
         'profile_image_tag',
         'building_tag',
         'street_tag',
+        'geographical_complement_tag',
         'zip_tag',
         'city_tag',
         'gps_tag',
@@ -132,6 +134,7 @@ class ContactAdmin(admin.ModelAdmin):
         'profile_image_tag',
         'building_tag',
         'street_tag',
+        'geographical_complement_tag',
         'zip_tag',
         'city_tag',
         'gps_tag',
@@ -172,7 +175,11 @@ class ContactAdmin(admin.ModelAdmin):
     @admin.display(description=_('Street'))
     def street_tag(self, obj):
         return obj.address.street
-        
+
+    @admin.display(description=_('Geo complement'))
+    def geographical_complement_tag(self, obj):
+        return obj.address.geographical_complement
+
     @admin.display(description='zip')
     def zip_tag(self, obj):
         return obj.address.zip

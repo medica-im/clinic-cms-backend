@@ -139,6 +139,12 @@ class Address(models.Model):
         blank=True,
         help_text="Address line for street name and house number",
     )
+    geographical_complement = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Geographical complement to facilitate geolocation"
+    )
     city = models.CharField(max_length=255)
     state = models.CharField(max_length=255, null=True, blank=True)
     country = CountryField()
