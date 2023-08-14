@@ -36,7 +36,9 @@ class AddressSerializer(serializers.ModelSerializer):
         model = Address
         fields = [
             'id',
+            'building',
             'street',
+            'geographical_complement',
             'city',
             'zip',
             'state',
