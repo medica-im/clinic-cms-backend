@@ -111,7 +111,7 @@ class Effector(StructuredNode):
     name_en = StringProperty(unique_index=True)
     name_fr = StringProperty(unique_index=True)
     type = RelationshipTo('EffectorType', 'IS_A')
-    organization = RelationshipTo('Organization', 'PART_OF')
+    organization = RelationshipTo('Organization', 'MEMBER_OF')
     facility = RelationshipTo(
         "Facility",
         "LOCATION",
