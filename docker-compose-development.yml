@@ -93,3 +93,7 @@ services:
       - NEO4J_dbms.ssl.policy.https.base_directory=certificates/https
       - NEO4J_dbms.ssl.policy.https.private_key=privkey.pem
       - NEO4J_dbms.ssl.policy.https.public_certificate=fullchain.pem
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+      - NEO4JLABS_PLUGINS=["apoc"]
