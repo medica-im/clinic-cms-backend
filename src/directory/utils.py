@@ -98,13 +98,36 @@ def effector_commune(directory: Directory):
 
 def directory_effectors(directory: Directory): 
     results, meta = db.cypher_query(
-            f"""MATCH (e:Effector)-[l:LOCATION]-(f:Facility)
-            WHERE l.directories=["{directory.name}"]
-            RETURN e"""
-        )
+        f"""MATCH (e:Effector)-[l:LOCATION]-(f:Facility)
+        WHERE l.directories=["{directory.name}"]
+        RETURN e"""
+    )
     if results:
         effectors=[]
         for e in results:
             effector=Effector.inflate(e[0])
             effectors.append(effector)
         return effectors
+
+def get_effectors(request, situation):
+    results, meta = db.cypher_query(
+        f"""
+        MATCH (s:Situation)
+        WHERE s.uid = "{situation.uid}"
+        MATCH (et1:EffectorType)-[:MANAGES]->(s)
+        MATCH (s)-[:IMPACTS]->(n:Need)<-[:MANAGES]-(et2:EffectorType)
+        MATCH (n)<-[:PART_OF*]-(n2:Need)-[:MANAGES]-(et3:EffectorType)
+        OPTIONAL MATCH (et1)<-[:IS_A*]-(e1:Effector) RETURN e1 AS effectors
+        UNION
+        OPTIONAL MATCH (et2)<-[:IS_A*]-(e2:Effector) RETURN e2 AS effectors
+        UNION
+        OPTIONAL MATCH (et3)<-[:IS_A*]-(e3:Effector) RETURN e3 AS effectors
+        """
+    )
+    if results:
+        effectors=[]
+        for e in results:
+            effector=Effector.inflate(e[0])
+            effectors.append(effector)
+        directory=get_directory(request)
+        return [ e.uid for e in effectors if e in directory_effectors(directory) ]
