@@ -140,7 +140,6 @@ def get_effectors(request, situation):
         f"""
         MATCH (s:Situation)
         WHERE s.uid = "{situation.uid}"
-        MATCH (s)-[:IMPACTS]->(n:Need)<-[:MANAGES]-(et:EffectorType)
         MATCH (s)-[:IMPACTS]->(n:Need)<-[:PART_OF]-(n2:Need)<-[:MANAGES]-(et:EffectorType)
         MATCH (et)<-[:IS_A*]-(e:Effector) RETURN e
         """
