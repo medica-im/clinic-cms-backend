@@ -32,10 +32,13 @@ class PhoneNumberSerializer(serializers.ModelSerializer):
 
 
 class AddressSerializer(serializers.ModelSerializer):
+    facility_uid = serializers.SerializerMethodField()
+
     class Meta:
         model = Address
         fields = [
             'id',
+            'facility_uid',
             'building',
             'street',
             'geographical_complement',
@@ -48,6 +51,9 @@ class AddressSerializer(serializers.ModelSerializer):
             'zoom',
         ]
         depth = 2
+
+    def get_facility_uid(self, obj):
+        return obj.contact.neomodel_uid
 
 
 class ContactSerializer(serializers.ModelSerializer):
