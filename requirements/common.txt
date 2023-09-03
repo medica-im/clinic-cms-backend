@@ -22,3 +22,5 @@ django-contact-form[akismet]
 wagtail==4.2.3
 wagtailsvg
 langcodes[data]
+Django-Verify-Email
+dj-rest-auth

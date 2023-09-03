@@ -143,6 +143,7 @@ INSTALLED_APPS = [
     'django.contrib.postgres',
     'rest_framework_simplejwt',
     'rest_framework',
+    'rest_framework.authtoken',
     'rest_framework_simplejwt.token_blacklist',
     'easy_thumbnails',
     'constance.backends.database',
@@ -153,6 +154,8 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'simple_history',
+    'verify_email.apps.VerifyEmailConfig',
+    'dj_rest_auth',
     #wagtail
     'wagtail.contrib.forms',
     'wagtail.contrib.redirects',
@@ -418,3 +421,12 @@ EMAIL_USE_TLS=True
 
 #Wagtail
 WAGTAIL_SITE_NAME = 'Healthcenter'
+
+REST_AUTH = {
+    'PASSWORD_RESET_USE_SITES_DOMAIN': True,
+    'PASSWORD_RESET_SERIALIZER': 'dj_rest_auth.serializers.PasswordResetSerializer',
+    'PASSWORD_RESET_CONFIRM_SERIALIZER': 'dj_rest_auth.serializers.PasswordResetConfirmSerializer',
+    'USE_JWT': True,
+    'JWT_AUTH_COOKIE': 'jwt-auth',
+    'JWT_AUTH_REFRESH_COOKIE': 'my-refresh-token',
+}

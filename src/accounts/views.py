@@ -34,8 +34,9 @@ class RegistrationAPIView(APIView):
 
     def post(self, request: Request) -> Response:
         """Return user response after a successful registration."""
+        context = {'request': request}
         user_request = request.data.get('user', {})
-        serializer = self.serializer_class(data=user_request)
+        serializer = self.serializer_class(data=user_request, context=context)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
