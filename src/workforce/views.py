@@ -38,9 +38,7 @@ class WorkforceLabel(APIView):
         org_node_qs = models.NetworkNode.objects.filter(
             id__in=organization_node_ids,
         )
-        logger.debug(f'{org_node_qs=}')
         node_has_label=models.Label.objects.values_list("node__id", flat=True)
-        logger.debug(f'{node_has_label=}')
         node_set = set()
         for node in org_node_qs:
             node_set.update(node.self_and_ancestors())
@@ -49,7 +47,6 @@ class WorkforceLabel(APIView):
         for node in node_set:
             if node.id in node_has_label:
                 node_label_set.add(node)
-        logger.debug(f'{node_label_set=}')
         dictionary = {}
         for node in node_label_set:
             dictionary[node.name] = {
@@ -69,7 +66,7 @@ class WorkforceLabel(APIView):
                 logger.error(f"Missing GrammaticalGender object: {e}")
             for N in ["S", "P"]:
                 for G in [F, M]:
-                    logger.debug(f'{node.name=} {N=} {G.code=} {language=}')
+                    #logger.debug(f'{node.name=} {N=} {G.code=} {language=}')
                     try:
                         l = models.Label.objects.get(
                             node=node,
@@ -101,8 +98,10 @@ class WorkforceUserViewSet(WorkforceBaseViewSet):
         language = self.request.query_params.get('lang')
         activate_locale(language,self.request)
         organization = get_organization(self.request)
+        logger.debug(f'{organization=}')
         user=models.NodeSet.objects.get(name="user")
         role=get_role(self.request)
+        logger.debug(f'{role=}')
         organization_edge_qs_child_ids= (
             models.NetworkEdge.objects
             .filter(
@@ -111,10 +110,12 @@ class WorkforceUserViewSet(WorkforceBaseViewSet):
             )
             .values_list("child_id", flat=True)
         )
-        return models.NetworkNode.objects.filter(
+        qs = models.NetworkNode.objects.filter(
             node_set=user,
             id__in=organization_edge_qs_child_ids
         )
+        logger.debug(f'node count={qs.count()}')
+        return qs
 
 
 class WorkforceOccupationViewSet(WorkforceBaseViewSet):

@@ -37,7 +37,6 @@ def get_roles(request: HttpRequest)->[Role]:
 
 def get_role(request: HttpRequest):
     user = request.user
-    logger.debug(f'{user=}')
     roles = get_role_objs()
     if user.is_anonymous:
         return roles["anonymous"]

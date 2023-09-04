@@ -40,7 +40,6 @@ class WorkforceOccupationSerializer(serializers.ModelSerializer):
     
     def get_slug(self, obj):
         try:
-            logger.debug(f"{obj.slug}")
             return obj.slug.slug
         except models.WorkforceSlug.DoesNotExist:
                 return
@@ -197,12 +196,10 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
     def get_profile_picture_url(self, obj):
         try:
             fb = obj.user.contact.profile_image["avatar_facebook"].url
-            logger.debug(f'{fb=}')
         except:
             fb = None
         try:
             lt = obj.user.contact.profile_image["avatar_linkedin_twitter"].url
-            logger.debug(f'{lt=}')
         except:
             lt = None
         return {
@@ -223,7 +220,6 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
 
     def get_websites(self, obj):
         role = get_role(self.context["request"])
-        logger.debug(f'{role=}')
         organization = get_organization(self.context["request"])
         websites = []
         for website in obj.user.contact.websites.all():
@@ -253,7 +249,6 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
                 "display": email.get_type_display(),
                 "email": email.email,
             }
-            logger.debug(_dict);
             if email.roles.all():
                 if role in email.roles.all():
                     emails.append(_dict)
@@ -264,7 +259,6 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
 
     def get_profile(self, obj):
         role = get_role(self.context["request"])
-        logger.debug(f'{role=}')
         organization = get_organization(self.context["request"])
         endpoint, _ = Endpoint.objects.get_or_create(name="profile")
         try:
@@ -286,7 +280,6 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
                 }
             )
         except Profile.DoesNotExist as e:
-            logger.debug(f'{e}')
             return (
                 {
                     "text": None,
@@ -316,7 +309,6 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
 
     def get_appointments(self, obj):
         role = get_role(self.context["request"])
-        logger.debug(f'{role=}')
         organization = get_organization(self.context["request"])
         appointments = []
         for appointment in obj.user.contact.appointments.all():
@@ -343,10 +335,10 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
  
     def get_carte_vitale(self,obj):
         organization = get_organization(self.context["request"])
-        try:
-            logger.debug(obj.carte_vitale.all())
-        except:
-            pass
+        #try:
+        #    logger.debug(obj.carte_vitale.all())
+        #except:
+        #    pass
         try:
             return (obj.carte_vitale.filter(organization=organization)[0]
                     .is_accepted)
@@ -368,17 +360,16 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
     
     def get_payment(self,obj):
         organization = get_organization(self.context["request"])
-        try:
-            logger.debug(obj.payment_set.all())
-        except:
-            pass
+        #try:
+        #    logger.debug(obj.payment_set.all())
+        #except:
+        #    pass
         try:
             payment = (
                 obj.payment_set
                 .filter(organization=organization)[0]
                 .method.all()
             )
-            logger.debug(payment)
         except:
             return
         serializer = PaymentMethodSerializer(payment, many=True)
@@ -387,15 +378,14 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
 
     def get_third_party_payer(self,obj):
         organization = get_organization(self.context["request"])
-        try:
-            logger.debug(obj.thirdpartypayment_set.all())
-        except:
-            pass
+        #try:
+        #    logger.debug(obj.thirdpartypayment_set.all())
+        #except:
+        #    pass
         try:
             third_party_payments = (obj.thirdpartypayment_set
                 .filter(organization=organization, available=True)
             )
-            logger.debug(f'third_party_payments=')
         except:
             return
         third_party_payers = [tpp.payer for tpp in third_party_payments]
