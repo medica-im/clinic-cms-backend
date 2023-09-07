@@ -1,7 +1,6 @@
 from datetime import timedelta
 from django.db import models
 from django.contrib.sites.models import Site
-from addressbook.models import Contact
 from workforce.models import NodeSet
 import logging
 from django.conf import settings

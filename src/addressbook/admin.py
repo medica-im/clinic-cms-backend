@@ -175,11 +175,27 @@ class AddressAdmin(admin.ModelAdmin):
     autocomplete_fields = ['contact']
 
 
-admin.site.register(Contact, ContactAdmin)
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
+    autocomplete_fields = ['contact']
+    list_display = (
+        'id',
+        'contact',
+        'roles_tag',
+        'organization',
+        'text',
+        'changed_by',
+        'created',
+        'updated',
+    )
 
+    @admin.display(description="roles")
+    def roles_tag(self, obj):
+        return [role.name for role in obj.roles.all()]
+
+admin.site.register(Contact, ContactAdmin)
 admin.site.register(ContactGroup, admin.ModelAdmin)
 admin.site.register(PhoneNumber, admin.ModelAdmin)
 admin.site.register(Website, admin.ModelAdmin)
 admin.site.register(SocialNetwork, admin.ModelAdmin)
 admin.site.register(Email, admin.ModelAdmin)
-admin.site.register(Profile, SimpleHistoryAdmin)

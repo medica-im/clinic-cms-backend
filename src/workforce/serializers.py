@@ -128,6 +128,7 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
         child=serializers.CharField(),
         source='spokenlanguage.display_name'
     )
+    contact_id = serializers.IntegerField(source="user.contact.id")
 
 
     class Meta:
@@ -156,12 +157,16 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
             'payment',
             'third_party_payer',
             'languages',
+            'contact_id',
         )
         depth=2
 
     def get_organization(self, obj):
         organization = get_organization(self.context["request"])
-        return organization.name
+        return {
+            "id": organization.id,
+            "name": organization.name,
+        }
 
     def get_occupations(self, obj):
         organization = get_organization(self.context["request"])
@@ -274,6 +279,8 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
         try:
             return (
                 {
+                    "id": obj.user.contact.profiles \
+                    .get(roles=role,organization=organization).id,
                     "text": obj.user.contact.profiles \
                     .get(roles=role,organization=organization).text,
                     "permissions": permissions

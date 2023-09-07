@@ -25,8 +25,14 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = [
-            'id', 'contact', 'roles', 'organization', 'text', 'changed_by',
-            'created', 'updated',
+            'id',
+            'contact',
+            'roles',
+            'organization',
+            'text',
+            'changed_by',
+            'created',
+            'updated',
         ]
         extra_kwargs = {'changed_by': {'required': False}}
 

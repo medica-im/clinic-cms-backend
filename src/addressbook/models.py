@@ -20,6 +20,8 @@ from simple_history.models import HistoricalRecords
 from easy_thumbnails.signals import saved_file
 from easy_thumbnails.signal_handlers import generate_aliases
 
+from facility.models import Organization
+
 CharField.register_lookup(Length)
 
 User = get_user_model()
@@ -308,6 +310,8 @@ class SocialNetwork(models.Model):
             f"{self.handle or self.url}"
         )
 
+def get_default_organization():
+    return Organization.objects.first().id
 
 class Profile(models.Model):
     contact = models.ForeignKey(
@@ -320,12 +324,14 @@ class Profile(models.Model):
         blank=True,
         help_text="Roles allowed so see the related object",
     )
-    organization = models.ManyToManyField(
+    organization = models.ForeignKey(
         "facility.Organization",
-        blank=True
+        on_delete=models.PROTECT,
+        related_name="profiles",
+        default=get_default_organization
     )
     text = models.TextField(
-        blank=True    
+        blank=True
     )
     changed_by = models.ForeignKey(
       settings.AUTH_USER_MODEL,
@@ -343,12 +349,8 @@ class Profile(models.Model):
     def _history_user(self, value):
         self.changed_by = value
 
-
     class Meta:
-        models.UniqueConstraint(
-            fields=['contact', 'organization'],
-            name='unique_profile'
-        )
+        unique_together = [["contact", "organization"]]
 
 
 class Appointment(models.Model):
