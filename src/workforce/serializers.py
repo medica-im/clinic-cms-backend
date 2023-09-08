@@ -99,7 +99,9 @@ class ThirdPartyPayerSerializer(serializers.ModelSerializer):
 
 
 class WorkforceUserSerializer(serializers.ModelSerializer):
-
+    user_id = serializers.UUIDField(
+        source='user.id'
+    )
     organization = serializers.SerializerMethodField()
     occupations = serializers.SerializerMethodField()
     title = serializers.SerializerMethodField()
@@ -135,6 +137,7 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
         model = models.NetworkNode
         fields = (
             'id',
+            'user_id',
             'rpps',
             'adeli',
             'node_set',
