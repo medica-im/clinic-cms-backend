@@ -25,6 +25,7 @@ from accounts.reset import PasswordResetConfirmRedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/v1/access/', include('access.urls', namespace='access')),
     path('api/v1/accounts/', include('accounts.urls', namespace='accounts')),
     path('addressbook/', include('addressbook.urls', namespace='addressbook')),
     path('api/v1/addressbook/', include('addressbook.api.urls', namespace='addressbook_api')),

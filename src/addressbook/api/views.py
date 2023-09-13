@@ -19,12 +19,19 @@ class ProfileList(generics.ListCreateAPIView):
         organization = get_organization(self.request)
         roles = self.request.data.get("roles", None)
         text = self.request.data.get("text", None)
-        serializer.save(
-            changed_by=changed_by,
-            text=text,
-            roles=roles,
-            organization=organization
-        )
+        if roles:
+            serializer.save(
+                changed_by=changed_by,
+                text=text,
+                roles=roles,
+                organization=organization
+            )
+        else:
+            serializer.save(
+                changed_by=changed_by,
+                text=text,
+                organization=organization
+            )
 
 class ProfileDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Profile.objects.all()

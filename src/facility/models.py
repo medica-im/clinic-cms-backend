@@ -6,8 +6,11 @@ import logging
 from django.conf import settings
 #import reversion
 from django.core.exceptions import ValidationError
-
 from django.utils.translation import gettext_lazy as _
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +92,11 @@ class Organization(models.Model):
         on_delete=models.PROTECT,
         null=True,
         blank=True,
+    )
+    administrators = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name="administrator_of"
     )
 
     objects = OrganizationManager()

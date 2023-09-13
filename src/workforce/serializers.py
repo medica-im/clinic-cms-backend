@@ -5,7 +5,7 @@ from rest_framework import serializers
 from facility.utils import get_organization
 from workforce.utils import occupation
 from django.contrib.sites.shortcuts import get_current_site
-from access.utils import get_role, get_roles, authorize
+from access.utils import get_role, get_roles, authorize, authorize_api
 from access.models import Endpoint, AccessControl
 from addressbook.models import (
     PhoneNumber,
@@ -266,36 +266,32 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
         return emails
 
     def get_profile(self, obj):
-        role = get_role(self.context["request"])
-        organization = get_organization(self.context["request"])
-        endpoint, _ = Endpoint.objects.get_or_create(name="profile")
-        try:
-            permissions = (
-                AccessControl.objects.get(endpoint=endpoint,role=role)
-                .permissions
-            )
-        except AccessControl.DoesNotExist:
-            permissions = 0
-        # if the resource belongs to the user, return highest permission
-        if self.context["request"].user == obj.user:
-            permissions = 15
-        try:
-            return (
-                {
-                    "id": obj.user.contact.profiles \
-                    .get(roles=role,organization=organization).id,
-                    "text": obj.user.contact.profiles \
-                    .get(roles=role,organization=organization).text,
-                    "permissions": permissions
-                }
-            )
-        except Profile.DoesNotExist as e:
-            return (
-                {
-                    "text": None,
-                    "permissions": permissions
-                }
-            )
+        grant_access = False
+        request = self.context["request"]
+        is_owner = request.user == obj.user
+        logger.debug(f'{is_owner=}')
+        organization = get_organization(request)
+        profile = obj.user.contact.profiles.filter(organization=organization).first()
+        if not profile:
+            return
+        profile_roles = profile.roles.all()
+        user_roles = get_roles(request)
+        if is_owner:
+            grant_access = True
+        elif profile_roles:
+            if [i for i in user_roles if i in profile_roles]:
+                grant_access = True
+        else:
+            grant_access = authorize_api("profile", request)
+        return (
+            {
+                "id": profile.id,
+                "roles": [
+                    {role.id, role.name} for role in profile.roles.all()
+                ],
+                "text": profile.text if grant_access else "",
+            }
+        )
 
     def create_appointment(self, pk):
         appointment = Appointment.objects.get(id=pk)

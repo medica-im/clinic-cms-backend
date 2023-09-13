@@ -26,7 +26,7 @@ class OrganizationAdmin(TranslationAdmin):
         'city',
     )
     search_fields = ['name', 'formatted_name', 'city', 'company_name']
-    autocomplete_fields = ['contact',]
+    autocomplete_fields = ['contact', 'administrators']
 
 
 @admin.register(Category)

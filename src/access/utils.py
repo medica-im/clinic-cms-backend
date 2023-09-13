@@ -5,9 +5,16 @@ from workforce.utils import is_staff
 from django.http import HttpRequest
 from access.models import AccessControl, Endpoint, Role
 from rest_framework import permissions
+from facility.utils import get_organization
+
 User=get_user_model()
 
 logger = logging.getLogger(__name__)
+
+def is_administrator(request: HttpRequest)->bool:
+    organization=get_organization(request)
+    if organization in request.user.administrator_of.all():
+        return True
 
 def get_role_objs():
     roles = dict()
@@ -29,6 +36,8 @@ def get_roles(request: HttpRequest)->[Role]:
     roles = []
     if user.is_superuser:
         roles.append(role_objs["superuser"])
+    if is_administrator(request):
+        roles.append(role_objs["administrator"])
     if is_staff(request):
         roles.append(role_objs["staff"])
     if user.is_authenticated:
@@ -42,6 +51,8 @@ def get_role(request: HttpRequest):
         return roles["anonymous"]
     elif user.is_superuser:
         return roles["superuser"]
+    elif is_administrator(request):
+        return roles["administrator"]
     elif is_staff(request):
         return roles["staff"]
     elif user.is_authenticated:

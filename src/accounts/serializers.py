@@ -152,6 +152,7 @@ class UserSerializer(serializers.ModelSerializer):
             'full_name',
             'birth_date',
             'is_staff',
+            'is_superuser',
             'role',
         )
         read_only_fields = ('tokens', 'is_staff', 'role',)
