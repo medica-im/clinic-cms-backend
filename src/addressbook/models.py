@@ -40,16 +40,9 @@ social_net_prefixes = dict(
 )
 
 
-class ContactGroup(models.Model):
-    #user = models.ForeignKey(settings.AUTH_USER_MODEL)
-    name = models.CharField(max_length=255, verbose_name='Group Name', unique=True)
-
-    class Meta:
-        ordering = ['name']
-        #unique_together = ('user', 'name')
-
-    def __str__(self):
-        return self.name
+class ContactManager(models.Manager):
+    def get_by_natural_key(self, neomodel_uid):
+        return self.get(neomodel_uid=neomodel_uid)
 
 
 class Contact(models.Model):
@@ -72,7 +65,6 @@ class Contact(models.Model):
         null=True,
         blank=True,
     )
-    groups = models.ManyToManyField(ContactGroup, blank=True)
     formatted_name = models.CharField(max_length=255, blank=True)
     formatted_name_definite_article = models.CharField(
         max_length=255,
@@ -109,6 +101,14 @@ class Contact(models.Model):
             return "%s %s" % (self.id, self.formatted_name)
         else:
             return "%s %s %s" % (self.id, self.first_name, self.last_name)
+
+    def natural_key(self):
+        return (self.neomodel_uid,)
+
+
+class AddressManager(models.Manager):
+    def get_by_natural_key(self, contact):
+        return self.get(contact__neomodel_uid=contact)
 
 
 class Address(models.Model):
@@ -187,7 +187,12 @@ class Address(models.Model):
             self.country
         )
 
-    
+    def natural_key(self):
+        return self.contact.natural_key()
+
+    natural_key.dependencies = ['addressbook.contact']
+
+
     class Meta:
         verbose_name_plural = "Addresses"
 

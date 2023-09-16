@@ -303,8 +303,6 @@ class AddressAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Contact, ContactAdmin)
-
-admin.site.register(ContactGroup, admin.ModelAdmin)
 admin.site.register(PhoneNumber, admin.ModelAdmin)
 admin.site.register(Website, admin.ModelAdmin)
 admin.site.register(SocialNetwork, admin.ModelAdmin)

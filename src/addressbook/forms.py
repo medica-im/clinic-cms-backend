@@ -13,12 +13,6 @@ class RequiredFormSet(BaseFormSet):
             form.empty_permitted = False
 
 
-class ContactGroupForm(ModelForm):
-    class Meta:
-        model = ContactGroup
-        fields = ('name',)
-
-
 class ContactForm(ModelForm):
     def __init__(self, *pa, **ka):
         user = ka.pop('user')
