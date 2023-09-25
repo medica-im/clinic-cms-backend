@@ -92,6 +92,8 @@ class Contact(models.Model):
         unique=True,
     )
 
+    objects = ContactManager()
+
     class Meta:
         ordering = ['formatted_name', 'last_name', 'first_name']
 
@@ -176,6 +178,7 @@ class Address(models.Model):
             MaxValueValidator(21)
         ]
     )
+    objects = AddressManager()
 
     def __str__(self):
         return '%s %s: %s %s, %s, %s' % (
@@ -197,8 +200,16 @@ class Address(models.Model):
         verbose_name_plural = "Addresses"
 
 
+class PhoneNumberManager(models.Manager):
+    def get_by_natural_key(self, contact, phone):
+        return self.get(
+            contact__neomodel_uid=contact,
+            phone=phone
+        )
+
+
 class PhoneNumber(models.Model):
-    
+
     class TelephoneType(models.TextChoices):
         MOBILE = 'M', _('Mobile')
         MOBILE_WORK = 'MW', _('Mobile Work')
@@ -226,6 +237,8 @@ class PhoneNumber(models.Model):
     public_visible = models.BooleanField(default=False)
     contact_visible = models.BooleanField(default=False)
 
+    objects = PhoneNumberManager()
+
     def __str__(self):
         return "%s %s: %s" % (
             self.contact.first_name,
@@ -233,9 +246,17 @@ class PhoneNumber(models.Model):
             self.phone
         )
 
+    def natural_key(self):
+        return (self.contact.natural_key(), self.phone)
+
+    natural_key.dependencies = [
+        'addressbook.contact',
+        'facility.organization'
+    ]
+
 
 class Email(models.Model):
-    
+
     class EmailType(models.TextChoices):
         PERSONAL = 'P', _('Personal')
         WORK = 'W', _('Work')

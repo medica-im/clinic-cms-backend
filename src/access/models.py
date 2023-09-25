@@ -8,15 +8,24 @@ class Endpoint(models.Model):
         return "%s %s" % (self.id, self.name)
 
 
+class RoleManager(models.Manager):
+    def get_by_natural_key(self, name):
+        return self.get(name=name)
+
+
 class Role(models.Model):
     name = models.CharField(max_length=255, unique=True)
     label = models.CharField(max_length=255, unique=True, null=True)
     description = models.TextField(
         blank=True
     )
+    objects = RoleManager()
 
     def __str__(self):
         return "%s %s" % (self.id, self.name)
+
+    def natural_key(self):
+        return (self.name,)
 
 
 class AccessControl(models.Model):

@@ -86,3 +86,6 @@ frontend/src/lib/assets
 
 # SvelteKit test folder
 frontend/src/routes/test
+
+# fixtures
+src/addressbook/fixtures/
