@@ -1,4 +1,5 @@
 import logging, os
+import colorlog
 from datetime import timedelta
 from django.utils.log import DEFAULT_LOGGING
 from pathlib import Path
@@ -40,6 +41,10 @@ DICT_CONFIG = {
             "format": "%(asctime)s %(name)s %(pathname)s:%(lineno)s:%(funcName)s %(levelname)s %(message)s",
         },
         "django.server": DEFAULT_LOGGING['formatters']['django.server'],
+        "colored_verbose": {
+            "()": "colorlog.ColoredFormatter",
+            "format": "%(log_color)s%(levelname)-8s%(red)s%(module)-30s%(reset)s %(blue)s%(message)s"
+        },
     },
 
     "handlers": {
@@ -47,6 +52,12 @@ DICT_CONFIG = {
             'level': LOG_LEVEL,
             'class': 'logging.StreamHandler',
             'formatter': 'default',
+            'filters': ['require_debug_true'],
+    },
+        'colored_console': {
+            'level': LOG_LEVEL,
+            'class': 'logging.StreamHandler',
+            'formatter': 'colored_verbose',
             'filters': ['require_debug_true'],
     },
         "console_debug_false": {
@@ -71,12 +82,12 @@ DICT_CONFIG = {
     "loggers": {
         '': {
             'level': LOG_LEVEL,
-            'handlers': ['console', 'console_debug_false',],
+            'handlers': ['colored_console', 'console_debug_false',],
             'propagate': True,
         },
         "django": {
             "handlers": [
-                "console",
+                "colored_console",
                 "console_debug_false",
                 "mail_admins",
             ],

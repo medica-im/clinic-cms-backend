@@ -5,13 +5,13 @@ from tastypie.authorization import Authorization
 from tastypie.resources import Resource
 from tastypie.bundle import Bundle
 from django.urls import re_path
-from directory.models import Effector, Situation
+from directory.models import Effector, Situation, EffectorType
 from tastypie.utils import (
-    is_valid_jsonp_callback_value, string_to_python,
+    is_valid_jsonp_callback_value,
+    string_to_python,
     trailing_slash,
 )
 from directory.utils import (
-    get_addresses,
     get_phones,
     get_effectors,
 )
@@ -30,39 +30,46 @@ class EffectorObj(object):
             label_fr,
             name_fr,
             uid,
+            effector_uid,
             types,
             communes,
-            addresses,
+            address,
             phones,
         ):
         self.label_fr = label_fr
         self.name_fr = name_fr
         self.uid = uid
+        self.effector_uid = effector_uid
         self.types = types
         self.communes = communes
-        self.addresses = addresses
+        self.address = address
         self.phones = phones
 
 
 def createEffectorRessources(request, nodes):
     data= []
     for node in nodes:
-        label_fr = node.label_fr
-        name_fr = node.name_fr
-        uid = node.uid
-        types = node.types
-        communes = node.communes
-        addresses = get_addresses(request, node)
-        phones = get_phones(request, node)
+        effector=node["effector"]
+        location=node["location"]
+        address=node["address"]
+        label_fr = effector.label_fr
+        name_fr = effector.name_fr
+        uid = location.uid
+        effector_uid = effector.uid
+        types = effector.types
+        communes = effector.communes
+        phones = get_phones(request, effector)
         effector = EffectorObj(
             label_fr,
             name_fr,
             uid,
+            effector_uid,
             types,
             communes,
-            addresses,
+            address,
             phones
         )
+        logger.debug(f'{effector=}')
         data.append(effector)
     return data
 
@@ -70,11 +77,12 @@ class MessageResource(Resource):
     # Just like a Django ``Form`` or ``Model``, we're defining all the
     # fields we're going to handle with the API here.
     uid = fields.CharField(attribute='uid')
+    effector_uid = fields.CharField(attribute='effector_uid')
     label_fr = fields.CharField(attribute='label_fr')
     name_fr = fields.CharField(attribute='name_fr')
     types = fields.ListField(attribute='types')
     communes = fields.ListField(attribute='communes')
-    addresses = fields.ListField(attribute='addresses')
+    address = fields.DictField(attribute='address')
     phones = fields.ListField(attribute='phones')
 
     class Meta:
@@ -142,7 +150,7 @@ class SituationObj(object):
         self.name = name
         self.effectors = effectors
 
-def createSituationRessources(request, nodes):
+def createSituationResources(request, nodes):
     data= []
     for node in nodes:
         uid = node.uid
@@ -205,7 +213,7 @@ class SituationResource(Resource):
         directory=get_directory(request)
         logger.debug(directory)
         nodes = Situation.nodes.all()
-        situations = createSituationRessources(request, nodes)
+        situations = createSituationResources(request, nodes)
         return situations
 
     def obj_get_list(self, bundle, **kwargs):
@@ -215,7 +223,7 @@ class SituationResource(Resource):
         uid= kwargs['uid']
         try :
             node = Situation.nodes.get(uid=uid)
-            situation = createSituationRessources([node])
+            situation = createSituationResources([node])
             return situation[0]
         except Exception as e:
             raise Exception(f"{e}\nCan't find Situation {uid}")

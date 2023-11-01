@@ -19,6 +19,7 @@ from access.models import Role
 from simple_history.models import HistoricalRecords
 from easy_thumbnails.signals import saved_file
 from easy_thumbnails.signal_handlers import generate_aliases
+from django.db.models import UniqueConstraint
 
 CharField.register_lookup(Length)
 
@@ -201,10 +202,10 @@ class Address(models.Model):
 
 
 class PhoneNumberManager(models.Manager):
-    def get_by_natural_key(self, contact, phone):
+    def get_by_natural_key(self, phone, contact):
         return self.get(
-            contact__neomodel_uid=contact,
-            phone=phone
+            phone=phone,
+            contact=Contact.objects.get_by_natural_key(contact)
         )
 
 
@@ -236,8 +237,14 @@ class PhoneNumber(models.Model):
     type = models.CharField(max_length=255, choices=TelephoneType.choices)
     public_visible = models.BooleanField(default=False)
     contact_visible = models.BooleanField(default=False)
-
     objects = PhoneNumberManager()
+
+    class Meta:
+        managed = True
+        UniqueConstraint(
+            fields=['contact', 'phone'],
+            name='unique_contact_phone'
+        )
 
     def __str__(self):
         return "%s %s: %s" % (
@@ -247,7 +254,7 @@ class PhoneNumber(models.Model):
         )
 
     def natural_key(self):
-        return (self.contact.natural_key(), self.phone)
+        return (self.phone,) + self.contact.natural_key()
 
     natural_key.dependencies = [
         'addressbook.contact',

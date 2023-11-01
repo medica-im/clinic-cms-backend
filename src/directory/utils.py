@@ -60,28 +60,13 @@ def get_phones(request, effector):
             phones.extend(serializer.data)
         return phones
 
-def get_addresses(request, effector):
-    directory=get_directory(request)
-    results, meta = db.cypher_query(
-            f"""MATCH (e:Effector)-[l:LOCATION]-(f:Facility)
-            WHERE l.directories=["{directory.name}"]
-            AND e.uid="{effector.uid}"
-            RETURN f"""
-        )
-    if results:
-        facilities=[]
-        for e in results:
-            facility=Facility.inflate(e[0])
-            facilities.append(facility)
-        addresses = []
-        for facility in facilities:
-            try:
-                contact = Contact.objects.get(neomodel_uid=facility.uid)
-            except Contact.DoesNotExist:
-                continue
-            serializer = AddressSerializer(contact.address)
-            addresses.append(serializer.data)
-    return addresses
+def get_address(facility):
+    try:
+        contact = Contact.objects.get(neomodel_uid=facility.uid)
+    except Contact.DoesNotExist:
+        return
+    serializer = AddressSerializer(contact.address)
+    return serializer.data
 
 def effector_commune(directory: Directory): 
     results, meta = db.cypher_query(
@@ -97,17 +82,39 @@ def effector_commune(directory: Directory):
         return effectors
 
 def directory_effectors(directory: Directory): 
-    results, meta = db.cypher_query(
-        f"""MATCH (e:Effector)-[l:LOCATION]-(f:Facility)
-        WHERE l.directories=["{directory.name}"]
-        RETURN e"""
+    results, cols = db.cypher_query(
+        f"""MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
+        WHERE rel.directories=["{directory.name}"]
+        RETURN e,rel,f;"""
     )
     if results:
         effectors=[]
-        for e in results:
-            effector=Effector.inflate(e[0])
-            effectors.append(effector)
+        for row in results:
+            effector=Effector.inflate(row[cols.index('e')])
+            location=EffectorFacility.inflate(row[cols.index('rel')])
+            facility=Facility.inflate(row[cols.index('f')])
+            address = get_address(facility)
+            effectors.append(
+                {
+                    "effector": effector,
+                    "location": location,
+                    "address": address
+                }
+            )
         return effectors
+
+def get_location_uids(effector_uids):
+    results, cols = db.cypher_query(
+        f"""MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
+        WHERE e.uid IN {effector_uids}
+        RETURN rel;"""
+    )
+    if results:
+        location_uids=[]
+        for row in results:
+            location=EffectorFacility.inflate(row[cols.index('rel')])
+            location_uids.append(location.uid)
+        return location_uids
 
 def get_effectors(request, situation):
     effectors=[]
@@ -148,4 +155,7 @@ def get_effectors(request, situation):
         for e in results:
             effector=Effector.inflate(e[0])
             effectors.append(effector)
-    return [ e.uid for e in effectors if e in directory_effectors(directory) ]
+    _directory_effectors = [_dict["effector"] for _dict in directory_effectors(directory)]
+    effector_uids = [ e.uid for e in effectors if e in _directory_effectors]
+    return get_location_uids(effector_uids)
+    

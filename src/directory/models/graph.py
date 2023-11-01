@@ -3,6 +3,7 @@ from neomodel import (
     config,
     StructuredNode,
     ArrayProperty,
+    BooleanProperty,
     StringProperty,
     IntegerProperty,
     UniqueIdProperty,
@@ -100,7 +101,8 @@ class EffectorFacility(StructuredRel):
     Location relationship between an Effector and a Facility. Includes relevant
     directory.
     """
-    uid = UniqueIdProperty()
+    #TODO switch uid to UniqueIdProperty() when we upgrade neo4j to version 5
+    uid = StringProperty()
     directories = ArrayProperty(base_property=StringProperty())
 
 
@@ -172,6 +174,25 @@ class Effector(StructuredNode):
             _dict = {"name": name, "uid": uid}
             _communes.append(_dict)
         return _communes
+
+
+class CareHome(Effector):
+    regular_permanent_bed = IntegerProperty(default=0)
+    regular_temporary_bed = IntegerProperty(default=0)
+    alzheimer_permanent_bed = IntegerProperty(
+        default=0,
+        help_text="Unité Alzheimer (unite de vie Alzheimer)",
+    )
+    alzheimer_temporary_bed = IntegerProperty(default=0)
+    uvpha_permanent_bed = IntegerProperty(
+        default=0,
+        help_text="Unité de vie pour personnes handicapées âgées",
+    )
+    urh_permanent_bed = IntegerProperty(
+        default=0,
+        help_text="Unité d’hébergement renforcée",
+    )
+    day_care = BooleanProperty()
 
 
 class Commune(StructuredNode):
