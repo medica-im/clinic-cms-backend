@@ -1,57 +1,43 @@
-import logging
+'''
+Created on Nov 5, 2023
+
+@author: elkcloner
+'''
 from tastypie import fields
+import logging
+from directory.utils import directory_effectors, get_directory
+from directory.models import Commune
+from django.urls import re_path
 from tastypie.authorization import Authorization
 from tastypie.resources import Resource
 from tastypie.bundle import Bundle
-from django.urls import re_path
-from directory.models import Effector, Situation, EffectorType, HCW
 from tastypie.utils import (
     is_valid_jsonp_callback_value,
     string_to_python,
     trailing_slash,
 )
-from directory.utils import (
-    get_phones
-)
-
 from django.conf import settings
 
 logger=logging.getLogger(__name__)
 
-
-class EffectorTypeObj(object):
+class CommuneObj(object):
     def __init__ (
             self,
             uid,
-            label,
             name,
             slug,
-            synonyms,
-            definition,
+            wikidata,
         ):
-        logger.debug(
-            f'{uid=} {label=} {name=} {slug=} {synonyms=} {definition=}'
-        )
         self.uid = uid
-        self.label = label
         self.name = name
         self.slug = slug
-        self.synonyms = synonyms
-        self.definition = definition
-
-def createEffectorTypeResources(request, nodes):
+        self.wikidata = wikidata
+        
+def createCommuneResources(request, nodes):
     data= []
     for node in nodes:
-        uid = node.uid
-        label = getattr(
-            node,
-            f'label_{settings.LANGUAGE_CODE}',
-            getattr(
-                node,
-                'label_en',
-                None
-            )
-        )
+        logger.debug(node)
+        uid=node.uid
         name = getattr(
             node,
             f'name_{settings.LANGUAGE_CODE}',
@@ -70,61 +56,39 @@ def createEffectorTypeResources(request, nodes):
                 None
             )
         )
-        synonyms = getattr(
+        wikidata = getattr(
             node,
-            f'synonyms_{settings.LANGUAGE_CODE}',
-            getattr(
-                node,
-                'synonyms_en',
-                None
-            )
+            'wikidata',
         )
-        definition = getattr(
-            node,
-            f'definition_{settings.LANGUAGE_CODE}',
-            getattr(
-                node,
-                'definition_en',
-                None
-            )
-        )
-        effector_type = EffectorTypeObj(
+        commune = CommuneObj(
             uid,
-            label,
             name,
             slug,
-            synonyms,
-            definition
+            wikidata
         )
-        data.append(effector_type)
+        logger.debug(f'{commune=}')
+        data.append(commune)
     return data
 
-
-class EffectorTypeResource(Resource):
+class CommuneResource(Resource):
     # Just like a Django ``Form`` or ``Model``, we're defining all the
     # fields we're going to handle with the API here.
     uid = fields.CharField(attribute='uid')
-    label = fields.CharField(attribute='label')
     name = fields.CharField(attribute='name')
     slug = fields.CharField(attribute='slug')
-    synonyms = fields.ListField(
-        attribute='synonyms',
-        null=True
-    )
-    definition = fields.CharField(
-        attribute='definition',
-        null=True
-    )
+    wikidata = fields.CharField(attribute='wikidata')
+
 
     class Meta:
-        resource_name = 'effector_types'
+        resource_name = 'commune'
         allowed_methods=['get']
-        collection_name = "effector_types"
+        collection_name = "commune"
         authorization = Authorization()
         detail_uri_name = 'uid'
 
     def detail_uri_kwargs(self, bundle_or_obj):
         kwargs = {}
+
         if isinstance(bundle_or_obj, Bundle):
             kwargs['uid'] = bundle_or_obj.obj.uid
         else:
@@ -149,10 +113,9 @@ class EffectorTypeResource(Resource):
         ]
 
     def get_object_list(self, request):
-        nodes = EffectorType.nodes.all()
-        logger.debug(f'{nodes=} {len(nodes)=}')
-        effector_types = createEffectorTypeResources(request, nodes)
-        return effector_types
+        nodes = Commune.nodes.all()
+        situations = createCommuneResources(request, nodes)
+        return situations
 
     def obj_get_list(self, bundle, **kwargs):
         return self.get_object_list(bundle.request)
@@ -160,8 +123,8 @@ class EffectorTypeResource(Resource):
     def obj_get(self, bundle, **kwargs):
         uid= kwargs['uid']
         try :
-            node = EffectorType.nodes.get(uid=uid)
-            effector_type = createEffectorTypeResources([node])
-            return effector_type[0]
+            node = Commune.nodes.get(uid=uid)
+            situation = createCommuneResources([node])
+            return situation[0]
         except Exception as e:
-            raise Exception(f"{e}\nCan't find EffectorType {uid}")
+            raise Exception(f"{e}\nCan't find Situation {uid}")

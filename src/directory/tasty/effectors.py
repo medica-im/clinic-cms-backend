@@ -1,11 +1,15 @@
 from tastypie import fields
 import logging
+import json
 from directory.utils import directory_effectors, get_directory
 from tastypie.authorization import Authorization
 from tastypie.resources import Resource
 from tastypie.bundle import Bundle
+from tastypie.fields import ForeignKey
+from directory.tasty.communes import createCommuneResources
+
 from django.urls import re_path
-from directory.models import Effector, Situation, EffectorType
+from directory.models import Effector, Situation, EffectorType, Commune
 from tastypie.utils import (
     is_valid_jsonp_callback_value,
     string_to_python,
@@ -15,6 +19,8 @@ from directory.utils import (
     get_phones,
     get_effectors,
 )
+from directory.tasty.communes import CommuneResource
+from directory.tasty.types import createEffectorTypeResources
 
 from django.conf import settings
 
@@ -27,21 +33,23 @@ logger=logging.getLogger(__name__)
 class EffectorObj(object):
     def __init__ (
             self,
-            label_fr,
-            name_fr,
+            label,
+            name,
+            slug,
             uid,
             effector_uid,
             types,
-            communes,
+            commune,
             address,
             phones,
         ):
-        self.label_fr = label_fr
-        self.name_fr = name_fr
+        self.label = label
+        self.name = name
+        self.slug = slug
         self.uid = uid
         self.effector_uid = effector_uid
         self.types = types
-        self.communes = communes
+        self.commune = commune
         self.address = address
         self.phones = phones
 
@@ -52,20 +60,53 @@ def createEffectorRessources(request, nodes):
         effector=node["effector"]
         location=node["location"]
         address=node["address"]
-        label_fr = effector.label_fr
-        name_fr = effector.name_fr
+        commune_node: Commune = node["commune"]
+        commune_obj = createCommuneResources(
+            request,
+            [commune_node]
+        )[0]
+        commune = commune_obj.__dict__
+        logger.debug(commune)
+        label = getattr(
+            effector,
+            f'label_{settings.LANGUAGE_CODE}',
+            getattr(
+                effector,
+                'label_en',
+                None
+            )
+        )
+        name = getattr(
+            effector,
+            f'name_{settings.LANGUAGE_CODE}',
+            getattr(
+                effector,
+                'name_en',
+                None
+            )
+        )
+        slug = getattr(
+            effector,
+            f'slug_{settings.LANGUAGE_CODE}',
+            getattr(
+                effector,
+                'slug_en',
+                None
+            )
+        )
         uid = location.uid
         effector_uid = effector.uid
-        types = effector.types
-        communes = effector.communes
+        types_obj = createEffectorTypeResources(request, node["types"])
+        types=[t.__dict__ for t in types_obj]
         phones = get_phones(request, effector)
         effector = EffectorObj(
-            label_fr,
-            name_fr,
+            label,
+            name,
+            slug,
             uid,
             effector_uid,
             types,
-            communes,
+            commune,
             address,
             phones
         )
@@ -73,15 +114,16 @@ def createEffectorRessources(request, nodes):
         data.append(effector)
     return data
 
-class MessageResource(Resource):
+class EffectorResource(Resource):
     # Just like a Django ``Form`` or ``Model``, we're defining all the
     # fields we're going to handle with the API here.
     uid = fields.CharField(attribute='uid')
     effector_uid = fields.CharField(attribute='effector_uid')
-    label_fr = fields.CharField(attribute='label_fr')
-    name_fr = fields.CharField(attribute='name_fr')
+    label = fields.CharField(attribute='label')
+    name = fields.CharField(attribute='name')
+    slug = fields.CharField(attribute='slug')
     types = fields.ListField(attribute='types')
-    communes = fields.ListField(attribute='communes')
+    commune = fields.DictField(attribute='commune')
     address = fields.DictField(attribute='address')
     phones = fields.ListField(attribute='phones')
 
@@ -136,7 +178,7 @@ class MessageResource(Resource):
             effector = createEffectorRessources([effectorNode])
             return effector[0]
         except Exception as e : 
-            raise Exception(f"Can't find Effector {uid}")
+            raise Exception(f"Can't find Effector {uid} {e}")
 
 
 class SituationObj(object):

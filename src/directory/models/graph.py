@@ -31,6 +31,8 @@ class EffectorType(StructuredNode):
     label_en = StringProperty(unique_index=True)
     name_fr = StringProperty(unique_index=True)
     name_en = StringProperty(unique_index=True)
+    slug_en = StringProperty(unique_index=True)
+    slug_fr = StringProperty(unique_index=True)
     synonyms_fr = ArrayProperty(base_property=StringProperty())
     synonyms_en = ArrayProperty(base_property=StringProperty())
     definition_fr = StringProperty()
@@ -112,6 +114,8 @@ class Effector(StructuredNode):
     label_fr = StringProperty()
     name_en = StringProperty(unique_index=True)
     name_fr = StringProperty(unique_index=True)
+    slug_en = StringProperty(unique_index=True)
+    slug_fr = StringProperty(unique_index=True)
     type = RelationshipTo('EffectorType', 'IS_A')
     organization = RelationshipTo('Organization', 'MEMBER_OF')
     facility = RelationshipTo(
@@ -199,6 +203,8 @@ class Commune(StructuredNode):
     uid = UniqueIdProperty()
     name_en = StringProperty(unique_index=True)
     name_fr = StringProperty(unique_index=True)
+    slug_en = StringProperty(unique_index=True)
+    slug_fr = StringProperty(unique_index=True)
     wikidata = StringProperty(unique_index=True)
 
 

@@ -3,8 +3,10 @@ from django.contrib.sites.shortcuts import get_current_site
 from directory.models import (
     Directory,
     Effector,
+    EffectorType,
     Facility,
     EffectorFacility,
+    Commune,
 )
 from addressbook.models import Contact
 from neomodel import db
@@ -83,9 +85,9 @@ def effector_commune(directory: Directory):
 
 def directory_effectors(directory: Directory): 
     results, cols = db.cypher_query(
-        f"""MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
+        f"""MATCH (et:EffectorType)<-[:IS_A]-(e:Effector)-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)
         WHERE rel.directories=["{directory.name}"]
-        RETURN e,rel,f;"""
+        RETURN e,et,rel,f,c;"""
     )
     if results:
         effectors=[]
@@ -93,12 +95,17 @@ def directory_effectors(directory: Directory):
             effector=Effector.inflate(row[cols.index('e')])
             location=EffectorFacility.inflate(row[cols.index('rel')])
             facility=Facility.inflate(row[cols.index('f')])
+            commune=Commune.inflate(row[cols.index('c')])
+            types=EffectorType.inflate(row[cols.index('et')])
+            types = types if isinstance(types, list) else [types]
             address = get_address(facility)
             effectors.append(
                 {
                     "effector": effector,
                     "location": location,
-                    "address": address
+                    "address": address,
+                    "commune": commune,
+                    "types": types
                 }
             )
         return effectors

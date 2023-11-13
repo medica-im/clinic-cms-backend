@@ -1,17 +1,21 @@
 from django.urls import include, path, re_path
 from tastypie.api import Api
 from directory.tasty.effectors import (
-    MessageResource,
+    EffectorResource,
     SituationResource,
 )
 from directory.tasty.types import (
-    EffectorTypeResource
+    EffectorTypeResource,
+)
+from directory.tasty.communes import (
+    CommuneResource,
 )
 
 v1_api = Api(api_name='v1')
-v1_api.register(MessageResource())
+v1_api.register(EffectorResource())
 v1_api.register(SituationResource())
 v1_api.register(EffectorTypeResource())
+v1_api.register(CommuneResource())
 
 app_name = 'directory'
 
