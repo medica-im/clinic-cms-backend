@@ -103,8 +103,14 @@ class Command(BaseCommand):
         name_fr=options['name_fr']
         label_fr=label_fr or name_fr
         label_en=label_en or name_en
-        slug_fr=options['slug_fr'] or slugify(name_fr)
-        slug_en=options['slug_en'] or slugify(name_en)
+        if options['name_fr']:
+            slug_fr=options['slug_fr'] or slugify(name_fr)
+        else:
+            slug_fr=None
+        if options['name_en']:
+            slug_en=options['slug_en'] or slugify(name_en)
+        else:
+            slug_en=None
         carehome = options['carehome']
         effector_qs = Effector.nodes.filter(
             Q(name_fr=name_fr)
