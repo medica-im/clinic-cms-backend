@@ -185,14 +185,14 @@ class CareHome(Effector):
     regular_temporary_bed = IntegerProperty(default=0)
     alzheimer_permanent_bed = IntegerProperty(
         default=0,
-        help_text="Unité Alzheimer (unite de vie Alzheimer)",
+        help_text="Unité Alzheimer (unité de vie Alzheimer)",
     )
     alzheimer_temporary_bed = IntegerProperty(default=0)
     uvpha_permanent_bed = IntegerProperty(
         default=0,
         help_text="Unité de vie pour personnes handicapées âgées",
     )
-    urh_permanent_bed = IntegerProperty(
+    uhr_permanent_bed = IntegerProperty(
         default=0,
         help_text="Unité d’hébergement renforcée",
     )

@@ -165,4 +165,19 @@ def get_effectors(request, situation):
     _directory_effectors = [_dict["effector"] for _dict in directory_effectors(directory)]
     effector_uids = [ e.uid for e in effectors if e in _directory_effectors]
     return get_location_uids(effector_uids)
-    
+
+def add_label(uid: str, label: str):
+    results, cols = db.cypher_query(
+        f"""MATCH (e)
+        WHERE e.uid="{uid}"
+        SET e :{label}
+        RETURN e;"""
+    )
+    node=None
+    if results:
+        for row in results:
+            node=row[cols.index('e')]
+    if node:
+        logger.debug(f"Label {label} added to node {node}")
+    else:
+        logger.error(f"No node with uid={uid} could be found.")

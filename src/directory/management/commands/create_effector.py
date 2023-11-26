@@ -1,5 +1,7 @@
 from django.utils.text import slugify
 import neomodel
+import uuid
+import argparse
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
 from workforce.models import NetworkEdge, NodeSet, NetworkNode
@@ -18,6 +20,7 @@ from directory.models import (
 from addressbook.models import Contact, PhoneNumber
 from neomodel import Q, db
 import uuid
+from directory.utils import add_label
 
 from django.conf import settings
 
@@ -47,6 +50,8 @@ class Command(BaseCommand):
         label_fr,
         name_en,
         name_fr,
+        slug_fr,
+        slug_en
     ):
         node=None
         created=False
@@ -56,6 +61,8 @@ class Command(BaseCommand):
                 label_fr=label_fr,
                 name_en=name_en,
                 name_fr=name_fr,
+                slug_fr=slug_fr,
+                slug_en=slug_en
             ).save()
             created=True
         except Exception as e:
@@ -85,6 +92,9 @@ class Command(BaseCommand):
         parser.add_argument('--organization', type=str)
         parser.add_argument('--facility', type=str)
         parser.add_argument('--directory', type=str)
+        parser.add_argument('--slug_fr', type=str)
+        parser.add_argument('--slug_en', type=str)
+        parser.add_argument('--carehome', action=argparse.BooleanOptionalAction)
 
     def handle(self, *args, **options):
         label_en=options['label_en']
@@ -93,6 +103,9 @@ class Command(BaseCommand):
         name_fr=options['name_fr']
         label_fr=label_fr or name_fr
         label_en=label_en or name_en
+        slug_fr=options['slug_fr'] or slugify(name_fr)
+        slug_en=options['slug_en'] or slugify(name_en)
+        carehome = options['carehome']
         effector_qs = Effector.nodes.filter(
             Q(name_fr=name_fr)
             | Q(uid=name_fr)
@@ -102,7 +115,9 @@ class Command(BaseCommand):
                 label_en=label_en,
                 label_fr=label_fr,
                 name_en=name_en,
-                name_fr=name_fr
+                name_fr=name_fr,
+                slug_fr=slug_fr,
+                slug_en=slug_en
             )
         elif len(effector_qs.all())>1:
             self.warn(f"More than one effector found with name_fr={name_fr}")
@@ -196,7 +211,8 @@ class Command(BaseCommand):
                     self.warn(f'{effector.name_fr} is already linked to facility {f}')
                 else:
                     directories=[directory]
-                    if effector.facility.connect(f, {"directories": directories}):
+                    if (effector.facility.connect(
+                        f, {"directories": directories, "uid": uuid.uuid4()})):
                         self.warn(f'{effector.name_fr} was linked to facility {f}')
         facility=options['facility']
         if facility and is_valid_uuid(facility):
@@ -217,6 +233,8 @@ class Command(BaseCommand):
                 neomodel_uid=rel.uid
             )
             f"Contact:  {contact}"
+        if options["carehome"]:
+            add_label(effector.uid, "CareHome")
         self.warn(
             f"name_fr: {effector.name_fr}\n"
             f"label_fr: {effector.label_fr}\n"
