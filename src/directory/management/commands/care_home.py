@@ -84,7 +84,9 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--day_care',
-            action=argparse.BooleanOptionalAction
+            type=int,
+            choices=range(1000),
+            help="an integer in the range 0..1000"
         )
         
     def handle(self, *args, **options):
@@ -101,7 +103,6 @@ class Command(BaseCommand):
         effector.alzheimer_temporary_bed=options['alzheimer_temporary']
         effector.uvpha_permanent_bed=options['uvpha_permanent']
         effector.uhr_permanent_bed=options['uhr_permanent']
-        day_care = True if options['day_care'] else False
-        effector.day_care=day_care
+        effector.day_care=options['day_care']
         effector.save()
         self.warn(f'{effector}\n{effector.__dict__}')

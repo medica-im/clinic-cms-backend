@@ -8,6 +8,7 @@ from directory.models.core import (
 )
 from directory.models.graph import (
     Effector,
+    CareHome,
     EffectorType,
     MESH,
     Need,

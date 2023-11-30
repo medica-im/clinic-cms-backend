@@ -175,7 +175,7 @@ class EffectorResource(Resource):
         uid= kwargs['uid']
         try :
             effectorNode = Effector.nodes.get(uid=uid)
-            effector = createEffectorRessources([effectorNode])
+            effector = createEffectorRessources(bundle.request, [effectorNode])
             return effector[0]
         except Exception as e : 
             raise Exception(f"Can't find Effector {uid} {e}")

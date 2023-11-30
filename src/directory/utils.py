@@ -3,6 +3,7 @@ from django.contrib.sites.shortcuts import get_current_site
 from directory.models import (
     Directory,
     Effector,
+    CareHome,
     EffectorType,
     Facility,
     EffectorFacility,
@@ -83,9 +84,25 @@ def effector_commune(directory: Directory):
             effectors.append(effector)
         return effectors
 
-def directory_effectors(directory: Directory): 
+def get_effector_nodes(directory: Directory, label: str):
     results, cols = db.cypher_query(
-        f"""MATCH (et:EffectorType)<-[:IS_A]-(e:Effector)-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)
+        f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
+        WHERE rel.directories=["{directory.name}"]
+        RETURN e;"""
+    )
+    effectors = {
+        "CareHome": CareHome
+    }
+    if results:
+        nodes=[]
+        for row in results:
+            node=effectors.get(label).inflate(row[cols.index('e')])
+            nodes.append(node)
+        return nodes
+
+def directory_effectors(directory: Directory, label: str = "Effector"): 
+    results, cols = db.cypher_query(
+        f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)
         WHERE rel.directories=["{directory.name}"]
         RETURN e,et,rel,f,c;"""
     )

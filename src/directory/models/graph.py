@@ -196,7 +196,10 @@ class CareHome(Effector):
         default=0,
         help_text="Unité d’hébergement renforcée",
     )
-    day_care = BooleanProperty()
+    day_care = IntegerProperty(
+        default=0,
+        help_text="Accueil de jour",
+    )
 
 
 class Commune(StructuredNode):
