@@ -49,43 +49,36 @@ class Command(BaseCommand):
         parser.add_argument(
             '--regular_permanent',
             type=int,
-            choices=range(1000),
             help="an integer in the range 0..1000"
         )
         parser.add_argument(
             '--regular_temporary',
             type=int,
-            choices=range(1000),
             help="an integer in the range 0..1000"
         )
         parser.add_argument(
             '--alzheimer_permanent',
             type=int,
-            choices=range(1000),
             help="an integer in the range 0..1000"
         )
         parser.add_argument(
             '--alzheimer_temporary',
             type=int,
-            choices=range(1000),
             help="an integer in the range 0..1000"
         )
         parser.add_argument(
             '--uvpha_permanent',
             type=int,
-            choices=range(1000),
             help="an integer in the range 0..1000"
         )
         parser.add_argument(
             '--uhr_permanent',
             type=int,
-            choices=range(1000),
             help="an integer in the range 0..1000"
         )
         parser.add_argument(
             '--day_care',
             type=int,
-            choices=range(1000),
             help="an integer in the range 0..1000"
         )
         

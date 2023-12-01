@@ -200,6 +200,10 @@ class CareHome(Effector):
         default=0,
         help_text="Accueil de jour",
     )
+    usld_permanent_bed = IntegerProperty(
+        default=0,
+        help_text="Unité de soins de longue durée"
+    )
 
 
 class Commune(StructuredNode):

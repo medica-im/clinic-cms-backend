@@ -36,7 +36,8 @@ class Obj(object):
             alzheimer_temporary_bed,
             uvpha_permanent_bed,
             uhr_permanent_bed,
-            day_care
+            day_care,
+            usld_permanent_bed
         ):
         self.uid = uid
         self.regular_permanent_bed=regular_permanent_bed
@@ -46,6 +47,7 @@ class Obj(object):
         self.uvpha_permanent_bed=uvpha_permanent_bed
         self.uhr_permanent_bed=uhr_permanent_bed
         self.day_care=day_care
+        self.usld_permanent_bed=usld_permanent_bed
 
 def createResources(request, nodes):
     data= []
@@ -58,14 +60,14 @@ def createResources(request, nodes):
             node.alzheimer_temporary_bed,
             node.uvpha_permanent_bed,
             node.uhr_permanent_bed,
-            node.day_care
+            node.day_care,
+            node.usld_permanent_bed
         )
         #logger.debug(f'{obj=}')
         data.append(obj)
     return data
 
 class CareHomeResource(Resource):
-    logger.debug("Hello  CareHomeResource")
     # Just like a Django ``Form`` or ``Model``, we're defining all the
     # fields we're going to handle with the API here.
     uid = fields.CharField(attribute='uid')
@@ -97,6 +99,10 @@ class CareHomeResource(Resource):
         attribute='day_care',
         null=True
     )
+    usld_permanent_bed = fields.IntegerField(
+        attribute='usld_permanent_bed',
+        null=True
+    ) 
 
     class Meta:
         resource_name = 'carehomes'
