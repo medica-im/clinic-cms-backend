@@ -13,6 +13,7 @@ from directory.models import (
     Organization,
     OrganizationType,
     Facility,
+    Website,
 )
 from addressbook.models import Contact, Address
 from access.models import Role
@@ -133,6 +134,7 @@ class Command(BaseCommand):
         parser.add_argument('--type', type=str)
         parser.add_argument('--commune', type=str)
         parser.add_argument('--organization', type=str)
+        parser.add_argument('--website', type=str)
         parser.add_argument(
             '--f',
             action='store_true',
@@ -174,6 +176,20 @@ class Command(BaseCommand):
                 return
             organization_type=organization_type_qs[0]
         organization.type.connect(organization_type)
+        website_str=options['website']
+        if is_valid_uuid(website_str):
+            try:
+                website=Website.nodes.get(uid=website_str)
+            except neomodel.DoesNotExist as e:
+                self.warn('f{e}')
+                return
+        else:
+            try:
+                website=Website.nodes.get(url=website_str)
+            except neomodel.DoesNotExist as e:
+                self.warn('f{e}')
+                return
+        organization.website.connect(website)
         commune_str=options['commune']
         if is_valid_uuid(commune_str):
             try:

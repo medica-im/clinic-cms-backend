@@ -84,17 +84,32 @@ class OrganizationType(StructuredNode):
     )
 
 
+class Website(StructuredNode):
+    uid = UniqueIdProperty()
+    url = StringProperty(unique_index=True)
+
+
 class Organization(StructuredNode):
     uid = UniqueIdProperty()
     label_en = StringProperty(unique_index=True)
     label_fr = StringProperty(unique_index=True)
     name_en = StringProperty(unique_index=True)
     name_fr = StringProperty(unique_index=True)
-    type = RelationshipTo('OrganizationType', 'IS_A')
-    organization = RelationshipTo('Organization', 'PART_OF')
+    type = RelationshipTo(
+        'OrganizationType',
+        'IS_A'
+    )
+    organization = RelationshipTo(
+        'Organization',
+        'PART_OF'
+    )
     commune = RelationshipTo(
         'Commune',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
+    )
+    website = RelationshipTo(
+        'Website',
+        'OFFICIAL_WEBSITE'
     )
 
 
