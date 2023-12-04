@@ -181,14 +181,13 @@ class Command(BaseCommand):
             try:
                 website=Website.nodes.get(uid=website_str)
             except neomodel.DoesNotExist as e:
-                self.warn('f{e}')
+                self.warn(f'{e}')
                 return
         else:
-            try:
-                website=Website.nodes.get(url=website_str)
-            except neomodel.DoesNotExist as e:
-                self.warn('f{e}')
-                return
+            website=Website.nodes.get_or_none(url=website_str)
+            if not website:
+                website = Website(url=website_str).save()
+                self.warn(f'New Website node {website} was created.')
         organization.website.connect(website)
         commune_str=options['commune']
         if is_valid_uuid(commune_str):
