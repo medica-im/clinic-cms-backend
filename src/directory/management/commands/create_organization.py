@@ -176,6 +176,8 @@ class Command(BaseCommand):
                 return
             organization_type=organization_type_qs[0]
         organization.type.connect(organization_type)
+        # Website
+        website=None
         website_str=options['website']
         if is_valid_uuid(website_str):
             try:
@@ -185,10 +187,12 @@ class Command(BaseCommand):
                 return
         else:
             website=Website.nodes.get_or_none(url=website_str)
-            if not website:
+            if not website and website_str:
                 website = Website(url=website_str).save()
                 self.warn(f'New Website node {website} was created.')
-        organization.website.connect(website)
+        if website:
+            organization.website.connect(website)
+        #Commune
         commune_str=options['commune']
         if is_valid_uuid(commune_str):
             try:
