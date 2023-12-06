@@ -242,6 +242,7 @@ class Command(BaseCommand):
         if options["carehome"]:
             add_label(effector.uid, "CareHome")
         self.warn(
+            f"uid: {effector.uid}\n"
             f"name_fr: {effector.name_fr}\n"
             f"label_fr: {effector.label_fr}\n"
             f"Commune: {display_relationship(effector.commune)}\n"
