@@ -45,7 +45,10 @@ class Command(BaseCommand):
         )
     
     def add_arguments(self, parser):
-        parser.add_argument('--uid', type=str)
+        parser.add_argument(
+            'uid',
+            type=str
+        )
         parser.add_argument(
             '--regular_permanent',
             type=int,
