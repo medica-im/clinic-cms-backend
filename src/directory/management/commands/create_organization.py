@@ -169,10 +169,10 @@ class Command(BaseCommand):
                 | Q(name_fr=type_str)
             )
             if not organization_type_qs:
-                self.warn(f"No EffectorType instance found for {type_str}")
+                self.warn(f"No OrganizationType instance found for {type_str}")
                 return
             elif len(organization_type_qs)>1:
-                self.warn(f"More than one EffectorType instance found for {type_str}")
+                self.warn(f"More than one OrganizationType instance found for {type_str}")
                 return
             organization_type=organization_type_qs[0]
         organization.type.connect(organization_type)
@@ -200,7 +200,7 @@ class Command(BaseCommand):
             except neomodel.DoesNotExist as e:
                 self.warn(f'{e}')
                 return
-        else:     
+        else:
             commune_qs= Commune.nodes.filter(name_fr=commune_str)
             if not commune_qs:
                 self.warn(f"No Commune instance found for {commune_str}")

@@ -78,6 +78,8 @@ class OrganizationType(StructuredNode):
     label_fr = StringProperty(unique_index=True)
     name_en = StringProperty(unique_index=True)
     name_fr = StringProperty(unique_index=True)
+    synonyms_fr = ArrayProperty(base_property=StringProperty())
+    synonyms_en = ArrayProperty(base_property=StringProperty())
     organization_type = RelationshipTo(
         'OrganizationType',
         'PART_OF'
