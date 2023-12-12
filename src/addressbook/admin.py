@@ -11,7 +11,8 @@ from django.db.models import F
 from django.contrib.postgres.search import SearchVector, SearchQuery
 from constance import config
 from neomodel import db
-from directory.models import Effector, Facility as NeoFacility
+from directory.models import Effector
+from directory.models import Facility as NeoFacility
 import logging
 
 logger=logging.getLogger(__name__)
@@ -202,9 +203,9 @@ class ContactAdmin(admin.ModelAdmin):
         if not obj.neomodel_uid:
             return
         results, meta = db.cypher_query(
-            f"""MATCH (n)
-            WHERE n.uid="{obj.neomodel_uid.hex}"
-            RETURN n"""
+            f"""MATCH (f:Facility)
+            WHERE f.uid="{obj.neomodel_uid.hex}"
+            RETURN f"""
         )
         if results:
             f=NeoFacility.inflate(results[0][0])
@@ -223,13 +224,16 @@ class ContactAdmin(admin.ModelAdmin):
                 effector=Effector.inflate(e[0])
                 names.append(effector.name_fr or effector.label_fr)
             return f'facility: {", ".join(names)}'
-        query=f"""MATCH (e:Effector) -[rel:LOCATION {{uid: "{obj.neomodel_uid.hex}"}}]-> (f:Facility)
-            RETURN e"""
+        query=f"""MATCH (e:Effector)-[rel:LOCATION {{ uid: "{obj.neomodel_uid}"}}]->(f:Facility) RETURN e"""
         results, cols = db.cypher_query(query)
         if results:
             effector = Effector.inflate(results[0][cols.index('e')])
             return effector.name_fr
-
+        query=f"""MATCH (e:Effector)-[rel:LOCATION {{ uid: "{obj.neomodel_uid.hex}"}}]->(f:Facility) RETURN e"""
+        results, cols = db.cypher_query(query)
+        if results:
+            effector = Effector.inflate(results[0][cols.index('e')])
+            return effector.name_fr
 
     @admin.display(description='Phones')
     def phone_tag(self, obj):
