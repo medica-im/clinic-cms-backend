@@ -19,9 +19,8 @@ from directory.utils import (
     get_phones,
     get_effectors,
 )
-from directory.tasty.communes import CommuneResource
 from directory.tasty.types import createEffectorTypeResources
-
+from django.core.cache import cache
 from django.conf import settings
 
 logger=logging.getLogger(__name__)
@@ -42,6 +41,7 @@ class EffectorObj(object):
             commune,
             address,
             phones,
+            updatedAt,
         ):
         self.label = label
         self.name = name
@@ -52,66 +52,78 @@ class EffectorObj(object):
         self.commune = commune
         self.address = address
         self.phones = phones
+        self.updatedAt = updatedAt
 
+def createEffectorRessource(request, node):
+    location=node["location"]
+    uid = location.uid
+    effector_node=node["effector"]
+    address=node["address"]
+    commune_node: Commune = node["commune"]
+    commune_obj = createCommuneResources(
+        request,
+        [commune_node]
+    )[0]
+    commune = commune_obj.__dict__
+    logger.debug(commune)
+    label = getattr(
+        effector_node,
+        f'label_{settings.LANGUAGE_CODE}',
+        getattr(
+            effector_node,
+            'label_en',
+            None
+        )
+    )
+    name = getattr(
+        effector_node,
+        f'name_{settings.LANGUAGE_CODE}',
+        getattr(
+            effector_node,
+            'name_en',
+            None
+        )
+    )
+    slug = getattr(
+        effector_node,
+        f'slug_{settings.LANGUAGE_CODE}',
+        getattr(
+            effector_node,
+            'slug_en',
+            None
+        )
+    )
+    effector_uid = effector_node.uid
+    types_obj = createEffectorTypeResources(request, node["types"])
+    types=[t.__dict__ for t in types_obj]
+    phones = get_phones(request, effector_node)
+    updatedAt = max(
+        [
+            effector_node.updatedAt,
+            node["facility"].contactUpdatedAt,
+            location.contactUpdatedAt,
+        ]
+    )
+   
+    effector = EffectorObj(
+        label,
+        name,
+        slug,
+        uid,
+        effector_uid,
+        types,
+        commune,
+        address,
+        phones,
+        updatedAt,
+    )
+    logger.debug(f'{effector=}')
+    return effector
 
 def createEffectorRessources(request, nodes):
     data= []
     for node in nodes:
-        effector=node["effector"]
-        location=node["location"]
-        address=node["address"]
-        commune_node: Commune = node["commune"]
-        commune_obj = createCommuneResources(
-            request,
-            [commune_node]
-        )[0]
-        commune = commune_obj.__dict__
-        logger.debug(commune)
-        label = getattr(
-            effector,
-            f'label_{settings.LANGUAGE_CODE}',
-            getattr(
-                effector,
-                'label_en',
-                None
-            )
-        )
-        name = getattr(
-            effector,
-            f'name_{settings.LANGUAGE_CODE}',
-            getattr(
-                effector,
-                'name_en',
-                None
-            )
-        )
-        slug = getattr(
-            effector,
-            f'slug_{settings.LANGUAGE_CODE}',
-            getattr(
-                effector,
-                'slug_en',
-                None
-            )
-        )
-        uid = location.uid
-        effector_uid = effector.uid
-        types_obj = createEffectorTypeResources(request, node["types"])
-        types=[t.__dict__ for t in types_obj]
-        phones = get_phones(request, effector)
-        effector = EffectorObj(
-            label,
-            name,
-            slug,
-            uid,
-            effector_uid,
-            types,
-            commune,
-            address,
-            phones
-        )
-        logger.debug(f'{effector=}')
-        data.append(effector)
+        data.append(createEffectorRessource(request, node))
     return data
 
 class EffectorResource(Resource):
@@ -126,6 +138,7 @@ class EffectorResource(Resource):
     commune = fields.DictField(attribute='commune')
     address = fields.DictField(attribute='address')
     phones = fields.ListField(attribute='phones')
+    updatedAt = fields.IntegerField(attribute='updatedAt')
 
     class Meta:
         resource_name = 'effectors'
@@ -163,7 +176,6 @@ class EffectorResource(Resource):
     def get_object_list(self, request):
         directory=get_directory(request)
         logger.debug(directory)
-        #effectorNodes = Effector.nodes.all()
         effectorNodes = directory_effectors(directory)
         effectors = createEffectorRessources(request, effectorNodes)
         return effectors
@@ -173,9 +185,11 @@ class EffectorResource(Resource):
 
     def obj_get(self, bundle, **kwargs):
         uid= kwargs['uid']
+        directory=get_directory(bundle.request)
+        logger.debug(f'{directory=}')
         try :
-            effectorNode = Effector.nodes.get(uid=uid)
-            effector = createEffectorRessources(bundle.request, [effectorNode])
+            effectorNodes = directory_effectors(directory, uid)
+            effector = createEffectorRessources(bundle.request, effectorNodes)
             return effector[0]
         except Exception as e : 
             raise Exception(f"Can't find Effector {uid} {e}")

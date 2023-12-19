@@ -166,20 +166,6 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'simple_history',
-    #wagtail
-    'wagtail.contrib.forms',
-    'wagtail.contrib.redirects',
-    'wagtail.embeds',
-    'wagtail.sites',
-    'wagtail.users',
-    'wagtail.snippets',
-    'wagtail.documents',
-    'wagtail.images',
-    'wagtail.search',
-    'wagtail.admin',
-    'wagtail',
-    'wagtail.api.v2',
-    'modelcluster',
     # local apps
     'backend',
     'accounts',
@@ -191,7 +177,6 @@ INSTALLED_APPS = [
     'access',
     'contact',
     'opengraph',
-    'cms',
     'nlp',
 ]
 
@@ -211,7 +196,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'wagtail.contrib.redirects.middleware.RedirectMiddleware',
     'django.contrib.sites.middleware.CurrentSiteMiddleware',
 ]
 
@@ -394,11 +378,8 @@ REDIS_PORT = config('REDIS_PORT', cast=str, default='6379')
 REDIS_DATABASE_ID = config('REDIS_DATABASE_ID', default='0')
 CACHES = {
     "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": "redis://" + REDIS_HOST + ":" + REDIS_PORT + "/" + REDIS_DATABASE_ID,
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
     }
 }
 
@@ -433,9 +414,6 @@ EMAIL_USE_TLS=True
 #EMAIL_TIMEOUT
 #EMAIL_SSL_KEYFILE
 #EMAIL_SSL_CERTFILE
-
-#Wagtail
-WAGTAIL_SITE_NAME = 'Healthcenter'
 
 # neo4j
 NEO4J_URI = config('NEO4J_URI', default="neo4j://localhost:7687")

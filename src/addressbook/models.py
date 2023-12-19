@@ -20,6 +20,7 @@ from simple_history.models import HistoricalRecords
 from easy_thumbnails.signals import saved_file
 from easy_thumbnails.signal_handlers import generate_aliases
 from django.db.models import UniqueConstraint
+from directory.timestamp import update_contact_timestamp
 
 CharField.register_lookup(Length)
 
@@ -50,7 +51,7 @@ class Contact(models.Model):
     formfield_overrides = {
         ThumbnailerField: {'widget': ImageClearableFileInput},
     }
-    
+
     class PersonType(models.TextChoices):
         NATURAL = 'Natural', _('Natural person')
         LEGAL = 'Legal', _('Legal person')
@@ -107,6 +108,10 @@ class Contact(models.Model):
 
     def natural_key(self):
         return (self.neomodel_uid,)
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        update_contact_timestamp(self.neomodel_uid.hex)
 
 
 class AddressManager(models.Manager):
@@ -201,6 +206,11 @@ class Address(models.Model):
         verbose_name_plural = "Addresses"
 
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        update_contact_timestamp(self.contact.neomodel_uid.hex)
+
+
 class PhoneNumberManager(models.Manager):
     def get_by_natural_key(self, phone, contact):
         return self.get(
@@ -261,6 +271,10 @@ class PhoneNumber(models.Model):
         'facility.organization'
     ]
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        update_contact_timestamp(self.contact.neomodel_uid.hex)
+
 
 class Email(models.Model):
 
@@ -295,6 +309,10 @@ class Email(models.Model):
             self.email
         )
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        update_contact_timestamp(self.contact.neomodel_uid.hex)
+
 
 class Website(models.Model):
     
@@ -325,6 +343,10 @@ class Website(models.Model):
 
     def __str__(self):
         return "%s %s: %s" % (self.contact.first_name, self.type, self.website)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        update_contact_timestamp(self.contact.neomodel_uid.hex)
 
 
 class SocialNetwork(models.Model):
@@ -367,6 +389,10 @@ class SocialNetwork(models.Model):
             f"{self.handle or self.url}"
         )
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        update_contact_timestamp(self.contact.neomodel_uid.hex)
+
 
 class Profile(models.Model):
     contact = models.ForeignKey(
@@ -408,6 +434,10 @@ class Profile(models.Model):
             fields=['contact', 'organization'],
             name='unique_profile'
         )
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        update_contact_timestamp(self.contact.neomodel_uid.hex)
 
 
 class Appointment(models.Model):
@@ -454,6 +484,10 @@ class Appointment(models.Model):
             self.contact.formatted_name,
             self.phone or self.url or self.app.name
         )
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        update_contact_timestamp(self.contact.neomodel_uid.hex)
 
 
 class App(models.Model):

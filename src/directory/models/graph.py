@@ -123,6 +123,7 @@ class EffectorFacility(StructuredRel):
     #TODO switch uid to UniqueIdProperty() when we upgrade neo4j to version 5
     uid = StringProperty()
     directories = ArrayProperty(base_property=StringProperty())
+    contactUpdatedAt = IntegerProperty(default=0)
 
 
 class Effector(StructuredNode):
@@ -145,6 +146,7 @@ class Effector(StructuredNode):
         'Commune',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
     )
+    updatedAt = IntegerProperty(default=0)
 
     @property
     def serialize(self):
@@ -239,3 +241,4 @@ class Facility(StructuredNode):
         'Commune',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
     )
+    contactUpdatedAt = IntegerProperty(default=0)

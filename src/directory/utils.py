@@ -99,13 +99,53 @@ def get_effector_nodes(directory: Directory, label: str):
             node=effectors.get(label).inflate(row[cols.index('e')])
             nodes.append(node)
         return nodes
-
-def directory_effectors(directory: Directory, label: str = "Effector"): 
-    results, cols = db.cypher_query(
-        f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)
+    
+def directory_contacts(directory: Directory, uid = None, label: str = "Effector"):
+    if uid:
+        query=f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
+        WHERE rel.directories=["{directory.name}"] AND (rel.uid="{uid}")
+        RETURN e,rel,f;"""
+    else:
+        query=f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
         WHERE rel.directories=["{directory.name}"]
+        RETURN e,rel,f;""" 
+    results, cols = db.cypher_query(query)
+    if results:
+        contacts=[]
+        for row in results:
+            effector=row[cols.index('e')]
+            location=row[cols.index('rel')]
+            facility=row[cols.index('f')]
+            logger.debug(
+                f'{effector=} {effector["updatedAt"]=} {effector.__dict__=}\n'
+                f'{location=} {location.__dict__}\n'
+                f'{facility=} {facility.__dict__=}'
+            )
+            timestamp = max(
+                [
+                    effector["updatedAt"],
+                    location["contactUpdatedAt"],
+                    facility["contactUpdatedAt"]
+                ]
+            )
+            contacts.append(
+                {
+                    "uid": location["uid"],
+                    "timestamp": timestamp
+                }
+            )
+        return contacts
+
+def directory_effectors(directory: Directory, uid = None, label: str = "Effector"):
+    if uid:
+        query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)
+        WHERE rel.directories=["{directory.name}"] AND (rel.uid="{uid}")
         RETURN e,et,rel,f,c;"""
-    )
+    else:
+        query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)
+        WHERE rel.directories=["{directory.name}"]
+        RETURN e,et,rel,f,c;""" 
+    results, cols = db.cypher_query(query)
     if results:
         effectors=[]
         for row in results:
@@ -122,7 +162,8 @@ def directory_effectors(directory: Directory, label: str = "Effector"):
                     "location": location,
                     "address": address,
                     "commune": commune,
-                    "types": types
+                    "types": types,
+                    "facility": facility,
                 }
             )
         return effectors

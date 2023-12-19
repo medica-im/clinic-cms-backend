@@ -37,6 +37,24 @@ The main database is Postgres. The graph database is neo4j.
 docker exec --interactive --tty clinic-cms-backend-neo4j-1 bin/neo4j-admin database backup neo4j --to-path=/backup
 ```
 
+#### apoc triggers
+
+// Add a timestamp on every node created:
+CALL apoc.trigger.add('create-timestamp','UNWIND $createdNodes AS node
+SET node.updatedAt = timestamp()', {phase:'before'});
+
+// Add a timestamp on every node updated (property added/updated):
+CALL apoc.trigger.add('update-insert-timestamp', 'UNWIND keys($assignedNodeProperties) as key
+UNWIND apoc.trigger.propertiesByKey($assignedNodeProperties, key) as update
+WITH update.node as node
+SET node.updatedAt = timestamp()', {phase:'before'});
+
+//Add a timestamp on every node updated (property removed):
+CALL apoc.trigger.add('update-remove-timestamp', 'UNWIND keys($removedNodeProperties) as key
+UNWIND apoc.trigger.propertiesByKey($removedNodeProperties, key) as update
+WITH update.node as node
+SET node.updatedAt = timestamp()', {phase:'before'});
+
 We are also making use of django-postgresql-dag (Django & Postgresql-based Directed Acyclic Graphs) to build the workforce graph. Each member of the workforce (healthcare professionals, management, administrative and support staff) is included in a graph based on MeSH with metadata such as location, specialty, organization membership. This graph is used to power the addressbook. It may be replaced in the future by a fully fledged graph database such as neo4j.
 
 ## Frontend
