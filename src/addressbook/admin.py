@@ -204,7 +204,7 @@ class ContactAdmin(admin.ModelAdmin):
             return
         results, meta = db.cypher_query(
             f"""MATCH (f:Facility)
-            WHERE f.uid="{obj.neomodel_uid.hex}"
+            WHERE f.uid="{obj.neomodel_uid}"
             RETURN f"""
         )
         if results:
@@ -215,7 +215,7 @@ class ContactAdmin(admin.ModelAdmin):
                 return f'org: {organization.name_fr or organization.label_fr}'
         results, meta = db.cypher_query(
             f"""MATCH (e:Effector)-[l:LOCATION]-(f:Facility)
-            WHERE f.uid="{obj.neomodel_uid.hex}"
+            WHERE f.uid="{obj.neomodel_uid}"
             RETURN e"""
         )
         if results:
@@ -225,11 +225,6 @@ class ContactAdmin(admin.ModelAdmin):
                 names.append(effector.name_fr or effector.label_fr)
             return f'facility: {", ".join(names)}'
         query=f"""MATCH (e:Effector)-[rel:LOCATION {{ uid: "{obj.neomodel_uid}"}}]->(f:Facility) RETURN e"""
-        results, cols = db.cypher_query(query)
-        if results:
-            effector = Effector.inflate(results[0][cols.index('e')])
-            return effector.name_fr
-        query=f"""MATCH (e:Effector)-[rel:LOCATION {{ uid: "{obj.neomodel_uid.hex}"}}]->(f:Facility) RETURN e"""
         results, cols = db.cypher_query(query)
         if results:
             effector = Effector.inflate(results[0][cols.index('e')])

@@ -111,7 +111,7 @@ class Contact(models.Model):
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.neomodel_uid.hex)
+        update_contact_timestamp(self.neomodel_uid)
 
 
 class AddressManager(models.Manager):
@@ -208,7 +208,7 @@ class Address(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid.hex)
+        update_contact_timestamp(self.contact.neomodel_uid)
 
 
 class PhoneNumberManager(models.Manager):
@@ -273,7 +273,7 @@ class PhoneNumber(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid.hex)
+        update_contact_timestamp(self.contact.neomodel_uid)
 
 
 class Email(models.Model):
@@ -311,7 +311,7 @@ class Email(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid.hex)
+        update_contact_timestamp(self.contact.neomodel_uid)
 
 
 class Website(models.Model):
@@ -346,7 +346,7 @@ class Website(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid.hex)
+        update_contact_timestamp(self.contact.neomodel_uid)
 
 
 class SocialNetwork(models.Model):
@@ -391,7 +391,7 @@ class SocialNetwork(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid.hex)
+        update_contact_timestamp(self.contact.neomodel_uid)
 
 
 class Profile(models.Model):
@@ -437,7 +437,7 @@ class Profile(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid.hex)
+        update_contact_timestamp(self.contact.neomodel_uid)
 
 
 class Appointment(models.Model):
@@ -487,7 +487,7 @@ class Appointment(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid.hex)
+        update_contact_timestamp(self.contact.neomodel_uid)
 
 
 class App(models.Model):
