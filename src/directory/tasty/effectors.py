@@ -136,7 +136,7 @@ class EffectorResource(Resource):
     slug = fields.CharField(attribute='slug')
     types = fields.ListField(attribute='types')
     commune = fields.DictField(attribute='commune')
-    address = fields.DictField(attribute='address')
+    address = fields.DictField(attribute='address', null=True)
     phones = fields.ListField(attribute='phones')
     updatedAt = fields.IntegerField(attribute='updatedAt')
 
