@@ -91,35 +91,6 @@ def display_relationship(rel):
 class Command(BaseCommand):
     help = 'Create Facility node on neo4j'
 
-    def create_node(
-        self,
-        label_en,
-        label_fr,
-        name_en,
-        name_fr,
-    ):
-        node=None
-        created=False
-        try:
-            node=Organization(
-                label_en=label_en,
-                label_fr=label_fr,
-                name_en=name_en,
-                name_fr=name_fr,
-            ).save()
-            created=True
-        except Exception as e:
-            #logger.error(e)
-            node=Organization.nodes.filter(
-                Q(label_en=label_en)
-                | Q(label_fr=label_fr)
-                | Q(name_en=name_en)
-                | Q(name_fr=name_fr)
-            )[0]
-        if node and isinstance(node, Organization):
-            logger.debug(f'{"new" if created else ""} node: {node=}')
-        return node
-
     def warn(self, message):
         self.stdout.write(
             self.style.WARNING(message)

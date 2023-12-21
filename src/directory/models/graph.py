@@ -1,4 +1,5 @@
 import logging
+from uuid import uuid4
 from neomodel import (
     config,
     StructuredNode,
@@ -121,7 +122,7 @@ class EffectorFacility(StructuredRel):
     directory.
     """
     #TODO switch uid to UniqueIdProperty() when we upgrade neo4j to version 5
-    uid = StringProperty()
+    uid = StringProperty(default=uuid4)
     directories = ArrayProperty(base_property=StringProperty())
     contactUpdatedAt = IntegerProperty(default=0)
 

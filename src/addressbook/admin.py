@@ -202,9 +202,11 @@ class ContactAdmin(admin.ModelAdmin):
             return obj.formatted_name
         if not obj.neomodel_uid:
             return
+        # node uid is the UUID4 hex representation without dashes:
+        # FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
         results, meta = db.cypher_query(
             f"""MATCH (f:Facility)
-            WHERE f.uid="{obj.neomodel_uid}"
+            WHERE f.uid="{obj.neomodel_uid.hex}"
             RETURN f"""
         )
         if results:
@@ -215,7 +217,7 @@ class ContactAdmin(admin.ModelAdmin):
                 return f'org: {organization.name_fr or organization.label_fr}'
         results, meta = db.cypher_query(
             f"""MATCH (e:Effector)-[l:LOCATION]-(f:Facility)
-            WHERE f.uid="{obj.neomodel_uid}"
+            WHERE f.uid="{obj.neomodel_uid.hex}"
             RETURN e"""
         )
         if results:
@@ -224,6 +226,8 @@ class ContactAdmin(admin.ModelAdmin):
                 effector=Effector.inflate(e[0])
                 names.append(effector.name_fr or effector.label_fr)
             return f'facility: {", ".join(names)}'
+        # relationship uid is the UUID4 string representation with dashes:
+        # FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF
         query=f"""MATCH (e:Effector)-[rel:LOCATION {{ uid: "{obj.neomodel_uid}"}}]->(f:Facility) RETURN e"""
         results, cols = db.cypher_query(query)
         if results:
