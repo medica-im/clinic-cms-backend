@@ -125,6 +125,10 @@ class EffectorFacility(StructuredRel):
     uid = StringProperty(default=uuid4)
     directories = ArrayProperty(base_property=StringProperty())
     contactUpdatedAt = IntegerProperty(default=0)
+    active = BooleanProperty(
+        index=True,
+        default=True
+    )
 
 
 class Effector(StructuredNode):

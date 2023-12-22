@@ -71,23 +71,14 @@ def get_address(facility):
     serializer = AddressSerializer(contact.address)
     return serializer.data
 
-def effector_commune(directory: Directory): 
-    results, meta = db.cypher_query(
-            f"""MATCH (e:Effector)-[l:LOCATION]-(f:Facility)
-            WHERE l.directories=["{directory.name}"]
-            RETURN e"""
-        )
-    if results:
-        effectors=[]
-        for e in results:
-            effector=Effector.inflate(e[0])
-            effectors.append(effector)
-        return effectors
-
-def get_effector_nodes(directory: Directory, label: str):
+def get_effector_nodes(
+        directory: Directory,
+        label: str,
+        active: bool = True
+    ):
     results, cols = db.cypher_query(
         f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
-        WHERE rel.directories=["{directory.name}"]
+        WHERE rel.directories=["{directory.name}"] AND rel.active={str(active)}
         RETURN e;"""
     )
     effectors = {
@@ -100,18 +91,23 @@ def get_effector_nodes(directory: Directory, label: str):
             nodes.append(node)
         return nodes
     
-def directory_contacts(directory: Directory, uid = None, label: str = "Effector"):
+def directory_contacts(
+        directory: Directory,
+        uid = None,
+        label: str = "Effector",
+        active: bool = True,
+    ):
     if uid:
         query=f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
         WHERE rel.directories=["{directory.name}"] AND (rel.uid="{uid}")
         RETURN e,rel,f;"""
     else:
         query=f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
-        WHERE rel.directories=["{directory.name}"]
+        WHERE rel.directories=["{directory.name}"] AND rel.active={str(active)}
         RETURN e,rel,f;""" 
     results, cols = db.cypher_query(query)
+    contacts=[]
     if results:
-        contacts=[]
         for row in results:
             effector=row[cols.index('e')]
             location=row[cols.index('rel')]
@@ -134,16 +130,21 @@ def directory_contacts(directory: Directory, uid = None, label: str = "Effector"
                     "timestamp": timestamp
                 }
             )
-        return contacts
+    return contacts
 
-def directory_effectors(directory: Directory, uid = None, label: str = "Effector"):
+def directory_effectors(
+        directory: Directory,
+        uid = None,
+        label: str = "Effector",
+        active: bool = True,
+    ):
     if uid:
         query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)
         WHERE rel.directories=["{directory.name}"] AND (rel.uid="{uid}")
         RETURN e,et,rel,f,c;"""
     else:
         query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)
-        WHERE rel.directories=["{directory.name}"]
+        WHERE rel.directories=["{directory.name}"] AND rel.active={str(active)}
         RETURN e,et,rel,f,c;""" 
     results, cols = db.cypher_query(query)
     if results:
