@@ -24,6 +24,7 @@ urlpatterns = [
     path('api/', include('directory.urls', namespace='directory')),
     path('api/v1/facility/', include('facility.urls', namespace='facility')),
     path('api/v1/opengraph/', include('opengraph.urls', namespace='opengraph')),
+    path('api/v1/directory/', include('directory.urls', namespace='directory')),
     path('api/v1/workforce/', include('workforce.urls', namespace='workforce')),
     path('form/', include('contact.urls', namespace='contact')),
 ]

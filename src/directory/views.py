@@ -4,12 +4,14 @@ from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import authentication, permissions
+from rest_framework.generics import RetrieveAPIView
+from rest_framework.exceptions import NotFound
 
 from django.shortcuts import render
 from backend.i18n import activate_locale
 from access.utils import get_role
 from directory.utils import get_directory
-from directory.models import Effector
+from directory.models import Effector, Directory
 from directory import serializers
 from django.http import Http404
 
@@ -36,3 +38,14 @@ class EffectorViewSet(viewsets.ViewSet):
 
     def retrieve(self, request, pk=None):
         return Response()
+
+
+class DirectoryView(RetrieveAPIView):
+    queryset = Directory.objects.all()
+    serializer_class = serializers.DirectorySerializer
+
+    def get_object(self):
+        try:
+            return Directory.objects.get(site=self.request.site)
+        except Directory.DoesNotExist:
+            raise NotFound(detail="Directory not found.", code="not_found")

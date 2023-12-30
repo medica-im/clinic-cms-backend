@@ -68,4 +68,5 @@ class DirectoryAdmin(admin.ModelAdmin):
         'display_name',
         'presentation',
         'slug',
+        'postal_codes',
     )

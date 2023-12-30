@@ -91,6 +91,11 @@ class Organization(models.Model):
         null=True,
         blank=True,
     )
+    neomodel_uid = models.UUIDField(
+        null=True,
+        blank=True,
+        unique=True,
+    )
 
     objects = OrganizationManager()
 

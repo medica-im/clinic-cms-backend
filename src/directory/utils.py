@@ -104,7 +104,7 @@ def directory_contacts(
     else:
         query=f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
         WHERE rel.directories=["{directory.name}"] AND rel.active={str(active)}
-        RETURN e,rel,f;""" 
+        RETURN e,rel,f;"""
     results, cols = db.cypher_query(query)
     contacts=[]
     if results:

@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.sites.models import Site
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 from the_big_username_blacklist import validate
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
@@ -82,10 +83,20 @@ class Directory(models.Model):
         blank=True,
         related_name="directory",
     )
+    postal_codes = ArrayField(
+        models.CharField(
+            max_length=5
+        ),
+        blank=True,
+        null=True,
+        help_text=(
+            "limit address search results to postal codes starting with these "
+            "strings")
+    )
 
     def __str__(self):
         return f"Directory {self.name}"
-    
+
     class Meta:
         verbose_name_plural = "Directories"
 

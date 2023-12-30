@@ -7,6 +7,7 @@ from modeltranslation.admin import TranslationAdmin
 class OrganizationAdmin(TranslationAdmin):
     list_display = (
         'name',
+        'neomodel_uid',
         'company_name',
         'formatted_name',
         'formatted_name_definite_article',
@@ -25,7 +26,9 @@ class OrganizationAdmin(TranslationAdmin):
         'language',
         'city',
     )
-    search_fields = ['name', 'formatted_name', 'city', 'company_name']
+    search_fields = [
+        'name', 'formatted_name', 'city', 'company_name', 'neomodel_uid'
+    ]
     autocomplete_fields = ['contact',]
 
 
