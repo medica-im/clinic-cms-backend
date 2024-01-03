@@ -1,3 +1,4 @@
+import uuid
 from django.contrib import admin
 from django import forms
 from taggit_labels.widgets import LabelWidget
@@ -11,11 +12,36 @@ from django.db.models import F
 from django.contrib.postgres.search import SearchVector, SearchQuery
 from constance import config
 from neomodel import db
-from directory.models import Effector
+from directory.models import Effector, Directory
 from directory.models import Facility as NeoFacility
+from directory.utils import directory_effectors, contact_uids
 import logging
 
 logger=logging.getLogger(__name__)
+
+class ContactDirectoryFilter(admin.SimpleListFilter):
+    title = 'Directory'
+    parameter_name = 'directory'
+
+    def lookups(self, request, model_admin):
+        lookups = list(
+            Directory.objects.values_list('name', 'display_name')
+        )
+        return lookups
+
+    def queryset(self, request, queryset):
+        if not self.value():
+            return queryset
+        try:
+            directory=Directory.objects.get(name=self.value())
+        except Directory.DoesNotExist:
+            return Contact.objects.none()
+        uids=contact_uids(directory=directory)
+        try:
+            return queryset.filter(neomodel_uid__in=uids)
+        except TypeError:
+            return Contact.objects.none()
+
 
 class ContactOrganizationFilter(admin.SimpleListFilter):
     title = 'Organization'
@@ -129,7 +155,7 @@ class ContactAdmin(admin.ModelAdmin):
         'profile_image',
         'neomodel_uid',
     )
-    search_fields = ['formatted_name', 'neomodel_uid']
+    search_fields = ['neomodel_uid']
     readonly_fields = (
         'name_tag',
         'profile_image_tag',
@@ -158,6 +184,7 @@ class ContactAdmin(admin.ModelAdmin):
         ContactOrganizationFilter,
         ContactFacilityFilter,
         ("neomodel_uid", admin.EmptyFieldListFilter),
+        ContactDirectoryFilter,
     ]
 
     @admin.display(description='User')
@@ -234,6 +261,40 @@ class ContactAdmin(admin.ModelAdmin):
             effector = Effector.inflate(results[0][cols.index('e')])
             return effector.name_fr
 
+    def get_search_results(self, request, queryset, search_term):
+        try:
+            search_term = str(uuid.UUID(search_term))
+        except ValueError:
+            pass
+        search_queryset, may_have_duplicates = super().get_search_results(
+            request,
+            queryset,
+            search_term,
+        )
+        if not search_term:
+            return search_queryset, may_have_duplicates
+        query_ids = queryset.values_list('id', flat=True)
+        final_queryset = Contact.objects.none()
+        _config = config.ADMIN_SEARCH_CONFIG
+        queryset_field = self.model.objects.annotate(
+            search=SearchVector('formatted_name', config=_config) \
+            + SearchVector('last_name', config=_config) \
+            + SearchVector('first_name', config=_config) \
+            + SearchVector('middle_name', config=_config),
+            ).filter(
+                search=SearchQuery(search_term, config=_config),
+                id__in=query_ids
+            )
+        uids=contact_uids(search=search_term)
+        final_queryset |= queryset_field
+        if uids:
+            queryset_cypher = self.model.objects.filter(
+                neomodel_uid__in=uids,
+                id__in=query_ids
+            )
+            final_queryset |= queryset_cypher
+        return final_queryset.distinct(), False
+
     @admin.display(description='Phones')
     def phone_tag(self, obj):
         return [phone.phone for phone in obj.phonenumbers.all()]
@@ -255,19 +316,6 @@ class ContactAdmin(admin.ModelAdmin):
             return _("Organization")
         elif obj.facility:
             return _("Facility")
-
-    def get_search_results(self, request, queryset, search_term):
-        queryset, may_have_duplicates = super().get_search_results(
-            request, queryset, search_term,
-        )
-        _config = config.ADMIN_SEARCH_CONFIG
-        queryset |= self.model.objects.annotate(
-            search=SearchVector('formatted_name', config=_config) \
-            + SearchVector('last_name', config=_config) \
-            + SearchVector('first_name', config=_config) \
-            + SearchVector('middle_name', config=_config),
-            ).filter(search=SearchQuery(search_term, config=_config))
-        return queryset, True
 
 
 @admin.register(App)

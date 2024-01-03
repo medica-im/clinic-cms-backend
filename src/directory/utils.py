@@ -132,6 +132,31 @@ def directory_contacts(
             )
     return contacts
 
+
+def contact_uids(directory: Directory=None, active=True, search=""):
+    directory_query = ""
+    if directory:
+        directory_query=f'AND rel.directories=["{directory.name}"]'
+    search_query = ""
+    if search:
+        search_query = f'AND n.name_fr =~ "(?i).*{search}.*"'
+    query=f"""MATCH (n)-[rel:LOCATION]-(f:Facility)
+        WHERE (n:Effector OR n:Organization)
+        {directory_query}
+        AND rel.active={str(active)}
+        {search_query}
+        RETURN rel,f;"""
+    logger.warn(query)
+    results, cols = db.cypher_query(query)
+    if results:
+        contacts=[]
+        for row in results:
+            location=EffectorFacility.inflate(row[cols.index('rel')])
+            facility=Facility.inflate(row[cols.index('f')])
+            contacts.append(location.uid)
+            contacts.append(facility.uid)
+        return contacts
+
 def directory_effectors(
         directory: Directory,
         uid = None,
