@@ -1,7 +1,6 @@
 from datetime import timedelta
 from django.db import models
 from django.contrib.sites.models import Site
-from addressbook.models import Contact
 from workforce.models import NodeSet
 import logging
 from django.conf import settings
@@ -47,7 +46,7 @@ class Organization(models.Model):
     active = models.BooleanField(default=False)
     contact = models.OneToOneField(
         'addressbook.Contact',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name='organisation',
         null=True,
         blank=True,
@@ -160,7 +159,7 @@ class Facility(models.Model):
     updated = models.DateTimeField(auto_now=True)
     contact = models.OneToOneField(
         'addressbook.Contact',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name='facility',
         null=True,
         blank=True,

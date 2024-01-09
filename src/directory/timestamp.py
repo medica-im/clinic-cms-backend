@@ -6,6 +6,12 @@ from neomodel import db
 logger = logging.getLogger(__name__)
 
 def update_contact_timestamp(uid: uuid.UUID):
+    logger.debug(f"{type(uid)=}")
+    try:
+        uid=uuid.UUID(uid)
+    except ValueError:
+        logger.error(f"{uid} is not a valid uuid")
+        return
     # matching a node requires hex string representation of uuid4 with no dash
     query=f"""MATCH (f:Facility) WHERE f.uid="{uid.hex}" SET f.contactUpdatedAt=timestamp() RETURN f;"""
     results, cols = db.cypher_query(query)

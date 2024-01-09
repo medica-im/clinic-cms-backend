@@ -108,7 +108,7 @@ class Command(BaseCommand):
             except neomodel.DoesNotExist as e:
                 self.warn(f'{e}')
                 return
-        else:     
+        else:
             commune_qs= Commune.nodes.filter(name_fr=commune_str)
             if not commune_qs:
                 self.warn(f"No Commune instance found for {commune_str}")

@@ -10,6 +10,7 @@ from neomodel import (
     UniqueIdProperty,
     ArrayProperty,
     RelationshipTo,
+    RelationshipFrom,
     Relationship,
     StructuredRel,
 )
@@ -113,6 +114,10 @@ class Organization(StructuredNode):
     website = RelationshipTo(
         'Website',
         'OFFICIAL_WEBSITE'
+    )
+    division = RelationshipTo(
+        'Effector',
+        'HAS_DIVISION'
     )
 
 

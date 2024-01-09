@@ -28,6 +28,29 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def get_organization(organization):
+    if is_valid_uuid(organization):
+        try:
+            return Organization.nodes.get(uid=organization)
+        except neomodel.DoesNotExist as e:
+            self.warn(f'{e}')
+            return
+    else:
+        organization_qs= Organization.nodes.filter(
+            Q(name_fr=organization)
+            | Q(label_fr=organization)
+        )
+        if not organization_qs:
+            self.warn(f"No Organization instance found for {organization}")
+            return
+        elif len(organization_qs)>1:
+            self.warn(
+                "More than one Organization instance found for "
+                f"{organization}"
+            )
+            return
+        return organization_qs[0]
+
 def is_valid_uuid(val):
     try:
         uuid.UUID(str(val))
@@ -90,6 +113,7 @@ class Command(BaseCommand):
         parser.add_argument('--type', type=str)
         parser.add_argument('--commune', type=str)
         parser.add_argument('--organization', type=str)
+        parser.add_argument('--division_of', type=str)
         parser.add_argument('--facility', type=str)
         parser.add_argument('--directory', type=str)
         parser.add_argument('--slug_fr', type=str)
@@ -176,28 +200,10 @@ class Command(BaseCommand):
                 c=commune_qs[0]
             effector.commune.connect(c)
         if options['organization']:
-            organization=options['organization']
-            if is_valid_uuid(organization):
-                try:
-                    o=Organization.nodes.get(uid=organization)
-                except neomodel.DoesNotExist as e:
-                    self.warn(f'{e}')
-                    return
-            else:     
-                organization_qs= Organization.nodes.filter(
-                    Q(name_fr=organization)
-                    | Q(label_fr=organization)
-                )
-                if not organization_qs:
-                    self.warn(f"No Organization instance found for {organization}")
-                    return
-                elif len(organization_qs)>1:
-                    self.warn(
-                        "More than one Organization instance found for "
-                        f"{organization}"
-                    )
-                    return
-                o=organization_qs[0]
+            organization_str=options['organization']
+            o = get_organization(organization_str)
+            if not o:
+                return
             effector.organization.connect(o)
         if options['facility'] and options['directory']:
             directory=options['directory']
@@ -241,6 +247,15 @@ class Command(BaseCommand):
             f"Contact:  {contact}"
         if options["carehome"]:
             add_label(effector.uid, "CareHome")
+
+        # division_of
+        division_of = options["division_of"]
+        if division_of:
+            o = get_organization(division_of)
+            if not o:
+                return
+            o.division.connect(effector)
+
         self.warn(
             f"uid: {effector.uid}\n"
             f"name_fr: {effector.name_fr}\n"
