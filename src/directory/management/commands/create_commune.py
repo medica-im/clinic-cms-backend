@@ -23,12 +23,37 @@ from django.core.cache import cache
 from django.conf import settings
 from rdflib.plugins.shared.jsonld.keys import NONE
 
-WIKIDATA_TTL = 60 * 60
+WIKIDATA_TTL = 60 * 60           
 
 import logging
 
 logger = logging.getLogger(__name__)
 
+def wikidata_commune():
+    query=f"""
+    SELECT ?item ?label 
+    WHERE {{
+    ?item wdt:P31 wd:Q484170;
+    rdfs:label ?label.
+    FILTER(LANG(?label) = "fr").
+    }}
+    """
+    data_extracter = WikiDataQueryResults(query)
+    df = data_extracter.load_as_dataframe()
+    cache.set(
+        f"wikidata_commune",
+        df,
+        WIKIDATA_TTL
+    )
+    return df
+    
+def get_wikidata_commune()->str:
+    df = cache.get_or_set(
+        f"wikidata_commune",
+        lambda: wikidata_commune(),
+        WIKIDATA_TTL
+    )
+    return df
 
 def wikidata(code: str, select: str, lang: str='FR'):
     """

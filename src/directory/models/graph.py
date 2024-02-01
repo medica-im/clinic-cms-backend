@@ -235,13 +235,21 @@ class CareHome(Effector):
     )
 
 
-class Commune(StructuredNode):
+class AdministrativeTerritorialEntityOfFrance(StructuredNode):
     uid = UniqueIdProperty()
     name_en = StringProperty(unique_index=True)
     name_fr = StringProperty(unique_index=True)
     slug_en = StringProperty(unique_index=True)
     slug_fr = StringProperty(unique_index=True)
     wikidata = StringProperty(unique_index=True)
+
+
+class Commune(AdministrativeTerritorialEntityOfFrance):
+    pass
+
+
+class MunicipalArrondissement(AdministrativeTerritorialEntityOfFrance):
+    commune = RelationshipTo('Commune', 'PART_OF')
 
 
 class Facility(StructuredNode):

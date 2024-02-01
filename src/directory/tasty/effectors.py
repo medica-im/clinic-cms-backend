@@ -122,6 +122,7 @@ def createEffectorRessource(request, node):
 
 def createEffectorRessources(request, nodes):
     data= []
+    # TODO manage Exception Value: 'NoneType' object is not iterable
     for node in nodes:
         data.append(createEffectorRessource(request, node))
     return data

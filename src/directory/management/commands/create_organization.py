@@ -270,6 +270,7 @@ class Command(BaseCommand):
         self.warn(
             f"name_fr: {organization.name_fr}\n"
             f"label_fr: {organization.label_fr}\n"
+            f"uid: {organization.uid}\n"
             f"Commune: {display_relationship(organization.commune)}\n"
             f"OrganizationType: {display_relationship(organization.type)}"
         )
