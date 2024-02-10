@@ -1,3 +1,4 @@
+import logging
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
@@ -21,6 +22,8 @@ from easy_thumbnails.signals import saved_file
 from easy_thumbnails.signal_handlers import generate_aliases
 from django.db.models import UniqueConstraint
 from directory.timestamp import update_contact_timestamp
+
+logger = logging.getLogger(__name__)
 
 CharField.register_lookup(Length)
 
@@ -111,7 +114,10 @@ class Contact(models.Model):
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.neomodel_uid)
+        try:
+            update_contact_timestamp(self.neomodel_uid)
+        except TypeError as e:
+            logger.warn(f'uid is {self.neomodel_uid} {e}')
 
 
 class AddressManager(models.Manager):
@@ -208,7 +214,10 @@ class Address(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid)
+        try:
+            update_contact_timestamp(self.contact.neomodel_uid)
+        except TypeError as e:
+            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class PhoneNumberManager(models.Manager):
@@ -273,7 +282,10 @@ class PhoneNumber(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid)
+        try:
+            update_contact_timestamp(self.contact.neomodel_uid)
+        except TypeError as e:
+            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class Email(models.Model):
@@ -311,7 +323,10 @@ class Email(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid)
+        try:
+            update_contact_timestamp(self.contact.neomodel_uid)
+        except TypeError as e:
+            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class Website(models.Model):
@@ -346,7 +361,10 @@ class Website(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid)
+        try:
+            update_contact_timestamp(self.contact.neomodel_uid)
+        except TypeError as e:
+            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class SocialNetwork(models.Model):
@@ -391,7 +409,10 @@ class SocialNetwork(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid)
+        try:
+            update_contact_timestamp(self.contact.neomodel_uid)
+        except TypeError as e:
+            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class Profile(models.Model):
@@ -437,7 +458,10 @@ class Profile(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid)
+        try:
+            update_contact_timestamp(self.contact.neomodel_uid)
+        except TypeError as e:
+            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class Appointment(models.Model):
@@ -487,7 +511,10 @@ class Appointment(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        update_contact_timestamp(self.contact.neomodel_uid)
+        try:
+            update_contact_timestamp(self.contact.neomodel_uid)
+        except TypeError as e:
+            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class App(models.Model):

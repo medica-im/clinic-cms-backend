@@ -246,7 +246,12 @@ def get_effectors(request, situation):
         for e in results:
             effector=Effector.inflate(e[0])
             effectors.append(effector)
-    _directory_effectors = [_dict["effector"] for _dict in directory_effectors(directory)]
+    try:
+        _directory_effectors = [
+            _dict["effector"] for _dict in directory_effectors(directory)
+        ]
+    except TypeError:
+        return []
     effector_uids = [ e.uid for e in effectors if e in _directory_effectors]
     return get_location_uids(effector_uids)
 
