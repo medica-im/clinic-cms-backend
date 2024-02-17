@@ -5,6 +5,8 @@ from directory import views
 
 from directory.tasty.effectors import (
     EffectorResource,
+)
+from directory.tasty.situations import (
     SituationResource,
 )
 from directory.tasty.types import (
@@ -15,6 +17,7 @@ from directory.tasty.communes import (
 )
 from directory.tasty.carehome import CareHomeResource
 from directory.tasty.contacts import ContactResource
+from directory.tasty.facilities import FacilityResource
 
 # tastypie
 v1_api = NamespacedApi(api_name='v1', urlconf_namespace='directory')
@@ -24,6 +27,7 @@ v1_api.register(EffectorTypeResource())
 v1_api.register(CommuneResource())
 v1_api.register(CareHomeResource())
 v1_api.register(ContactResource())
+v1_api.register(FacilityResource())
 
 # DRF
 router = routers.DefaultRouter()

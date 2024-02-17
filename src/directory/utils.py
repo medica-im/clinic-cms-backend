@@ -63,7 +63,7 @@ def get_phones(request, effector):
             phones.extend(serializer.data)
         return phones
 
-def get_address(facility):
+def get_address(facility: Facility):
     try:
         contact = Contact.objects.get(neomodel_uid=facility.uid)
     except Contact.DoesNotExist:
@@ -90,7 +90,32 @@ def get_effector_nodes(
             node=effectors.get(label).inflate(row[cols.index('e')])
             nodes.append(node)
         return nodes
-    
+
+def get_facilities(
+        directory: Directory|None = None,
+        uid = None,
+        label: str = "Effector",
+        active: bool = True,
+    ):
+    if uid:
+        query=f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
+        WHERE f.uid="{uid}"
+        RETURN f;"""
+    else:
+        query=f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
+        WHERE rel.directories=["{directory.name}"] AND rel.active={str(active)}
+        RETURN DISTINCT f;"""
+    results, cols = db.cypher_query(query)
+    _facilities=[]
+    try:
+        for row in results:
+            _facilities.append(
+                Facility.inflate(row[cols.index('f')])
+            )
+    except:
+        pass
+    return _facilities
+
 def directory_contacts(
         directory: Directory,
         uid = None,
