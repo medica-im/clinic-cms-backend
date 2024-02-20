@@ -99,6 +99,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--commune', type=str)
         parser.add_argument('--facility', type=str)
+        parser.add_argument('--name', type=str)
 
     def handle(self, *args, **options):
         commune_str=options['commune']
@@ -129,9 +130,13 @@ class Command(BaseCommand):
             facility=Facility().save()
         if facility:
             facility.commune.connect(commune)
+            if options["name"]:
+                facility.name=options["name"]
+                facility.save()
         try:
             contact, _ = Contact.objects.get_or_create(
-                neomodel_uid=facility.uid
+                neomodel_uid=facility.uid,
+                formatted_name=options["name"] or ""
             )
         except Exception as e:
             logger.debug(e)
@@ -152,4 +157,5 @@ class Command(BaseCommand):
             f"name_fr: {facility}\n"
             f"Commune: {display_relationship(facility.commune)}\n"
             f"uid: {facility.uid}\n"
+            f"name: {facility.name}\n"
         )

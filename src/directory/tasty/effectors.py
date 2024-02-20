@@ -42,6 +42,7 @@ class EffectorObj(object):
             address,
             phones,
             updatedAt,
+            facility,
         ):
         self.label = label
         self.name = name
@@ -53,6 +54,7 @@ class EffectorObj(object):
         self.address = address
         self.phones = phones
         self.updatedAt = updatedAt
+        self.facility = facility
 
 def createEffectorRessource(request, node):
     location=node["location"]
@@ -104,6 +106,7 @@ def createEffectorRessource(request, node):
             location.contactUpdatedAt,
         ]
     )
+    facility = node["facility"].uid
    
     effector = EffectorObj(
         label,
@@ -116,6 +119,7 @@ def createEffectorRessource(request, node):
         address,
         phones,
         updatedAt,
+        facility,
     )
     logger.debug(f'{effector=}')
     return effector
@@ -142,6 +146,7 @@ class EffectorResource(Resource):
     commune = fields.DictField(attribute='commune')
     address = fields.DictField(attribute='address', null=True)
     phones = fields.ListField(attribute='phones')
+    facility = fields.CharField(attribute='facility')
     updatedAt = fields.IntegerField(attribute='updatedAt')
 
     class Meta:

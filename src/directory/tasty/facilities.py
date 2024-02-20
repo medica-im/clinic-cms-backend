@@ -45,6 +45,20 @@ def createFacilityResources(request, nodes):
         logger.debug(node)
         uid = node.uid
         name = node.name
+        if not name:
+            try:
+                org=node.organization.all()[0]
+                name = getattr(
+                    org,
+                    f'name_{settings.LANGUAGE_CODE}',
+                    getattr(
+                        org,
+                        'label_en',
+                        None
+                    )
+                )
+            except:
+                name=node.uid
         slug = node.slug
         address = get_address(node)
         try:
