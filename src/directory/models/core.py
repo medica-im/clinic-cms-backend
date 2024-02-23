@@ -139,3 +139,23 @@ class Asset(models.Model):
 
     def __str__(self):
         return f"Asset {self.id} {self.neomodel_uid}"
+
+
+class InputField(models.Model):
+    directory = models.OneToOneField(
+        "directory.Directory",
+        on_delete=models.CASCADE,
+    )
+    geocoder = models.BooleanField(default=True)
+    situation = models.BooleanField(default=True)
+    commune = models.BooleanField(default=True)
+    category = models.BooleanField(default=True)
+    facility = models.BooleanField(default=True)
+    search = models.BooleanField(default=True)
+
+    def __str__(self):
+        return (
+            f"InputField {self.directory.name} {self.geocoder=} "
+            f"{self.situation=} {self.commune=} {self.category=} "
+            f"{self.facility} {self.search=}"
+        )

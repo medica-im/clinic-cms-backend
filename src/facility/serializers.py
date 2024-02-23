@@ -56,7 +56,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'registration',
             'google_site_verification',
             'city',
-            'legal_entity',
+            'legal_entity'
         ]
         depth = 4
 

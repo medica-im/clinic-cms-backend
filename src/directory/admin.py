@@ -9,6 +9,7 @@ from .models import (
     Asset,
     AssetFacility,
     Directory,
+    InputField,
 )
 from modeltranslation.admin import TranslationAdmin
 from django.utils.translation import gettext_lazy as _
@@ -69,4 +70,16 @@ class DirectoryAdmin(admin.ModelAdmin):
         'presentation',
         'slug',
         'postal_codes',
+    )
+
+
+@admin.register(InputField)
+class InputFieldAdmin(admin.ModelAdmin):
+    list_display = (
+        'directory',
+        'geocoder',
+        'situation',
+        'commune',
+        'facility',
+        'search',
     )

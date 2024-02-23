@@ -5,6 +5,7 @@ from directory.models.core import (
     Directory,
     Asset,
     AssetFacility,
+    InputField,
 )
 from directory.models.graph import (
     Effector,
