@@ -80,6 +80,7 @@ class InputFieldAdmin(admin.ModelAdmin):
         'geocoder',
         'situation',
         'commune',
+        'category',
         'facility',
         'search',
     )
