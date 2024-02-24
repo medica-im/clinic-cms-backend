@@ -100,6 +100,7 @@ class Command(BaseCommand):
         parser.add_argument('--commune', type=str)
         parser.add_argument('--facility', type=str)
         parser.add_argument('--name', type=str)
+        parser.add_argument('--slug', type=str)
 
     def handle(self, *args, **options):
         commune_str=options['commune']
@@ -133,6 +134,14 @@ class Command(BaseCommand):
             if options["name"]:
                 facility.name=options["name"]
                 facility.save()
+            if options["slug"]:
+                slug = options["slug"]
+            elif options["name"]:
+                slug = slugify(options["name"])
+            else:
+                slug = None
+            facility.slug=slug
+            facility.save()
         try:
             contact, _ = Contact.objects.get_or_create(
                 neomodel_uid=facility.uid,
@@ -158,4 +167,5 @@ class Command(BaseCommand):
             f"Commune: {display_relationship(facility.commune)}\n"
             f"uid: {facility.uid}\n"
             f"name: {facility.name}\n"
+            f"slug: {facility.slug}\n"
         )
