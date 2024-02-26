@@ -1,5 +1,5 @@
 from facility.models import Organization, Category, Facility, LegalEntity
-from addressbook.serializers import ContactSerializer
+from addressbook.api.serializers import ContactSerializer
 from rest_framework import serializers
 
 
