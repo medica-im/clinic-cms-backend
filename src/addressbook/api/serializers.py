@@ -8,6 +8,9 @@ from addressbook.models import (
     SocialNetwork,
     PhoneNumber,
     Email,
+    Website,
+    Appointment,
+    Address,
 )
 from rest_framework import serializers
 
@@ -15,12 +18,13 @@ logger=logging.getLogger(__name__)
 
 
 class SocialNetworkSerializer(serializers.ModelSerializer):
-    get_type_display = serializers.CharField()
-
+    type_display = serializers.CharField(
+        source='get_type_display'
+    )
 
     class Meta:
         model = SocialNetwork
-        fields = ['type', 'get_type_display', 'handle', 'url']
+        fields = ['type', 'type_display', 'handle', 'url']
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -90,6 +94,32 @@ class EmailSerializer(serializers.ModelSerializer):
         depth = 2
 
 
+class WebsiteSerializer(serializers.ModelSerializer):
+    type_display = serializers.CharField(
+        source='get_type_display'
+    )
+    class Meta:
+        model = Website
+        fields = [
+            'id',
+            'website',
+            'type',
+            'type_display',
+        ]
+        depth = 2
+
+
+class AppointmentSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Appointment
+        fields = [
+            'url',
+            'phone',
+        ]
+        depth = 1
+
+
 class ContactSerializer(serializers.ModelSerializer):
     socialnetworks = SocialNetworkSerializer(read_only=True, many=True)
     emails = EmailSerializer(read_only=True, many=True)
@@ -108,3 +138,28 @@ class ContactSerializer(serializers.ModelSerializer):
             'emails',
         ]
         depth = 3
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    facility_uid = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Address
+        fields = [
+            'id',
+            'facility_uid',
+            'building',
+            'street',
+            'geographical_complement',
+            'city',
+            'zip',
+            'state',
+            'country',
+            'latitude',
+            'longitude',
+            'zoom',
+        ]
+        depth = 2
+
+    def get_facility_uid(self, obj):
+        return obj.contact.neomodel_uid

@@ -43,6 +43,7 @@ class CustomUserAdmin(UserAdmin):
         'created_at',
         'grammatical_gender',
         'last_login',
+        'effector',
     )
     list_filter = (
         'is_staff',
@@ -62,6 +63,7 @@ class CustomUserAdmin(UserAdmin):
                     'birth_date',
                     'grammatical_gender',
                     'node',
+                    'effector',
                 )
             },
         ),
@@ -84,6 +86,7 @@ class CustomUserAdmin(UserAdmin):
     search_fields = (
         'email',
         'username',
+        'effector',
     )
     ordering = (
         'email',

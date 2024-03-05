@@ -104,9 +104,13 @@ class EmailInline(admin.TabularInline):
 class AddressInline(admin.StackedInline):
     model = Address
     extra = 0
-    
+
 class AppointmentInline(admin.TabularInline):
     model = Appointment
+    extra = 0
+
+class ProfileInline(admin.StackedInline):
+    model = Profile
     extra = 0
 
 
@@ -132,6 +136,7 @@ class ContactAdmin(admin.ModelAdmin):
         'title',
         'organization',
         'email_tag',
+        'profile_tag',
     )
     fields = (
         'person_type',
@@ -179,6 +184,7 @@ class ContactAdmin(admin.ModelAdmin):
         SocialInline,
         WebsiteInline,
         AppointmentInline,
+        ProfileInline,
     ]
     list_filter = [
         ContactOrganizationFilter,
@@ -316,6 +322,10 @@ class ContactAdmin(admin.ModelAdmin):
             return _("Organization")
         elif obj.facility:
             return _("Facility")
+        
+    @admin.display(description=_('Profile'))
+    def profile_tag(self, obj):
+        return obj.profile.text[:35]
 
 
 @admin.register(App)

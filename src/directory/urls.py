@@ -15,6 +15,9 @@ from directory.tasty.types import (
 from directory.tasty.communes import (
     CommuneResource,
 )
+from directory.tasty.fulleffectors import (
+    FullEffectorResource,
+)
 from directory.tasty.carehome import CareHomeResource
 from directory.tasty.contacts import ContactResource
 from directory.tasty.facilities import FacilityResource
@@ -28,6 +31,7 @@ v1_api.register(CommuneResource())
 v1_api.register(CareHomeResource())
 v1_api.register(ContactResource())
 v1_api.register(FacilityResource())
+v1_api.register(FullEffectorResource())
 
 # DRF
 router = routers.DefaultRouter()

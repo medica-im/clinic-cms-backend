@@ -416,19 +416,22 @@ class SocialNetwork(models.Model):
 
 
 class Profile(models.Model):
-    contact = models.ForeignKey(
+    contact = models.OneToOneField(
         Contact,
         on_delete=models.CASCADE,
-        related_name="profiles",
+        related_name="profile",
     )
     roles = models.ManyToManyField(
         Role,
         blank=True,
         help_text="Roles allowed so see the related object",
     )
-    organization = models.ManyToManyField(
+    organization = models.ForeignKey(
         "facility.Organization",
-        blank=True
+        on_delete=models.SET_NULL,
+        related_name="profiles",
+        null=True,
+        blank=True, 
     )
     text = models.TextField(
         blank=True    
@@ -440,6 +443,11 @@ class Profile(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
     history = HistoricalRecords()
+
+    def __str__(self):
+        return (
+            f"{self.contact.formatted_name} {self.text[0:35]}"
+        )
 
     @property
     def _history_user(self):
