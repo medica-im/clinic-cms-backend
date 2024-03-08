@@ -13,10 +13,36 @@ from neomodel import (
     RelationshipFrom,
     Relationship,
     StructuredRel,
+    ZeroOrOne,
 )
 from django.utils.translation import get_language
 
 logger=logging.getLogger(__name__)
+
+class PaymentMethod(StructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    label_fr = StringProperty()
+    label_en = StringProperty()
+    definition_fr = StringProperty()
+    definition_en = StringProperty()
+
+
+class ThirdPartyPayer(StructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    label_fr = StringProperty()
+    label_en = StringProperty()
+    definition_fr = StringProperty()
+    definition_en = StringProperty()
+
+
+class Convention(StructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    label = StringProperty()
+    definition = StringProperty()
+
 
 class Need(StructuredNode):
     uid = UniqueIdProperty()
@@ -129,10 +155,16 @@ class EffectorFacility(StructuredRel):
     #TODO switch uid to UniqueIdProperty() when we upgrade neo4j to version 5
     uid = StringProperty(default=uuid4)
     directories = ArrayProperty(base_property=StringProperty())
+    thirdPartyPayment = ArrayProperty(base_property=StringProperty())
+    payment = ArrayProperty(base_property=StringProperty())
     contactUpdatedAt = IntegerProperty(default=0)
     active = BooleanProperty(
         index=True,
         default=True
+    )
+    carteVitale = BooleanProperty(
+        index=True,
+        default=None
     )
 
 
@@ -155,6 +187,11 @@ class Effector(StructuredNode):
     commune = RelationshipTo(
         'Commune',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
+    )
+    convention = RelationshipTo(
+        'Convention',
+        'HAS_CONVENTION',
+        cardinality=ZeroOrOne,
     )
     updatedAt = IntegerProperty(default=0)
 
@@ -233,6 +270,18 @@ class CareHome(Effector):
         default=0,
         help_text="Unité de soins de longue durée"
     )
+
+
+class HealthWorker(Effector):
+    rpps = StringProperty(
+        unique_index=True,
+        max_length=11
+    )
+    adeli = StringProperty(
+        unique_index=True,
+        max_length=9
+    )
+    spoken_languages = ArrayProperty(base_property=StringProperty())
 
 
 class AdministrativeTerritorialEntityOfFrance(StructuredNode):

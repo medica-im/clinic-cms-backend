@@ -495,6 +495,9 @@ class Appointment(models.Model):
         null=True,
         blank=True,
     )
+    house_call = models.BooleanField(
+        default=False
+    )
 
 
     class Meta:

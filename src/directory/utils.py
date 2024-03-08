@@ -8,6 +8,9 @@ from directory.models import (
     Facility,
     EffectorFacility,
     Commune,
+    ThirdPartyPayer,
+    PaymentMethod,
+    HealthWorker,
 )
 from addressbook.models import Contact
 from neomodel import db
@@ -20,6 +23,7 @@ from addressbook.api.serializers import (
     AddressSerializer,
     ProfileSerializer,
 )
+from workforce.serializers import ConventionSerializer
 from rest_framework.serializers import ModelSerializer
 
 logger = logging.getLogger(__name__)
@@ -442,7 +446,11 @@ def find_effector(
     ):
     query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:Effector)-[rel:LOCATION]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)
         WHERE e.slug_fr="{effector_slug}" AND c.slug_fr="{commune_slug}" AND et.slug_fr="{effector_type_slug}" AND rel.directories=["{directory.name}"]
-        RETURN et,e,rel,f,c;"""
+        WITH *
+        OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN rel.thirdPartyPayment
+        WITH *, COLLECT(tpp) AS tpp
+        OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN rel.payment
+        RETURN et,e,rel,f,c,tpp,COLLECT(pm) AS pm;"""
     logger.debug(query)
     results, cols = db.cypher_query(query)
     logger.debug(results)
@@ -463,6 +471,15 @@ def find_effector(
     socialnetworks = get_socialnetworks_neomodel(effector_facility, facility)
     appointments = get_appointments_neomodel(effector_facility, facility)
     profile = get_profile_neomodel(effector_facility, facility)
+    third_party_payers = [
+        ThirdPartyPayer.inflate(payer)
+        for payer in row[cols.index('tpp')]
+    ]
+    payment_methods = [
+        PaymentMethod.inflate(pm)
+        for pm in row[cols.index('pm')]
+    ]
+    health_worker=HealthWorker.inflate(row[cols.index('e')])
     return {
         "effector": effector,
         "location": effector_facility,
@@ -476,4 +493,7 @@ def find_effector(
         "socialnetworks": socialnetworks,
         "appointments": appointments,
         "profile": profile,
+        "third_party_payers": third_party_payers,
+        "payment_methods": payment_methods,
+        "health_worker": health_worker,
     }

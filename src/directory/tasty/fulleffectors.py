@@ -20,6 +20,10 @@ from directory.utils import (
     find_effector_uid,
     find_effector,
 )
+from directory.serializers import (
+    ConventionSerializer,
+    ThirdPartyPayerSerializer,
+)
 from directory.tasty.types import createEffectorTypeResources
 from django.core.cache import cache
 from django.conf import settings
@@ -49,6 +53,12 @@ class EffectorObj(object):
             socialnetworks,
             appointments,
             profile,
+            convention,
+            carte_vitale,
+            third_party_payers,
+            payment_methods,
+            rpps,
+            adeli,
         ):
         self.label = label
         self.name = name
@@ -66,11 +76,18 @@ class EffectorObj(object):
         self.socialnetworks = socialnetworks
         self.appointments = appointments
         self.profile = profile
+        self.convention = convention
+        self.carte_vitale = carte_vitale
+        self.third_party_payers = third_party_payers
+        self.payment_methods = payment_methods
+        self.rpps = rpps
+        self.adeli = adeli
 
 def createEffectorRessource(request, node):
     location=node["location"]
     uid = location.uid
     effector_node=node["effector"]
+    health_worker=node["health_worker"]
     address=node["address"]
     commune_node: Commune = node["commune"]
     commune_obj = createCommuneResources(
@@ -122,12 +139,37 @@ def createEffectorRessource(request, node):
             location.contactUpdatedAt,
         ]
     )
-    facility = node["facility"].uid
+    facility = {
+        "uid": node["facility"].uid,
+        "slug": node["facility"].slug,
+        "name": node["facility"].name,
+    }
     emails = node["emails"]
     websites = node["websites"]
     socialnetworks = node["socialnetworks"]
     appointments = node["appointments"]
     profile = node["profile"]
+    # convention
+    serializer = ConventionSerializer(effector_node.convention.all(), many=True)
+    convention = serializer.data[0]
+    # carte vitale
+    carte_vitale = location.carteVitale
+    #third party payer 
+    serializer = ThirdPartyPayerSerializer(
+        node["third_party_payers"],
+        many=True
+    )
+    third_party_payers = serializer.data
+    # payment_methods (reuse ThirdPartyPayerSerialize)
+    serializer = ThirdPartyPayerSerializer(
+        node["payment_methods"],
+        many=True
+    )
+    payment_methods = serializer.data
+    logger.debug(payment_methods)
+    rpps=health_worker.rpps
+    adeli=health_worker.adeli
+
     effector = EffectorObj(
         label,
         name,
@@ -145,6 +187,12 @@ def createEffectorRessource(request, node):
         socialnetworks,
         appointments,
         profile,
+        convention,
+        carte_vitale,
+        third_party_payers,
+        payment_methods,
+        rpps,
+        adeli,
     )
     return effector
 
@@ -170,13 +218,25 @@ class FullEffectorResource(Resource):
     commune = fields.DictField(attribute='commune')
     address = fields.DictField(attribute='address', null=True)
     phones = fields.ListField(attribute='phones')
-    facility = fields.CharField(attribute='facility')
+    facility = fields.DictField(attribute='facility')
     updatedAt = fields.IntegerField(attribute='updatedAt')
     emails = fields.ListField(attribute='emails', null=True)
     websites = fields.ListField(attribute='websites', null=True)
     socialnetworks = fields.ListField(attribute='socialnetworks', null=True)
     appointments = fields.ListField(attribute='appointments', null=True)
     profile = fields.DictField(attribute='profile', null=True)
+    convention = fields.DictField(attribute='convention', null=True)
+    carte_vitale = fields.BooleanField(attribute='carte_vitale', null=True)
+    third_party_payers = fields.ListField(
+        attribute='third_party_payers',
+        null=True
+    )
+    payment_methods = fields.ListField(
+        attribute='payment_methods',
+        null=True
+    )
+    rpps = fields.CharField(attribute='rpps', null=True)
+    adeli = fields.CharField(attribute='adeli', null=True)
 
 
     class Meta:

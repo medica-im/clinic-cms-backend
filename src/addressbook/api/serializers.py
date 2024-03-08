@@ -116,6 +116,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         fields = [
             'url',
             'phone',
+            'house_call',
         ]
         depth = 1
 

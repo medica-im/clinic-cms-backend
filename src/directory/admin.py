@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.utils.translation import get_language
 from accounts.models import GrammaticalGender
 
+
 logger = logging.getLogger(__name__)
 
 @admin.register(Slug)

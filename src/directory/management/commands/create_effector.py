@@ -16,15 +16,18 @@ from directory.models import (
     Facility,
     Directory,
     EffectorFacility,
+    Convention
 )
 from addressbook.models import Contact, PhoneNumber
 from neomodel import Q, db
 import uuid
 from directory.utils import add_label
+from neomodel.exceptions import MultipleNodesReturned
 
 from django.conf import settings
 
 import logging
+from directory.management.commands.care_home import is_valid_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +109,7 @@ class Command(BaseCommand):
         )
 
     def add_arguments(self, parser):
+        parser.add_argument('effector', type=str)
         parser.add_argument('--label_fr', type=str)
         parser.add_argument('--label_en', type=str)   
         parser.add_argument('--name_fr', type=str)
@@ -119,6 +123,8 @@ class Command(BaseCommand):
         parser.add_argument('--slug_fr', type=str)
         parser.add_argument('--slug_en', type=str)
         parser.add_argument('--carehome', action=argparse.BooleanOptionalAction)
+        parser.add_argument('--carte_vitale', type=str)
+        parser.add_argument('--convention', type=str)
 
     def handle(self, *args, **options):
         label_en=options['label_en']
@@ -135,12 +141,18 @@ class Command(BaseCommand):
             slug_en=options['slug_en'] or slugify(name_en)
         else:
             slug_en=None
-        carehome = options['carehome']
-        effector_qs = Effector.nodes.filter(
-            Q(name_fr=name_fr)
-            | Q(uid=name_fr)
-        )
-        if not effector_qs:
+        # effector
+        effector_uid = options["effector"]
+        if effector_uid and is_valid_uuid(effector_uid):
+            effector = Effector.nodes.get_or_none(uid=effector_uid)
+        else:
+            try:
+                effector = Effector.nodes.get_or_none(name_fr=name_fr)
+            except MultipleNodesReturned:
+                self.warn(
+                    f"More than one effector found with name_fr={name_fr}")
+                return
+        if not effector:
             effector = self.create_node(
                 label_en=label_en,
                 label_fr=label_fr,
@@ -149,11 +161,6 @@ class Command(BaseCommand):
                 slug_fr=slug_fr,
                 slug_en=slug_en
             )
-        elif len(effector_qs.all())>1:
-            self.warn(f"More than one effector found with name_fr={name_fr}")
-            return
-        else:
-            effector=effector_qs.all()[0]
         if options['type']:
             type_str=options['type']
             if is_valid_uuid(type_str):
@@ -212,24 +219,24 @@ class Command(BaseCommand):
             except Directory.DoesNotExist:
                 self.warn(f"Directory {directory} does not exist.")
                 return
-            facility=options['facility']
-            if facility and is_valid_uuid(facility):
+            facility_uid=options['facility']
+            if facility_uid and is_valid_uuid(facility_uid):
                 try:
-                    f=Facility.nodes.get(uid=facility)
+                    f=Facility.nodes.get(uid=facility_uid)
                 except neomodel.DoesNotExist as e:
                     self.warn(f'{e}')
                     return
-                if facility in [f.uid for f in effector.facility.all()]:
+                if facility_uid in [f.uid for f in effector.facility.all()]:
                     self.warn(f'{effector.name_fr} is already linked to facility {f}')
                 else:
                     directories=[directory]
                     if (effector.facility.connect(
                         f, {"directories": directories, "uid": uuid.uuid4()})):
                         self.warn(f'{effector.name_fr} was linked to facility {f}')
-        facility=options['facility']
-        if facility and is_valid_uuid(facility):
+        facility_uid = options['facility']
+        if facility_uid and is_valid_uuid(facility_uid):
             try:
-                f=Facility.nodes.get(uid=facility)
+                f=Facility.nodes.get(uid=facility_uid)
             except neomodel.DoesNotExist as e:
                 self.warn(f'{e}')
                 return
@@ -241,13 +248,39 @@ class Command(BaseCommand):
             self.warn(f"{results}")
             rel = EffectorFacility.inflate(results[0][cols.index('rel')])
             self.warn(f"{rel.uid=}")
-            contact, created = Contact.objects.get_or_create(
+            contact, _created = Contact.objects.get_or_create(
                 neomodel_uid=rel.uid
             )
             f"Contact:  {contact}"
         if options["carehome"]:
             add_label(effector.uid, "CareHome")
-
+        # Carte Vitale
+        cv=options["carte_vitale"]
+        rel=None
+        if cv and is_valid_uuid(facility_uid):
+            if cv in ["yes", "oui", "true"]:
+                cv=True
+            elif cv in ["no", "non", "false"]:
+                cv=False 
+            else:
+                self.warn(f"Invalid option {cv=}")
+                return
+            try:
+                f=Facility.nodes.get(uid=facility_uid)
+            except neomodel.DoesNotExist as e:
+                self.warn(f'{e}')
+                return
+            if f in effector.facility.all():
+                try:
+                    rel = effector.facility.relationship(f)
+                except Exception as e:
+                    self.warn(
+                        f"Could not find a relationship between {effector} "
+                        f"and {f}: {e}"
+                    )
+                    return
+                rel.carteVitale=cv
+                rel.save()
         # division_of
         division_of = options["division_of"]
         if division_of:
@@ -255,12 +288,29 @@ class Command(BaseCommand):
             if not o:
                 return
             o.division.connect(effector)
-
-        self.warn(
+        # convention
+        convention_name=options["convention"]
+        if convention_name:
+            try:
+                convention=Convention.nodes.get(name=convention_name)
+            except neomodel.exceptions.DoesNotExist as e:
+                self.warn(f'Convention name="{convention_name}" does not exist')
+                return
+            try:
+                effector.convention.connect(convention)
+            except Exception as e:
+                self.warn(e)
+        warning = (
             f"uid: {effector.uid}\n"
             f"name_fr: {effector.name_fr}\n"
             f"label_fr: {effector.label_fr}\n"
             f"Commune: {display_relationship(effector.commune)}\n"
             f"EffectorType: {display_relationship(effector.type)}\n"
             f"Effector facility: {effector.facility.all()}\n"
+            f"convention: {effector.convention.all()[0].name if effector.convention.all() else None}\n"
+        )
+        if rel:
+            warning+=f"Carte Vitale: {rel.carteVitale}\n"
+        self.warn(
+            warning
         )

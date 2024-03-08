@@ -8,6 +8,9 @@ from directory.models.core import (
     InputField,
 )
 from directory.models.graph import (
+    PaymentMethod,
+    ThirdPartyPayer,
+    Convention,
     Effector,
     CareHome,
     EffectorType,
@@ -21,4 +24,5 @@ from directory.models.graph import (
     Facility,
     EffectorFacility,
     Website,
+    HealthWorker,
 )

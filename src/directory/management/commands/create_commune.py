@@ -97,7 +97,7 @@ def display_relationship(rel):
     ]
 
 class Command(BaseCommand):
-    help = 'Create Facility node on neo4j'
+    help = 'Create Commune node on neo4j'
 
     def create_node(
         self,
