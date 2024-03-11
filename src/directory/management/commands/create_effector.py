@@ -1,7 +1,9 @@
 from django.utils.text import slugify
 import neomodel
+from neomodel import db
 import uuid
 import argparse
+from langcodes import *
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
 from workforce.models import NetworkEdge, NodeSet, NetworkNode
@@ -16,7 +18,8 @@ from directory.models import (
     Facility,
     Directory,
     EffectorFacility,
-    Convention
+    Convention,
+    HealthWorker
 )
 from addressbook.models import Contact, PhoneNumber
 from neomodel import Q, db
@@ -30,6 +33,30 @@ import logging
 from directory.management.commands.care_home import is_valid_uuid
 
 logger = logging.getLogger(__name__)
+
+def convention():
+    query=""" MATCH (n:Convention) RETURN n"""
+    results, meta = db.cypher_query(query, resolve_objects=True)
+    names = []
+    for row in results:
+        names.append(row[0].name)
+    return names
+
+def third_party_payers():
+    query=""" MATCH (n:ThirdPartyPayer) RETURN n"""
+    results, meta = db.cypher_query(query, resolve_objects=True)
+    names = []
+    for row in results:
+        names.append(row[0].name)
+    return names
+
+def payment_methods():
+    query=""" MATCH (n:PaymentMethod) RETURN n"""
+    results, meta = db.cypher_query(query, resolve_objects=True)
+    pms = []
+    for row in results:
+        pms.append(row[0].name)
+    return pms
 
 def get_organization(organization):
     if is_valid_uuid(organization):
@@ -124,7 +151,32 @@ class Command(BaseCommand):
         parser.add_argument('--slug_en', type=str)
         parser.add_argument('--carehome', action=argparse.BooleanOptionalAction)
         parser.add_argument('--carte_vitale', type=str)
-        parser.add_argument('--convention', type=str)
+        parser.add_argument(
+            '--convention',
+            type=str,
+            help=f"Convention among {convention()}"
+        )
+        parser.add_argument('--rpps', type=str)
+        parser.add_argument('--adeli', type=str)
+        parser.add_argument(
+            '--spoken_languages',
+            nargs='+',
+            type=str,
+            help="List of ISO 639 language codes"
+        )
+        parser.add_argument(
+            '--payment_methods',
+            nargs='+',
+            type=str,
+            help=f"List of payment methods among {payment_methods()}"
+        )
+        parser.add_argument('-hw', action='store_true')
+        parser.add_argument(
+            '--third_party_payers',
+            nargs='+',
+            type=str,
+            help=f"List of third party payers among {third_party_payers()}"
+        )
 
     def handle(self, *args, **options):
         label_en=options['label_en']
@@ -300,6 +352,115 @@ class Command(BaseCommand):
                 effector.convention.connect(convention)
             except Exception as e:
                 self.warn(e)
+        #add HealthcareWorker label to node
+        if options["hw"]:
+            query=f""" MATCH (n:Effector {{uid: "{effector.uid}"}})
+            SET n :HealthWorker
+            RETURN n
+            """
+            results, meta = db.cypher_query(query, resolve_objects=True)
+            self.warn(results)
+        #spoken_languages
+        spoken_languages=options["spoken_languages"]
+        if spoken_languages:
+            try:
+                hw=HealthWorker.nodes.get(uid=effector.uid)
+            except Exception as e:
+                self.warn(f"Is {effector} a HealthWorker?\n{e}")
+                return
+            ok_tags = []
+            for tag in spoken_languages:
+                try:
+                    ok_tags.append(standardize_tag(tag))
+                except LanguageTagError as e:
+                    self.warn(e)
+            if ok_tags:
+                hw.spoken_languages = ok_tags
+                hw.save()
+                language_names = [
+                    Language.get(tag).display_name('fr')
+                    for tag in hw.spoken_languages
+                ]
+                self.warn(f'Spoken languages: {", ".join(language_names)}\n')
+        #rpps
+        rpps=options["rpps"]
+        if rpps:
+            try:
+                hw=HealthWorker.nodes.get(uid=effector.uid)
+            except Exception as e:
+                self.warn(f"Is {effector} a HealthWorker?\n{e}")
+                return
+            hw.rpps=rpps
+            hw.save()
+            self.warn(f'RPPS number: "{hw.rpps}"\n')
+        #ADELI
+        adeli=options["adeli"]
+        if adeli:
+            try:
+                hw=HealthWorker.nodes.get(uid=effector.uid)
+            except Exception as e:
+                self.warn(f"Is {effector} a HealthWorker?\n{e}")
+                return
+            hw.adeli=adeli
+            hw.save()
+            self.warn(f'ADELI number: "{hw.adeli}"\n')
+        #payment_methods
+        pms=options["payment_methods"]
+        rel=None
+        if pms and is_valid_uuid(facility_uid):
+            available_pms = payment_methods()
+            for pm in pms:
+                if pm not in available_pms:
+                    self.warn(
+                        f'Invalid option: "{pm=}"\n'
+                        f'Valid options: {available_pms}'
+                    )
+                    return
+            try:
+                f=Facility.nodes.get(uid=facility_uid)
+            except neomodel.DoesNotExist as e:
+                self.warn(f'{e}')
+                return
+            if f in effector.facility.all():
+                try:
+                    rel = effector.facility.relationship(f)
+                except Exception as e:
+                    self.warn(
+                        f"Could not find a relationship between {effector} "
+                        f"and {f}: {e}"
+                    )
+                    return
+                rel.payment=pms
+                rel.save()
+        # third party payers
+        tpps=options["third_party_payers"]
+        rel=None
+        if tpps and is_valid_uuid(facility_uid):
+            available_tpps = third_party_payers()
+            for tpp in tpps:
+                if tpp not in available_tpps:
+                    self.warn(
+                        f'Invalid option: "{tpp=}"\n'
+                        f'Valid options: {available_tpps}'
+                    )
+                    return
+            try:
+                f=Facility.nodes.get(uid=facility_uid)
+            except neomodel.DoesNotExist as e:
+                self.warn(f'{e}')
+                return
+            if f in effector.facility.all():
+                try:
+                    rel = effector.facility.relationship(f)
+                except Exception as e:
+                    self.warn(
+                        f"Could not find a relationship between {effector} "
+                        f"and {f}: {e}"
+                    )
+                    return
+                rel.thirdPartyPayment=tpps
+                rel.save()
+
         warning = (
             f"uid: {effector.uid}\n"
             f"name_fr: {effector.name_fr}\n"
@@ -309,8 +470,12 @@ class Command(BaseCommand):
             f"Effector facility: {effector.facility.all()}\n"
             f"convention: {effector.convention.all()[0].name if effector.convention.all() else None}\n"
         )
-        if rel:
-            warning+=f"Carte Vitale: {rel.carteVitale}\n"
+        if effector and options["facility"] and f:
+            rel = effector.facility.relationship(f)
+            if rel:
+                warning+=f"Carte Vitale: {rel.carteVitale}\n"
+                warning+=f"Payment methods: {rel.payment}\n"
+                warning+=f"Third party payers: {rel.thirdPartyPayment}\n"
         self.warn(
             warning
         )

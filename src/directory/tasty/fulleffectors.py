@@ -6,6 +6,7 @@ from tastypie.resources import Resource
 from tastypie.bundle import Bundle
 from tastypie.fields import ForeignKey
 from directory.tasty.communes import createCommuneResources
+from directory.serializers import display_tag_name
 
 from django.urls import re_path
 from directory.models import Effector, Situation, EffectorType, Commune
@@ -23,6 +24,7 @@ from directory.utils import (
 from directory.serializers import (
     ConventionSerializer,
     ThirdPartyPayerSerializer,
+    SpokenLanguageSerializer,
 )
 from directory.tasty.types import createEffectorTypeResources
 from django.core.cache import cache
@@ -59,6 +61,8 @@ class EffectorObj(object):
             payment_methods,
             rpps,
             adeli,
+            spoken_languages,
+            avatar,
         ):
         self.label = label
         self.name = name
@@ -82,6 +86,8 @@ class EffectorObj(object):
         self.payment_methods = payment_methods
         self.rpps = rpps
         self.adeli = adeli
+        self.spoken_languages = spoken_languages
+        self.avatar = avatar
 
 def createEffectorRessource(request, node):
     location=node["location"]
@@ -151,7 +157,10 @@ def createEffectorRessource(request, node):
     profile = node["profile"]
     # convention
     serializer = ConventionSerializer(effector_node.convention.all(), many=True)
-    convention = serializer.data[0]
+    try:
+        convention = serializer.data[0]
+    except IndexError:
+        convention = None
     # carte vitale
     carte_vitale = location.carteVitale
     #third party payer 
@@ -166,9 +175,17 @@ def createEffectorRessource(request, node):
         many=True
     )
     payment_methods = serializer.data
-    logger.debug(payment_methods)
     rpps=health_worker.rpps
     adeli=health_worker.adeli
+    # spoken_languages
+    logger.debug(f"{health_worker.spoken_languages=}\n")
+    try:
+        spoken_languages=[
+            display_tag_name(t) for t in health_worker.spoken_languages
+        ]
+    except TypeError:
+        spoken_languages = None
+    avatar=node["avatar"]
 
     effector = EffectorObj(
         label,
@@ -193,6 +210,8 @@ def createEffectorRessource(request, node):
         payment_methods,
         rpps,
         adeli,
+        spoken_languages,
+        avatar,
     )
     return effector
 
@@ -237,7 +256,8 @@ class FullEffectorResource(Resource):
     )
     rpps = fields.CharField(attribute='rpps', null=True)
     adeli = fields.CharField(attribute='adeli', null=True)
-
+    spoken_languages = fields.ListField(attribute='spoken_languages', null=True)
+    avatar = fields.DictField(attribute='avatar', null=True)
 
     class Meta:
         resource_name = 'fulleffector'

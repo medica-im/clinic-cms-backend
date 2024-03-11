@@ -178,6 +178,26 @@ def get_phones(request, effector):
             phones.extend(serializer.data)
         return phones
 
+def get_avatar_url(effector_facility_uid):
+    try:
+        contact = Contact.objects.get(neomodel_uid=effector_facility_uid)
+    except Contact.DoesNotExist:
+        return
+    try:
+        fb = contact.profile_image["avatar_facebook"].url
+        logger.debug(f'{fb=}')
+    except:
+        fb = None
+    try:
+        lt = obj.user.contact.profile_image["avatar_linkedin_twitter"].url
+        logger.debug(f'{lt=}')
+    except:
+        lt = None
+    return {
+        "fb": fb,
+        "lt": lt
+    }
+
 def get_address(facility: Facility):
     try:
         contact = Contact.objects.get(neomodel_uid=facility.uid)
@@ -480,6 +500,7 @@ def find_effector(
         for pm in row[cols.index('pm')]
     ]
     health_worker=HealthWorker.inflate(row[cols.index('e')])
+    avatar=get_avatar_url(effector_facility.uid)
     return {
         "effector": effector,
         "location": effector_facility,
@@ -496,4 +517,5 @@ def find_effector(
         "third_party_payers": third_party_payers,
         "payment_methods": payment_methods,
         "health_worker": health_worker,
+        "avatar": avatar
     }

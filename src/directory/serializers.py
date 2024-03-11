@@ -1,5 +1,6 @@
 from directory.models import Directory, InputField
 from rest_framework import serializers
+import langcodes
 from langcodes import Language
 from django.utils.translation import get_language
 import logging
@@ -10,12 +11,12 @@ logger=logging.getLogger(__name__)
 
 def display_tag_name(tag: [str])->[str]:
         try:
-            Language.make(language=tag).display_name(get_language())
+            return Language.make(language=tag).display_name(get_language())
         except:
             return
 
 class SpokenLanguageSerializer(serializers.Serializer):
-    display_name = serializers.CharField()
+    spoken_language = serializers.CharField()
 
     def create(self, validated_data):
         return
@@ -25,6 +26,7 @@ class SpokenLanguageSerializer(serializers.Serializer):
             'display_name',
             instance.display_name
         )
+        logger.debug(f"{display_name_data=}")
         instance.display_name = display_tag_name(display_name_data)
         instance.save()
         return instance
