@@ -465,17 +465,28 @@ class Command(BaseCommand):
             f"uid: {effector.uid}\n"
             f"name_fr: {effector.name_fr}\n"
             f"label_fr: {effector.label_fr}\n"
-            f"Commune: {display_relationship(effector.commune)}\n"
             f"EffectorType: {display_relationship(effector.type)}\n"
             f"Effector facility: {effector.facility.all()}\n"
-            f"convention: {effector.convention.all()[0].name if effector.convention.all() else None}\n"
         )
-        if effector and options["facility"] and f:
+        try:
+            hw=HealthWorker.nodes.get(uid=effector.uid)
+        except Exception as e:
+            warning+=f"This effector is not a HealthWorker ({e})\n"
+            hw=None
+        if hw:
+            warning+=f"RPPS: {hw.rpps}\n"
+            warning+=f"ADELI: {hw.adeli}\n"
+            warning+=f"Spoken languages: {hw.spoken_languages}\n"
+            convention = (
+                effector.convention.all()[0].name
+                if effector.convention.all()
+                else None
+            )
+            warning+=(f"Convention: {convention} \n")
+        if hw and effector and options["facility"] and f:
             rel = effector.facility.relationship(f)
             if rel:
                 warning+=f"Carte Vitale: {rel.carteVitale}\n"
                 warning+=f"Payment methods: {rel.payment}\n"
                 warning+=f"Third party payers: {rel.thirdPartyPayment}\n"
-        self.warn(
-            warning
-        )
+        self.warn(warning)
