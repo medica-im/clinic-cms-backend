@@ -23,6 +23,7 @@ from addressbook.api.serializers import (
     AddressSerializer,
     ProfileSerializer,
 )
+from access.utils import get_role
 from workforce.serializers import ConventionSerializer
 from rest_framework.serializers import ModelSerializer
 
@@ -171,8 +172,10 @@ def get_phones(request, effector):
                     contact = Contact.objects.get(neomodel_uid=lf["facility"].uid)
                 except Contact.DoesNotExist:
                     continue
+            role = get_role(request)
+            _phones = contact.phonenumbers.filter(roles__in=[role]).distinct()
             serializer = PhoneNumberSerializer(
-                contact.phonenumbers.all(),
+                _phones,
                 many=True
             )
             phones.extend(serializer.data)
@@ -189,7 +192,7 @@ def get_avatar_url(effector_facility_uid):
     except:
         fb = None
     try:
-        lt = obj.user.contact.profile_image["avatar_linkedin_twitter"].url
+        lt = contact.profile_image["avatar_linkedin_twitter"].url
         logger.debug(f'{lt=}')
     except:
         lt = None
