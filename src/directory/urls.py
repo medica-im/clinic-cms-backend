@@ -44,6 +44,10 @@ urlpatterns = [
         views.DirectoryView.as_view(),
     ),
     path(
+        'effector_type_labels/',
+        views.EffectorTypeLabel.as_view(),
+    ),
+    path(
         'api-auth/',
         include('rest_framework.urls', namespace='rest_framework')
     ),

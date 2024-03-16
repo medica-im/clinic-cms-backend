@@ -522,3 +522,14 @@ def find_effector(
         "health_worker": health_worker,
         "avatar": avatar
     }
+
+def effector_types(directory: Directory) -> str:
+    query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:Effector)-[rel:LOCATION]->(f:Facility)
+        WHERE rel.directories=["{directory.name}"]
+        RETURN COLLECT(et.uid) AS uids;"""
+    logger.debug(query)
+    results, cols = db.cypher_query(query)
+    logger.debug(results)
+    uids=results[0][cols.index('uids')]
+    logger.debug(f'{uids}')
+    return uids

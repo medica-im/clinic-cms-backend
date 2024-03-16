@@ -5,6 +5,10 @@ from django.contrib.postgres.fields import ArrayField
 from the_big_username_blacklist import validate
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+from accounts.models import GrammaticalGender
+import logging
+
+logger=logging.getLogger(__name__)
 
 def validate_slug(value):
     if not validate(value):
@@ -159,3 +163,89 @@ class InputField(models.Model):
             f"{self.situation=} {self.commune=} {self.category=} "
             f"{self.facility} {self.search=}"
         )
+
+
+class Setting(models.Model):
+    ALPHABETICAL = "AB"
+    INVERSE_FREQUENCY = "IF"
+    SORT_CATEGORY_CHOICES = [
+        (ALPHABETICAL, "alphabetical"),
+        (INVERSE_FREQUENCY, "inverse_frequency"),
+    ]
+    directory = models.OneToOneField(
+        "directory.Directory",
+        on_delete=models.CASCADE,
+    )
+    sort_category = models.CharField(
+        max_length=2,
+        choices=SORT_CATEGORY_CHOICES,
+        default=ALPHABETICAL,
+    )
+    def __str__(self):
+        return (
+            f'Setting {self.get_sort_category_display()}'
+        )
+
+
+class Label(models.Model):
+
+    class GrammaticalNumber(models.TextChoices):
+        SINGULAR = 'S', _('Singular')
+        PLURAL = 'P', _('Plural')
+
+    class Languages(models.TextChoices):
+        ENGLISH = 'en', _('English')
+        FRENCH = 'fr', _('French')
+
+    label = models.CharField(max_length=255)
+    uid = models.UUIDField(
+        help_text="uid of neo4j EffectorType node"
+    )
+    gender = models.ManyToManyField(
+        'accounts.GrammaticalGender',
+        related_name='labels',
+    )
+    grammatical_number = models.CharField(
+        max_length=1,
+        choices=GrammaticalNumber.choices,
+        blank=True,
+    )
+    language = models.CharField(
+        max_length=2,
+        choices=Languages.choices,
+        default=Languages.ENGLISH,
+    )
+
+    def __str__(self):
+        return self.label
+
+    def natural_key(self):
+        return (self.label, self.language)
+
+    class Meta:
+        models.UniqueConstraint(
+            "label",
+            "uid",
+            "gender",
+            "grammatical_number",
+            "language",
+            name="unique_label_uid_gender_grammatical_number_language"
+        )
+
+    @staticmethod
+    def get_label(uid: str, gender: str, number: str, language: str) -> str:
+        try:
+            gender = GrammaticalGender.objects.get(name=gender)
+        except GrammaticalGender.DoesNotExist:
+            return
+        try:
+            label = Label.objects.get(
+                uid=uid,
+                gender=gender,
+                grammatical_number=number,
+                language=language
+            )
+            return label.label
+        except Label.DoesNotExist as e:
+            logger.debug(f'{e} for {uid=}, {gender=}, {number=}, {language=}')
+            return

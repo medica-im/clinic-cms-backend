@@ -177,6 +177,11 @@ class Command(BaseCommand):
             type=str,
             help=f"List of third party payers among {third_party_payers()}"
         )
+        parser.add_argument(
+            '--gender',
+            choices=['F', 'M', 'N'],
+            help='grammatical gender (choices: %(choices)s)'
+        )
 
     def handle(self, *args, **options):
         label_en=options['label_en']
@@ -213,6 +218,10 @@ class Command(BaseCommand):
                 slug_fr=slug_fr,
                 slug_en=slug_en
             )
+        if options['gender']:
+            gender = options['gender']
+            effector.gender=gender
+            effector.save()
         if options['type']:
             type_str=options['type']
             if is_valid_uuid(type_str):
@@ -460,11 +469,11 @@ class Command(BaseCommand):
                     return
                 rel.thirdPartyPayment=tpps
                 rel.save()
-
         warning = (
             f"uid: {effector.uid}\n"
             f"name_fr: {effector.name_fr}\n"
             f"label_fr: {effector.label_fr}\n"
+            f"gender: {effector.gender}\n"
             f"EffectorType: {display_relationship(effector.type)}\n"
             f"Effector facility: {effector.facility.all()}\n"
         )

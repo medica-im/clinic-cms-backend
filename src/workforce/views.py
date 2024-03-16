@@ -63,8 +63,8 @@ class WorkforceLabel(APIView):
                 }
             }
             try:
-                 F = GrammaticalGender.objects.get(name="feminine")
-                 M = GrammaticalGender.objects.get(name="masculine")
+                F = GrammaticalGender.objects.get(name="feminine")
+                M = GrammaticalGender.objects.get(name="masculine")
             except GrammaticalGender.DoesNotExist as e:
                 logger.error(f"Missing GrammaticalGender object: {e}")
             for N in ["S", "P"]:

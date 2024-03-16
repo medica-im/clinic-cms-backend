@@ -1,4 +1,4 @@
-from directory.models import Directory, InputField
+from directory.models import Directory, InputField, Setting
 from rest_framework import serializers
 import langcodes
 from langcodes import Language
@@ -6,8 +6,6 @@ from django.utils.translation import get_language
 import logging
 
 logger=logging.getLogger(__name__)
-
-
 
 def display_tag_name(tag: [str])->[str]:
         try:
@@ -119,11 +117,26 @@ class InputFieldSerializer(serializers.ModelSerializer):
         ]
 
 
+class SettingSerializer(serializers.ModelSerializer):
+    sort_category_display = serializers.CharField(
+        source='get_sort_category_display'
+    )
+    class Meta:
+        model = Setting
+        fields = [
+            'sort_category_display'
+        ]
+
+
 class DirectorySerializer(serializers.ModelSerializer):
     inputField = InputFieldSerializer(
         many=False,
         read_only=True,
         source="inputfield"
+    )
+    setting = SettingSerializer(
+        many=False,
+        read_only=True,
     )
 
     class Meta:
@@ -135,6 +148,7 @@ class DirectorySerializer(serializers.ModelSerializer):
             'slug',
             'postal_codes',
             'inputField',
+            'setting',
         ]
         depth = 3
 

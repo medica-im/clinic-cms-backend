@@ -189,7 +189,7 @@ class Label(models.Model):
     )
     gender = models.ManyToManyField(
         'accounts.GrammaticalGender',
-        related_name='labels',
+        related_name='workforcelabels',
     )
     grammatical_number = models.CharField(
         max_length=1,

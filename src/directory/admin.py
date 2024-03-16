@@ -10,6 +10,9 @@ from .models import (
     AssetFacility,
     Directory,
     InputField,
+    Setting,
+    Label,
+    EffectorType,
 )
 from modeltranslation.admin import TranslationAdmin
 from django.utils.translation import gettext_lazy as _
@@ -85,3 +88,57 @@ class InputFieldAdmin(admin.ModelAdmin):
         'facility',
         'search',
     )
+
+
+@admin.register(Setting)
+class SettingAdmin(admin.ModelAdmin):
+    list_display = (
+        'directory',
+        'sort_category',
+    )
+
+
+@admin.register(Label)
+class LabelAdmin(admin.ModelAdmin):
+    list_display = (
+        'label',
+        'language',
+        'uid',
+        'effector_type_tag',
+        'genders_tag',
+        'grammatical_number',
+    )
+    list_filter = (
+        'language',
+        'gender',
+        'grammatical_number',
+        'uid',
+    )
+    fields = (
+        'label',
+        'language',
+        'uid',
+        'effector_type_tag',
+        'gender',
+        'genders_tag',
+        'grammatical_number',
+    )
+    readonly_fields = (
+        'effector_type_tag',
+        'genders_tag',
+    )
+
+    @admin.display(description = _("Genders"))
+    def genders_tag(self, obj):
+        return [gender.name for gender in obj.gender.all()]
+
+    @admin.display(description='EffectorType')
+    def effector_type_tag(self, obj):
+        logger.debug(f'{obj.uid}')
+        #uid = str(obj.uid).replace("-", "")
+        try:
+            et=EffectorType.nodes.get(uid=obj.uid.hex)
+        except:
+            logger.warn(f'No node found for uid="{obj.uid}"')
+            return
+        return et.label_fr or et.name_fr or et.label_en or et.name_en

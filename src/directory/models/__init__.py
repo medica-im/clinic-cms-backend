@@ -6,6 +6,8 @@ from directory.models.core import (
     Asset,
     AssetFacility,
     InputField,
+    Setting,
+    Label,
 )
 from directory.models.graph import (
     PaymentMethod,
