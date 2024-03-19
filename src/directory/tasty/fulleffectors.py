@@ -1,34 +1,37 @@
-from tastypie import fields
 import logging
-from directory.utils import directory_effectors, get_directory
+
+from django.conf import settings
+from django.urls import re_path
+
+from tastypie import fields
 from tastypie.authorization import Authorization
 from tastypie.resources import Resource
 from tastypie.bundle import Bundle
 from tastypie.fields import ForeignKey
-from directory.tasty.communes import createCommuneResources
-from directory.serializers import display_tag_name
-
-from django.urls import re_path
-from directory.models import Effector, Situation, EffectorType, Commune
 from tastypie.utils import (
     is_valid_jsonp_callback_value,
     string_to_python,
     trailing_slash,
 )
+
+from directory.tasty.communes import createCommuneResources
+from directory.serializers import display_tag_name
 from directory.utils import (
     get_phones,
-    get_effectors,
     find_effector_uid,
     find_effector,
+    directory_effectors,
+    get_directory,
 )
 from directory.serializers import (
     ConventionSerializer,
     ThirdPartyPayerSerializer,
-    SpokenLanguageSerializer,
 )
-from directory.tasty.types import createEffectorTypeResources
-from django.core.cache import cache
-from django.conf import settings
+from directory.tasty.types import (
+    createEffectorTypeResources,
+    flex_effector_type_label
+)
+from directory.models import Label
 
 logger=logging.getLogger(__name__)
 
@@ -95,7 +98,7 @@ def createEffectorRessource(request, node):
     effector_node=node["effector"]
     health_worker=node["health_worker"]
     address=node["address"]
-    commune_node: Commune = node["commune"]
+    commune_node = node["commune"]
     commune_obj = createCommuneResources(
         request,
         [commune_node]
@@ -130,13 +133,14 @@ def createEffectorRessource(request, node):
     )
     effector_uid = effector_node.uid
     et = node["effector_type"]
-    logger.debug(f"{et=}")
-    type_obj_lst = createEffectorTypeResources(request, [et])
-    logger.debug(f"{type_obj_lst=}")
-    type_obj=type_obj_lst[0]
-    logger.debug(f"{type_obj=}")
-    effector_type=type_obj.__dict__
-    logger.debug(f"{effector_type=}")
+    effector_type_obj_lst = createEffectorTypeResources(request, [et])
+    effector_type_obj=effector_type_obj_lst[0]
+    effector_type_obj=flex_effector_type_label(
+        effector_node,
+        effector_type_obj,
+        request
+    )
+    effector_type_dict=effector_type_obj.__dict__
     phones = get_phones(request, effector_node)
     updatedAt = max(
         [
@@ -193,7 +197,7 @@ def createEffectorRessource(request, node):
         slug,
         uid,
         effector_uid,
-        effector_type,
+        effector_type_dict,
         commune,
         address,
         phones,

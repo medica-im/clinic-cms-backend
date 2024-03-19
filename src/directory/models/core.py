@@ -233,9 +233,9 @@ class Label(models.Model):
         )
 
     @staticmethod
-    def get_label(uid: str, gender: str, number: str, language: str) -> str:
+    def get_label(uid: str, gender_code: str, number: str, language: str) -> str:
         try:
-            gender = GrammaticalGender.objects.get(name=gender)
+            gender = GrammaticalGender.objects.get(code=gender_code)
         except GrammaticalGender.DoesNotExist:
             return
         try:

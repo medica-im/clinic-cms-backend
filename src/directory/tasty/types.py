@@ -4,19 +4,33 @@ from tastypie.authorization import Authorization
 from tastypie.resources import Resource
 from tastypie.bundle import Bundle
 from django.urls import re_path
-from directory.models import Effector, Situation, EffectorType, HCW
+from directory.models import EffectorType, Label
 from tastypie.utils import (
     is_valid_jsonp_callback_value,
     string_to_python,
     trailing_slash,
 )
-from directory.utils import (
-    get_phones
-)
 
 from django.conf import settings
 
 logger=logging.getLogger(__name__)
+
+def flex_effector_type_label(
+        effector,
+        effector_type,
+        request,
+    ):
+    try:
+        effector_type_label=Label.get_label(
+            effector_type.uid,
+            effector.gender,
+            "S",
+            settings.LANGUAGE_CODE
+        )
+    except:
+        effector_type_label=None
+    effector_type.label = effector_type_label or effector_type.name
+    return effector_type
 
 
 class EffectorTypeObj(object):

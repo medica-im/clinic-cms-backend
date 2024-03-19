@@ -24,7 +24,6 @@ from addressbook.api.serializers import (
     ProfileSerializer,
 )
 from access.utils import get_role
-from workforce.serializers import ConventionSerializer
 from rest_framework.serializers import ModelSerializer
 
 logger = logging.getLogger(__name__)
@@ -375,7 +374,7 @@ def get_location_uids(effector_uids):
 def get_effectors(request, situation):
     effectors=[]
     directory=get_directory(request)
-    results, meta = db.cypher_query(
+    results, _meta = db.cypher_query(
         f"""
         MATCH (s:Situation)
         WHERE s.uid = "{situation.uid}"
@@ -387,7 +386,7 @@ def get_effectors(request, situation):
         for e in results:
             effector=Effector.inflate(e[0])
             effectors.append(effector)
-    results, meta = db.cypher_query(
+    results, _meta = db.cypher_query(
         f"""
         MATCH (s:Situation)
         WHERE s.uid = "{situation.uid}"
@@ -399,7 +398,7 @@ def get_effectors(request, situation):
         for e in results:
             effector=Effector.inflate(e[0])
             effectors.append(effector)
-    results, meta = db.cypher_query(
+    results, _meta = db.cypher_query(
         f"""
         MATCH (s:Situation)
         WHERE s.uid = "{situation.uid}"
@@ -457,7 +456,7 @@ def find_effector_uid(effector_type_slug, commune_slug, effector_slug):
     except Exception as e:
         logger.error(
             f"No Location relationship with {effector_type_slug=}, {commune_slug=}, "
-            f"{effector_slug=} could be found."
+            f"{effector_slug=} could be found. {e}"
         )
         
         

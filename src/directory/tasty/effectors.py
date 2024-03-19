@@ -19,7 +19,10 @@ from directory.utils import (
     get_phones,
     get_effectors,
 )
-from directory.tasty.types import createEffectorTypeResources
+from directory.tasty.types import (
+    createEffectorTypeResources,
+    flex_effector_type_label
+)
 from django.core.cache import cache
 from django.conf import settings
 
@@ -34,6 +37,7 @@ class EffectorObj(object):
             self,
             label,
             name,
+            gender,
             slug,
             uid,
             effector_uid,
@@ -46,6 +50,7 @@ class EffectorObj(object):
         ):
         self.label = label
         self.name = name
+        self.gender = gender
         self.slug = slug
         self.uid = uid
         self.effector_uid = effector_uid
@@ -86,6 +91,7 @@ def createEffectorRessource(request, node):
             None
         )
     )
+    gender = effector_node.gender
     slug = getattr(
         effector_node,
         f'slug_{settings.LANGUAGE_CODE}',
@@ -96,8 +102,12 @@ def createEffectorRessource(request, node):
         )
     )
     effector_uid = effector_node.uid
-    types_obj = createEffectorTypeResources(request, node["types"])
-    types=[t.__dict__ for t in types_obj]
+    type_objects = createEffectorTypeResources(request, node["types"])
+    type_objects = [
+        flex_effector_type_label(effector_node, type_object, request)
+        for type_object in type_objects
+    ]
+    types=[t.__dict__ for t in type_objects]
     phones = get_phones(request, effector_node)
     updatedAt = max(
         [
@@ -111,6 +121,7 @@ def createEffectorRessource(request, node):
     effector = EffectorObj(
         label,
         name,
+        gender,
         slug,
         uid,
         effector_uid,
@@ -141,6 +152,7 @@ class EffectorResource(Resource):
     effector_uid = fields.CharField(attribute='effector_uid')
     label = fields.CharField(attribute='label')
     name = fields.CharField(attribute='name')
+    gender = fields.CharField(attribute='gender', null=True)
     slug = fields.CharField(attribute='slug')
     types = fields.ListField(attribute='types')
     commune = fields.DictField(attribute='commune')
