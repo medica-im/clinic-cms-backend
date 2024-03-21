@@ -312,7 +312,14 @@ class ContactAdmin(admin.ModelAdmin):
     @admin.display(description='Profile img')
     def profile_image_tag(self, obj):
         if obj.profile_image:
-            return mark_safe('<img src="/media/%s" alt="profile picture" width="42" height="42">' % (obj.profile_image))
+            return mark_safe(
+                '<img src="%s" alt="profile picture" width="%s" height="%s">'
+                % (
+                    obj.profile_image["avatar_facebook"].url,
+                    obj.profile_image["avatar_facebook"].thumbnail_options["size"][0],
+                    "100%"
+                )
+            )
 
     @admin.display(description='Type')
     def type_tag(self, obj):

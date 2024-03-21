@@ -95,21 +95,21 @@ class FacilityResource(Resource):
         allowed_methods=['get']
         collection_name = "facilities"
         authorization = Authorization()
-        detail_uri_name = 'uid'
+        detail_uri_name = 'slug'
 
     def detail_uri_kwargs(self, bundle_or_obj):
         kwargs = {}
 
         if isinstance(bundle_or_obj, Bundle):
-            kwargs['uid'] = bundle_or_obj.obj.uid
+            kwargs['slug'] = bundle_or_obj.obj.slug
         else:
-            kwargs['uid'] = bundle_or_obj.uid
+            kwargs['slug'] = bundle_or_obj.slug
         return kwargs
 
     def prepend_urls(self):
         return [
             re_path(
-                r"^(?P<resource_name>%s)/(?P<uid>[\w\d_.-]+)/$"
+                r"^(?P<resource_name>%s)/(?P<slug>[\w\d_.-]+)/$"
                 % self._meta.resource_name,
                 self.wrap_view('dispatch_detail'),
                 name="api_dispatch_detail"),
@@ -134,10 +134,10 @@ class FacilityResource(Resource):
         return self.get_object_list(bundle.request)
 
     def obj_get(self, bundle, **kwargs):
-        uid= kwargs['uid']
+        slug= kwargs['slug']
         try :
-            facility = Facility.nodes.get(uid=uid)
+            facility = Facility.nodes.get(slug=slug)
             objects = createFacilityResources(bundle.request, [facility])
             return objects[0]
         except Exception as e:
-            raise Exception(f"{e}\nCan't find Facility {uid}")
+            raise Exception(f"{e}\nCan't find Facility {slug}")
