@@ -7,9 +7,16 @@ from workforce.views import (
 )
 
 router = routers.DefaultRouter()
-router.register(r'user', WorkforceUserViewSet)
-router.register(r'occupation', WorkforceOccupationViewSet)
-
+router.register(
+    r'user',
+    WorkforceUserViewSet,
+    basename="User"
+)
+router.register(
+    r'occupation',
+    WorkforceOccupationViewSet,
+    basename="Occupation"
+)
 
 app_name = 'workforce'
 
