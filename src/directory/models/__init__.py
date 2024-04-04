@@ -27,4 +27,5 @@ from directory.models.graph import (
     EffectorFacility,
     Website,
     HealthWorker,
+    Entry,
 )

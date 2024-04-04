@@ -14,6 +14,7 @@ from neomodel import (
     Relationship,
     StructuredRel,
     ZeroOrOne,
+    OneOrMore,
 )
 from django.utils.translation import get_language
 
@@ -329,3 +330,22 @@ class FacilityType(StructuredNode):
     synonyms_en = ArrayProperty(base_property=StringProperty())
     definition_fr = StringProperty()
     definition_en = StringProperty()
+
+
+class Entry(StructuredNode):
+    uid = UniqueIdProperty()
+    active = BooleanProperty(
+        index=True,
+        default=True
+    )
+    updatedAt = IntegerProperty(default=0)
+    contactUpdatedAt = IntegerProperty(default=0)
+    effector = RelationshipTo('Effector', 'HAS_EFFECTOR')
+    facility = RelationshipTo('Facility', 'HAS_FACILITY')
+    effector_type = RelationshipTo('EffectorType', 'HAS_EFFECTOR_TYPE')
+
+
+class Directory(StructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    entries = RelationshipTo('Entry', 'HAS_ENTRY')
