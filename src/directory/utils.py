@@ -11,6 +11,7 @@ from directory.models import (
     ThirdPartyPayer,
     PaymentMethod,
     HealthWorker,
+    Entry,
 )
 from addressbook.models import Contact
 from neomodel import db
@@ -260,42 +261,47 @@ def directory_contacts(
         active: bool = True,
     ):
     if uid:
-        query=f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
-        WHERE rel.directories=["{directory.name}"] AND (rel.uid="{uid}")
-        RETURN e,rel,f;"""
+        query=f"""
+        MATCH (entry:Entry) WHERE entry.uid="{uid}"
+        WITH entry
+        MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)
+        RETURN entry,e,f;
+        """
     else:
-        query=f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
-        WHERE rel.directories=["{directory.name}"] AND rel.active={str(active)}
-        RETURN e,rel,f;"""
+        query=f"""
+        MATCH (d:Directory) WHERE d.name="{directory.name}"
+        WITH d
+        MATCH (d)-[:HAS_ENTRY]->(entry:Entry) WHERE entry.active={str(active)}
+        WITH entry
+        MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)
+        RETURN entry,e,f;
+        """ 
     results, cols = db.cypher_query(query)
     contacts=[]
     if results:
         for row in results:
             effector=row[cols.index('e')]
-            location=row[cols.index('rel')]
+            entry=row[cols.index('entry')]
             facility=row[cols.index('f')]
-            """
-            logger.debug(
-                f'{effector=} {effector["updatedAt"]=} {effector.__dict__=}\n'
-                f'{location=} {location.__dict__}\n'
-                f'{facility=} {facility.__dict__=}'
-            )
-            """
-            timestamp = max(
-                [
-                    effector["updatedAt"],
-                    location["contactUpdatedAt"],
-                    facility["contactUpdatedAt"]
-                ]
-            )
+            try:
+                timestamp = max(
+                    [
+                        effector["updatedAt"],
+                        entry["contactUpdatedAt"],
+                        facility["contactUpdatedAt"]
+                    ]
+                )
+            except Exception as e:
+                logger.error(f'{effector.name_fr}\n{e}')
             contacts.append(
                 {
-                    "uid": location["uid"],
+                    "uid": entry["uid"],
                     "timestamp": timestamp
                 }
             )
     return contacts
-
 
 def contact_uids(directory: Directory=None, active=True, search=""):
     directory_query = ""
@@ -334,7 +340,7 @@ def directory_effectors(
     else:
         query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)
         WHERE rel.directories=["{directory.name}"] AND rel.active={str(active)}
-        RETURN e,et,rel,f,c;""" 
+        RETURN e,et,rel,f,c;"""
     results, cols = db.cypher_query(query)
     if results:
         effectors=[]
@@ -357,6 +363,55 @@ def directory_effectors(
                 }
             )
         return effectors
+
+def get_entries(
+        directory: Directory,
+        uid = None,
+        label: str = "Effector",
+        active: bool = True,
+    ):
+    if uid:
+        query=f"""
+        MATCH (entry:Entry) WHERE entry.uid="{uid}"
+        WITH entry
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)
+        MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
+        MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
+        RETURN entry,e,et,f,commune;
+        """
+    else:
+        query=f"""
+        MATCH (d:Directory) WHERE d.name="{directory.name}"
+        WITH d
+        MATCH (d)-[:HAS_ENTRY]->(entry:Entry) WHERE entry.active={str(active)}
+        WITH entry
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)
+        MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
+        MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
+        RETURN entry,e,et,f,commune;
+        """
+    results, cols = db.cypher_query(query)
+    if results:
+        contacts=[]
+        for row in results:
+            effector=Effector.inflate(row[cols.index('e')])
+            facility=Facility.inflate(row[cols.index('f')])
+            commune=Commune.inflate(row[cols.index('commune')])
+            types=EffectorType.inflate(row[cols.index('et')])
+            types = types if isinstance(types, list) else [types]
+            entry=Entry.inflate(row[cols.index('entry')])
+            address = get_address(facility)
+            contacts.append(
+                {
+                    "effector": effector,
+                    "entry": entry,
+                    "address": address,
+                    "commune": commune,
+                    "types": types,
+                    "facility": facility,
+                }
+            )
+        return contacts
 
 def get_location_uids(effector_uids):
     results, cols = db.cypher_query(
@@ -460,19 +515,33 @@ def find_effector_uid(effector_type_slug, commune_slug, effector_slug):
         )
         
         
-def find_effector(
+def find_entry(
         directory: Directory,
+        facility_slug: str,
         effector_type_slug: str,
-        commune_slug: str,
         effector_slug: str
     ):
-    query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:Effector)-[rel:LOCATION]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)
-        WHERE e.slug_fr="{effector_slug}" AND c.slug_fr="{commune_slug}" AND et.slug_fr="{effector_type_slug}" AND rel.directories=["{directory.name}"]
+    query=(
+        f"""
+        MATCH (d:Directory) WHERE d.name="{directory.name}"
+        WITH d
+        MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
+        WITH entry
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune),
+        (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
+        (entry)-[:HAS_EFFECTOR]->(e:Effector)
+        WHERE e.slug_fr="{effector_slug}"
+        AND f.slug="{facility_slug}"
+        AND et.slug_fr="{effector_type_slug}"
+        WITH *
+        MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
         WITH *
         OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN rel.thirdPartyPayment
         WITH *, COLLECT(tpp) AS tpp
         OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN rel.payment
-        RETURN et,e,rel,f,c,tpp,COLLECT(pm) AS pm;"""
+        RETURN et,e,rel,f,c,tpp,COLLECT(pm) AS pm;
+        """
+    )
     logger.debug(query)
     results, cols = db.cypher_query(query)
     logger.debug(results)

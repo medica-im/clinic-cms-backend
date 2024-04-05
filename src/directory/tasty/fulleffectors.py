@@ -18,8 +18,7 @@ from directory.tasty.communes import createCommuneResources
 from directory.serializers import display_tag_name
 from directory.utils import (
     get_phones,
-    find_effector_uid,
-    find_effector,
+    find_entry,
     directory_effectors,
     get_directory,
 )
@@ -299,8 +298,7 @@ class FullEffectorResource(Resource):
     def prepend_urls(self):
         return [
             re_path(
-                #r"^(?P<resource_name>%s)/(?P<type>[\w\d_.-]+)/$"
-                r"^(?P<resource_name>%s)/(?P<type>[\w\d_.-]+)/(?P<commune>[\w\d_.-]+)/(?P<name>[\w\d_.-]+)/$"
+                r"^(?P<resource_name>%s)/(?P<facility>[\w\d_.-]+)/(?P<type>[\w\d_.-]+)/(?P<name>[\w\d_.-]+)/$"
                 % self._meta.resource_name,
                 self.wrap_view('dispatch_detail'),
                 name="api_dispatch_detail"),
@@ -324,13 +322,13 @@ class FullEffectorResource(Resource):
         return self.get_object_list(bundle.request)
 
     def obj_get(self, bundle, **kwargs):
-        logger.debug(f"!\n!\n!\n!\n!\n!!\n!\n!\n!\n!\n!{bundle.request.GET.__dict__=}\n{kwargs=}!\n!\n!\n!\n!\n!!\n!\n!\n!\n!\n!n")
-        uid=find_effector_uid(kwargs["type"],kwargs["commune"],kwargs["name"])
-        logger.debug(f"!\n!\n!\n!\n!\n!!\n!\n!\n!\n!\n!{uid=}\n!\n!\n!\n!\n!\n!!\n!\n!\n!\n!\n!n")
+        #logger.debug(f"!\n!\n!\n!\n!\n!!\n!\n!\n!\n!\n!{bundle.request.GET.__dict__=}\n{kwargs=}!\n!\n!\n!\n!\n!!\n!\n!\n!\n!\n!n")
+        #uid=find_effector_uid(kwargs["facility"],kwargs["type"],kwargs["name"])
+        #logger.debug(f"!\n!\n!\n!\n!\n!!\n!\n!\n!\n!\n!{uid=}\n!\n!\n!\n!\n!\n!!\n!\n!\n!\n!\n!n")
         directory=get_directory(bundle.request)
-        try :
-            effector = find_effector(directory, kwargs["type"], kwargs["commune"], kwargs["name"])
+        try:
+            effector = find_entry(directory, kwargs["facility"], kwargs["type"], kwargs["name"])
             logger.debug(effector)
             return createEffectorRessource(bundle.request, effector)
         except Exception as e : 
-            raise Exception(f'Cannot find Effector {kwargs["type"]},{kwargs["commune"]},{kwargs["name"]} {e}')
+            raise Exception(f'Cannot find Effector {kwargs["facility"]},{kwargs["type"]},{kwargs["name"]} {e}')
