@@ -1,9 +1,18 @@
 import uuid
 from django.contrib import admin
-from django import forms
-from taggit_labels.widgets import LabelWidget
-from taggit.forms import TagField
-from addressbook.models import *
+from addressbook.models import (
+    Address,
+    Appointment,
+    Contact,
+    PhoneNumber,
+    Website,
+    SocialNetwork,
+    App,
+    AppLink,
+    AppStore,
+    Email,
+    Profile,
+)
 from facility.models import Organization, Facility
 from django.utils.translation import gettext_lazy as _
 from django.utils.safestring import mark_safe
@@ -14,7 +23,7 @@ from constance import config
 from neomodel import db
 from directory.models import Effector, Directory
 from directory.models import Facility as NeoFacility
-from directory.utils import directory_effectors, contact_uids
+from directory.utils import contact_uids
 import logging
 
 logger=logging.getLogger(__name__)
@@ -114,12 +123,8 @@ class ProfileInline(admin.StackedInline):
     extra = 0
 
 
-
-#class ContactForm(forms.ModelForm):
-#    tags = TagField(required=False, widget=LabelWidget)
-
+@admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
-    #form = ContactForm
     list_display = (
         'name_tag',
         'profile_image_tag',
@@ -235,9 +240,13 @@ class ContactAdmin(admin.ModelAdmin):
             return obj.formatted_name
         if not obj.neomodel_uid:
             return
+        try:
+            return f"E: {Effector.nodes.get(uid=obj.neomodel_uid.hex).name_fr}"
+        except:
+            pass
         # node uid is the UUID4 hex representation without dashes:
         # FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-        results, meta = db.cypher_query(
+        results, _meta = db.cypher_query(
             f"""MATCH (f:Facility)
             WHERE f.uid="{obj.neomodel_uid.hex}"
             RETURN f"""
@@ -247,8 +256,8 @@ class ContactAdmin(admin.ModelAdmin):
             organization_array=f.organization.all()
             if organization_array:
                 organization=organization_array[0]
-                return f'org: {organization.name_fr or organization.label_fr}'
-        results, meta = db.cypher_query(
+                return f'O: {organization.name_fr or organization.label_fr}'
+        results, _meta = db.cypher_query(
             f"""MATCH (e:Effector)-[l:LOCATION]-(f:Facility)
             WHERE f.uid="{obj.neomodel_uid.hex}"
             RETURN e"""
@@ -258,26 +267,28 @@ class ContactAdmin(admin.ModelAdmin):
             for e in results:
                 effector=Effector.inflate(e[0])
                 names.append(effector.name_fr or effector.label_fr)
-            return f'facility: {", ".join(names)}'
+            return f'F: {", ".join(names)}'
         # relationship uid is the UUID4 string representation with dashes:
         # FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF
         query=f"""MATCH (e:Effector)-[rel:LOCATION {{ uid: "{obj.neomodel_uid}"}}]->(f:Facility) RETURN e"""
         results, cols = db.cypher_query(query)
         if results:
             effector = Effector.inflate(results[0][cols.index('e')])
-            return effector.name_fr
+            return f"EF: {effector.name_fr}"
 
     def get_search_results(self, request, queryset, search_term):
+        is_uuid = False
         try:
-            search_term = str(uuid.UUID(search_term))
+            _uuid = uuid.UUID(search_term)
+            is_uuid=True
         except ValueError:
             pass
-        search_queryset, may_have_duplicates = super().get_search_results(
+        if is_uuid:
+            search_queryset, may_have_duplicates = super().get_search_results(
             request,
             queryset,
-            search_term,
-        )
-        if not search_term:
+            _uuid,
+            )
             return search_queryset, may_have_duplicates
         query_ids = queryset.values_list('id', flat=True)
         final_queryset = Contact.objects.none()
@@ -370,7 +381,6 @@ class AddressAdmin(admin.ModelAdmin):
     autocomplete_fields = ['contact']
 
 
-admin.site.register(Contact, ContactAdmin)
 admin.site.register(PhoneNumber, admin.ModelAdmin)
 admin.site.register(Website, admin.ModelAdmin)
 admin.site.register(SocialNetwork, admin.ModelAdmin)

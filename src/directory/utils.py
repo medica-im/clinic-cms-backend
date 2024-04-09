@@ -36,100 +36,112 @@ def get_directory(request):
     except Directory.DoesNotExist:
         return
 
-def get_contact_related_neomodel(
-        ef: EffectorFacility,
-        f: Facility,
-        attribute: str,
-        Serializer:  ModelSerializer,
-        many: bool = True
+def get_contact_related_elements(
+        neo_entity,
+        attribute,
+        many: bool
     ):
     try:
-        contact = Contact.objects.get(neomodel_uid=ef.uid)
-    except Contact.DoesNotExist:
-        contact = None
+        contact = Contact.objects.get(neomodel_uid=neo_entity.uid)
+    except (Contact.DoesNotExist, AttributeError):
+        return None
     try:
         related = getattr(contact, attribute)
         if many:
-            has_related = bool(related.all())
+            return list(related.all()) or None
         else:
-            has_related = bool(related)
+            return related
     except AttributeError:
-        has_related = False
-    if not contact or not has_related:
-        try:
-            contact = Contact.objects.get(neomodel_uid=f.uid)
-        except Contact.DoesNotExist:
-            return
-    try:
-        if many:
-            elements = getattr(contact, attribute).all()
-        else:
-            elements = getattr(contact, attribute)
-    except AttributeError:
-        return
-    logger.debug(f'{elements=}')
-    serializer = Serializer(
-        elements,
-        many=many
-    )
-    return serializer.data
+        return None
 
-def get_profile_neomodel(ef: EffectorFacility, f: Facility):
+def get_contact_related_neomodel(
+        e: Effector|None = None,
+        ef: EffectorFacility|None = None,
+        f: Facility|None = None,
+        attribute: str = "",
+        Serializer:  ModelSerializer = None,
+        many: bool = True,
+        first_hit = False,
+    ):
+    elements = set()
+    for neo_entity in [e, ef, f]:
+        new_elements = get_contact_related_elements(
+            neo_entity=neo_entity,
+            attribute=attribute,
+            many=many
+        )
+        if new_elements:
+            try:
+                elements.add(new_elements)
+            except TypeError:
+                elements.update(new_elements)
+        if len(elements) and first_hit:
+            break
+    try:
+        elements.remove(None)
+    except KeyError:
+        pass
+    if elements:
+        try:
+            serializer = Serializer(
+                elements,
+                many=many
+            )
+        except AttributeError:
+            return
+        return serializer.data
+
+def get_profile_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
     return get_contact_related_neomodel(
-        ef,
-        f,
-        "profile",
-        ProfileSerializer,
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="profile",
+        Serializer=ProfileSerializer,
         many=False
     )
 
-def get_appointments_neomodel(ef: EffectorFacility, f: Facility):
+def get_appointments_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
     return get_contact_related_neomodel(
-        ef,
-        f,
-        "appointments",
-        AppointmentSerializer
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="appointments",
+        Serializer=AppointmentSerializer
 )
 
-def get_websites_neomodel(ef: EffectorFacility, f: Facility):
+def get_websites_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
     return get_contact_related_neomodel(
-        ef,
-        f,
-        "websites",
-        WebsiteSerializer
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="websites",
+        Serializer=WebsiteSerializer
     )
 
-def get_socialnetworks_neomodel(ef: EffectorFacility, f: Facility):
+def get_socialnetworks_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
     return get_contact_related_neomodel(
-        ef,
-        f,
-        "socialnetworks",
-        SocialNetworkSerializer
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="socialnetworks",
+        Serializer=SocialNetworkSerializer
     )
 
-def get_phones_neomodel(ef: EffectorFacility, f: Facility):
-    phones = []
-    try:
-        contact = Contact.objects.get(neomodel_uid=ef.uid)
-    except Contact.DoesNotExist:
-        contact = None
-    if not contact or not contact.phonenumbers.all():
-        try:
-            contact = Contact.objects.get(neomodel_uid=f.uid)
-        except Contact.DoesNotExist:
-            return
-    serializer = PhoneNumberSerializer(
-        contact.phonenumbers.all(),
-        many=True
+def get_phones_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
+    return get_contact_related_neomodel(
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="phonenumbers",
+        Serializer=PhoneNumberSerializer,
+        first_hit=True,
     )
-    phones.extend(serializer.data)
-    return phones
 
 def get_emails_neomodel(ef: EffectorFacility, f: Facility):
     emails = []
     try:
         contact = Contact.objects.get(neomodel_uid=ef.uid)
-        logger.debug(f'{contact=} {contact.emails.all()=}')
     except Contact.DoesNotExist:
         contact = None
     if not contact or not contact.emails.all():
@@ -294,7 +306,7 @@ def directory_contacts(
                     ]
                 )
             except Exception as e:
-                logger.error(f'{effector.name_fr}\n{e}')
+                logger.warn(f'{effector.name_fr}\n{e}')
             contacts.append(
                 {
                     "uid": entry["uid"],
@@ -304,25 +316,38 @@ def directory_contacts(
     return contacts
 
 def contact_uids(directory: Directory=None, active=True, search=""):
-    directory_query = ""
     if directory:
-        directory_query=f'AND rel.directories=["{directory.name}"]'
-    search_query = ""
+        directory_query = f'WHERE d.name="{directory.name}"'
+    else:
+        directory_query = ""
     if search:
-        search_query = f'AND n.name_fr =~ "(?i).*{search}.*"'
-    query=f"""MATCH (n)-[rel:LOCATION]-(f:Facility)
-        WHERE (n:Effector OR n:Organization)
+        search_query = f'WHERE e.name_fr =~ "(?i).*{search}.*"'
+    else:
+        search_query = ""
+    query=(
+        f"""
+        MATCH (d:Directory)
         {directory_query}
-        AND rel.active={str(active)}
+        WITH d
+        MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
+        WITH entry
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune),
+        (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
+        (entry)-[:HAS_EFFECTOR]->(e:Effector)
         {search_query}
-        RETURN rel,f;"""
-    logger.warn(query)
+        WITH *
+        MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
+        RETURN et,e,rel,f,c;
+        """
+    )
     results, cols = db.cypher_query(query)
     if results:
         contacts=[]
         for row in results:
+            effector=Effector.inflate(row[cols.index('e')])
             location=EffectorFacility.inflate(row[cols.index('rel')])
             facility=Facility.inflate(row[cols.index('f')])
+            contacts.append(effector.uid)
             contacts.append(location.uid)
             contacts.append(facility.uid)
         return contacts
@@ -505,7 +530,6 @@ def find_effector_uid(effector_type_slug, commune_slug, effector_slug):
             location=EffectorFacility.inflate(row[cols.index('rel')])
             uids.append(location.uid)
     try:
-        #logger.debug(f"{effectors[0].uid=}")
         logger.debug(f"{uids[0]=}")
         return uids[0]
     except Exception as e:
@@ -542,9 +566,7 @@ def find_entry(
         RETURN et,e,rel,f,c,tpp,COLLECT(pm) AS pm;
         """
     )
-    logger.debug(query)
     results, cols = db.cypher_query(query)
-    logger.debug(results)
     try:
         row=results[0]
     except Exception as e:
@@ -556,12 +578,32 @@ def find_entry(
     commune=Commune.inflate(row[cols.index('c')])
     effector_type=EffectorType.inflate(row[cols.index('et')])
     address = get_address(facility)
-    phones = get_phones_neomodel(effector_facility,facility)
+    phones = get_phones_neomodel(
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
     emails = get_emails_neomodel(effector_facility,facility)
-    websites = get_websites_neomodel(effector_facility, facility)
-    socialnetworks = get_socialnetworks_neomodel(effector_facility, facility)
-    appointments = get_appointments_neomodel(effector_facility, facility)
-    profile = get_profile_neomodel(effector_facility, facility)
+    websites = get_websites_neomodel(
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
+    socialnetworks = get_socialnetworks_neomodel(
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
+    appointments = get_appointments_neomodel(
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
+    profile = get_profile_neomodel(
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
     third_party_payers = [
         ThirdPartyPayer.inflate(payer)
         for payer in row[cols.index('tpp')]
@@ -595,9 +637,6 @@ def effector_types(directory: Directory) -> str:
     query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:Effector)-[rel:LOCATION]->(f:Facility)
         WHERE rel.directories=["{directory.name}"]
         RETURN COLLECT(et.uid) AS uids;"""
-    logger.debug(query)
     results, cols = db.cypher_query(query)
-    logger.debug(results)
     uids=results[0][cols.index('uids')]
-    logger.debug(f'{uids}')
     return uids
