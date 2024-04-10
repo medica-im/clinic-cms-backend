@@ -138,23 +138,15 @@ def get_phones_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
         first_hit=True,
     )
 
-def get_emails_neomodel(ef: EffectorFacility, f: Facility):
-    emails = []
-    try:
-        contact = Contact.objects.get(neomodel_uid=ef.uid)
-    except Contact.DoesNotExist:
-        contact = None
-    if not contact or not contact.emails.all():
-        try:
-            contact = Contact.objects.get(neomodel_uid=f.uid)
-        except Contact.DoesNotExist:
-            return
-    serializer = EmailSerializer(
-        contact.emails.all(),
-        many=True
+def get_emails_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
+    return get_contact_related_neomodel(
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="emails",
+        Serializer=EmailSerializer,
+        first_hit=False,
     )
-    emails.extend(serializer.data)
-    return emails
 
 def get_phones(request, effector):
     directory=get_directory(request)
@@ -583,7 +575,11 @@ def find_entry(
         ef=effector_facility,
         f=facility
     )
-    emails = get_emails_neomodel(effector_facility,facility)
+    emails = get_emails_neomodel(
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
     websites = get_websites_neomodel(
         e=effector,
         ef=effector_facility,
