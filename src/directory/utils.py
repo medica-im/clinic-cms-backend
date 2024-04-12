@@ -136,6 +136,7 @@ def get_phones_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
         attribute="phonenumbers",
         Serializer=PhoneNumberSerializer,
         first_hit=True,
+        many=True,
     )
 
 def get_emails_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
@@ -146,6 +147,7 @@ def get_emails_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
         attribute="emails",
         Serializer=EmailSerializer,
         first_hit=False,
+        many=True,
     )
 
 def get_phones(request, effector):
@@ -192,12 +194,10 @@ def get_avatar_url(effector_facility_uid):
         return
     try:
         fb = contact.profile_image["avatar_facebook"].url
-        logger.debug(f'{fb=}')
     except:
         fb = None
     try:
         lt = contact.profile_image["avatar_linkedin_twitter"].url
-        logger.debug(f'{lt=}')
     except:
         lt = None
     return {
@@ -369,6 +369,7 @@ def directory_effectors(
             types=EffectorType.inflate(row[cols.index('et')])
             types = types if isinstance(types, list) else [types]
             address = get_address(facility)
+            avatar=get_avatar_url(location.uid)
             effectors.append(
                 {
                     "effector": effector,
@@ -377,6 +378,7 @@ def directory_effectors(
                     "commune": commune,
                     "types": types,
                     "facility": facility,
+                    "avatar": avatar,
                 }
             )
         return effectors
@@ -405,7 +407,9 @@ def get_entries(
         MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)
         MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
         MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
-        RETURN entry,e,et,f,commune;
+        WITH *
+        MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
+        RETURN entry,e,et,f,commune,rel;
         """
     results, cols = db.cypher_query(query)
     if results:
@@ -418,6 +422,8 @@ def get_entries(
             types = types if isinstance(types, list) else [types]
             entry=Entry.inflate(row[cols.index('entry')])
             address = get_address(facility)
+            location=EffectorFacility.inflate(row[cols.index('rel')])
+            avatar=get_avatar_url(location.uid)
             contacts.append(
                 {
                     "effector": effector,
@@ -426,6 +432,7 @@ def get_entries(
                     "commune": commune,
                     "types": types,
                     "facility": facility,
+                    "avatar": avatar,
                 }
             )
         return contacts
@@ -522,7 +529,6 @@ def find_effector_uid(effector_type_slug, commune_slug, effector_slug):
             location=EffectorFacility.inflate(row[cols.index('rel')])
             uids.append(location.uid)
     try:
-        logger.debug(f"{uids[0]=}")
         return uids[0]
     except Exception as e:
         logger.error(
