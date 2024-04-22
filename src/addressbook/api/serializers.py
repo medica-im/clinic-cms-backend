@@ -143,6 +143,9 @@ class ContactSerializer(serializers.ModelSerializer):
 
 class AddressSerializer(serializers.ModelSerializer):
     facility_uid = serializers.SerializerMethodField()
+    tooltip_direction = serializers.CharField(
+        source='get_tooltip_direction_display'
+    )
 
     class Meta:
         model = Address
@@ -159,6 +162,9 @@ class AddressSerializer(serializers.ModelSerializer):
             'latitude',
             'longitude',
             'zoom',
+            'tooltip_direction',
+            'tooltip_permanent',
+            'tooltip_text',
         ]
         depth = 2
 

@@ -130,6 +130,14 @@ class Address(models.Model):
     class AddressType(models.TextChoices):
         HOME = 'Home', pgettext_lazy('Address', 'Home')
         WORK = 'Work', pgettext_lazy('Address', 'Work')
+ 
+    class Direction(models.TextChoices):
+        RIGHT = 'R', _('right')
+        LEFT = 'L', _('left')
+        TOP = 'T', _('top')
+        BOTTOM = 'B', _('bottom')
+        CENTER = 'C', _('center')
+        AUTO = 'A', _('auto')
 
     contact = models.OneToOneField(
         Contact,
@@ -189,6 +197,19 @@ class Address(models.Model):
             MinValueValidator(1),
             MaxValueValidator(21)
         ]
+    )
+    tooltip_direction = models.CharField(
+        max_length=1,
+        choices=Direction.choices,
+        default=Direction.AUTO,
+    )
+    tooltip_permanent = models.BooleanField(
+        default=False
+    )
+    tooltip_text = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
     )
     objects = AddressManager()
 

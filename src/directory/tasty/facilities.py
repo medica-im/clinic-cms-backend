@@ -5,10 +5,17 @@ Created on Nov 5, 2023
 '''
 from tastypie import fields
 import logging
-from directory.utils import get_facilities, get_directory, get_address
-from directory.models import Commune
+from directory.utils import (
+    get_facilities,
+    get_directory,
+    get_address,
+    get_phones_neomodel,
+    get_emails_neomodel,
+    get_socialnetworks_neomodel,
+    get_websites_neomodel,
+    get_avatar_url
+)
 from directory.models import Facility
-from directory.tasty.communes import createCommuneResources
 from django.urls import re_path
 from tastypie.authorization import Authorization
 from tastypie.resources import Resource
@@ -30,7 +37,12 @@ class FacilityObj(object):
             slug,
             commune,
             address,
-            organizations=None
+            organizations,
+            phones,
+            emails,
+            websites,
+            socialnetworks,
+            avatar,
         ):
         self.uid = uid
         self.name = name
@@ -38,6 +50,11 @@ class FacilityObj(object):
         self.commune = commune
         self.address = address
         self.organizations = organizations
+        self.phones = phones
+        self.emails = emails
+        self.websites = websites
+        self.socialnetworks = socialnetworks
+        self.avatar = avatar
 
 def createFacilityResources(request, nodes):
     data= []
@@ -67,14 +84,23 @@ def createFacilityResources(request, nodes):
             logger.error(e)
             commune = None
         organizations = [org.uid for org in node.organization.all()]
-
+        phones = get_phones_neomodel(f=node)
+        emails = get_emails_neomodel(f=node)
+        websites = get_websites_neomodel(f=node)
+        socialnetworks=get_socialnetworks_neomodel(f=node)
+        avatar = get_avatar_url(node.uid)
         obj = FacilityObj(
             uid,
             name,
             slug,
             commune,
             address,
-            organizations
+            organizations,
+            phones,
+            emails,
+            websites,
+            socialnetworks,
+            avatar,
         )
         data.append(obj)
     return data
@@ -88,6 +114,11 @@ class FacilityResource(Resource):
     commune = fields.CharField(attribute='commune', null=True)
     address = fields.DictField(attribute='address', null=True)
     organizations = fields.ListField(attribute='organizations', null=True)
+    phones = fields.ListField(attribute='phones', null=True)
+    emails = fields.ListField(attribute='emails', null=True)
+    websites = fields.ListField(attribute='websites', null=True)
+    socialnetworks = fields.ListField(attribute='socialnetworks', null=True)
+    avatar = fields.DictField(attribute='avatar', null=True)
 
 
     class Meta:

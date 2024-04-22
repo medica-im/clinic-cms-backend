@@ -26,6 +26,7 @@ from addressbook.api.serializers import (
 )
 from access.utils import get_role
 from rest_framework.serializers import ModelSerializer
+from rdflib.plugins.shared.jsonld.keys import NONE
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,11 @@ def get_appointments_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
         Serializer=AppointmentSerializer
 )
 
-def get_websites_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
+def get_websites_neomodel(
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None
+    ):
     return get_contact_related_neomodel(
         e=e,
         ef=ef,
@@ -119,7 +124,11 @@ def get_websites_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
         Serializer=WebsiteSerializer
     )
 
-def get_socialnetworks_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
+def get_socialnetworks_neomodel(
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None,
+    ):
     return get_contact_related_neomodel(
         e=e,
         ef=ef,
@@ -128,7 +137,11 @@ def get_socialnetworks_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
         Serializer=SocialNetworkSerializer
     )
 
-def get_phones_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
+def get_phones_neomodel(
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None,
+    ):
     return get_contact_related_neomodel(
         e=e,
         ef=ef,
@@ -139,7 +152,11 @@ def get_phones_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
         many=True,
     )
 
-def get_emails_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
+def get_emails_neomodel(
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None
+    ):
     return get_contact_related_neomodel(
         e=e,
         ef=ef,
@@ -200,9 +217,14 @@ def get_avatar_url(effector_facility_uid):
         lt = contact.profile_image["avatar_linkedin_twitter"].url
     except:
         lt = None
+    try:
+        raw = contact.profile_image.url
+    except:
+        raw = None
     return {
         "fb": fb,
-        "lt": lt
+        "lt": lt,
+        "raw": raw
     }
 
 def get_address(facility: Facility):
