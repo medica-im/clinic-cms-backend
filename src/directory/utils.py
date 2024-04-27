@@ -659,8 +659,17 @@ def find_entry(
 
 def effector_types(directory: Directory) -> str:
     query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:Effector)-[rel:LOCATION]->(f:Facility)
-        WHERE rel.directories=["{directory.name}"]
+        WHERE rel.directories=["{directory.name}"] AND rel.active = true
         RETURN COLLECT(et.uid) AS uids;"""
     results, cols = db.cypher_query(query)
-    uids=results[0][cols.index('uids')]
+    uids1=results[0][cols.index('uids')]
+    query=f"""MATCH (d:Directory)
+        WHERE d.name="{directory.name}"
+        WITH d
+        MATCH (d)-[:HAS_ENTRY]->(e:Entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
+        WHERE e.active = true
+        RETURN COLLECT(et.uid) AS uids;"""
+    results, cols = db.cypher_query(query)
+    uids2=results[0][cols.index('uids')]
+    uids = list(set(uids1 + uids2))
     return uids

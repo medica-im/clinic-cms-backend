@@ -165,7 +165,7 @@ class EffectorResource(Resource):
     types = fields.ListField(attribute='types')
     commune = fields.DictField(attribute='commune')
     address = fields.DictField(attribute='address', null=True)
-    phones = fields.ListField(attribute='phones')
+    phones = fields.ListField(attribute='phones', null=True)
     facility = fields.DictField(attribute='facility')
     avatar = fields.DictField(attribute='avatar', null=True)
     updatedAt = fields.IntegerField(attribute='updatedAt')

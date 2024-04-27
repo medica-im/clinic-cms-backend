@@ -19,8 +19,10 @@ from directory.models import (
     Directory,
     EffectorFacility,
     Convention,
-    HealthWorker
+    HealthWorker,
+    Entry,
 )
+from directory.models.graph import Directory as NeoDirectory
 from addressbook.models import Contact, PhoneNumber
 from neomodel import Q, db
 import uuid
@@ -136,13 +138,12 @@ class Command(BaseCommand):
         )
 
     def add_arguments(self, parser):
-        parser.add_argument('effector', type=str)
+        parser.add_argument('--effector', type=str)
         parser.add_argument('--label_fr', type=str)
         parser.add_argument('--label_en', type=str)   
         parser.add_argument('--name_fr', type=str)
         parser.add_argument('--name_en', type=str)
         parser.add_argument('--type', type=str)
-        parser.add_argument('--commune', type=str)
         parser.add_argument('--organization', type=str)
         parser.add_argument('--division_of', type=str)
         parser.add_argument('--facility', type=str)
@@ -246,27 +247,6 @@ class Command(BaseCommand):
                 effector_type=effector_type_qs[0]
             if not effector.type:
                 effector.type.connect(effector_type)
-        if options['commune']:
-            commune=options['commune']
-            if is_valid_uuid(commune):
-                try:
-                    c=Commune.nodes.get(uid=commune)
-                except neomodel.DoesNotExist as e:
-                    self.warn(f'{e}')
-                    return
-            else:     
-                commune_qs= Commune.nodes.filter(
-                    Q(name_fr=commune)
-                    | Q(name_fr=commune)
-                )
-                if not commune_qs:
-                    self.warn(f"No Commune instance found for {commune}")
-                    return
-                elif len(commune_qs)>1:
-                    self.warn(f"More than one Commune instance found for {commune}")
-                    return
-                c=commune_qs[0]
-            effector.commune.connect(c)
         if options['organization']:
             organization_str=options['organization']
             o = get_organization(organization_str)
@@ -276,9 +256,14 @@ class Command(BaseCommand):
         if options['facility'] and options['directory']:
             directory=options['directory']
             try:
-                Directory.objects.get(name=directory)
+                directory_postgres = Directory.objects.get(name=directory)
             except Directory.DoesNotExist:
                 self.warn(f"Directory {directory} does not exist.")
+                return
+            try:
+                directory_node = NeoDirectory.nodes.get(name=directory_postgres.name)
+            except:
+                self.warn(f"Directory {directory} does not exist in neo4j.")
                 return
             facility_uid=options['facility']
             if facility_uid and is_valid_uuid(facility_uid):
@@ -290,10 +275,21 @@ class Command(BaseCommand):
                 if facility_uid in [f.uid for f in effector.facility.all()]:
                     self.warn(f'{effector.name_fr} is already linked to facility {f}')
                 else:
-                    directories=[directory]
                     if (effector.facility.connect(
-                        f, {"directories": directories, "uid": uuid.uuid4()})):
+                        f, {"uid": uuid.uuid4().hex})):
                         self.warn(f'{effector.name_fr} was linked to facility {f}')
+            if effector_type and effector and f and directory_node:
+                entry = Entry()
+                entry.save()
+                entry.effector.connect(effector)
+                entry.effector_type.connect(effector_type)
+                entry.facility.connect(f)
+                entry.save()
+                directory_node.entries.connect(entry)
+                self.warn(
+                    f"Entry {entry} was created "
+                    f"and connected to Directory {directory_node}"
+                )
         facility_uid = options['facility']
         if facility_uid and is_valid_uuid(facility_uid):
             try:

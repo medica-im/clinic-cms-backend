@@ -239,7 +239,7 @@ class FullEffectorResource(Resource):
     effector_type = fields.DictField(attribute='effector_type')
     commune = fields.DictField(attribute='commune')
     address = fields.DictField(attribute='address', null=True)
-    phones = fields.ListField(attribute='phones')
+    phones = fields.ListField(attribute='phones', null=True)
     facility = fields.DictField(attribute='facility')
     updatedAt = fields.IntegerField(attribute='updatedAt')
     emails = fields.ListField(attribute='emails', null=True)
