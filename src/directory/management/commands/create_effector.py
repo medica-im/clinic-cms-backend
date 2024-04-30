@@ -25,7 +25,6 @@ from directory.models import (
 from directory.models.graph import Directory as NeoDirectory
 from addressbook.models import Contact, PhoneNumber
 from neomodel import Q, db
-import uuid
 from directory.utils import add_label
 from neomodel.exceptions import MultipleNodesReturned
 

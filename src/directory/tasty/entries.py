@@ -15,7 +15,7 @@ from tastypie.utils import (
     trailing_slash,
 )
 from directory.utils import (
-    get_phones,
+    get_phones_neomodel,
     get_directory,
     get_entries
 )
@@ -110,7 +110,11 @@ def createEntryResource(request, node):
         for type_object in type_objects
     ]
     types=[t.__dict__ for t in type_objects]
-    phones = get_phones(request, effector_node)
+    phones = get_phones_neomodel(
+        e=effector_node,
+        ef=node["location"],
+        f=node["facility"],
+    )
     updatedAt = max(
         [
             effector_node.updatedAt,

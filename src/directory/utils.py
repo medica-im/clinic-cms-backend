@@ -455,6 +455,7 @@ def get_entries(
                     "types": types,
                     "facility": facility,
                     "avatar": avatar,
+                    "location": location,
                 }
             )
         return contacts

@@ -275,6 +275,12 @@ class ContactAdmin(admin.ModelAdmin):
         if results:
             effector = Effector.inflate(results[0][cols.index('e')])
             return f"EF: {effector.name_fr}"
+        # check for hex version of uid
+        query=f"""MATCH (e:Effector)-[rel:LOCATION {{ uid: "{obj.neomodel_uid.hex}"}}]->(f:Facility) RETURN e"""
+        results, cols = db.cypher_query(query)
+        if results:
+            effector = Effector.inflate(results[0][cols.index('e')])
+            return f"EF: {effector.name_fr}"
 
     def get_search_results(self, request, queryset, search_term):
         is_uuid = False

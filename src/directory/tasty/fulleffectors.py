@@ -17,7 +17,7 @@ from tastypie.utils import (
 from directory.tasty.communes import createCommuneResources
 from directory.serializers import display_tag_name
 from directory.utils import (
-    get_phones,
+    get_phones_neomodel,
     find_entry,
     directory_effectors,
     get_directory,
@@ -140,7 +140,7 @@ def createEffectorRessource(request, node):
         request
     )
     effector_type_dict=effector_type_obj.__dict__
-    phones = get_phones(request, effector_node)
+    phones = node["phones"]
     updatedAt = max(
         [
             effector_node.updatedAt,
