@@ -316,6 +316,11 @@ class Facility(StructuredNode):
     name = StringProperty()
     slug = StringProperty()
     type = RelationshipTo('FacilityType', 'IS_A')
+    effectors = RelationshipFrom(
+        Effector,
+        "LOCATION",
+        model = EffectorFacility
+    )
 
 
 class FacilityType(StructuredNode):
