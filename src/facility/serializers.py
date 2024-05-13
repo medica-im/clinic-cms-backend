@@ -38,6 +38,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     contact = ContactSerializer(many=False, read_only=True)
     facility = FacilitySerializer(many=True, read_only=True)
     legal_entity = LegalEntitySerializer(many=False, read_only=True)
+    uid = serializers.UUIDField(format='hex', source='neomodel_uid')
 
     class Meta:
         model = Organization
@@ -56,7 +57,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'registration',
             'google_site_verification',
             'city',
-            'legal_entity'
+            'legal_entity',
+            'uid',
         ]
         depth = 4
 

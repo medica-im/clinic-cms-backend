@@ -354,3 +354,4 @@ class Directory(StructuredNode):
     uid = UniqueIdProperty()
     name = StringProperty(unique_index=True)
     entries = RelationshipTo('Entry', 'HAS_ENTRY')
+    organization = RelationshipTo('Organization', 'OWNED_BY')
