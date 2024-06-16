@@ -1,5 +1,4 @@
 import logging
-from django.contrib.auth import get_user_model
 from access.models import Role
 from workforce.utils import is_staff
 from django.http import HttpRequest
@@ -7,7 +6,6 @@ from access.models import AccessControl, Endpoint, Role
 from rest_framework import permissions
 from facility.utils import get_organization
 
-User=get_user_model()
 
 logger = logging.getLogger(__name__)
 

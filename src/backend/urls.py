@@ -16,10 +16,6 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path, re_path
 
-from wagtail.admin import urls as wagtailadmin_urls
-from wagtail import urls as wagtail_urls
-from wagtail.documents import urls as wagtaildocs_urls
-from cms.api import api_router
 from django.views.generic import TemplateView
 from accounts.reset import PasswordResetConfirmRedirectView
 
@@ -32,11 +28,8 @@ urlpatterns = [
     path('api/v1/facility/', include('facility.urls', namespace='facility')),
     path('api/v1/opengraph/', include('opengraph.urls', namespace='opengraph')),
     path('api/v1/workforce/', include('workforce.urls', namespace='workforce')),
+    path('api/v1/surveys/', include('survey.urls', namespace='survey')),
     path('form/', include('contact.urls', namespace='contact')),
-    path('cms/api/v2/', api_router.urls),
-    path('cms/', include(wagtailadmin_urls)),
-    path('documents/', include(wagtaildocs_urls)),
-    path('pages/', include(wagtail_urls)),
     path('verification/', include('verify_email.urls')),
     path('dj-rest-auth/', include('dj_rest_auth.urls')),
     # this url is used to generate email content

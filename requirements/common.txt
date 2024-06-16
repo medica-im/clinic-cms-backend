@@ -1,9 +1,10 @@
-django>=4.1,<4.2
+django>=4.2,<5
 python-decouple
 djangorestframework
 djangorestframework-simplejwt
 gunicorn
-psycopg2-binary
+psycopg
+psycopg-c
 django-modeltranslation
 django-postgresql-dag[transforms]
 the-big-username-blacklist
@@ -19,8 +20,7 @@ django-simple-history
 django-constance[database]
 redis
 django-contact-form[akismet]
-wagtail==4.2.3
-wagtailsvg
 langcodes[data]
 Django-Verify-Email
 dj-rest-auth
+django-anymail[mailgun]

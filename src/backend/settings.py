@@ -4,6 +4,7 @@ from django.utils.log import DEFAULT_LOGGING
 from pathlib import Path
 from decouple import AutoConfig, Csv
 from django.utils.translation import gettext_lazy as _
+from django.conf.global_settings import EMAIL_BACKEND
 
 logger = logging.getLogger(__name__)
 
@@ -156,20 +157,6 @@ INSTALLED_APPS = [
     'simple_history',
     'verify_email.apps.VerifyEmailConfig',
     'dj_rest_auth',
-    #wagtail
-    'wagtail.contrib.forms',
-    'wagtail.contrib.redirects',
-    'wagtail.embeds',
-    'wagtail.sites',
-    'wagtail.users',
-    'wagtail.snippets',
-    'wagtail.documents',
-    'wagtail.images',
-    'wagtail.search',
-    'wagtail.admin',
-    'wagtail',
-    'wagtail.api.v2',
-    'modelcluster',
     # local apps
     'backend',
     'accounts',
@@ -181,8 +168,9 @@ INSTALLED_APPS = [
     'access',
     'contact',
     'opengraph',
-    'cms',
     'nlp',
+    'survey',
+    'anymail',
 ]
 
 if DEBUG:
@@ -200,7 +188,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'wagtail.contrib.redirects.middleware.RedirectMiddleware',
     'django.contrib.sites.middleware.CurrentSiteMiddleware',
 ]
 
@@ -408,6 +395,10 @@ CONSTANCE_CONFIG = {
 }
 
 #Email
+EMAIL_BACKEND=config('EMAIL_BACKEND')
+ANYMAIL = {
+    "MAILGUN_API_KEY": config('MAILGUN_API_KEY'),
+}
 DEFAULT_FROM_EMAIL=config('DEFAULT_FROM_EMAIL', default="webmaster@localhost")
 EMAIL_HOST=config('EMAIL_HOST')
 EMAIL_PORT=config('EMAIL_PORT')
@@ -418,9 +409,6 @@ EMAIL_USE_TLS=True
 #EMAIL_TIMEOUT
 #EMAIL_SSL_KEYFILE
 #EMAIL_SSL_CERTFILE
-
-#Wagtail
-WAGTAIL_SITE_NAME = 'Healthcenter'
 
 REST_AUTH = {
     'PASSWORD_RESET_USE_SITES_DOMAIN': True,

@@ -1,4 +1,4 @@
-FROM python:3.10-bullseye AS prod
+FROM python:3.12-bullseye AS prod
 
 ENV PYTHONUNBUFFERED 1
 ENV DOCKER_CONTAINER 1
