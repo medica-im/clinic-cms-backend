@@ -53,8 +53,7 @@ class Response(models.Model):
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
-        ok = send_email_alert(self.survey, self)
-        logger.debug(f'send_email_alert {ok=}')
+        send_email_alert(self.survey, self)
 
 
     class Meta:

@@ -398,6 +398,8 @@ CONSTANCE_CONFIG = {
 EMAIL_BACKEND=config('EMAIL_BACKEND')
 ANYMAIL = {
     "MAILGUN_API_KEY": config('MAILGUN_API_KEY'),
+    "DEBUG_API_REQUESTS": config("DEBUG_API_REQUESTS", cast=bool, default=False),
+    "MAILGUN_API_URL": "https://api.eu.mailgun.net/v3",
 }
 DEFAULT_FROM_EMAIL=config('DEFAULT_FROM_EMAIL', default="webmaster@localhost")
 EMAIL_HOST=config('EMAIL_HOST')
