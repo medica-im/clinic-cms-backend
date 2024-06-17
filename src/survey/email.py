@@ -8,7 +8,8 @@ import logging
 logger=logging.getLogger(__name__)
 
 
-def send_email_alert(survey, response):
+def send_email_alert(response):
+    survey=response.survey
     url=(
         f'https://{survey.site.domain}/accounts/login'
         f'?redirect=/enquete/{survey.name}/{response.id}'

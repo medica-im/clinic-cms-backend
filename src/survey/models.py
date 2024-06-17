@@ -3,6 +3,8 @@ from django.contrib.sites.models import Site
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from survey.email import send_email_alert
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 import logging
 
 logger=logging.getLogger(__name__)
@@ -50,11 +52,13 @@ class Response(models.Model):
     
     def __str__(self):
         return f'{self.id} {self.survey} {self.content[:140]}'
-    
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)  # Call the "real" save() method.
-        send_email_alert(self.survey, self)
 
 
     class Meta:
         ordering = ['created']
+
+
+@receiver(post_save, sender=Response)
+def response_saved(sender, instance, created, **kwargs):
+    if created:
+        send_email_alert(instance)
