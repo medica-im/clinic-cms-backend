@@ -204,28 +204,52 @@ def get_phones(request, effector):
             phones.extend(serializer.data)
         return phones
 
-def get_avatar_url(effector_facility_uid):
+def get_avatar_url(
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None
+    ):
+    def get_avatar_dict(profile_image):
+        if not profile_image:
+            return
+        try:
+            fb = profile_image["avatar_facebook"].url
+        except:
+            fb = None
+        try:
+            lt = profile_image["avatar_linkedin_twitter"].url
+        except:
+            lt = None
+        try:
+            raw = profile_image.url
+        except:
+            raw = None
+        return {
+            "fb": fb,
+            "lt": lt,
+            "raw": raw
+        }
+
     try:
-        contact = Contact.objects.get(neomodel_uid=effector_facility_uid)
-    except Contact.DoesNotExist:
-        return
+        e_avatar = Contact.objects.get(neomodel_uid=e.uid).profile_image
+    except (Contact.DoesNotExist, AttributeError):
+        e_avatar = None
     try:
-        fb = contact.profile_image["avatar_facebook"].url
-    except:
-        fb = None
+        ef_avatar = Contact.objects.get(neomodel_uid=ef.uid).profile_image
+    except (Contact.DoesNotExist, AttributeError):
+        ef_avatar = None
     try:
-        lt = contact.profile_image["avatar_linkedin_twitter"].url
-    except:
-        lt = None
-    try:
-        raw = contact.profile_image.url
-    except:
-        raw = None
-    return {
-        "fb": fb,
-        "lt": lt,
-        "raw": raw
-    }
+        f_avatar = Contact.objects.get(neomodel_uid=f.uid).profile_image
+    except (Contact.DoesNotExist, AttributeError):
+        f_avatar = None
+    if (e_avatar and ef_avatar):
+        return get_avatar_dict(ef_avatar)
+    if (not ef_avatar and e_avatar):
+        return get_avatar_dict(e_avatar)
+    if (ef_avatar):
+        return get_avatar_dict(ef_avatar)
+    if (e is None and ef is None and f):
+        return get_avatar_dict(f_avatar)
 
 def get_address(facility: Facility):
     try:
@@ -391,7 +415,7 @@ def directory_effectors(
             types=EffectorType.inflate(row[cols.index('et')])
             types = types if isinstance(types, list) else [types]
             address = get_address(facility)
-            avatar=get_avatar_url(location.uid)
+            avatar=get_avatar_url(effector, location, facility)
             effectors.append(
                 {
                     "effector": effector,
@@ -445,7 +469,7 @@ def get_entries(
             entry=Entry.inflate(row[cols.index('entry')])
             address = get_address(facility)
             location=EffectorFacility.inflate(row[cols.index('rel')])
-            avatar=get_avatar_url(location.uid)
+            avatar=get_avatar_url(effector, location, facility)
             contacts.append(
                 {
                     "effector": effector,
@@ -638,7 +662,7 @@ def find_entry(
         for pm in row[cols.index('pm')]
     ]
     health_worker=HealthWorker.inflate(row[cols.index('e')])
-    avatar=get_avatar_url(effector_facility.uid)
+    avatar=get_avatar_url(effector, effector_facility, facility)
     return {
         "effector": effector,
         "location": effector_facility,

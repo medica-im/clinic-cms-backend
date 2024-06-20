@@ -90,7 +90,7 @@ def createFacilityResources(request, nodes):
         emails = get_emails_neomodel(f=node)
         websites = get_websites_neomodel(f=node)
         socialnetworks=get_socialnetworks_neomodel(f=node)
-        avatar = get_avatar_url(node.uid)
+        avatar = get_avatar_url(f=node)
         effectors=[e.uid for e in node.effectors.all()]
         obj = FacilityObj(
             uid,
