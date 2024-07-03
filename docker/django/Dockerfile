@@ -1,7 +1,7 @@
 FROM python:3.11-bookworm AS prod
 
-ENV PYTHONUNBUFFERED 1
-ENV DOCKER_CONTAINER 1
+ENV PYTHONUNBUFFERED=1
+ENV DOCKER_CONTAINER=1
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get clean && apt-get update && apt-get install --no-install-recommends -y \
@@ -19,9 +19,9 @@ RUN echo "Europe/Paris" > /etc/timezone && \
     update-locale LANG=fr_FR.UTF-8
 
 RUN locale -a
-ENV LANG fr_FR.UTF-8
-ENV LANGUAGE fr_FR
-ENV LC_ALL fr_FR.UTF-8
+ENV LANG=fr_FR.UTF-8
+ENV LANGUAGE=fr_FR
+ENV LC_ALL=fr_FR.UTF-8
 
 ADD ./requirements /backend/requirements
 RUN pip install pip --upgrade
@@ -32,8 +32,8 @@ RUN mkdir /var/log/gunicorn && touch /var/log/gunicorn/gunicorn.log
 RUN mkdir /backend/src
 WORKDIR /backend/src
 
-ENV PYTHONPATH "$PYTHONPATH:/backend/src/backend:/backend/src"
-ENV DJANGO_SETTINGS_MODULE backend.settings
+ENV PYTHONPATH="$PYTHONPATH:/backend/src/backend:/backend/src"
+ENV DJANGO_SETTINGS_MODULE=backend.settings
 
 FROM prod AS dev
 

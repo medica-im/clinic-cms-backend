@@ -15,10 +15,7 @@ from tastypie.utils import (
     string_to_python,
     trailing_slash,
 )
-from directory.utils import (
-    get_phones,
-    get_effectors,
-)
+from directory.utils import get_phones
 from directory.tasty.types import (
     createEffectorTypeResources,
     flex_effector_type_label

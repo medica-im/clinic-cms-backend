@@ -11,9 +11,7 @@ from directory.models import Situation
 from tastypie.utils import (
     trailing_slash,
 )
-from directory.utils import (
-    get_effectors,
-)
+from directory.utils import entries_of_situation
 from django.conf import settings
 
 logger=logging.getLogger(__name__)
@@ -23,11 +21,11 @@ class SituationObj(object):
             self,
             uid,
             name,
-            effectors,
+            entries,
         ):
         self.uid = uid
         self.name = name
-        self.effectors = effectors
+        self.entries = entries
 
 def createSituationResources(request, nodes):
     data= []
@@ -38,11 +36,12 @@ def createSituationResources(request, nodes):
             f'name_{settings.LANGUAGE_CODE}',
             'name_en'
         )
-        effectors = get_effectors(request, node)
+        entries = entries_of_situation(request, node)
+        logger.debug(f'{entries=}')
         situation = SituationObj(
             uid,
             name,
-            effectors,
+            entries,
         )
         data.append(situation)
     return data
@@ -53,7 +52,7 @@ class SituationResource(Resource):
     # fields we're going to handle with the API here.
     uid = fields.CharField(attribute='uid')
     name = fields.CharField(attribute='name')
-    effectors = fields.ListField(attribute='effectors')
+    entries = fields.ListField(attribute='entries')
 
     class Meta:
         resource_name = 'situations'

@@ -497,53 +497,54 @@ def get_location_uids(effector_uids):
             location_uids.append(location.uid)
         return location_uids
 
-def get_effectors(request, situation):
-    effectors=[]
+def entries_of_situation(request, situation):
+    entries=[]
     directory=get_directory(request)
     results, _meta = db.cypher_query(
         f"""
         MATCH (s:Situation)
         WHERE s.uid = "{situation.uid}"
         MATCH (et:EffectorType)-[:MANAGES]->(s)
-        MATCH (et)<-[:IS_A*]-(e:Effector) RETURN e
+        MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
+        WHERE d.name = "{directory.name}"
+        RETURN e
         """
     )
     if results:
         for e in results:
-            effector=Effector.inflate(e[0])
-            effectors.append(effector)
+            entry=Entry.inflate(e[0])
+            entries.append(entry)
     results, _meta = db.cypher_query(
         f"""
         MATCH (s:Situation)
         WHERE s.uid = "{situation.uid}"
         MATCH (s)-[:IMPACTS]->(n:Need)<-[:MANAGES]-(et:EffectorType)
-        MATCH (et)<-[:IS_A*]-(e:Effector) RETURN e
+        MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
+        WHERE d.name = "{directory.name}"
+        RETURN e
         """
     )
     if results:
         for e in results:
-            effector=Effector.inflate(e[0])
-            effectors.append(effector)
+            entry=Entry.inflate(e[0])
+            entries.append(entry)
     results, _meta = db.cypher_query(
         f"""
         MATCH (s:Situation)
         WHERE s.uid = "{situation.uid}"
         MATCH (s)-[:IMPACTS]->(n:Need)<-[:PART_OF]-(n2:Need)<-[:MANAGES]-(et:EffectorType)
-        MATCH (et)<-[:IS_A*]-(e:Effector) RETURN e
+        MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
+        WHERE d.name = "{directory.name}"
+        RETURN e
         """
     )
     if results:
         for e in results:
-            effector=Effector.inflate(e[0])
-            effectors.append(effector)
-    try:
-        _directory_effectors = [
-            _dict["effector"] for _dict in directory_effectors(directory)
-        ]
-    except TypeError:
-        return []
-    effector_uids = [ e.uid for e in effectors if e in _directory_effectors]
-    return get_location_uids(effector_uids)
+            entry=Entry.inflate(e[0])
+            entries.append(entry)
+
+    entries_uids = [ e.uid for e in entries]
+    return entries_uids
 
 def add_label(uid: str, label: str):
     results, cols = db.cypher_query(
