@@ -1,4 +1,4 @@
-FROM python:3.11-bookworm AS prod
+FROM python:3.12-bullseye AS prod
 
 ENV PYTHONUNBUFFERED=1
 ENV DOCKER_CONTAINER=1
@@ -7,6 +7,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get clean && apt-get update && apt-get install --no-install-recommends -y \
     locales \
     build-essential \
+    python3-yaml \
     binutils \
  && rm -rf /var/lib/apt/lists/*
  
@@ -41,5 +42,4 @@ RUN apt-get clean && apt-get update && apt-get install -y \
     postgresql-client \
     gettext \
  && rm -rf /var/lib/apt/lists/*
-
 RUN pip install --upgrade -r /backend/requirements/development.txt
