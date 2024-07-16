@@ -145,6 +145,11 @@ class Command(BaseCommand):
         parser.add_argument('--type', type=str)
         parser.add_argument('--organization', type=str)
         parser.add_argument('--division_of', type=str)
+        parser.add_argument(
+            '--part_of',
+            help="effector uuid",
+            type=str
+        )
         parser.add_argument('--facility', type=str)
         parser.add_argument('--directory', type=str)
         parser.add_argument('--slug_fr', type=str)
@@ -464,6 +469,15 @@ class Command(BaseCommand):
                     return
                 rel.thirdPartyPayment=tpps
                 rel.save()
+        # part_of
+        part_of = options["part_of"]
+        if part_of:
+            try:
+                e = Effector.nodes.get(uid=part_of)
+            except Exception as e:
+                self.error(f"No Effector found with uid={part_of}\n{e}")
+                return
+            effector.effector.connect(e)
         warning = (
             f"uid: {effector.uid}\n"
             f"name_fr: {effector.name_fr}\n"
@@ -471,6 +485,7 @@ class Command(BaseCommand):
             f"gender: {effector.gender}\n"
             f"EffectorType: {display_relationship(effector.type)}\n"
             f"Effector facility: {effector.facility.all()}\n"
+            f"Effector-[PART_OF]-> {effector.effector.all()}\n"
         )
         try:
             hw=HealthWorker.nodes.get(uid=effector.uid)
