@@ -33,7 +33,6 @@ RUN mkdir /var/log/gunicorn && touch /var/log/gunicorn/gunicorn.log
 RUN mkdir /backend/src
 WORKDIR /backend/src
 
-ENV PYTHONPATH="$PYTHONPATH:/backend/src/backend:/backend/src"
 ENV DJANGO_SETTINGS_MODULE=backend.settings
 
 FROM prod AS dev
