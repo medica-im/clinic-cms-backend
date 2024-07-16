@@ -7,6 +7,7 @@ from neomodel import (
     BooleanProperty,
     StringProperty,
     IntegerProperty,
+    DateTimeFormatProperty,
     UniqueIdProperty,
     ArrayProperty,
     RelationshipTo,
@@ -343,6 +344,8 @@ class Entry(StructuredNode):
         index=True,
         default=True
     )
+    deactivation_datetime = DateTimeFormatProperty(format="%Y-%m-%dT%H:%M:%S.%fZ")
+    deactivation_reason = StringProperty()
     updatedAt = IntegerProperty(default=0)
     contactUpdatedAt = IntegerProperty(default=0)
     effector = RelationshipTo('Effector', 'HAS_EFFECTOR')
