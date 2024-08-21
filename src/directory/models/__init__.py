@@ -28,4 +28,5 @@ from directory.models.graph import (
     Website,
     HealthWorker,
     Entry,
+    DepartmentOfFrance,
 )

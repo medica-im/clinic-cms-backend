@@ -303,32 +303,6 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', cast=Csv())
 
-SHELL_PLUS = "ipython"
-
-SHELL_PLUS_PRINT_SQL = True
-
-NOTEBOOK_ARGUMENTS = [
-    "--ip",
-    "0.0.0.0",
-    "--port",
-    "8888",
-    "--allow-root",
-    "--no-browser",
-]
-
-IPYTHON_ARGUMENTS = [
-    "--ext",
-    "django_extensions.management.notebook_extension",
-    "--debug",
-]
-
-IPYTHON_KERNEL_DISPLAY_NAME = "Django Shell-Plus"
-
-#SHELL_PLUS_POST_IMPORTS = [ # extra things to import in notebook
-#    ("module1.submodule", ("func1", "func2", "class1", "etc")),
-#    ("module2.submodule", ("func1", "func2", "class1", "etc"))
-#]
-
 THUMBNAIL_ALIASES = {
     'addressbook.Contact.profile_image': {
         'avatar_facebook': {'size': (170, 170), 'crop': False},

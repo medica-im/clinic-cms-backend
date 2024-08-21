@@ -30,51 +30,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
-def wikidata(code: str, select: str):
-    """
-    Get 2-letter country code from city wikidata code.
-    """
-    query=f"""
-        SELECT ?postalCode ?countryCode WHERE {{
-        wd:{code} wdt:P17 ?country .
-        ?country wdt:P297 ?countryCode .
-        wd:{code} wdt:P281 ?postalCode .
-        }}
-        """
-    data_extracter = WikiDataQueryResults(query)
-    df = data_extracter.load_as_dataframe()
-    cache.set(
-        f"postal_code_{code}",
-        df.postalCode[0],
-        WIKIDATA_TTL
-    )
-    cache.set(
-        f"country_code_{code}",
-        df.countryCode[0],
-        WIKIDATA_TTL
-    )
-    if select=="countryCode":
-        return df.countryCode[0]
-    elif select=="postalCode":
-        return df.postalCode[0]
-
-def get_country_code(code: str)->str:
-    country_code = cache.get_or_set(
-        f"country_code_{code}",
-        lambda: wikidata(code, "countryCode"),
-        WIKIDATA_TTL
-    )
-    return country_code
-
-def get_postal_code(code: str)->str:
-    postal_code = cache.get_or_set(
-        f"postal_code_{code}",
-        lambda: wikidata(code, "postalCode"),
-        WIKIDATA_TTL
-    )
-    return postal_code
-
 def is_valid_uuid(val):
     try:
         uuid.UUID(str(val))
@@ -101,6 +56,7 @@ class Command(BaseCommand):
         parser.add_argument('--facility', type=str)
         parser.add_argument('--name', type=str)
         parser.add_argument('--slug', type=str)
+        parser.add_argument('--country', default='FR')
 
     def handle(self, *args, **options):
         commune_str=options['commune']
@@ -154,8 +110,8 @@ class Command(BaseCommand):
             address, created = Address.objects.get_or_create(
                 contact=contact,
                 city=commune.name_fr,
-                country=get_country_code(commune.wikidata),
-                zip=get_postal_code(commune.wikidata)
+                country=options["country"],
+                zip=None
             )
             if created:
                 address.roles.set(Role.objects.all())

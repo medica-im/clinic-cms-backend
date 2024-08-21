@@ -1,15 +1,16 @@
 FROM python:3.12-bullseye AS prod
 
 ENV PYTHONUNBUFFERED=1
-ENV DOCKER_CONTAINER=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+#ENV DOCKER_CONTAINER=1
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get clean && apt-get update && apt-get install --no-install-recommends -y \
     locales \
     build-essential \
     python3-yaml \
-    binutils \
- && rm -rf /var/lib/apt/lists/*
+    binutils
  
 RUN echo "Europe/Paris" > /etc/timezone && \
     dpkg-reconfigure -f noninteractive tzdata && \

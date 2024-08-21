@@ -291,15 +291,26 @@ class HealthWorker(Effector):
 
 class AdministrativeTerritorialEntityOfFrance(StructuredNode):
     uid = UniqueIdProperty()
-    name_en = StringProperty(unique_index=True)
-    name_fr = StringProperty(unique_index=True)
-    slug_en = StringProperty(unique_index=True)
-    slug_fr = StringProperty(unique_index=True)
+    name_en = StringProperty(unique_index=False)
+    name_fr = StringProperty(unique_index=False)
+    slug_en = StringProperty(unique_index=False)
+    slug_fr = StringProperty(unique_index=False)
     wikidata = StringProperty(unique_index=True)
 
 
 class Commune(AdministrativeTerritorialEntityOfFrance):
-    pass
+    department = RelationshipTo(
+        'DepartmentOfFrance',
+        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
+    )
+
+
+class DepartmentOfFrance(StructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    code = StringProperty(unique_index=True)
+    slug = StringProperty(unique_index=True)
+    wikidata = StringProperty(unique_index=True)
 
 
 class MunicipalArrondissement(AdministrativeTerritorialEntityOfFrance):

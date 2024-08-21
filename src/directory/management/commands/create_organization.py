@@ -267,10 +267,15 @@ class Command(BaseCommand):
             except Exception as e:
                 logger.debug(e)
                 return
-        self.warn(
+        msg = (
             f"name_fr: {organization.name_fr}\n"
             f"label_fr: {organization.label_fr}\n"
             f"uid: {organization.uid}\n"
             f"Commune: {display_relationship(organization.commune)}\n"
             f"OrganizationType: {display_relationship(organization.type)}"
+        )
+        if not options['f'] and facility:
+            msg += f"\nFacility UID: {facility.uid}"
+        self.warn(
+            msg
         )
