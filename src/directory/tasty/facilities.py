@@ -34,6 +34,7 @@ class FacilityObj(object):
             self,
             uid,
             name,
+            label,
             slug,
             commune,
             address,
@@ -47,6 +48,7 @@ class FacilityObj(object):
         ):
         self.uid = uid
         self.name = name
+        self.label = label
         self.slug = slug
         self.commune = commune
         self.address = address
@@ -78,6 +80,10 @@ def createFacilityResources(request, nodes):
                 )
             except:
                 name=node.uid
+        try:
+            label = node.label
+        except:
+            label = name
         slug = node.slug
         address = get_address(node)
         try:
@@ -95,6 +101,7 @@ def createFacilityResources(request, nodes):
         obj = FacilityObj(
             uid,
             name,
+            label,
             slug,
             commune,
             address,
@@ -114,6 +121,7 @@ class FacilityResource(Resource):
     # fields we're going to handle with the API here.
     uid = fields.CharField(attribute='uid')
     name = fields.CharField(attribute='name', null=True)
+    label = fields.CharField(attribute='label', null=True)
     slug = fields.CharField(attribute='slug', null=True)
     commune = fields.CharField(attribute='commune', null=True)
     address = fields.DictField(attribute='address', null=True)

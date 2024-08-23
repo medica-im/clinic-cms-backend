@@ -326,6 +326,7 @@ class Facility(StructuredNode):
     )
     contactUpdatedAt = IntegerProperty(default=0)
     name = StringProperty()
+    label = StringProperty()
     slug = StringProperty()
     type = RelationshipTo('FacilityType', 'IS_A')
     effectors = RelationshipFrom(
