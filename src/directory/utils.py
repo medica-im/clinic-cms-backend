@@ -290,8 +290,11 @@ def get_facilities(
         WHERE f.uid="{uid}"
         RETURN f;"""
     else:
-        query=f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
-        WHERE rel.directories=["{directory.name}"] AND rel.active={str(active)}
+        query=f"""MATCH (d:Directory)-[:HAS_ENTRY]->(e:Entry),
+        (e)-[:HAS_EFFECTOR]->(:Effector),
+        (e)-[:HAS_FACILITY]->(f:Facility)
+        WHERE d.name="{directory.name}"
+        AND e.active={str(active)}
         RETURN DISTINCT f;"""
     results, cols = db.cypher_query(query)
     _facilities=[]
