@@ -36,7 +36,7 @@ from directory.management.commands.care_home import is_valid_uuid
 logger = logging.getLogger(__name__)
 
 def convention():
-    query=""" MATCH (n:Convention) RETURN n"""
+    query="""MATCH (n:Convention) RETURN n"""
     results, meta = db.cypher_query(query, resolve_objects=True)
     names = []
     for row in results:
@@ -44,7 +44,7 @@ def convention():
     return names
 
 def third_party_payers():
-    query=""" MATCH (n:ThirdPartyPayer) RETURN n"""
+    query="""MATCH (n:ThirdPartyPayer) RETURN n"""
     results, meta = db.cypher_query(query, resolve_objects=True)
     names = []
     for row in results:
@@ -52,7 +52,7 @@ def third_party_payers():
     return names
 
 def payment_methods():
-    query=""" MATCH (n:PaymentMethod) RETURN n"""
+    query="""MATCH (n:PaymentMethod) RETURN n"""
     results, meta = db.cypher_query(query, resolve_objects=True)
     pms = []
     for row in results:
