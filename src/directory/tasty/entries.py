@@ -125,7 +125,8 @@ def createEntryResource(request, node):
     facility = {
         "uid": node["facility"].uid,
         "name": node["facility"].name,
-        "slug": node["facility"].slug
+        "slug": node["facility"].slug,
+        "label": node["facility"].label or node["facility"].name
     }
     avatar=node["avatar"]
 
