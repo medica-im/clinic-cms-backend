@@ -152,6 +152,7 @@ def createEffectorRessource(request, node):
         "uid": node["facility"].uid,
         "slug": node["facility"].slug,
         "name": node["facility"].name,
+        "label": node["facility"].label or node["facility"].name
     }
     emails = node["emails"]
     websites = node["websites"]
