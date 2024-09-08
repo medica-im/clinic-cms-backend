@@ -127,8 +127,7 @@ class Command(BaseCommand):
                 facility.save()
         try:
             contact, created = Contact.objects.get_or_create(
-                neomodel_uid=facility.uid,
-                formatted_name=options["name"] or ""
+                neomodel_uid=facility.uid
             )
         except Exception as e:
             logger.debug(e)
