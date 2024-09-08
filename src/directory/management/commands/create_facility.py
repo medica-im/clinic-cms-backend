@@ -43,6 +43,29 @@ def display_relationship(rel):
         for c in rel.all()
     ]
 
+def get_organization(organization):
+    if is_valid_uuid(organization):
+        try:
+            return Organization.nodes.get(uid=organization)
+        except neomodel.DoesNotExist as e:
+            self.warn(f'{e}')
+            return
+    else:
+        organization_qs= Organization.nodes.filter(
+            Q(name_fr=organization)
+            | Q(label_fr=organization)
+        )
+        if not organization_qs:
+            self.warn(f"No Organization instance found for {organization}")
+            return
+        elif len(organization_qs)>1:
+            self.warn(
+                "More than one Organization instance found for "
+                f"{organization}"
+            )
+            return
+        return organization_qs[0]
+
 class Command(BaseCommand):
     help = 'Create Facility node on neo4j'
 
@@ -57,24 +80,26 @@ class Command(BaseCommand):
         parser.add_argument('--name', type=str)
         parser.add_argument('--slug', type=str)
         parser.add_argument('--country', default='FR')
+        parser.add_argument('--organization', type=str)
 
     def handle(self, *args, **options):
         commune_str=options['commune']
-        if is_valid_uuid(commune_str):
-            try:
-                commune=Commune.nodes.get(uid=commune_str)
-            except neomodel.DoesNotExist as e:
-                self.warn(f'{e}')
-                return
-        else:
-            commune_qs= Commune.nodes.filter(name_fr=commune_str)
-            if not commune_qs:
-                self.warn(f"No Commune instance found for {commune_str}")
-                return
-            elif len(commune_qs)>1:
-                self.warn(f"More than one Commune instance found for {commune_str}")
-                return
-            commune=commune_qs[0]
+        if commune_str:
+            if is_valid_uuid(commune_str):
+                try:
+                    commune=Commune.nodes.get(uid=commune_str)
+                except neomodel.DoesNotExist as e:
+                    self.warn(f'{e}')
+                    return
+            else:
+                commune_qs= Commune.nodes.filter(name_fr=commune_str)
+                if not commune_qs:
+                    self.warn(f"No Commune instance found for {commune_str}")
+                    return
+                elif len(commune_qs)>1:
+                    self.warn(f"More than one Commune instance found for {commune_str}")
+                    return
+                commune=commune_qs[0]
 
         facility_uid = options["facility"]
         facility: Facility | None = None
@@ -86,7 +111,8 @@ class Command(BaseCommand):
         else:
             facility=Facility().save()
         if facility:
-            facility.commune.connect(commune)
+            if commune_str and commune:
+                facility.commune.connect(commune)
             if options["name"]:
                 facility.name=options["name"]
                 facility.save()
@@ -96,28 +122,35 @@ class Command(BaseCommand):
                 slug = slugify(options["name"])
             else:
                 slug = None
-            facility.slug=slug
-            facility.save()
+            if slug:
+                facility.slug=slug
+                facility.save()
         try:
-            contact, _ = Contact.objects.get_or_create(
+            contact, created = Contact.objects.get_or_create(
                 neomodel_uid=facility.uid,
                 formatted_name=options["name"] or ""
             )
         except Exception as e:
             logger.debug(e)
             return
-        try:
-            address, created = Address.objects.get_or_create(
-                contact=contact,
-                city=commune.name_fr,
-                country=options["country"],
-                zip=None
-            )
-            if created:
-                address.roles.set(Role.objects.all())
-        except Exception as e:
-            logger.debug(e)
-            return
+        if created:
+            try:
+                address, created = Address.objects.get_or_create(
+                    contact=contact,
+                    city=commune.name_fr,
+                    country=options["country"],
+                    zip=None
+                )
+                if created:
+                    address.roles.set(Role.objects.all())
+            except Exception as e:
+                logger.debug(e)
+                return
+        if options['organization']:
+            organization_str=options['organization']
+            o = get_organization(organization_str)
+            if o:
+                facility.organization.connect(o)
         self.warn(
             f"name_fr: {facility}\n"
             f"Commune: {display_relationship(facility.commune)}\n"
@@ -125,3 +158,8 @@ class Command(BaseCommand):
             f"name: {facility.name}\n"
             f"slug: {facility.slug}\n"
         )
+        orgs = facility.organization.all()
+        if orgs:
+            self.warn(
+                f"Organizations: {[org.name_fr for org in orgs]}\n"
+            )

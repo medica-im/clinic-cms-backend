@@ -508,4 +508,7 @@ class Command(BaseCommand):
                 warning+=f"Carte Vitale: {rel.carteVitale}\n"
                 warning+=f"Payment methods: {rel.payment}\n"
                 warning+=f"Third party payers: {rel.thirdPartyPayment}\n"
+        orgs = effector.organization.all()
+        if orgs:
+            warning+=f"Organizations: {[org.name_fr for org in orgs]}\n"
         self.warn(warning)
