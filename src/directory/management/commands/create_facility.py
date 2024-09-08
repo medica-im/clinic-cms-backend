@@ -76,7 +76,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--commune', type=str)
-        parser.add_argument('--facility', type=str)
+        parser.add_argument('facility', type=str)
         parser.add_argument('--name', type=str)
         parser.add_argument('--slug', type=str)
         parser.add_argument('--country', default='FR')
