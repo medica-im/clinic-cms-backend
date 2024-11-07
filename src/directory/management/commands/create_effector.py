@@ -51,6 +51,17 @@ def third_party_payers():
         names.append(row[0].name)
     return names
 
+def entry_exists(effector, effector_type, facility):
+    query=f"""MATCH (f:Facility)<-[:HAS_FACILITY]-(entry:Entry),
+    (entry)-[:HAS_EFFECTOR]->(e:Effector),
+    (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
+    WHERE e.uid="{effector.uid}"
+    AND et.uid="{effector_type.uid}"
+    AND f.uid="{facility.uid}"
+    RETURN entry"""
+    results, meta = db.cypher_query(query, resolve_objects=True)
+    return bool(results)
+
 def payment_methods():
     query="""MATCH (n:PaymentMethod) RETURN n"""
     results, meta = db.cypher_query(query, resolve_objects=True)
@@ -282,7 +293,16 @@ class Command(BaseCommand):
                     if (effector.facility.connect(
                         f, {"uid": uuid.uuid4().hex})):
                         self.warn(f'{effector.name_fr} was linked to facility {f}')
-            if effector_type and effector and f and directory_node:
+            self.warn(
+                f"Does entry exist? {str(entry_exists(effector, effector_type, f))}"
+            )
+            if (
+                effector_type
+                and effector
+                and f
+                and directory_node
+                and not entry_exists(effector, effector_type, f)
+                ):
                 entry = Entry()
                 entry.save()
                 entry.effector.connect(effector)
