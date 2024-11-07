@@ -387,6 +387,7 @@ class AddressAdmin(admin.ModelAdmin):
         "country",
         "latitude",
         "longitude",
+        "public_holidays_zone",
     )
     autocomplete_fields = ['contact']
 

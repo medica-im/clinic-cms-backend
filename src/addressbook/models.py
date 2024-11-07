@@ -130,7 +130,7 @@ class Address(models.Model):
     class AddressType(models.TextChoices):
         HOME = 'Home', pgettext_lazy('Address', 'Home')
         WORK = 'Work', pgettext_lazy('Address', 'Work')
- 
+
     class Direction(models.TextChoices):
         RIGHT = 'R', _('right')
         LEFT = 'L', _('left')
@@ -138,6 +138,22 @@ class Address(models.Model):
         BOTTOM = 'B', _('bottom')
         CENTER = 'C', _('center')
         AUTO = 'A', _('auto')
+
+    class PublicHolidaysZone(models.TextChoices):
+        ALSACE_MOSELLE = 'alsace-moselle', 'Alsace-Moselle'
+        GUADELOUPE = 'guadeloupe', 'Guadeloupe'
+        GUYANE = 'guyane', 'Guyane'
+        LA_REUNION = 'la-reunion', 'La Réunion'
+        MARTINIQUE = 'martinique', 'Martinique'
+        MAYOTTE = 'mayotte', 'Mayotte'
+        METROPOLE = 'metropole', 'Métropole'
+        NOUVELLE_CALEDONIE = 'nouvelle-caledonie', 'Nouvelle-Calédonie'
+        POLYNESIE_FRANCAISE = 'polynesie-francaise', 'Polynésie française'
+        SAINT_BARTHELEMY = 'saint-barthelemy', 'Saint-Barthélemy'
+        SAINT_MARTIN ='saint-martin', 'Saint-Martin'
+        SAINT_PIERRE_ET_MIQUELON = 'saint-pierre-et-miquelon', 'Saint-Pierre-et-Miquelon'
+        WALLIS_ET_FUTUNA = 'wallis-et-futuna', 'Wallis-et-Futuna'
+
 
     contact = models.OneToOneField(
         Contact,
@@ -170,6 +186,11 @@ class Address(models.Model):
     city = models.CharField(max_length=255)
     state = models.CharField(max_length=255, null=True, blank=True)
     country = CountryField()
+    public_holidays_zone = models.CharField(
+        max_length=255,
+        choices=PublicHolidaysZone.choices,
+        default=PublicHolidaysZone.METROPOLE
+    )
     zip = models.CharField(max_length=255, null=True, blank=True)
     type = models.CharField(
         max_length=255,
