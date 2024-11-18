@@ -48,6 +48,7 @@ class EntryObj(object):
             updatedAt,
             facility,
             avatar,
+            organizations,
         ):
         self.label = label
         self.name = name
@@ -62,6 +63,7 @@ class EntryObj(object):
         self.updatedAt = updatedAt
         self.facility = facility
         self.avatar = avatar
+        self.organizations = organizations
 
 def createEntryResource(request, node):
     entry=node["entry"]
@@ -129,6 +131,7 @@ def createEntryResource(request, node):
         "label": node["facility"].label or node["facility"].name
     }
     avatar=node["avatar"]
+    organizations = node["organizations"]
 
     entry = EntryObj(
         label,
@@ -144,6 +147,7 @@ def createEntryResource(request, node):
         updatedAt,
         facility,
         avatar,
+        organizations,
     )
     logger.debug(f'{entry=}')
     return entry
@@ -172,6 +176,7 @@ class EntryResource(Resource):
     facility = fields.DictField(attribute='facility')
     updatedAt = fields.IntegerField(attribute='updatedAt')
     avatar = fields.DictField(attribute='avatar', null=True)
+    organizations = fields.ListField(attribute='organizations', null=True)
 
     class Meta:
         resource_name = 'entries'

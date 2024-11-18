@@ -1,3 +1,4 @@
+import sys
 from django.utils.text import slugify
 import neomodel
 from neomodel import db
@@ -62,13 +63,6 @@ def entry_exists(effector, effector_type, facility):
     results, meta = db.cypher_query(query, resolve_objects=True)
     return bool(results)
 
-def payment_methods():
-    query="""MATCH (n:PaymentMethod) RETURN n"""
-    results, meta = db.cypher_query(query, resolve_objects=True)
-    pms = []
-    for row in results:
-        pms.append(row[0].name)
-    return pms
 
 def get_organization(organization):
     if is_valid_uuid(organization):
@@ -108,6 +102,14 @@ def display_relationship(rel):
 
 class Command(BaseCommand):
     help = 'Create Effector node on neo4j'
+
+    def payment_methods(self):
+        query="""MATCH (n:PaymentMethod) RETURN n"""
+        results, meta = db.cypher_query(query, resolve_objects=True)
+        pms = []
+        for row in results:
+            pms.append(row[0].name)
+        return pms
 
     def create_node(
         self,
@@ -184,7 +186,7 @@ class Command(BaseCommand):
             '--payment_methods',
             nargs='+',
             type=str,
-            help=f"List of payment methods among {payment_methods()}"
+            help=f"List of payment methods among {self.payment_methods()}"
         )
         parser.add_argument('-hw', action='store_true')
         parser.add_argument(
@@ -200,6 +202,8 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        if not (len(sys.argv) > 2):
+            return
         label_en=options['label_en']
         label_fr=options['label_fr']
         name_en=options['name_en']
@@ -437,7 +441,7 @@ class Command(BaseCommand):
         pms=options["payment_methods"]
         rel=None
         if pms and is_valid_uuid(facility_uid):
-            available_pms = payment_methods()
+            available_pms = self.payment_methods()
             for pm in pms:
                 if pm not in available_pms:
                     self.warn(

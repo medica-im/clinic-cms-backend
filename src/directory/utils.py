@@ -12,6 +12,7 @@ from directory.models import (
     PaymentMethod,
     HealthWorker,
     Entry,
+    Organization,
 )
 from addressbook.models import Contact
 from neomodel import db
@@ -259,6 +260,17 @@ def get_address(facility: Facility):
     serializer = AddressSerializer(contact.address)
     return serializer.data
 
+def org_uids(orgs):
+    try:
+        return [org.uid for org in orgs]
+    except Exception as e:
+        logger.debug(e)
+        try:
+            return [orgs.uid]
+        except Exception as e:
+            logger.debug(e)
+            return []
+
 def get_effector_nodes(
         directory: Directory,
         label: str,
@@ -458,7 +470,8 @@ def get_entries(
         MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
         WITH *
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
-        RETURN entry,e,et,f,commune,rel;
+        OPTIONAL MATCH (e:Effector)-[:MEMBER_OF]->(o:Organization)
+        RETURN entry,e,et,f,commune,rel,o;
         """
     results, cols = db.cypher_query(query)
     if results:
@@ -473,6 +486,12 @@ def get_entries(
             address = get_address(facility)
             location=EffectorFacility.inflate(row[cols.index('rel')])
             avatar=get_avatar_url(effector, location, facility)
+            try:
+                organizations=Organization.inflate(row[cols.index('o')])
+                logger.debug(organizations)
+            except Exception as e:
+                logger.debug(e)
+                organizations=[]
             contacts.append(
                 {
                     "effector": effector,
@@ -483,6 +502,7 @@ def get_entries(
                     "facility": facility,
                     "avatar": avatar,
                     "location": location,
+                    "organizations": org_uids(organizations),
                 }
             )
         return contacts

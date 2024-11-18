@@ -75,9 +75,10 @@ class Command(BaseCommand):
         )
 
     def add_arguments(self, parser):
+        parser.add_argument('facility', nargs='?', type=str)
         parser.add_argument('--commune', type=str)
-        parser.add_argument('facility', type=str)
         parser.add_argument('--name', type=str)
+        parser.add_argument('--label', type=str)
         parser.add_argument('--slug', type=str)
         parser.add_argument('--country', default='FR')
         parser.add_argument('--organization', type=str)
@@ -116,6 +117,9 @@ class Command(BaseCommand):
             if options["name"]:
                 facility.name=options["name"]
                 facility.save()
+            if options["label"]:
+                facility.label=options["label"]
+                facility.save()
             if options["slug"]:
                 slug = options["slug"]
             elif options["name"]:
@@ -151,10 +155,11 @@ class Command(BaseCommand):
             if o:
                 facility.organization.connect(o)
         self.warn(
-            f"name_fr: {facility}\n"
+            f"{facility}\n"
             f"Commune: {display_relationship(facility.commune)}\n"
             f"uid: {facility.uid}\n"
             f"name: {facility.name}\n"
+            f"label: {facility.label}\n"
             f"slug: {facility.slug}\n"
         )
         orgs = facility.organization.all()

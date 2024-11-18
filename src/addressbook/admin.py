@@ -257,6 +257,9 @@ class ContactAdmin(admin.ModelAdmin):
             if organization_array:
                 organization=organization_array[0]
                 return f'O: {organization.name_fr or organization.label_fr}'
+            else:
+                return f'F: {f.name}'
+
         results, _meta = db.cypher_query(
             f"""MATCH (e:Effector)-[l:LOCATION]-(f:Facility)
             WHERE f.uid="{obj.neomodel_uid.hex}"

@@ -1,4 +1,5 @@
 import neomodel
+import sys
 from django.core.management.base import BaseCommand, CommandError
 from directory.models import Organization
 from directory.models.graph import Directory
@@ -38,6 +39,8 @@ class Command(BaseCommand):
         parser.add_argument('--organization', type=str)
 
     def handle(self, *args, **options):
+        if not (len(sys.argv) > 2):
+            return
         dir_name=options['name']
         org_arg=options['organization']
         org_node=None

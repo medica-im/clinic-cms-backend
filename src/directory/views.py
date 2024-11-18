@@ -82,29 +82,32 @@ class EffectorTypeLabel(APIView):
                 "S": {
                     "F": None,
                     "M": None,
+                    "N": None,
                 },
                 "P": {
                     "F": None,
                     "M": None,
+                    "N": None,
                 }
             }
             try:
                 F = GrammaticalGender.objects.get(name="feminine")
                 M = GrammaticalGender.objects.get(name="masculine")
+                N = GrammaticalGender.objects.get(name="neutral")
             except GrammaticalGender.DoesNotExist as e:
                 logger.error(f"Missing GrammaticalGender object: {e}")
-            for N in ["S", "P"]:
-                for G in [F, M]:
-                    logger.debug(f'{uid=} {N=} {G.code=} {language=}')
+            for Num in ["S", "P"]:
+                for G in [F, M, N]:
+                    logger.debug(f'{uid=} {Num=} {G.code=} {language=}')
                     try:
                         l = Label.objects.get(
                             uid=uid,
                             gender=G,
-                            grammatical_number=N,
+                            grammatical_number=Num,
                             language=language
                         )
                         logger.debug(l)
-                        dictionary[uid][N][G.code]=l.label
+                        dictionary[uid][Num][G.code]=l.label
                     except Label.DoesNotExist:
                         continue
         return Response(dictionary)
