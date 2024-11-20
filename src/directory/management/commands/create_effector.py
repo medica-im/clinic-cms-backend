@@ -121,27 +121,17 @@ class Command(BaseCommand):
         slug_en
     ):
         node=None
-        created=False
         try:
-            node=Effector(
-                label_en=label_en,
-                label_fr=label_fr,
-                name_en=name_en,
-                name_fr=name_fr,
-                slug_fr=slug_fr,
-                slug_en=slug_en
-            ).save()
-            created=True
+            node=Effector()
+            node.label_en=label_en
+            node.label_fr=label_fr
+            node.name_en=name_en
+            node.name_fr=name_fr
+            node.slug_fr=slug_fr
+            node.slug_en=slug_en
+            node.save()
         except Exception as e:
-            #logger.error(e)
-            node=Effector.nodes.filter(
-                Q(label_en=label_en)
-                | Q(label_fr=label_fr)
-                | Q(name_en=name_en)
-                | Q(name_fr=name_fr)
-            )[0]
-        if node and isinstance(node, Effector):
-            logger.debug(f'{"new" if created else ""} node: {node=}')
+            logger.error(e)
         return node
 
     def warn(self, message):
@@ -221,15 +211,12 @@ class Command(BaseCommand):
         # effector
         effector_uid = options["effector"]
         if effector_uid and is_valid_uuid(effector_uid):
-            effector = Effector.nodes.get_or_none(uid=effector_uid)
-        else:
             try:
-                effector = Effector.nodes.get_or_none(name_fr=name_fr)
-            except MultipleNodesReturned:
-                self.warn(
-                    f"More than one effector found with name_fr={name_fr}")
+                effector = Effector.nodes.get(uid=effector_uid)
+            except Exception as e:
+                self.warn(f'No Effector node with uid:{effector_uid}')
                 return
-        if not effector:
+        else:
             effector = self.create_node(
                 label_en=label_en,
                 label_fr=label_fr,
@@ -238,6 +225,9 @@ class Command(BaseCommand):
                 slug_fr=slug_fr,
                 slug_en=slug_en
             )
+        if not effector:
+            self.warn('Error during Effector node creation.')
+            return
         if options['gender']:
             gender = options['gender']
             effector.gender=gender
