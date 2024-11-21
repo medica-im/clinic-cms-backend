@@ -457,7 +457,10 @@ def get_entries(
         MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)
         MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
         MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
-        RETURN entry,e,et,f,commune;
+        WITH *
+        MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
+        OPTIONAL MATCH (e:Effector)-[:MEMBER_OF]->(o:Organization)
+        RETURN entry,e,et,f,commune,rel,o;
         """
     else:
         query=f"""
