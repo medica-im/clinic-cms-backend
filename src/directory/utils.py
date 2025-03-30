@@ -459,7 +459,7 @@ def get_entries(
         MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
         WITH *
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
-        OPTIONAL MATCH (e:Effector)-[:MEMBER_OF]->(o:Organization)
+        OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
         RETURN entry,e,et,f,commune,rel,o;
         """
     else:
@@ -473,7 +473,7 @@ def get_entries(
         MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
         WITH *
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
-        OPTIONAL MATCH (e:Effector)-[:MEMBER_OF]->(o:Organization)
+        OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
         RETURN entry,e,et,f,commune,rel,o;
         """
     results, cols = db.cypher_query(query)
@@ -491,9 +491,7 @@ def get_entries(
             avatar=get_avatar_url(effector, location, facility)
             try:
                 organizations=Organization.inflate(row[cols.index('o')])
-                logger.debug(organizations)
             except Exception as e:
-                logger.debug(e)
                 organizations=[]
             contacts.append(
                 {
