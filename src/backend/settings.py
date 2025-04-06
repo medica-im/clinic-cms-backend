@@ -192,6 +192,7 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', cast=Csv())
+CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', cast=bool, default=False)
 
 ROOT_URLCONF = config('ROOT_URLCONF')
 
@@ -388,7 +389,7 @@ CONSTANCE_CONFIG = {
         'database'
     ),
     'CONTACT_NOSMOKING_RECIPIENT_LIST': (
-        '',
+        'jerome4@gmail.com',
         'List of email addresses separated by a comma.',
         str
     ),
