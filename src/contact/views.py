@@ -12,9 +12,12 @@ logger=logging.getLogger(__name__)
 
 class NoSmokingView(ContactFormView):
     #form_class = NoSmokingForm
-    recipient_list=(
-        config.CONTACT_NOSMOKING_RECIPIENT_LIST.replace(" ", "").split(",")
-    )
+    try:
+        recipient_list=(
+            config.CONTACT_NOSMOKING_RECIPIENT_LIST.replace(" ", "").split(",")
+        )
+    except ValueError:
+        recipient_list=[]
     logger.debug(f'{recipient_list=}')
     template_name="contact/django_contact_form/nosmoking/contact_form.html"
     
