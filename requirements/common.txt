@@ -21,6 +21,6 @@ django-constance[database]
 redis
 django-contact-form[akismet]
 langcodes[data]
-Django-Verify-Email
+Django-Verify-Email==2.0.3
 dj-rest-auth
 django-anymail[mailgun]
