@@ -32,8 +32,6 @@ services:
       net.core.somaxconn: 1024
   django:
     restart: always
-    env_file:
-      - .env.assets
     build:
       context: .
       dockerfile: docker/django/Dockerfile
