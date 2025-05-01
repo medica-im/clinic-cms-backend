@@ -1,5 +1,5 @@
 services:
-  database_development:
+  database:
     restart: always                                                                      
     image: postgre-non-root
     build:
@@ -30,7 +30,7 @@ services:
     image: redis:latest
     sysctls:
       net.core.somaxconn: 1024
-  django_development:
+  django:
     restart: always
     env_file:
       - .env.assets
@@ -47,7 +47,7 @@ services:
       - ${GUNICORN_LOG}:${GUNICORN_LOG}
       - ${DJANGO_LOG_DIR}:${DJANGO_LOG_DIR}
     depends_on:
-      - database_development
+      - database
       - redis
       - neo4j
     working_dir: /backend/src
@@ -77,8 +77,9 @@ services:
       #- NEO4J_dbms.memory.heap.initial_size=1G
       #- NEO4J_dbms_memory_heap_max__size=1G
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+      - NEO4J_dbms_logs_query_enabled=OFF
       #- NEO4J_dbms_security_auth__enabled=false
-      - NEO4J_dbms.security.auth_lock_time=0s
+      #- NEO4J_dbms.security.auth_lock_time=0s
       - NEO4J_dbms.connector.http.enabled=true
       - NEO4J_dbms.connector.https.enabled=true
       - NEO4J_dbms.connector.bolt.enabled=true
