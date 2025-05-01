@@ -56,7 +56,6 @@ services:
     restart: unless-stopped
     ports:
       - ${NEO4J_7474_EXTERNAL_PORT}:7474
-      - 7473:7473
       - ${NEO4J_7687_EXTERNAL_PORT}:7687
     volumes:
       - ${NEO4J_CONF}:/conf
