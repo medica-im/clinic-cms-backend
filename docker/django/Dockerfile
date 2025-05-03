@@ -1,7 +1,7 @@
 FROM python:3.12-bullseye AS prod
 
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE 1
 
 #ENV DOCKER_CONTAINER=1
 
@@ -34,7 +34,7 @@ RUN mkdir /var/log/gunicorn && touch /var/log/gunicorn/gunicorn.log
 RUN mkdir /backend/src
 WORKDIR /backend/src
 
-ENV DJANGO_SETTINGS_MODULE=backend.settings
+ENV DJANGO_SETTINGS_MODULE backend.settings
 
 FROM prod AS dev
 
