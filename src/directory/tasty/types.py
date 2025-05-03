@@ -43,9 +43,6 @@ class EffectorTypeObj(object):
             synonyms,
             definition,
         ):
-        logger.debug(
-            f'{uid=} {label=} {name=} {slug=} {synonyms=} {definition=}'
-        )
         self.uid = uid
         self.label = label
         self.name = name
@@ -164,7 +161,6 @@ class EffectorTypeResource(Resource):
 
     def get_object_list(self, request):
         nodes = EffectorType.nodes.all()
-        logger.debug(f'{nodes=} {len(nodes)=}')
         effector_types = createEffectorTypeResources(request, nodes)
         return effector_types
 

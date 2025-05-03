@@ -76,7 +76,6 @@ def createEntryResource(request, node):
         [commune_node]
     )[0]
     commune = commune_obj.__dict__
-    logger.debug(commune)
     label = getattr(
         effector_node,
         f'label_{settings.LANGUAGE_CODE}',
@@ -149,7 +148,6 @@ def createEntryResource(request, node):
         avatar,
         organizations,
     )
-    logger.debug(f'{entry=}')
     return entry
 
 def createEntryResources(request, nodes):
@@ -223,7 +221,6 @@ class EntryResource(Resource):
     def obj_get(self, bundle, **kwargs):
         uid= kwargs['uid']
         directory=get_directory(bundle.request)
-        logger.debug(f'{directory=}')
         try :
             nodes = get_entries(directory, uid)
             entry = createEntryResources(bundle.request, nodes)

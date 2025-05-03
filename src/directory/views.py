@@ -70,12 +70,10 @@ class EffectorTypeLabel(APIView):
         node_has_label=[
             uid.hex for uid in Label.objects.values_list("uid", flat=True)
         ]
-        logger.debug(f'{node_has_label=}')
         node_label_set = set()
         for uid in uids:
             if uid in node_has_label:
                 node_label_set.add(uid)
-        logger.debug(f'{node_label_set=}')
         dictionary = {}
         for uid in node_label_set:
             dictionary[uid] = {
@@ -98,7 +96,6 @@ class EffectorTypeLabel(APIView):
                 logger.error(f"Missing GrammaticalGender object: {e}")
             for Num in ["S", "P"]:
                 for G in [F, M, N]:
-                    logger.debug(f'{uid=} {Num=} {G.code=} {language=}')
                     try:
                         l = Label.objects.get(
                             uid=uid,
@@ -106,7 +103,6 @@ class EffectorTypeLabel(APIView):
                             grammatical_number=Num,
                             language=language
                         )
-                        logger.debug(l)
                         dictionary[uid][Num][G.code]=l.label
                     except Label.DoesNotExist:
                         continue

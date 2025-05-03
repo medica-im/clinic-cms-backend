@@ -181,8 +181,6 @@ def createEffectorRessource(request, node):
     payment_methods = serializer.data
     rpps=health_worker.rpps
     adeli=health_worker.adeli
-    # spoken_languages
-    logger.debug(f"{health_worker.spoken_languages=}\n")
     try:
         spoken_languages=[
             display_tag_name(t) for t in health_worker.spoken_languages
@@ -329,7 +327,6 @@ class FullEffectorResource(Resource):
         directory=get_directory(bundle.request)
         try:
             effector = find_entry(directory, kwargs["facility"], kwargs["type"], kwargs["name"])
-            logger.debug(effector)
             return createEffectorRessource(bundle.request, effector)
         except Exception as e : 
             raise Exception(f'Cannot find Effector {kwargs["facility"]},{kwargs["type"]},{kwargs["name"]} {e}')

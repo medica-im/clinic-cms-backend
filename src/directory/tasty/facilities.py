@@ -63,7 +63,6 @@ class FacilityObj(object):
 def createFacilityResources(request, nodes):
     data= []
     for node in nodes:
-        logger.debug(node)
         uid = node.uid
         name = node.name
         if not name:
@@ -170,7 +169,6 @@ class FacilityResource(Resource):
     def get_object_list(self, request):
         directory=get_directory(request)
         nodes = get_facilities(directory=directory)
-        logger.debug(nodes)
         objects = createFacilityResources(request, nodes)
         return objects
 

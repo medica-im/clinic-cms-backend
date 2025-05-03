@@ -11,11 +11,7 @@ from django.urls import re_path
 from tastypie.authorization import Authorization
 from tastypie.resources import Resource
 from tastypie.bundle import Bundle
-from tastypie.utils import (
-    is_valid_jsonp_callback_value,
-    string_to_python,
-    trailing_slash,
-)
+from tastypie.utils import trailing_slash
 from django.conf import settings
 
 logger=logging.getLogger(__name__)
@@ -36,7 +32,6 @@ class CommuneObj(object):
 def createCommuneResources(request, nodes):
     data= []
     for node in nodes:
-        logger.debug(node)
         uid=node.uid
         name = getattr(
             node,
@@ -66,7 +61,6 @@ def createCommuneResources(request, nodes):
             slug,
             wikidata
         )
-        logger.debug(f'{commune=}')
         data.append(commune)
     return data
 
