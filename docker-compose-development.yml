@@ -52,6 +52,22 @@ services:
     working_dir: /backend/src
     ports:
       - "${EXTERNAL_PORT_DEVELOPMENT}:80"
+  fastapi:
+    restart: always
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: docker/fastapi/Dockerfile
+    command: bash -c "fastapi run fastapi/main.py --port 80"
+    volumes:
+      - ./src:/app
+    depends_on:
+      - database
+      - neo4j
+    working_dir: /app
+    ports:
+      - "${FASTAPI_PORT}:80"
   neo4j:
     image: neo4j:4.4-enterprise
     restart: unless-stopped
