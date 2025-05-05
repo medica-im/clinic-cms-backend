@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-#from directory.utils import get_organizations
+from directory.utils import get_organizations
 
 app = FastAPI()
 

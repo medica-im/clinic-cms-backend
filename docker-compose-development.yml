@@ -59,7 +59,7 @@ services:
     build:
       context: .
       dockerfile: docker/fastapi/Dockerfile
-    command: bash -c "fastapi run fastapi/main.py --port 80 --reload"
+    command: bash -c "fastapi run api/main.py --port 80 --reload"
     volumes:
       - ./src:/app
     depends_on:
