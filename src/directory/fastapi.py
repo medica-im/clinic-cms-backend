@@ -26,9 +26,9 @@ def get_organizations(
     try:
         for row in results:
             org=Organization.inflate(row[cols.index('n')])
-            org_json=json.dumps(org.__properties__) 
-            _organizations.append(org_json)
+            org=org.__properties__ 
+            _organizations.append(org)
     except:
         pass
     logger.debug(_organizations)
-    return json.dumps(_organizations)
+    return _organizations
