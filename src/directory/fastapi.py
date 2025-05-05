@@ -31,4 +31,4 @@ def get_organizations(
     except:
         pass
     logger.debug(_organizations)
-    return _organizations
+    return json.dumps(_organizations)
