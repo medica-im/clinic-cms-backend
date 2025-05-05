@@ -1,8 +1,12 @@
+import logging
+import json
 from neomodel import db
 from directory.models import (
     Directory,
     Organization,
 )
+
+logger = logging.getLogger(__name__)
 
 def get_organizations(
         directory: Directory|None = None,
@@ -26,4 +30,5 @@ def get_organizations(
             )
     except:
         pass
-    return _organizations
+    logger.debug(_organizations)
+    return json.dumps(_organizations)
