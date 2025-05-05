@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def get_organizations(
         directory: Directory|None = None,
-        uid = None,
+        uid: str|None = None,
         label: str = "Organization",
         active: bool = True,
     ):
