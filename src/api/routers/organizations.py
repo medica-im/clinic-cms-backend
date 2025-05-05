@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from directory.utils import get_organizations
+from directory.fastapi import get_organizations
 
 router = APIRouter()
 
