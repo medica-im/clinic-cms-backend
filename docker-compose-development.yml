@@ -40,7 +40,7 @@ services:
       target: dev
     command: bash -c "DJANGO_SETTINGS_MODULE=backend.settings python manage.py collectstatic --noinput && gunicorn --reload backend.wsgi:application --workers=${GUNICORN_WORKERS} --log-file=${GUNICORN_LOG}/gunicorn.log --log-level=${GUNICORN_LOG_LEVEL} -b '[::]:80' --worker-tmp-dir /dev/shm --timeout ${GUNICORN_TIMEOUT} "
     volumes:
-      - ./src:/backend/src
+      - ./src:/app
       - ${STATIC_ROOT}:${STATIC_ROOT}
       - ${MEDIA_ROOT}:${MEDIA_ROOT}
       - ${GUNICORN_LOG}:${GUNICORN_LOG}
@@ -49,7 +49,7 @@ services:
       - database
       - redis
       - neo4j
-    working_dir: /backend/src
+    working_dir: /app
     ports:
       - "${EXTERNAL_PORT_DEVELOPMENT}:80"
   fastapi:

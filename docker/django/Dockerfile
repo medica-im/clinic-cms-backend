@@ -1,7 +1,9 @@
 FROM python:3.12-bullseye AS prod
 
-ENV PYTHONUNBUFFERED 1
-ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /app
 
 #ENV DOCKER_CONTAINER=1
 
@@ -25,16 +27,14 @@ ENV LANG=fr_FR.UTF-8
 ENV LANGUAGE=fr_FR
 ENV LC_ALL=fr_FR.UTF-8
 
-ADD ./requirements /backend/requirements
+ADD ./requirements /app/requirements
 RUN pip install pip --upgrade
-RUN pip install -r /backend/requirements/common.txt
+RUN pip install -r /app/requirements/common.txt
 
 RUN mkdir /var/log/celery && touch /var/log/celery/celery.log
 RUN mkdir /var/log/gunicorn && touch /var/log/gunicorn/gunicorn.log
-RUN mkdir /backend/src
-WORKDIR /backend/src
 
-ENV DJANGO_SETTINGS_MODULE backend.settings
+ENV DJANGO_SETTINGS_MODULE=app.settings
 
 FROM prod AS dev
 
@@ -42,4 +42,4 @@ RUN apt-get clean && apt-get update && apt-get install -y \
     postgresql-client \
     gettext \
  && rm -rf /var/lib/apt/lists/*
-RUN pip install --upgrade -r /backend/requirements/development.txt
+RUN pip install --upgrade -r /app/requirements/development.txt
