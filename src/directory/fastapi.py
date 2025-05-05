@@ -4,6 +4,7 @@ from neomodel import db
 from directory.models import (
     Directory,
     Organization,
+    OrganizationType,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,3 +35,29 @@ def get_organizations(
     if uid:
         return _organizations[0]
     return _organizations
+
+def get_organization_types(
+        directory: Directory|None = None,
+        uid: str|None = None,
+        label: str = "OrganizationType",
+        active: bool = True,
+    ):
+    if uid:
+        query=f"""MATCH (n:{label})
+        WHERE n.uid="{uid}"
+        RETURN n;"""
+    else:
+        query=f"""MATCH (n:{label})
+        RETURN n;"""
+    results, cols = db.cypher_query(query)
+    nodes=[]
+    try:
+        for row in results:
+            org=OrganizationType.inflate(row[cols.index('n')])
+            org=org.__properties__ 
+            nodes.append(org)
+    except:
+        pass
+    if uid:
+        return nodes[0]
+    return nodes
