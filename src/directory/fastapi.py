@@ -31,4 +31,6 @@ def get_organizations(
     except:
         pass
     logger.debug(_organizations)
+    if uid:
+        return _organizations[0]
     return _organizations
