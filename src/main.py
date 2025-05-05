@@ -5,6 +5,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 from django.apps import apps
 # Load the needed apps
 apps.populate(installed_apps=[
+    'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sites',
     'directory',
