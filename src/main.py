@@ -8,6 +8,7 @@ apps.populate(installed_apps=[
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sites',
+    'rest_framework_simplejwt.token_blacklist',
     'directory',
 ])
 # Make sure the above apps were loaded
