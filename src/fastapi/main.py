@@ -8,6 +8,8 @@ app = FastAPI()
 async def root():
     return {"message": "Hello World"}
 
+"""
 @app.get("/organizations")
 async def organizations():
     return get_organizations()
+"""
