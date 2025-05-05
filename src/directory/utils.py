@@ -723,3 +723,27 @@ def effector_types(directory: Directory) -> str:
     uids2=results[0][cols.index('uids')]
     uids = list(set(uids1 + uids2))
     return uids
+
+def get_organizations(
+        directory: Directory|None = None,
+        uid = None,
+        label: str = "Organization",
+        active: bool = True,
+    ):
+    if uid:
+        query=f"""MATCH (n:{label})
+        WHERE n.uid="{uid}"
+        RETURN n;"""
+    else:
+        query=f"""MATCH (n:{label})
+        RETURN n;"""
+    results, cols = db.cypher_query(query)
+    _organizations=[]
+    try:
+        for row in results:
+            _organizations.append(
+                Organization.inflate(row[cols.index('n')])
+            )
+    except:
+        pass
+    return _organizations
