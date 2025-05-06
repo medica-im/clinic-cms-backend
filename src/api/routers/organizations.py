@@ -22,4 +22,4 @@ async def organization(organization_uid: str):
 
 @router.post("/organizations")
 async def post_organization(organization: Organization):
-    return create_organization(organization)
+    return create_organization(organization.model_dump())
