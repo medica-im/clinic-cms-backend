@@ -8,7 +8,6 @@ from directory.models import (
     Commune,
     Website
 )
-from api.routers.organizations import Organization as Organization_BM
 
 logger = logging.getLogger(__name__)
 
