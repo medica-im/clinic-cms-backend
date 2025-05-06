@@ -38,7 +38,7 @@ def get_organizations(
         return _organizations[0]
     return _organizations
 
-def create_organization(**kwargs):
+def create_organization(kwargs):
     node = Organization(
         name_fr=kwargs["name_fr"],
         label_fr=kwargs["label_fr"]
