@@ -5,7 +5,10 @@ from directory.models import (
     Directory,
     Organization,
     OrganizationType,
+    Commune,
+    Website
 )
+from api.routers.organizations import Organization as Organization_BM
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +38,41 @@ def get_organizations(
     if uid:
         return _organizations[0]
     return _organizations
+
+def create_organization(**kwargs):
+    node = Organization(
+        name_fr=kwargs["name_fr"],
+        label_fr=kwargs["label_fr"]
+    ).save()
+    commune=kwargs["commune"]
+    if commune:
+        try:
+            commune_node = Commune.nodes.get(uid=commune)
+            node.commune.connect(commune_node)
+        except Exception as e:
+            return e
+    type = kwargs["type"]
+    if type:
+        try:
+            organization_type=OrganizationType.nodes.get(uid=type)
+            node.type.connect(organization_type)
+        except Exception as e:
+            return e
+    organization = kwargs["organization"]
+    if organization:
+        try:
+            organization_node=Organization.nodes.get(uid=organization)
+            node.organization.connect(organization_node)
+        except Exception as e:
+            return e
+    website_url=kwargs["website"]
+    if website_url:
+        try:
+            website_node=Website.nodes.get(url=website_url)
+        except Exception as e:
+            website_node=Website(url=website_url).save()
+        node.website.connect(website_node)
+    return node
 
 def get_organization_types(
         directory: Directory|None = None,
