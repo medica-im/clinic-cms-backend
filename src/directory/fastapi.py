@@ -30,10 +30,11 @@ def get_organizations(
         for row in results:
             org=Organization.inflate(row[cols.index('n')])
             org=org.__properties__
-            try:
-                del org['element_id_property']
-            except KeyError:
-                pass
+            for key in ['element_id_property', 'name_en', 'label_en']:
+                try:
+                    del org[key]
+                except KeyError:
+                    pass
             _organizations.append(org)
     except:
         pass
