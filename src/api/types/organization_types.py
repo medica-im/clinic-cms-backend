@@ -4,11 +4,11 @@ class OrganizationTypePyNeo(BaseModel):
     element_id_property: str
     uid: str
     name_fr: str
-    name_en: str
+    name_en: str|None
     label_fr: str
-    label_en: str
-    synonyms_fr: list[str]
-    synonyms_en: list[str]
+    label_en: str|None
+    synonyms_fr: list[str]|None
+    synonyms_en: list[str]|None
 
 class OrganizationTypePy(BaseModel):
     uid: str
