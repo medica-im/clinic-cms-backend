@@ -18,17 +18,21 @@ def get_organizations(
         active: bool = True,
     ):
     if uid:
-        query=f"""MATCH (n:{label})
-        WHERE n.uid="{uid}"
-        RETURN n;"""
+        query=f"""MATCH (o:{label})-[:IS_A]->(t:OrganizationType),
+        (o)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d:DepartmentOfFrance)
+        OPTIONAL MATCH (o)-[:OFFICIAL_WEBSITE]->(w:Website)
+        WHERE o.uid="{uid}"
+        RETURN o,t,c,d,w;"""
     else:
-        query=f"""MATCH (n:{label})
-        RETURN n;"""
+        query=f"""MATCH (o:{label})-[:IS_A]->(t:OrganizationType),
+        (o)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d:DepartmentOfFrance)
+        OPTIONAL MATCH (o)-[:OFFICIAL_WEBSITE]->(w:Website)
+        RETURN o,t,c,d,w;"""
     results, cols = db.cypher_query(query)
     _organizations=[]
     try:
         for row in results:
-            org=Organization.inflate(row[cols.index('n')])
+            org=Organization.inflate(row[cols.index('o')])
             org=org.__properties__
             for key in ['element_id_property', 'name_en', 'label_en']:
                 try:
