@@ -6,13 +6,9 @@ from pydantic import ValidationError
 router = APIRouter()
 
 @router.get("/organization-types")
-async def organization_types() -> list[OrganizationTypePyNeo]|ValidationError:
-    try:
-        orgs = get_organization_types()
-        return orgs
-    except ValidationError as e:
-        return e
+async def organization_types() -> list[OrganizationTypePyNeo]:
+    return get_organization_types()
 
 @router.get("/organization-types/{organization_type_uid}")
-async def organization_type(organization_type_uid: str)->OrganizationTypePyNeo|ValidationError:
+async def organization_type(organization_type_uid: str)->OrganizationTypePyNeo:
     return get_organization_type(uid=organization_type_uid)
