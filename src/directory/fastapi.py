@@ -1,5 +1,8 @@
 import logging
 import json
+from typing import Union
+from pydantic import ValidationError
+from api.types.organization_types import OrganizationTypePy, OrganizationTypePyNeo, organization_type_exclude_keys
 from neomodel import db
 from directory.models import (
     Directory,
@@ -82,12 +85,22 @@ def create_organization(kwargs):
         node.website.connect(website_node)
     return node
 
+def get_organization_type(
+    directory: Directory|None = None,
+    uid: str|None = None,
+    active: bool = True) -> OrganizationTypePyNeo:
+    return get_organization_types(
+        directory=directory,
+        uid=uid,
+        active=active
+    )[0]
+
 def get_organization_types(
         directory: Directory|None = None,
         uid: str|None = None,
-        label: str = "OrganizationType",
-        active: bool = True,
-    ):
+        active: bool = True
+    )->list[OrganizationTypePyNeo]:
+    label: str = "OrganizationType"
     if uid:
         query=f"""MATCH (n:{label})
         WHERE n.uid="{uid}"
@@ -96,14 +109,13 @@ def get_organization_types(
         query=f"""MATCH (n:{label})
         RETURN n;"""
     results, cols = db.cypher_query(query)
-    nodes=[]
-    try:
-        for row in results:
-            org=OrganizationType.inflate(row[cols.index('n')])
-            org=org.__properties__ 
+    nodes: list[OrganizationTypePyNeo]=[]
+    for row in results:
+        org=OrganizationType.inflate(row[cols.index('n')])
+        try:
+            org=OrganizationTypePyNeo.model_validate(org.__properties__)
             nodes.append(org)
-    except:
-        pass
-    if uid:
-        return nodes[0]
+        except ValidationError as e:
+            logger.debug(e)
+            raise ValidationError(e)
     return nodes

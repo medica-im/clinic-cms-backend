@@ -12,6 +12,12 @@ class Organization(BaseModel):
     commune: str
     website: str | None = None
 
+exclude_keys = {
+    'element_id_property': True,
+    'name_en': True,
+    'label_en': True
+}
+
 @router.get("/organizations")
 async def organizations():
     return get_organizations()
