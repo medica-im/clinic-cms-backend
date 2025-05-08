@@ -113,7 +113,8 @@ def get_organization_types(
     for row in results:
         org=OrganizationType.inflate(row[cols.index('n')])
         try:
-            org=OrganizationTypePyNeo.model_validate(org.__properties__)
+            org_json=json.dumps(org.__properties__)
+            org=OrganizationTypePyNeo.model_validate(org_json)
             nodes.append(org)
         except ValidationError as e:
             logger.debug(e)
