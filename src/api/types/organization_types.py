@@ -10,6 +10,15 @@ class OrganizationTypePyNeo(BaseModel):
     synonyms_fr: list[str]|None
     synonyms_en: list[str]|None
 
+    class Config:       
+        fields = {
+            'element_id_property': {'exclude':True}, 
+            'name_en': {'exclude':True},
+            'label_en': {'exclude':True},
+            'synonyms_en': {'exclude':True}
+        }
+
+
 class OrganizationTypePy(BaseModel):
     uid: str
     name_fr: str

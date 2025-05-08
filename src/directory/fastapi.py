@@ -118,6 +118,7 @@ def get_organization_types(
         try:
             org_json=org.__properties__
             org=OrganizationTypePyNeo.model_validate(org_json)
+            logger.debug(org)
             nodes.append(org)
         except ValidationError as e:
             logger.debug(e)
