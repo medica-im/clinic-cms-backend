@@ -14,4 +14,4 @@ class OrganizationPy(BaseModel):
     type: OrganizationTypePy
     #organization: OrganizationPy | None
     commune: Commune
-    #website: WebsitePy | None
+    website: WebsitePy | None
