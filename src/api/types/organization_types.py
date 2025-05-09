@@ -1,23 +1,14 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class OrganizationTypePyNeo(BaseModel):
-    element_id_property: str
+    element_id_property: str = Field(exclude=True)
     uid: str
     name_fr: str
-    name_en: str|None
+    name_en: str|None = Field(exclude=True)
     label_fr: str
-    label_en: str|None
+    label_en: str|None = Field(exclude=True)
     synonyms_fr: list[str]|None
-    synonyms_en: list[str]|None
-
-    class Config:       
-        fields = {
-            'element_id_property': {'exclude':True}, 
-            'name_en': {'exclude':True},
-            'label_en': {'exclude':True},
-            'synonyms_en': {'exclude':True}
-        }
-
+    synonyms_en: list[str]|None = Field(exclude=True)
 
 class OrganizationTypePy(BaseModel):
     uid: str
