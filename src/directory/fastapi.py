@@ -39,13 +39,15 @@ def get_organizations(
         query=f"""MATCH (o:{label})-[:IS_A]->(t:OrganizationType),
         (o)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d:DepartmentOfFrance)
         OPTIONAL MATCH (o)-[:OFFICIAL_WEBSITE]->(w:Website)
+        OPTIONAL MATCH (o)-[:PART_OF]->(other:Organization)
         WHERE o.uid="{uid}"
-        RETURN o,t,c,d,w;"""
+        RETURN o,t,c,d,w,other;"""
     else:
         query=f"""MATCH (o:{label})-[:IS_A]->(t:OrganizationType),
         (o)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d:DepartmentOfFrance)
         OPTIONAL MATCH (o)-[:OFFICIAL_WEBSITE]->(w:Website)
-        RETURN o,t,c,d,w;"""
+        OPTIONAL MATCH (o)-[:PART_OF]->(other:Organization)
+        RETURN o,t,c,d,w,other;"""
     results, cols = db.cypher_query(query)
     orgs: list[OrganizationPy]=[]
     for row in results:
@@ -66,6 +68,12 @@ def get_organizations(
         except TypeError:
             web_dct=None
         org_dct["website"]=web_dct
+        try:
+            other=Organization.inflate(row[cols.index('other')])
+            other_dct=other.__properties__
+        except TypeError:
+            other_dct=None
+        org_dct["organization"]=other_dct
         try:
             org=OrganizationPy.model_validate(org_dct)
             orgs.append(org)

@@ -12,6 +12,6 @@ class OrganizationPy(BaseModel):
     label_fr: str
     label_en: str|None = Field(exclude=True)
     type: OrganizationTypePy
-    #organization: OrganizationPy | None
+    organization: OrganizationPy | None
     commune: Commune
     website: WebsitePy | None
