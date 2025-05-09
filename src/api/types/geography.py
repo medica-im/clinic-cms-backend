@@ -6,7 +6,7 @@ class AdministrativeTerritorialEntityOfFrance(BaseModel):
     name_fr: str
     slug_en: str|None = Field(exclude=True)
     slug_fr: str
-    wikidata: str
+    wikidata: str|None
 
 class DepartmentOfFrance(BaseModel):
     uid: str
