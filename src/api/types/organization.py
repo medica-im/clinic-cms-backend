@@ -10,7 +10,7 @@ class OrganizationPy(BaseModel):
     name_en: str|None = Field(exclude=True)
     label_fr: str
     label_en: str|None = Field(exclude=True)
-    #type: OrganizationTypePy
+    type: OrganizationTypePy
     #organization: OrganizationPy | None
     #commune: str
     #website: WebsitePy | None

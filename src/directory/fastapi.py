@@ -55,11 +55,19 @@ def get_organizations(
         dpt=DepartmentOfFrance.inflate(row[cols.index('d')])
         try:
             org_dct=org.__properties__
+            try:
+                org_type_dct=org_type.__properties__
+                #org_type=OrganizationTypePy.model_validate(org_type_dct)
+                org_dct["type"]=org_type_dct
+            except ValidationError as e:
+                logger.debug(e)
+                raise ValidationError(e)
             org=OrganizationPy.model_validate(org_dct)
             orgs.append(org)
         except ValidationError as e:
             logger.debug(e)
             raise ValidationError(e)
+        
     return orgs
 
 def create_organization(kwargs):
