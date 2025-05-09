@@ -2,7 +2,7 @@ import logging
 import json
 from typing import Union
 from pydantic import ValidationError
-from api.types.organization_types import OrganizationTypePy, OrganizationTypePyNeo, organization_type_exclude_keys
+from api.types.organization_types import OrganizationTypePy
 from neomodel import db
 from directory.models import (
     Directory,
@@ -88,7 +88,7 @@ def create_organization(kwargs):
 def get_organization_type(
     directory: Directory|None = None,
     uid: str|None = None,
-    active: bool = True) -> OrganizationTypePyNeo:
+    active: bool = True) -> OrganizationTypePy:
     return get_organization_types(
         directory=directory,
         uid=uid,
@@ -99,7 +99,7 @@ def get_organization_types(
         directory: Directory|None = None,
         uid: str|None = None,
         active: bool = True
-    )->list[OrganizationTypePyNeo]:
+    )->list[OrganizationTypePy]:
     label: str = "OrganizationType"
     if uid:
         query=f"""MATCH (n:{label})
@@ -109,7 +109,7 @@ def get_organization_types(
         query=f"""MATCH (n:{label})
         RETURN n;"""
     results, cols = db.cypher_query(query)
-    nodes: list[OrganizationTypePyNeo]=[]
+    nodes: list[OrganizationTypePy]=[]
     for row in results:
         org=OrganizationType.inflate(row[cols.index('n')])
         logger.debug(org.__dict__)
@@ -117,7 +117,7 @@ def get_organization_types(
         logger.debug(org)
         try:
             org_json=org.__properties__
-            org=OrganizationTypePyNeo.model_validate(org_json)
+            org=OrganizationTypePy.model_validate(org_json)
             logger.debug(org)
             nodes.append(org)
         except ValidationError as e:
