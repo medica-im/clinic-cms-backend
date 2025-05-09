@@ -5,8 +5,8 @@ class AdministrativeTerritorialEntityOfFrance(BaseModel):
     name_en: str = Field(exclude=True)
     name_fr: str
     slug_en: str = Field(exclude=True)
-    slug_fr = str
-    wikidata = str
+    slug_fr: str
+    wikidata: str
 
 class DepartmentOfFrance(BaseModel):
     uid: str
@@ -16,6 +16,6 @@ class DepartmentOfFrance(BaseModel):
     wikidata: str
 
 class Commune(AdministrativeTerritorialEntityOfFrance):
-    department = DepartmentOfFrance
+    department: DepartmentOfFrance
 
 
