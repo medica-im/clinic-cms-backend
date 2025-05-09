@@ -12,7 +12,7 @@ class OrganizationPy(BaseModel):
     label_en: str|None = Field(exclude=True)
     synonyms_fr: list[str]|None
     synonyms_en: list[str]|None = Field(exclude=True)
-    type: OrganizationTypePy
-    organization: OrganizationPy | None
-    commune: str
-    website: WebsitePy | None
+    #type: OrganizationTypePy
+    #organization: OrganizationPy | None
+    #commune: str
+    #website: WebsitePy | None
