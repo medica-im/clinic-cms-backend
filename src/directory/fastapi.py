@@ -60,8 +60,8 @@ def get_organizations(
         dpt_dct=dpt.__properties__
         commune_dct["department"]=dpt_dct
         org_dct["commune"]=commune_dct
-        web=Website.inflate(row[cols.index('w')])
         try:
+            web=Website.inflate(row[cols.index('w')])
             web_dct=web.__properties__
             org_dct["website"]=web_dct
         except TypeError:
