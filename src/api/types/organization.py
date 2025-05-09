@@ -2,6 +2,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 from api.types.website import WebsitePy
 from api.types.organization_types import OrganizationTypePy
+from api.types.geography import Commune
 
 class OrganizationPy(BaseModel):
     element_id_property: str = Field(exclude=True)
@@ -12,5 +13,5 @@ class OrganizationPy(BaseModel):
     label_en: str|None = Field(exclude=True)
     type: OrganizationTypePy
     #organization: OrganizationPy | None
-    #commune: str
+    commune: Commune
     #website: WebsitePy | None

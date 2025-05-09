@@ -53,13 +53,13 @@ def get_organizations(
         org_dct=org.__properties__
         org_type=OrganizationType.inflate(row[cols.index('t')])
         org_type_dct=org_type.__properties__
+        org_dct["type"]=org_type_dct
         commune=Commune.inflate(row[cols.index('c')])
+        commune_dct=commune.__properties__
         dpt=DepartmentOfFrance.inflate(row[cols.index('d')])
-        try:
-            org_dct["type"]=org_type_dct
-        except ValidationError as e:
-            logger.debug(e)
-            raise ValidationError(e)
+        dpt_dct=dpt.__properties__
+        commune_dct["department"]=dpt_dct
+        org_dct["commune"]=commune_dct
         try:
             org=OrganizationPy.model_validate(org_dct)
             orgs.append(org)
