@@ -1,6 +1,7 @@
 from fastapi import APIRouter, status
 from pydantic import BaseModel
-from directory.fastapi import get_organizations, create_organization
+from directory.fastapi import get_organizations, get_organization, create_organization
+from api.types.organization import OrganizationPy
 
 router = APIRouter()
 
@@ -19,12 +20,12 @@ exclude_keys = {
 }
 
 @router.get("/organizations")
-async def organizations():
+async def organizations() -> list[OrganizationPy]:
     return get_organizations()
 
 @router.get("/organizations/{organization_uid}")
-async def organization(organization_uid: str):
-    return get_organizations(uid=organization_uid)
+async def organization(organization_uid: str) -> OrganizationPy :
+    return get_organization(uid=organization_uid)
 
 @router.post("/organizations/", status_code=status.HTTP_201_CREATED)
 async def post_organization(organization: Organization):

@@ -3,23 +3,38 @@ import json
 from typing import Union
 from pydantic import ValidationError
 from api.types.organization_types import OrganizationTypePy
+from api.types.organization import OrganizationPy
+from api.types.geography import Commune, DepartmentOfFrance
 from neomodel import db
 from directory.models import (
     Directory,
     Organization,
     OrganizationType,
     Commune,
-    Website
+    Website,
+    DepartmentOfFrance
 )
 
 logger = logging.getLogger(__name__)
+
+def get_organization(
+        directory: Directory|None = None,
+        uid: str|None = None,
+        label: str = "Organization",
+        active: bool = True,
+    ) -> OrganizationPy:
+    return get_organizations(
+        directory=directory,
+        uid=uid,
+        active=active
+    )[0]
 
 def get_organizations(
         directory: Directory|None = None,
         uid: str|None = None,
         label: str = "Organization",
         active: bool = True,
-    ):
+    ) -> list[OrganizationPy]:
     if uid:
         query=f"""MATCH (o:{label})-[:IS_A]->(t:OrganizationType),
         (o)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d:DepartmentOfFrance)
@@ -32,23 +47,20 @@ def get_organizations(
         OPTIONAL MATCH (o)-[:OFFICIAL_WEBSITE]->(w:Website)
         RETURN o,t,c,d,w;"""
     results, cols = db.cypher_query(query)
-    _organizations=[]
-    try:
-        for row in results:
-            org=Organization.inflate(row[cols.index('o')])
-            org=org.__properties__
-            for key in ['element_id_property', 'name_en', 'label_en']:
-                try:
-                    del org[key]
-                except KeyError:
-                    pass
-            _organizations.append(org)
-    except:
-        pass
-    logger.debug(_organizations)
-    if uid:
-        return _organizations[0]
-    return _organizations
+    orgs: list[OrganizationPy]=[]
+    for row in results:
+        org=Organization.inflate(row[cols.index('o')])
+        org_type=OrganizationType.inflate(row[cols.index('t')])
+        commune=Commune.inflate(row[cols.index('c')])
+        dpt=DepartmentOfFrance.inflate(row[cols.index('d')])
+        try:
+            org_dct=org.__properties__
+            org=OrganizationPy.model_validate(org_dct)
+            orgs.append(org)
+        except ValidationError as e:
+            logger.debug(e)
+            raise ValidationError(e)
+    return orgs
 
 def create_organization(kwargs):
     node = Organization(
@@ -116,8 +128,8 @@ def get_organization_types(
         logger.debug(org.__properties__)
         logger.debug(org)
         try:
-            org_json=org.__properties__
-            org=OrganizationTypePy.model_validate(org_json)
+            org_dct=org.__properties__
+            org=OrganizationTypePy.model_validate(org_dct)
             logger.debug(org)
             nodes.append(org)
         except ValidationError as e:
