@@ -460,7 +460,8 @@ def get_entries(
         WITH *
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
-        RETURN entry,e,et,f,commune,rel,o;
+        OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(e:Organization)
+        RETURN entry,e,et,f,commune,rel,o,e;
         """
     else:
         query=f"""
@@ -474,7 +475,8 @@ def get_entries(
         WITH *
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
-        RETURN entry,e,et,f,commune,rel,o;
+        OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(e:Organization)
+        RETURN entry,e,et,f,commune,rel,o,e;
         """
     results, cols = db.cypher_query(query)
     if results:
@@ -493,6 +495,10 @@ def get_entries(
                 organizations=Organization.inflate(row[cols.index('o')])
             except Exception as e:
                 organizations=[]
+            try:
+                employers=Organization.inflate(row[cols.index('e')])
+            except Exception as e:
+                employers=[]
             contacts.append(
                 {
                     "effector": effector,
@@ -504,6 +510,7 @@ def get_entries(
                     "avatar": avatar,
                     "location": location,
                     "organizations": org_uids(organizations),
+                    "employers": org_uids(employers),
                 }
             )
         return contacts
