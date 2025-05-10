@@ -82,7 +82,7 @@ def get_organizations(
             raise ValidationError(e)
     return orgs
 
-def create_organization(kwargs):
+def create_organization(kwargs) -> OrganizationPy:
     node = Organization(
         name_fr=kwargs["name_fr"],
         label_fr=kwargs["label_fr"]
@@ -93,21 +93,21 @@ def create_organization(kwargs):
             commune_node = Commune.nodes.get(uid=commune)
             node.commune.connect(commune_node)
         except Exception as e:
-            return e
+            raise Exception(e)
     type = kwargs["type"]
     if type:
         try:
             organization_type=OrganizationType.nodes.get(uid=type)
             node.type.connect(organization_type)
         except Exception as e:
-            return e
+            raise Exception(e)
     organization = kwargs["organization"]
     if organization:
         try:
             organization_node=Organization.nodes.get(uid=organization)
             node.organization.connect(organization_node)
         except Exception as e:
-            return e
+            raise Exception(e)
     website_url=kwargs["website"]
     if website_url:
         try:
@@ -115,7 +115,8 @@ def create_organization(kwargs):
         except Exception as e:
             website_node=Website(url=website_url).save()
         node.website.connect(website_node)
-    return node
+    org = get_organization(uid=str(node.uid))
+    return org
 
 def get_organization_type(
     directory: Directory|None = None,
