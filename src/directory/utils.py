@@ -460,7 +460,7 @@ def get_entries(
         WITH *
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
-        OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(e:Organization)
+        OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
         RETURN entry,e,et,f,commune,rel,o,employer;
         """
     else:
@@ -475,7 +475,7 @@ def get_entries(
         WITH *
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
-        OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(e:Organization)
+        OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
         RETURN entry,e,et,f,commune,rel,o,employer;
         """
     results, cols = db.cypher_query(query)
