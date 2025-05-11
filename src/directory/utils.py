@@ -490,6 +490,7 @@ def get_entries(
         entries=[]
         for row in q:
             logger.debug(len(row))
+            logger.debug(row)
             (
                 entry,
                 effector,
