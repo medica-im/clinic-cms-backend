@@ -485,7 +485,7 @@ def get_entries(
     if q:
         entries=[]
         for row in q:
-            entry, effector, effector_type, facility, location, organization, employer, comune = row
+            entry, effector, _hcw, effector_type, facility, location, organization, employer, comune = row
             address = get_address(facility)
             avatar=get_avatar_url(effector, location, facility)
             entries.append(
