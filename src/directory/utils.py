@@ -488,7 +488,7 @@ def get_entries(
     logger.debug(f'****************************\nq:\n{q[0][0][0].__properties__}')
     if q:
         entries=[]
-        for row in q:
+        for row in q[0]:
             logger.debug(len(row))
             logger.debug(row)
             (
