@@ -446,7 +446,7 @@ def directory_effectors(
 
 def display(_list):
     for idx,e in enumerate(_list):
-        f'{idx}: {e}\n'
+        logger.debug(f'{idx}: {e}\n')
 
 def get_entries(
         directory: Directory,
