@@ -480,7 +480,7 @@ def get_entries(
         """
     q = db.cypher_query(query,resolve_objects = True)
     logger.debug(f'****************************\nq:\n{q[0]}')
-    logger.debug(f'****************************\nq:\n{q[0][0].__properties__}')
+    logger.debug(f'****************************\nq:\n{q[0][0]}')
     results, cols = db.cypher_query(query)
     if results:
         contacts=[]
