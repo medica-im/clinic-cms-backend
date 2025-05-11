@@ -461,7 +461,7 @@ def get_entries(
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
-        RETURN entry,e,et,f,commune,rel,o,employer;
+        RETURN entry,e,et,f,rel,o,employer;
         """
     else:
         query=f"""
@@ -476,7 +476,7 @@ def get_entries(
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
-        RETURN entry,e,et,f,commune,rel,o,employer;
+        RETURN entry,e,et,f,rel,o,employer;
         """
     results, cols = db.cypher_query(query)
     if results:
@@ -484,7 +484,7 @@ def get_entries(
         for row in results:
             effector=Effector.inflate(row[cols.index('e')])
             facility=Facility.inflate(row[cols.index('f')])
-            commune=Commune.inflate(row[cols.index('commune')])
+            #commune=Commune.inflate(row[cols.index('commune')])
             types=EffectorType.inflate(row[cols.index('et')])
             types = types if isinstance(types, list) else [types]
             entry=Entry.inflate(row[cols.index('entry')])
@@ -504,7 +504,7 @@ def get_entries(
                     "effector": effector,
                     "entry": entry,
                     "address": address,
-                    "commune": commune,
+                    #"commune": commune,
                     "types": types,
                     "facility": facility,
                     "avatar": avatar,
@@ -652,7 +652,7 @@ def find_entry(
     effector=Effector.inflate(row[cols.index('e')])
     effector_facility=EffectorFacility.inflate(row[cols.index('rel')])
     facility=Facility.inflate(row[cols.index('f')])
-    commune=Commune.inflate(row[cols.index('c')])
+    #commune=Commune.inflate(row[cols.index('c')])
     effector_type=EffectorType.inflate(row[cols.index('et')])
     address = get_address(facility)
     phones = get_phones_neomodel(
@@ -699,7 +699,7 @@ def find_entry(
         "effector": effector,
         "location": effector_facility,
         "address": address,
-        "commune": commune,
+        #"commune": commune,
         "effector_type": effector_type,
         "facility": facility,
         "phones": phones,
@@ -714,7 +714,7 @@ def find_entry(
         "avatar": avatar
     }
 
-def effector_types(directory: Directory) -> str:
+def effector_types(directory: Directory) -> list[str]:
     query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:Effector)-[rel:LOCATION]->(f:Facility)
         WHERE rel.directories=["{directory.name}"] AND rel.active = true
         RETURN COLLECT(et.uid) AS uids;"""

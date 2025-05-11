@@ -69,6 +69,10 @@ class EffectorType(StructuredNode):
     definition_en = StringProperty()
     need = RelationshipTo('Need', 'MANAGES')
     situation = RelationshipTo('Situation', 'MANAGES')
+    effector_type = RelationshipTo(
+        'EffectorType',
+        'IS_A'
+    )
 
 
 class HCW(EffectorType):
@@ -186,10 +190,10 @@ class Effector(StructuredNode):
         model = EffectorFacility
     )
     effector = RelationshipTo('Effector', 'PART_OF')
-    commune = RelationshipTo(
-        'Commune',
-        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
-    )
+    #commune = RelationshipTo(
+    #    'Commune',
+    #    'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
+    #)
     convention = RelationshipTo(
         'Convention',
         'HAS_CONVENTION',
