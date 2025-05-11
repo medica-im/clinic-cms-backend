@@ -444,6 +444,10 @@ def directory_effectors(
             )
         return effectors
 
+def display(_list):
+    for idx,e in enumerate(_list):
+        f'{idx}: {e}\n'
+
 def get_entries(
         directory: Directory,
         uid = None,
@@ -480,13 +484,13 @@ def get_entries(
         """
     q = db.cypher_query(query,resolve_objects = True)
     logger.debug(f'****************************\nq:\n{q[0]}')
-    logger.debug(f'****************************\nq:\n{q[0][0]}')
+    logger.debug(f'{display(q[0][0])}')
     logger.debug(f'****************************\nq:\n{len(q[0][0])}')
     logger.debug(f'****************************\nq:\n{q[0][0][0].__properties__}')
     if q:
         entries=[]
         for row in q:
-            entry, effector, _hcw, effector_type, facility, location, organization, employer, comune = row
+            entry, effector, _hcw, effector_type, facility, location, organization, employer, commune = row
             address = get_address(facility)
             avatar=get_avatar_url(effector, location, facility)
             entries.append(
