@@ -5,7 +5,7 @@ from tastypie.authorization import Authorization
 from tastypie.resources import Resource
 from tastypie.bundle import Bundle
 from tastypie.fields import ForeignKey
-#from directory.tasty.communes import createCommuneResources
+from directory.tasty.communes import createCommuneResources
 
 from django.urls import re_path
 from directory.models import Effector, Situation, EffectorType, Commune
@@ -42,7 +42,7 @@ class EntryObj(object):
             uid,
             effector_uid,
             effector_type,
-            #commune,
+            commune,
             address,
             phones,
             updatedAt,
@@ -58,7 +58,7 @@ class EntryObj(object):
         self.uid = uid
         self.effector_uid = effector_uid
         self.effector_type = effector_type
-        #self.commune = commune
+        self.commune = commune
         self.address = address
         self.phones = phones
         self.updatedAt = updatedAt
@@ -72,12 +72,12 @@ def createEntryResource(request, node):
     uid = entry.uid
     effector_node=node["effector"]
     address=node["address"]
-    #commune_node: Commune = node["commune"]
-    #commune_obj = createCommuneResources(
-    #    request,
-    #    [commune_node]
-    #)[0]
-    #commune = commune_obj.__dict__
+    commune_node: Commune = node["commune"]
+    commune_obj = createCommuneResources(
+        request,
+        [commune_node]
+    )[0]
+    commune = commune_obj.__dict__
     label = getattr(
         effector_node,
         f'label_{settings.LANGUAGE_CODE}',
@@ -140,7 +140,7 @@ def createEntryResource(request, node):
         uid,
         effector_uid,
         effector_type,
-        #commune,
+        commune,
         address,
         phones,
         updatedAt,
@@ -169,7 +169,7 @@ class EntryResource(Resource):
     gender = fields.CharField(attribute='gender', null=True)
     slug = fields.CharField(attribute='slug')
     effector_type = fields.DictField(attribute='effector_type')
-    #commune = fields.DictField(attribute='commune')
+    commune = fields.DictField(attribute='commune')
     address = fields.DictField(attribute='address', null=True)
     phones = fields.ListField(attribute='phones', null=True)
     facility = fields.DictField(attribute='facility')

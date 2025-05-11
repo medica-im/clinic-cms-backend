@@ -508,7 +508,7 @@ def get_entries(
                     "effector": effector,
                     "entry": entry,
                     "address": address,
-                    #"commune": commune,
+                    "commune": commune,
                     "effector_type": effector_type,
                     "facility": facility,
                     "avatar": avatar,
@@ -518,43 +518,6 @@ def get_entries(
                 }
             )
         return entries
-    results, cols = db.cypher_query(query)
-    if results:
-        contacts=[]
-        for row in results:
-            effector=Effector.inflate(row[cols.index('e')])
-            facility=Facility.inflate(row[cols.index('f')])
-            logger.debug(facility.__properties__)
-            #commune=Commune.inflate(row[cols.index('commune')])
-            types=EffectorType.inflate(row[cols.index('et')])
-            types = types if isinstance(types, list) else [types]
-            entry=Entry.inflate(row[cols.index('entry')])
-            address = get_address(facility)
-            location=EffectorFacility.inflate(row[cols.index('rel')])
-            avatar=get_avatar_url(effector, location, facility)
-            try:
-                organizations=Organization.inflate(row[cols.index('o')])
-            except Exception as e:
-                organizations=[]
-            try:
-                employers=Organization.inflate(row[cols.index('employer')])
-            except Exception as e:
-                employers=[]
-            contacts.append(
-                {
-                    "effector": effector,
-                    "entry": entry,
-                    "address": address,
-                    #"commune": commune,
-                    "types": types,
-                    "facility": facility,
-                    "avatar": avatar,
-                    "location": location,
-                    "organizations": org_uids(organizations),
-                    "employers": org_uids(employers),
-                }
-            )
-        return contacts
 
 def get_location_uids(effector_uids):
     results, cols = db.cypher_query(
