@@ -41,7 +41,7 @@ class EntryObj(object):
             slug,
             uid,
             effector_uid,
-            type,
+            effector_type,
             #commune,
             address,
             phones,
@@ -57,7 +57,7 @@ class EntryObj(object):
         self.slug = slug
         self.uid = uid
         self.effector_uid = effector_uid
-        self.type = type
+        self.effector_type = effector_type
         #self.commune = commune
         self.address = address
         self.phones = phones
