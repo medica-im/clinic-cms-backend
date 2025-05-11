@@ -497,8 +497,8 @@ def get_entries(
                 effector_type,
                 facility,
                 location,
-                organization,
-                employer,
+                organizations,
+                employers,
                 commune
             )= row
             address = get_address(facility)
@@ -509,7 +509,7 @@ def get_entries(
                     "entry": entry,
                     "address": address,
                     #"commune": commune,
-                    "types": types,
+                    "type": effector_type,
                     "facility": facility,
                     "avatar": avatar,
                     "location": location,
