@@ -132,8 +132,7 @@ def createEffectorRessource(request, node):
     )
     effector_uid = effector_node.uid
     et = node["effector_type"]
-    effector_type_obj_lst = createEffectorTypeResources(request, [et])
-    effector_type_obj=effector_type_obj_lst[0]
+    effector_type_obj = createEffectorTypeResources(et)
     effector_type_obj=flex_effector_type_label(
         effector_node,
         effector_type_obj,

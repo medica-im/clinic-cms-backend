@@ -50,29 +50,27 @@ class EffectorTypeObj(object):
         self.synonyms = synonyms
         self.definition = definition
 
-def createEffectorTypeResources(request, nodes):
-    data= []
-    for node in nodes:
-        uid = node.uid
-        label = getattr(
+def createEffectorTypeResources(node):
+    uid = node.uid
+    label = getattr(
+        node,
+        f'label_{settings.LANGUAGE_CODE}',
+        getattr(
             node,
-            f'label_{settings.LANGUAGE_CODE}',
-            getattr(
-                node,
-                'label_en',
-                None
-            )
+            'label_en',
+            None
         )
-        name = getattr(
+    )
+    name = getattr(
+        node,
+        f'name_{settings.LANGUAGE_CODE}',
+        getattr(
             node,
-            f'name_{settings.LANGUAGE_CODE}',
-            getattr(
-                node,
-                'name_en',
-                None
-            )
+            'name_en',
+            None
         )
-        slug = getattr(
+    )
+    slug = getattr(
             node,
             f'slug_{settings.LANGUAGE_CODE}',
             getattr(
@@ -81,7 +79,7 @@ def createEffectorTypeResources(request, nodes):
                 None
             )
         )
-        synonyms = getattr(
+    synonyms = getattr(
             node,
             f'synonyms_{settings.LANGUAGE_CODE}',
             getattr(
@@ -90,7 +88,7 @@ def createEffectorTypeResources(request, nodes):
                 None
             )
         )
-        definition = getattr(
+    definition = getattr(
             node,
             f'definition_{settings.LANGUAGE_CODE}',
             getattr(
@@ -99,16 +97,15 @@ def createEffectorTypeResources(request, nodes):
                 None
             )
         )
-        effector_type = EffectorTypeObj(
+    effector_type = EffectorTypeObj(
             uid,
             label,
             name,
             slug,
             synonyms,
             definition
-        )
-        data.append(effector_type)
-    return data
+    )
+    return effector_type
 
 
 class EffectorTypeResource(Resource):

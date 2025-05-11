@@ -41,7 +41,7 @@ class EntryObj(object):
             slug,
             uid,
             effector_uid,
-            types,
+            type,
             #commune,
             address,
             phones,
@@ -57,7 +57,7 @@ class EntryObj(object):
         self.slug = slug
         self.uid = uid
         self.effector_uid = effector_uid
-        self.types = types
+        self.type = type
         #self.commune = commune
         self.address = address
         self.phones = phones
@@ -107,12 +107,9 @@ def createEntryResource(request, node):
         )
     )
     effector_uid = effector_node.uid
-    type_objects = createEffectorTypeResources(request, node["types"])
-    type_objects = [
-        flex_effector_type_label(effector_node, type_object, request)
-        for type_object in type_objects
-    ]
-    types=[t.__dict__ for t in type_objects]
+    type_object = createEffectorTypeResources(node["effector_type"])
+    type_object = flex_effector_type_label(effector_node, type_object, request)
+    effector_type=type_object.__dict__
     phones = get_phones_neomodel(
         e=effector_node,
         ef=node["location"],
@@ -142,7 +139,7 @@ def createEntryResource(request, node):
         slug,
         uid,
         effector_uid,
-        types,
+        effector_type,
         #commune,
         address,
         phones,
@@ -171,7 +168,7 @@ class EntryResource(Resource):
     name = fields.CharField(attribute='name')
     gender = fields.CharField(attribute='gender', null=True)
     slug = fields.CharField(attribute='slug')
-    types = fields.ListField(attribute='types')
+    effector_type = fields.DictField(attribute='effector_type')
     #commune = fields.DictField(attribute='commune')
     address = fields.DictField(attribute='address', null=True)
     phones = fields.ListField(attribute='phones', null=True)

@@ -101,12 +101,9 @@ def createEffectorRessource(request, node):
         )
     )
     effector_uid = effector_node.uid
-    type_objects = createEffectorTypeResources(request, node["types"])
-    type_objects = [
-        flex_effector_type_label(effector_node, type_object, request)
-        for type_object in type_objects
-    ]
-    types=[t.__dict__ for t in type_objects]
+    type_object = createEffectorTypeResources(node["effector_type"])
+    type_object = flex_effector_type_label(effector_node, type_object, request)
+    effector_type=type_object.__dict__
     phones = get_phones(request, effector_node)
     updatedAt = max(
         [
@@ -129,7 +126,7 @@ def createEffectorRessource(request, node):
         slug,
         uid,
         effector_uid,
-        types,
+        effector_type,
         commune,
         address,
         phones,

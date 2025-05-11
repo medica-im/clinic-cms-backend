@@ -509,7 +509,7 @@ def get_entries(
                     "entry": entry,
                     "address": address,
                     #"commune": commune,
-                    "type": effector_type,
+                    "effector_type": effector_type,
                     "facility": facility,
                     "avatar": avatar,
                     "location": location,
