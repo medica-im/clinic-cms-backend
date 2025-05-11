@@ -482,6 +482,27 @@ def get_entries(
     logger.debug(f'****************************\nq:\n{q[0]}')
     logger.debug(f'****************************\nq:\n{q[0][0]}')
     logger.debug(f'****************************\nq:\n{q[0][0][0].__properties__}')
+    if q:
+        entries=[]
+        for row in q:
+            entry, effector, effector_type, facility, location, organization, employer, comune = row
+            address = get_address(facility)
+            avatar=get_avatar_url(effector, location, facility)
+            entries.append(
+                {
+                    "effector": effector,
+                    "entry": entry,
+                    "address": address,
+                    #"commune": commune,
+                    "types": types,
+                    "facility": facility,
+                    "avatar": avatar,
+                    "location": location,
+                    "organizations": org_uids(organizations),
+                    "employers": org_uids(employers),
+                }
+            )
+        return entries
     results, cols = db.cypher_query(query)
     if results:
         contacts=[]
