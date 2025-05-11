@@ -461,7 +461,7 @@ def get_entries(
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
-        RETURN entry,e,et,f,rel,o,employer;
+        RETURN entry,e,et,f,rel,o,employer,commune;
         """
     else:
         query=f"""
@@ -476,7 +476,7 @@ def get_entries(
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
-        RETURN entry,e,et,f,rel,o,employer;
+        RETURN entry,e,et,f,rel,o,employer,commune;
         """
     results, cols = db.cypher_query(query)
     if results:
@@ -484,6 +484,7 @@ def get_entries(
         for row in results:
             effector=Effector.inflate(row[cols.index('e')])
             facility=Facility.inflate(row[cols.index('f')])
+            logger.debug(facility.__properties__)
             #commune=Commune.inflate(row[cols.index('commune')])
             types=EffectorType.inflate(row[cols.index('et')])
             types = types if isinstance(types, list) else [types]
