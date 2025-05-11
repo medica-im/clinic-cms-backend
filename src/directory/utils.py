@@ -490,7 +490,17 @@ def get_entries(
     if q:
         entries=[]
         for row in q:
-            entry, effector, _hcw, effector_type, facility, location, organization, employer, commune = row
+            logger.debug(len(row))
+            (
+                entry,
+                effector,
+                effector_type,
+                facility,
+                location,
+                organization,
+                employer,
+                commune
+            )= row
             address = get_address(facility)
             avatar=get_avatar_url(effector, location, facility)
             entries.append(
