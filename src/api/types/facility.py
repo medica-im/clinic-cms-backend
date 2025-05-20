@@ -6,9 +6,9 @@ class Facility(BaseModel):
     uid: str
     commune: Commune
     updated: int = 0
-    name: str
+    name: str|None
     label: str|None
-    slug: str
+    slug: str|None
     location: Coordinate|None
     zoom: int|None = 18
     building: str|None
