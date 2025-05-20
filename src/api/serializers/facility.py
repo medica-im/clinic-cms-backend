@@ -39,9 +39,9 @@ def get_facilities(
     if uid:
             query=(
                 f"""
-                MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d:DepartmentOfFrance)
+                MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)
                 WHERE f.uid="{uid}"
-                RETURN f,c,d;
+                RETURN f,c,dpt;
                 """)
     else:
         if directory:
@@ -51,14 +51,14 @@ def get_facilities(
                 WITH d
                 MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
                 WITH entry
-                MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d:DepartmentOfFrance)
-                RETURN DISTINCT f,c,d;
+                MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)
+                RETURN DISTINCT f,c,dpt;
                 """)
         else:
             query=(
                 f"""
-                (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d:DepartmentOfFrance)
-                RETURN DISTINCT f,c,d;
+                (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)
+                RETURN DISTINCT f,c,dpt;
                 """)
     #results, cols = db.cypher_query(query)
     q = db.cypher_query(query,resolve_objects = True)
