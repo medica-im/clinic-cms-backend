@@ -71,15 +71,14 @@ def get_facilities(
                 commune,
                 department,
             ) = row
-            d=DepartmentOfFrancePy.model_validate(department.__properties__)
-            commune = commune.__properties__
-            commune["department"]=d
-            c=CommunePy.model_validate(commune)
+            commune_dct = commune.__properties__
+            commune_dct["department"]=department.__properties__
             logger.debug(facility)
-            logger.debug(c)
-            logger.debug(d)
+            logger.debug(commune_dct)
+            facility_dct=facility.__properties__
+            facility_dct["commune"]=commune_dct
             try:
-                f=FacilityPy.model_validate(facility)
+                f=FacilityPy.model_validate(facility_dct)
                 facilities.append(f)
             except ValidationError as e:
                 logger.debug(e)
