@@ -7,7 +7,7 @@ class Facility(BaseModel):
     commune: Commune
     updated: int = 0
     name: str
-    label: str
+    label: str|None
     slug: str
     location: Coordinate|None
     zoom: int|None = 18

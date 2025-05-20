@@ -82,6 +82,7 @@ def get_facilities(
                 facilities.append(f)
             except ValidationError as e:
                 logger.debug(e)
+                logger.debug(f)
                 raise ValidationError(e)
     return facilities
 
