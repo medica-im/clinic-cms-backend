@@ -1,5 +1,5 @@
 from fastapi import APIRouter, status
-from src.api.serializers.facility import get_facilities, get_facility
+from api.serializers.facility import get_facilities, get_facility
 from api.types.facility import Facility
 
 router = APIRouter()
