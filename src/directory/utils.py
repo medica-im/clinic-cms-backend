@@ -500,7 +500,7 @@ def get_entries(
                 organizations,
                 employers,
                 commune
-            )= row
+            ) = row
             address = get_address(facility)
             avatar=get_avatar_url(effector, location, facility)
             entries.append(

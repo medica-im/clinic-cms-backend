@@ -1,6 +1,5 @@
 from fastapi import APIRouter, status
-from pydantic import BaseModel
-from directory.fastapi import get_organizations, get_organization, create_organization
+from src.api.serializers.organization import get_organizations, get_organization, create_organization
 from api.types.organization import OrganizationPy
 
 router = APIRouter()

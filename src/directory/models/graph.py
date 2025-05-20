@@ -1,5 +1,6 @@
 import logging
 from uuid import uuid4
+from neomodel.contrib import spatial_properties as neomodel_spatial
 from neomodel import (
     config,
     StructuredNode,
@@ -329,29 +330,21 @@ class Facility(StructuredNode):
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
     )
     contactUpdatedAt = IntegerProperty(default=0)
+    updated = IntegerProperty(default=0)
     name = StringProperty()
     label = StringProperty()
     slug = StringProperty()
-    type = RelationshipTo('FacilityType', 'IS_A')
+    location = neomodel_spatial.PointProperty(crs='wgs-84')
     effectors = RelationshipFrom(
         Effector,
         "LOCATION",
         model = EffectorFacility
     )
-
-
-class FacilityType(StructuredNode):
-    uid = UniqueIdProperty()
-    label_fr = StringProperty(unique_index=True)
-    label_en = StringProperty(unique_index=True)
-    name_fr = StringProperty(unique_index=True)
-    name_en = StringProperty(unique_index=True)
-    slug_en = StringProperty(unique_index=True)
-    slug_fr = StringProperty(unique_index=True)
-    synonyms_fr = ArrayProperty(base_property=StringProperty())
-    synonyms_en = ArrayProperty(base_property=StringProperty())
-    definition_fr = StringProperty()
-    definition_en = StringProperty()
+    zoom = IntegerProperty(default=18)
+    building = StringProperty()
+    street = StringProperty()
+    geographical_complement = StringProperty()
+    zip = StringProperty()
 
 
 class Entry(StructuredNode):

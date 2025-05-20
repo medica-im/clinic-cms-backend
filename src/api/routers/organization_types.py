@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from directory.fastapi import get_organization_types, get_organization_type
+from src.api.serializers.organization import get_organization_types, get_organization_type
 from api.types.organization_types import OrganizationTypePy
 from pydantic import ValidationError
 
