@@ -40,7 +40,7 @@ def get_facilities(
             query=(
                 f"""
                 MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d:DepartmentOfFrance)
-                WHERE f.uid={uid}
+                WHERE f.uid="{uid}"
                 RETURN f, c, d
                 """)
     else:
