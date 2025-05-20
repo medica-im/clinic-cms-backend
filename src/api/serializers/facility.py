@@ -71,8 +71,8 @@ def get_facilities(
                 commune,
                 department,
             ) = row
-            c=CommunePy.model_validate(commune)
-            d=DepartmentOfFrancePy.model_validate(department)
+            c=CommunePy.model_validate(commune.__properties__)
+            d=DepartmentOfFrancePy.model_validate(department.__properties__)
             logger.debug(facility)
             logger.debug(c)
             logger.debug(d)
