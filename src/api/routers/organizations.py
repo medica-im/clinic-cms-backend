@@ -1,5 +1,5 @@
 from fastapi import APIRouter, status
-from src.api.serializers.organization import get_organizations, get_organization, create_organization
+from api.serializers.organization import get_organizations, get_organization, create_organization
 from api.types.organization import OrganizationPy
 
 router = APIRouter()
