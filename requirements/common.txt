@@ -21,6 +21,7 @@ redis
 django-contact-form[akismet]
 langcodes[data]
 neomodel
+shapely
 SPARQLWrapper
 pandas
 https://github.com/django-tastypie/django-tastypie/archive/master.tar.gz
