@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from api.types.facility import Facility as FacilityPy
 from api.types.organization_types import OrganizationTypePy
 from api.types.organization import OrganizationPy
-from api.types.geography import Commune, DepartmentOfFrance
+from api.types.geography import Commune as CommunePy, DepartmentOfFrance as DepartmentOfFrancePy
 from neomodel import db
 from directory.models import (
     Directory,
@@ -71,9 +71,11 @@ def get_facilities(
                 commune,
                 department,
             ) = row
-            commune["department"] = department
-            facility["commune"]=commune
+            c=CommunePy.model_validate(commune)
+            d=DepartmentOfFrancePy.model_validate(department)
             logger.debug(facility)
+            logger.debug(c)
+            logger.debug(d)
             try:
                 f=FacilityPy.model_validate(facility)
                 facilities.append(f)
