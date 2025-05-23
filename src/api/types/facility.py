@@ -15,3 +15,4 @@ class Facility(BaseModel):
     street: str|None  
     geographical_complement: str|None
     zip: str|None
+    effectors: list[str]|None

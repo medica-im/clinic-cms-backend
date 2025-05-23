@@ -39,9 +39,9 @@ def get_facilities(
     if uid:
             query=(
                 f"""
-                MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)
+                MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance), (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType)
                 WHERE f.uid="{uid}"
-                RETURN f,c,dpt;
+                RETURN f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");
                 """)
     else:
         if directory:
@@ -51,14 +51,14 @@ def get_facilities(
                 WITH d
                 MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
                 WITH entry
-                MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)
-                RETURN DISTINCT f,c,dpt;
+                MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance), (e:Effector)-[]-(entry)-[]-(et:EffectorType)
+                RETURN DISTINCT f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");
                 """)
         else:
             query=(
                 f"""
-                MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)
-                RETURN DISTINCT f,c,dpt;
+                MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance), (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType)
+                RETURN DISTINCT f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");
                 """)
     #results, cols = db.cypher_query(query)
     q = db.cypher_query(query,resolve_objects = True)
@@ -70,12 +70,14 @@ def get_facilities(
                 facility,
                 commune,
                 department,
+                effectors,
             ) = row
             commune_dct = commune.__properties__
             commune_dct["department"]=department.__properties__
             logger.debug(facility)
             facility_dct=facility.__properties__
             facility_dct["commune"]=commune_dct
+            facility_dct["effectors"]=effectors
             try:
                 f=FacilityPy.model_validate(facility_dct)
                 facilities.append(f)
