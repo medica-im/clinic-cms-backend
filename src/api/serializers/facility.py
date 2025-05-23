@@ -72,6 +72,8 @@ def get_facilities(
                 department,
                 effectors,
             ) = row
+            logger.debug(effectors)
+            logger.debug(effectors.__properties__)
             commune_dct = commune.__properties__
             commune_dct["department"]=department.__properties__
             logger.debug(facility)
