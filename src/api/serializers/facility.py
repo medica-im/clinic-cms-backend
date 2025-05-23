@@ -73,13 +73,12 @@ def get_facilities(
                 effectors,
             ) = row
             logger.debug(effectors)
-            logger.debug(effectors.__properties__)
             commune_dct = commune.__properties__
             commune_dct["department"]=department.__properties__
             logger.debug(facility)
             facility_dct=facility.__properties__
             facility_dct["commune"]=commune_dct
-            facility_dct["effectors"]=effectors
+            facility_dct["effectors"]=effectors[0]
             try:
                 f=FacilityPy.model_validate(facility_dct)
                 facilities.append(f)
