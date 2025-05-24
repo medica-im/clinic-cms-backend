@@ -42,10 +42,7 @@ def get_facilities(
     if uid:
             query=(
                 f"""
-                MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance), (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType)
-                WHERE f.uid="{uid}"
-                RETURN f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");
-                """)
+                MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance), (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType) WHERE f.uid="{uid}" RETURN f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");""")
     else:
         if directory:
             query=(
