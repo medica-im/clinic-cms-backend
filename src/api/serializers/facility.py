@@ -7,7 +7,7 @@ from api.types.organization_types import OrganizationTypePy
 from api.types.organization import OrganizationPy
 from api.types.geography import Commune as CommunePy, DepartmentOfFrance as DepartmentOfFrancePy
 from neomodel import db
-from neomodel.contrib.spatial_properties import NeomodelPoint
+from neomodel.contrib.spatial_properties import NeomodelPoint, PointProperty
 from directory.models import (
     Directory,
     Facility,
@@ -97,7 +97,7 @@ def create_facility(kwargs)->FacilityPy:
         logger.debug(longitude)
         latitude: int=kwargs["location"]["latitude"]
         logger.debug(latitude)
-        location=NeomodelPoint((longitude, latitude))
+        location=PointProperty(longitude=longitude, latitude=latitude, crs='wgs-84')
         logger.debug(location)
     except Exception as e:
         logger.debug(e)
