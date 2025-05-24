@@ -75,6 +75,7 @@ def get_facilities(
             commune_dct["department"]=department.__properties__
             logger.debug(facility)
             facility_dct=facility.__properties__
+            logger.debug(facility_dct)
             facility_dct["commune"]=commune_dct
             facility_dct["effectors"]=effectors[0]
             try:
