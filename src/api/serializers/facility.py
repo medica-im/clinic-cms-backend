@@ -88,4 +88,24 @@ def get_facilities(
                 raise ValidationError(e)
     return facilities
 
-    
+def create_facility(kwargs)->FacilityPy:
+    node = Facility(
+        name=kwargs["name"],
+        label=kwargs["label"],
+        slug=kwargs["slug"],
+        zoom=kwargs["zoom"],
+        building=kwargs["building"],
+        street=kwargs["street"],
+        geographical_complement=kwargs["geographical_complement"],
+        zip=kwargs["zip"],
+        location=kwargs["location"]
+    ).save()
+    commune=kwargs["commune"]
+    if commune:
+        try:
+            commune_node = Commune.nodes.get(uid=commune)
+            node.commune.connect(commune_node)
+        except Exception as e:
+            raise Exception(e)
+    facility = get_facility(uid=str(node.uid))
+    return facility

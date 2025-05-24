@@ -2,9 +2,8 @@ from pydantic import BaseModel, Field
 from api.types.geography import Commune
 from pydantic_extra_types.coordinate import Coordinate
 
-class Facility(BaseModel):
+class FacilityBase(BaseModel):
     uid: str
-    commune: Commune
     updated: int = 0
     name: str|None
     label: str|None
@@ -15,4 +14,12 @@ class Facility(BaseModel):
     street: str|None  
     geographical_complement: str|None
     zip: str|None
+
+
+class Facility(FacilityBase):
+    commune: Commune
     effectors: list[str]|None
+
+
+class FacilityCreate(FacilityBase):
+    commune: str
