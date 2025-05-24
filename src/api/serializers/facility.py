@@ -38,8 +38,8 @@ def get_facilities(
         uid: str|None = None,
         active: bool = True,
     ) -> list[FacilityPy]:
+    logger.debug(f"{uid=}")
     if uid:
-            logger.debug(uid)
             query=(
                 f"""
                 MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance), (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType)
