@@ -3,7 +3,6 @@ from api.types.geography import Commune
 from pydantic_extra_types.coordinate import Coordinate
 
 class FacilityBase(BaseModel):
-    uid: str
     updated: int = 0
     name: str|None
     label: str|None
@@ -17,6 +16,7 @@ class FacilityBase(BaseModel):
 
 
 class Facility(FacilityBase):
+    uid: str
     commune: Commune
     effectors: list[str]|None
 
