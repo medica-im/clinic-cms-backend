@@ -76,11 +76,12 @@ def get_facilities(
             logger.debug(facility)
             facility_dct=facility.__properties__
             logger.debug(facility_dct)
-            location=facility.location
-            logger.debug(location)
+            point=facility.location
+            location_dct={"longitude": point.x, "latitude": point.y}
+            logger.debug(location_dct)
             facility_dct["commune"]=commune_dct
             facility_dct["effectors"]=effectors[0]
-            facility_dct["location"]=location
+            facility_dct["location"]=location_dct
             try:
                 f=FacilityPy.model_validate(facility_dct)
                 facilities.append(f)
