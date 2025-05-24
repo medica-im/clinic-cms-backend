@@ -21,19 +21,21 @@ logger = logging.getLogger(__name__)
 def get_facility(
         directory: Directory|None = None,
         uid: str|None = None,
-        label: str = "Organization",
         active: bool = True,
     ) -> FacilityPy:
-    return get_facilities(
-        directory=directory,
-        uid=uid,
-        active=active
-    )[0]
+    try:
+        return get_facilities(
+            directory=directory,
+            uid=uid,
+            active=active
+        )[0]
+    except Exception as e:
+        logger.debug(e)
+        raise Exception(e)
 
 def get_facilities(
         directory: Directory|None = None,
         uid: str|None = None,
-        label: str = "Organization",
         active: bool = True,
     ) -> list[FacilityPy]:
     if uid:
