@@ -64,6 +64,7 @@ def get_facilities(
                 """)
     #results, cols = db.cypher_query(query)
     q = db.cypher_query(query,resolve_objects = True)
+    logger.debug(q)
     facilities: list[FacilityPy]=[]
     if q:
         for row in q[0]:
