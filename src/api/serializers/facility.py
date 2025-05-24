@@ -93,7 +93,11 @@ def get_facilities(
 def create_facility(kwargs)->FacilityPy:
     logger.debug(kwargs["location"])
     try:
-        location=NeomodelPoint((kwargs["location"]["longitude"], kwargs["location"]["latitude"]))
+        longitude: int=kwargs["location"]["longitude"]
+        logger.debug(longitude)
+        latitude: int=kwargs["location"]["latitude"]
+        logger.debug(latitude)
+        location=NeomodelPoint((longitude, latitude))
         logger.debug(location)
     except Exception as e:
         logger.debug(e)
