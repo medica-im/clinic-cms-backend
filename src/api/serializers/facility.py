@@ -7,6 +7,7 @@ from api.types.organization_types import OrganizationTypePy
 from api.types.organization import OrganizationPy
 from api.types.geography import Commune as CommunePy, DepartmentOfFrance as DepartmentOfFrancePy
 from neomodel import db
+from neomodel.contrib.spatial_properties import NeomodelPoint
 from directory.models import (
     Directory,
     Facility,
@@ -90,6 +91,12 @@ def get_facilities(
     return facilities
 
 def create_facility(kwargs)->FacilityPy:
+    try:
+        location=NeomodelPoint((kwargs["location"]["longitude"], kwargs["location"]["latitude"]))
+        logger.debug(location)
+    except Exception as e:
+        logger.debug(e)
+        location=None
     node = Facility(
         name=kwargs["name"],
         label=kwargs["label"],
@@ -99,7 +106,7 @@ def create_facility(kwargs)->FacilityPy:
         street=kwargs["street"],
         geographical_complement=kwargs["geographical_complement"],
         zip=kwargs["zip"],
-        location=kwargs["location"]
+        location=location
     ).save()
     commune=kwargs["commune"]
     if commune:
