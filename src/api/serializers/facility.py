@@ -77,7 +77,7 @@ def get_facilities(
             facility_dct=facility.__properties__
             logger.debug(facility_dct)
             point=facility.location
-            location_dct={"longitude": point.x, "latitude": point.y}
+            location_dct={"longitude": point.longitude, "latitude": point.latitude}
             logger.debug(location_dct)
             facility_dct["commune"]=commune_dct
             facility_dct["effectors"]=effectors[0]
