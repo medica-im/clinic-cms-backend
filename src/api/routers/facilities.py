@@ -15,5 +15,5 @@ async def facility(uid: str) -> Facility:
     return get_facility(uid=uid)
 
 @router.post("/facilities/", status_code=status.HTTP_201_CREATED)
-async def post_facility(organization: FacilityPost) -> Facility:
+async def post_facility(facility: FacilityPost) -> Facility:
     return create_facility(facility.model_dump())
