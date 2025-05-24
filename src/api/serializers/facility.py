@@ -41,8 +41,7 @@ def get_facilities(
     ) -> list[FacilityPy]:
     if uid:
             query=(
-                f"""
-                MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance), (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType) WHERE f.uid="{uid}" RETURN f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");""")
+                f"""MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance) WHERE f.uid="{uid}" WITH f,c,dpt OPTIONAL MATCH (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType) RETURN f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");""")
     else:
         if directory:
             query=(
