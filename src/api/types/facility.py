@@ -21,5 +21,5 @@ class Facility(FacilityBase):
     effectors: list[str]|None
 
 
-class FacilityCreate(FacilityBase):
+class FacilityPost(FacilityBase):
     commune: str

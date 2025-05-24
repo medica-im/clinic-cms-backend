@@ -38,7 +38,6 @@ def get_facilities(
         uid: str|None = None,
         active: bool = True,
     ) -> list[FacilityPy]:
-    logger.debug(f"{uid=}")
     if uid:
             query=(
                 f"""
@@ -63,9 +62,7 @@ def get_facilities(
                 MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance), (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType)
                 RETURN DISTINCT f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");
                 """)
-    #results, cols = db.cypher_query(query)
     q = db.cypher_query(query,resolve_objects = True)
-    logger.debug(q)
     facilities: list[FacilityPy]=[]
     if q:
         for row in q[0]:
