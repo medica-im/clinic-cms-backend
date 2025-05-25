@@ -16,6 +16,6 @@ class DepartmentOfFrance(BaseModel):
     wikidata: str
 
 class Commune(AdministrativeTerritorialEntityOfFrance):
-    department: DepartmentOfFrance | None
+    department: DepartmentOfFrance | None = None
 
 
