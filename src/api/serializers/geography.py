@@ -30,6 +30,7 @@ def get_commune(
     )[0]
 
 def get_communes(
+        department: str|None = None,
         directory: Directory|None = None,
         uid: str|None = None,
         active: bool = True
@@ -37,7 +38,10 @@ def get_communes(
     if uid:
         query=f"""MATCH (c:Commune) WHERE c.uid="{uid}" RETURN c;"""
     else:
-        query=f"""MATCH (c:Commune) RETURN c;"""
+        if department:
+            query=f"""MATCH (c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance) WHERE dpt.code="{department}" RETURN c;"""
+        else:
+            query=f"""MATCH (c:Commune) RETURN c;"""
     q = db.cypher_query(query, resolve_objects = True)
     nodes: list[CommunePy]=[]
     if q:

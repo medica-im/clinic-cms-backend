@@ -5,8 +5,8 @@ from api.types.geography import Commune
 router = APIRouter()
 
 @router.get("/communes")
-async def communes() -> list[Commune]:
-    return get_communes()
+async def communes(department: str | None = None) -> list[Commune]:
+    return get_communes(department=department)
 
 @router.get("/communes/{uid}")
 async def commune(uid: str) -> Commune:
