@@ -17,13 +17,14 @@ apps.check_apps_ready()
 apps.check_models_ready()
 
 from fastapi import FastAPI
-from api.routers import organizations, organization_types, facilities
+from api.routers import organizations, organization_types, facilities, communes
 
 app = FastAPI()
 
 app.include_router(organizations.router)
 app.include_router(organization_types.router)
 app.include_router(facilities.router)
+app.include_router(communes.router)
 
 @app.get("/")
 async def root():
