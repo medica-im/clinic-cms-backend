@@ -41,8 +41,9 @@ def get_communes(
     q = db.cypher_query(query, resolve_objects = True)
     nodes: list[CommunePy]=[]
     if q:
-        for commune in q[0]:
+        for row in q[0]:
             try:
+                (commune,) = row
                 commune_dct=commune.__properties__
                 commune=CommunePy.model_validate(commune_dct)
                 logger.debug(commune)
