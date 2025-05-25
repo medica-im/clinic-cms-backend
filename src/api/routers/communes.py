@@ -9,5 +9,5 @@ async def communes() -> list[Commune]:
     return get_communes()
 
 @router.get("/communes/{uid}")
-async def organization(uid: str) -> Commune:
+async def commune(uid: str) -> Commune:
     return get_commune(uid=uid)
