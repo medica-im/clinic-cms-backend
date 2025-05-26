@@ -128,7 +128,7 @@ def create_facility(kwargs)->FacilityPy:
     facility = get_facility(uid=str(node.uid))
     return facility
 
-def delete_facility(uid: str)->str:
+def delete_facility(uid: str)->dict:
     try:
         Facility.nodes.get(uid=uid)
     except:
@@ -138,5 +138,5 @@ def delete_facility(uid: str)->str:
     )
     results, cols = db.cypher_query(query)
     logger.debug(f"{results=}\n{cols=}")
-    return f"{results}"
+    return {"ok": True}
         
