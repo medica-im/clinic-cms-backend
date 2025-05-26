@@ -134,7 +134,7 @@ def delete_facility(uid: str)->dict:
     except:
         raise HTTPException(status_code=404, detail="Facility not found")
     query=(
-        f"""MATCH (f:Facility) WHERE f.uid="{uid}" WITH f,c,dpt OPTIONAL MATCH (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType) RETURN f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");"""
+        f"""MATCH (f:Facility) WHERE f.uid="{uid}" DETACH DELETE f;"""
     )
     results, cols = db.cypher_query(query)
     logger.debug(f"{results=}\n{cols=}")
