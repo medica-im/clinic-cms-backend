@@ -126,3 +126,12 @@ def create_facility(kwargs)->FacilityPy:
             raise Exception(e)
     facility = get_facility(uid=str(node.uid))
     return facility
+
+def delete_facility(uid: str)->str:
+    query=(
+        f"""MATCH (f:Facility) WHERE f.uid="{uid}" WITH f,c,dpt OPTIONAL MATCH (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType) RETURN f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");"""
+    )
+    results, cols = db.cypher_query(query)
+    logger.debug(f"{results=}\n{cols=}")
+    return f"{results}"
+        

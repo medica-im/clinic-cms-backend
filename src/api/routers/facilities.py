@@ -1,6 +1,6 @@
 import logging
 from fastapi import APIRouter, status
-from api.serializers.facility import get_facilities, get_facility, create_facility
+from api.serializers.facility import get_facilities, get_facility, create_facility, delete_facility
 from api.types.facility import Facility, FacilityPost
 logger = logging.getLogger(__name__)
 
@@ -17,3 +17,7 @@ async def facility(uid: str) -> Facility:
 @router.post("/facilities/", status_code=status.HTTP_201_CREATED)
 async def post_facility(facility: FacilityPost) -> Facility:
     return create_facility(facility.model_dump())
+
+@router.delete("/facilities/{uid}")
+async def delete_facility(uid: str):
+    return delete_facility(uid)
