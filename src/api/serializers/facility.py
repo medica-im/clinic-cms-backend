@@ -1,5 +1,6 @@
 import logging
 import json
+from fastapi import HTTPException
 from typing import Union
 from pydantic import ValidationError
 from api.types.facility import Facility as FacilityPy
@@ -128,6 +129,10 @@ def create_facility(kwargs)->FacilityPy:
     return facility
 
 def delete_facility(uid: str)->str:
+    try:
+        Facility.nodes.get(uid=uid)
+    except:
+        raise HTTPException(status_code=404, detail="Facility not found")
     query=(
         f"""MATCH (f:Facility) WHERE f.uid="{uid}" WITH f,c,dpt OPTIONAL MATCH (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType) RETURN f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");"""
     )
