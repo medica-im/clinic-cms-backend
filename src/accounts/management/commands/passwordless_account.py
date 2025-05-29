@@ -36,7 +36,6 @@ def add_roles(edge, role):
             role_dict[k]= Role.objects.get(name=k)
         except Role.DoesNotExist as e:
             raise CommandError(f'Role {k} does not exist. {e}')
-            return
     idx = role_keys.index(role)
 
     while idx>=0:
