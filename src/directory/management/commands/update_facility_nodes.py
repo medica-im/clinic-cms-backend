@@ -37,7 +37,6 @@ class Command(BaseCommand):
         else:
             nodes = Facility.nodes.all(lazy=True)
         for node_id in nodes:
-            self.warn(node)
             node=Facility.nodes.get(id=node_id)
             url=f"{url}/{node.slug}/"
             f=dict()
