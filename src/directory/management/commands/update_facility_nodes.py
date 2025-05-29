@@ -27,9 +27,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         facility_uid=options["facility"]
         url=options["url"]
+        nodes=[]
         if facility_uid:
             try:
                 nodes = [Facility.nodes.get(uid=facility_uid, lazy=True)]
+                print(nodes)
             except:
                 raise CommandError(f'No node found for uid="{facility_uid}"')
         else:
