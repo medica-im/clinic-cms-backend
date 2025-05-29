@@ -25,4 +25,5 @@ shapely
 SPARQLWrapper
 pandas
 https://github.com/django-tastypie/django-tastypie/archive/master.tar.gz
-colorlog   
+colorlog
+requests
