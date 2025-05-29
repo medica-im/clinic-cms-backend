@@ -36,7 +36,7 @@ class Command(BaseCommand):
             nodes = Facility.nodes.all(lazy=True)
         for node in nodes:
             node=Facility.inflate(node)
-            url=f"{url}/{node.uid}"
+            url=f"{url}/{node.slug}/"
             f=dict()
             try:
                 r = requests.get(url, timeout=1, verify=True)
