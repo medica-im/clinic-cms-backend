@@ -37,7 +37,7 @@ class Command(BaseCommand):
         else:
             nodes = Facility.nodes.all(lazy=True)
         for node_id in nodes:
-            node=neomodel.db.cypher_query(f"MATCH (f:Facility)) WHERE id(f) == {node_id} return f", resolve_objects=True)[0][0][0]
+            node=neomodel.db.cypher_query(f"MATCH (f:Facility) WHERE id(f) == {node_id} return f", resolve_objects=True)[0][0][0]
             self.warn(node)
             url=f"{url}/{node.slug}/"
             f=dict()
