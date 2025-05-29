@@ -37,9 +37,11 @@ class Command(BaseCommand):
         for node in nodes:
             node=Facility.inflate(node)
             url=f"{url}/{node.uid}"
+            f=dict()
             try:
                 r = requests.get(url, timeout=1, verify=True)
                 r.raise_for_status()
+                f=r.json()
             except requests.exceptions.HTTPError as errh:
                 print("HTTP Error")
                 print(errh.args[0])
@@ -49,7 +51,6 @@ class Command(BaseCommand):
                 print("Connection error")
             except requests.exceptions.RequestException as errex:
                 print("Exception request")
-            f=r.json()
             node.building=f["address"]["building"]
             node.street=f["address"]["street"]
             node.geographical_complement=f["address"]["geographical_complement"]
