@@ -36,9 +36,9 @@ class Command(BaseCommand):
                 raise CommandError(f'No node found for uid="{facility_uid}"')
         else:
             nodes = Facility.nodes.all(lazy=True)
-        for node in nodes:
+        for node_id in nodes:
             self.warn(node)
-            node=Facility.inflate(node)
+            node=Facility.nodes.get(id=node_id)
             url=f"{url}/{node.slug}/"
             f=dict()
             try:
