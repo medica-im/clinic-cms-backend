@@ -31,12 +31,13 @@ class Command(BaseCommand):
         if facility_uid:
             try:
                 nodes = [Facility.nodes.get(uid=facility_uid, lazy=True)]
-                print(nodes)
+                self.warn(nodes)
             except:
                 raise CommandError(f'No node found for uid="{facility_uid}"')
         else:
             nodes = Facility.nodes.all(lazy=True)
         for node in nodes:
+            self.warn(node)
             node=Facility.inflate(node)
             url=f"{url}/{node.slug}/"
             f=dict()
