@@ -58,6 +58,7 @@ class Command(BaseCommand):
                 self.notice(f)
             except requests.exceptions.HTTPError as errh:
                 print("HTTP Error")
+                self.warn(f"{node_id=}")
                 print(errh.args[0])
             except requests.exceptions.ReadTimeout as errrt:
                 print("Time out")
