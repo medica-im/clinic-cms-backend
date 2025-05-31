@@ -28,10 +28,12 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--facility', type=str)
         parser.add_argument('--url', required=True, type=str)
+        parser.add_argument('--c', action='store_true', help="continue the loop after an exception")
 
     def handle(self, *args, **options):
         facility_uid=options["facility"]
         api_url=options["url"]
+        _continue=options["c"]
         if api_url[-1]!="/":
             raise CommandError(f'API endpoint url ({facility_uid}) must end with a forward slash "/"')
         nodes=[]
@@ -70,13 +72,18 @@ class Command(BaseCommand):
             node.street=f["address"]["street"]
             node.geographical_complement=f["address"]["geographical_complement"]
             node.zip=f["address"]["zip"]
-            node.zoom=f["address"]["zoom"]
+            zoom=f["address"]["zoom"]
+            if zoom:
+                node.zoom=zoom
             lng_lat=(f["address"]["longitude"], f["address"]["latitude"])
             try:
                 node.location=NeomodelPoint(lng_lat, crs='wgs-84')
             except ValueError as e:
                 self.warn(f'{node}\n{e}')
-                raise CommandError(f'{node}\n{e}')
+                if _continue:
+                    pass
+                else:
+                    raise CommandError(f'{node}\n{e}')
             try:
                 node.save()
                 self.warn(node)
