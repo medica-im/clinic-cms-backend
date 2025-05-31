@@ -53,6 +53,7 @@ class Command(BaseCommand):
                 r = requests.get(url, timeout=1, verify=True)
                 r.raise_for_status()
                 f=r.json()
+                self.notice(f)
             except requests.exceptions.HTTPError as errh:
                 print("HTTP Error")
                 print(errh.args[0])
