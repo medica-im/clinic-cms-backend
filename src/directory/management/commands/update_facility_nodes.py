@@ -38,7 +38,7 @@ class Command(BaseCommand):
         if facility_uid:
             try:
                 nodes = [Facility.nodes.get(uid=facility_uid, lazy=True)]
-                self.warn(nodes)
+                #self.warn(nodes)
             except:
                 raise CommandError(f'No node found for uid="{facility_uid}"')
         else:
@@ -46,7 +46,7 @@ class Command(BaseCommand):
         count=0
         for node_id in nodes:
             node=neomodel.db.cypher_query(f"MATCH (f:Facility) WHERE id(f) = {node_id} return f", resolve_objects=True)[0][0][0]
-            self.warn(node)
+            #self.warn(node)
             if (node.building or node.street or node.geographical_complement or node.zip or node.location):
                 continue
             url=f"{url}{node.slug}/"
@@ -74,6 +74,7 @@ class Command(BaseCommand):
             node.location=NeomodelPoint(lng_lat, crs='wgs-84')
             try:
                 node.save()
+                self.warn(node)
                 count+=1
             except Exception as e:
                 self.warn(e)
