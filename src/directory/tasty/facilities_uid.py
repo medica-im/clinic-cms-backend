@@ -51,7 +51,7 @@ class FacilityUidResource(Resource):
     class Meta:
         resource_name = 'facilities-uid'
         allowed_methods=['get']
-        collection_name = "facilities"
+        collection_name = "facilities-uid"
         authorization = Authorization()
         detail_uri_name = 'uid'
 
@@ -67,7 +67,7 @@ class FacilityUidResource(Resource):
     def prepend_urls(self):
         return [
             re_path(
-                r"^(?P<resource_name>%s)/(?P<slug>[\w\d_.-]+)/$"
+                r"^(?P<resource_name>%s)/(?P<uid>[\w\d_.-]+)/$"
                 % self._meta.resource_name,
                 self.wrap_view('dispatch_detail'),
                 name="api_dispatch_detail"),
@@ -91,10 +91,10 @@ class FacilityUidResource(Resource):
         return self.get_object_list(bundle.request)
 
     def obj_get(self, bundle, **kwargs):
-        slug= kwargs['slug']
+        uid= kwargs['uid']
         try :
-            facility = Facility.nodes.get(slug=slug)
+            facility = Facility.nodes.get(uid=uid)
             objects = createFacilityResources(bundle.request, [facility])
             return objects[0]
         except Exception as e:
-            raise Exception(f"{e}\nCan't find Facility {slug}")
+            raise Exception(f"{e}\nCan't find Facility {uid}")
