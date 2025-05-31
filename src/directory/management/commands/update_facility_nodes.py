@@ -45,7 +45,7 @@ class Command(BaseCommand):
         for node_id in nodes:
             node=neomodel.db.cypher_query(f"MATCH (f:Facility) WHERE id(f) = {node_id} return f", resolve_objects=True)[0][0][0]
             self.warn(node)
-            if node.building or node.street or node.geographical_complement or node.zip or node.location or node.zoom:
+            if node.building or node.street or node.geographical_complement or node.zip or node.location:
                 continue
             url=f"{url}/{node.slug}/"
             f=dict()
