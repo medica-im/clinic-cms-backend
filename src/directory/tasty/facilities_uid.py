@@ -26,9 +26,94 @@ from tastypie.utils import (
     trailing_slash,
 )
 from django.conf import settings
-from facilities import createFacilityResources
 
 logger=logging.getLogger(__name__)
+
+class FacilityObj(object):
+    def __init__ (
+            self,
+            uid,
+            name,
+            label,
+            slug,
+            commune,
+            address,
+            organizations,
+            phones,
+            emails,
+            websites,
+            socialnetworks,
+            avatar,
+            effectors,
+        ):
+        self.uid = uid
+        self.name = name
+        self.label = label
+        self.slug = slug
+        self.commune = commune
+        self.address = address
+        self.organizations = organizations
+        self.phones = phones
+        self.emails = emails
+        self.websites = websites
+        self.socialnetworks = socialnetworks
+        self.avatar = avatar
+        self.effectors = effectors
+
+def createFacilityResources(request, nodes):
+    data= []
+    for node in nodes:
+        uid = node.uid
+        name = node.name
+        if not name:
+            try:
+                org=node.organization.all()[0]
+                name = getattr(
+                    org,
+                    f'name_{settings.LANGUAGE_CODE}',
+                    getattr(
+                        org,
+                        'label_en',
+                        None
+                    )
+                )
+            except:
+                name=node.uid
+        try:
+            label = node.label
+        except:
+            label = name
+        slug = node.slug
+        address = get_address(node)
+        try:
+            commune = node.commune.all()[0].uid
+        except Exception as e:
+            logger.error(e)
+            commune = None
+        organizations = [org.uid for org in node.organization.all()]
+        phones = get_phones_neomodel(f=node)
+        emails = get_emails_neomodel(f=node)
+        websites = get_websites_neomodel(f=node)
+        socialnetworks=get_socialnetworks_neomodel(f=node)
+        avatar = get_avatar_url(f=node)
+        effectors=[e.uid for e in node.effectors.all()]
+        obj = FacilityObj(
+            uid,
+            name,
+            label,
+            slug,
+            commune,
+            address,
+            organizations,
+            phones,
+            emails,
+            websites,
+            socialnetworks,
+            avatar,
+            effectors,
+        )
+        data.append(obj)
+    return data
 
 class FacilityUidResource(Resource):
     # Just like a Django ``Form`` or ``Model``, we're defining all the
