@@ -49,7 +49,7 @@ class Command(BaseCommand):
             #self.warn(node)
             if (node.building or node.street or node.geographical_complement or node.zip or node.location):
                 continue
-            url=f"{api_url}{node.slug}/"
+            url=f"{api_url}{node.uid}/"
             f=dict()
             try:
                 r = requests.get(url, timeout=1, verify=True)
