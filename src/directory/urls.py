@@ -21,6 +21,7 @@ from directory.tasty.fulleffectors import (
 from directory.tasty.carehome import CareHomeResource
 from directory.tasty.contacts import ContactResource
 from directory.tasty.facilities import FacilityResource
+from directory.tasty.facilities_uid import FacilityUidResource
 from directory.tasty.entries import EntryResource
 
 # tastypie
@@ -32,6 +33,7 @@ v1_api.register(CommuneResource())
 v1_api.register(CareHomeResource())
 v1_api.register(ContactResource())
 v1_api.register(FacilityResource())
+v1_api.register(FacilityUidResource())
 v1_api.register(FullEffectorResource())
 v1_api.register(EntryResource())
 
