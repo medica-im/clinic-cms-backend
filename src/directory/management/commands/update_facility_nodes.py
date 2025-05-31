@@ -15,13 +15,18 @@ from directory.models import (
 class Command(BaseCommand):
     help = 'Update Facility nodes on neo4j: add address, GPS coordinates'
 
+    def notice(self, message):
+        self.stdout.write(
+            self.style.NOTICE(message)
+        )
+    
     def warn(self, message):
         self.stdout.write(
-            self.style.WARNING(message)
+            self.style. WARNING(message)
         )
 
     def add_arguments(self, parser):
-        parser.add_argument('facility', type=str)
+        parser.add_argument('--facility', type=str)
         parser.add_argument('--url', required=True, type=str)
 
     def handle(self, *args, **options):
@@ -36,9 +41,12 @@ class Command(BaseCommand):
                 raise CommandError(f'No node found for uid="{facility_uid}"')
         else:
             nodes = Facility.nodes.all(lazy=True)
+        count=0
         for node_id in nodes:
             node=neomodel.db.cypher_query(f"MATCH (f:Facility) WHERE id(f) = {node_id} return f", resolve_objects=True)[0][0][0]
             self.warn(node)
+            if node.building or node.street or node.geographical_complement or node.zip or node.location or node.zoom:
+                continue
             url=f"{url}/{node.slug}/"
             f=dict()
             try:
@@ -61,4 +69,10 @@ class Command(BaseCommand):
             node.zoom=f["address"]["zoom"]
             lng_lat=(f["address"]["longitude"], f["address"]["latitude"])
             node.location=NeomodelPoint(lng_lat, crs='wgs-84')
-            node.save()
+            try:
+                node.save()
+                counter+=1
+            except Exception as e:
+                self.warn(e)
+        self.notice(f"{count} node{'s' if count>1 else 's'} updated.")
+            
