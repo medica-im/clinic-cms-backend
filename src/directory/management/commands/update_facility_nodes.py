@@ -31,8 +31,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         facility_uid=options["facility"]
-        url=options["url"]
-        if url[-1]!="/":
+        api_url=options["url"]
+        if api_url[-1]!="/":
             raise CommandError(f'API endpoint url ({facility_uid}) must end with a forward slash "/"')
         nodes=[]
         if facility_uid:
@@ -49,7 +49,7 @@ class Command(BaseCommand):
             #self.warn(node)
             if (node.building or node.street or node.geographical_complement or node.zip or node.location):
                 continue
-            url=f"{url}{node.slug}/"
+            url=f"{api_url}{node.slug}/"
             f=dict()
             try:
                 r = requests.get(url, timeout=1, verify=True)
