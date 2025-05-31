@@ -72,7 +72,11 @@ class Command(BaseCommand):
             node.zip=f["address"]["zip"]
             node.zoom=f["address"]["zoom"]
             lng_lat=(f["address"]["longitude"], f["address"]["latitude"])
-            node.location=NeomodelPoint(lng_lat, crs='wgs-84')
+            try:
+                node.location=NeomodelPoint(lng_lat, crs='wgs-84')
+            except ValueError as e:
+                self.warn(f'{node}\n{e}')
+                raise CommandError(f'{node}\n{e}')
             try:
                 node.save()
                 self.warn(node)
