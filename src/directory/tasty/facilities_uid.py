@@ -26,7 +26,7 @@ from tastypie.utils import (
     trailing_slash,
 )
 from django.conf import settings
-from facilities import createFacilityResources, FacilityObj
+from facilities import createFacilityResources
 
 logger=logging.getLogger(__name__)
 
@@ -49,9 +49,9 @@ class FacilityUidResource(Resource):
 
 
     class Meta:
-        resource_name = 'facilities-uid'
+        resource_name = 'facilitiesuid'
         allowed_methods=['get']
-        collection_name = "facilities-uid"
+        collection_name = "facilitiesuid"
         authorization = Authorization()
         detail_uri_name = 'uid'
 
