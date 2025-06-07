@@ -50,7 +50,6 @@ def get_communes(
                 (commune,) = row
                 commune_dct=commune.__properties__
                 commune=CommunePy.model_validate(commune_dct)
-                logger.debug(commune)
                 nodes.append(commune)
             except ValidationError as e:
                 logger.debug(e)
