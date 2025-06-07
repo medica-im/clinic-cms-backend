@@ -16,6 +16,7 @@ async def facility(uid: str) -> Facility:
 
 @router.post("/facilities/", status_code=status.HTTP_201_CREATED)
 async def post_facility(facility: FacilityPost) -> Facility:
+    logger.debug(facility.model_dump())
     return create_facility(facility.model_dump())
 
 @router.delete("/facilities/{uid}", status_code=status.HTTP_200_OK)
