@@ -5,10 +5,10 @@ from pydantic import ValidationError
 
 router = APIRouter()
 
-@router.get("/organization-types")
+@router.get("/effector-types")
 async def organization_types() -> list[EffectorType]:
     return get_effector_types()
 
-@router.get("/organization-types/{organization_type_uid}")
-async def organization_type(organization_type_uid: str)->EffectorType:
-    return get_effector_type(uid=organization_type_uid)
+@router.get("/effector-types/{uid}")
+async def organization_type(uid: str)->EffectorType:
+    return get_effector_type(uid=uid)
