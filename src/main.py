@@ -17,12 +17,13 @@ apps.check_apps_ready()
 apps.check_models_ready()
 
 from fastapi import FastAPI
-from api.routers import organizations, organization_types, facilities, communes, departments
+from api.routers import organizations, organization_types, effector_types, facilities, communes, departments
 
 app = FastAPI()
 
 app.include_router(organizations.router)
 app.include_router(organization_types.router)
+app.include_router(effector_types.router)
 app.include_router(facilities.router)
 app.include_router(communes.router)
 app.include_router(departments.router)
