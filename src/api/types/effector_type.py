@@ -17,7 +17,7 @@ class EffectorType(BaseModel):
     definition_en: str|None = Field(exclude=True)
     slug_fr: str|None
     slug_en: str|None = Field(exclude=True)
-    effector_type: EffectorType|None
+    effector_type: Annotated[EffectorType|None, Field(exclude=True)] = None
     need: list[NeedPy]|None
     situation: list[SituationPy]|None
     concept_fr: Annotated[str|None, Field(exclude=True)] = None
