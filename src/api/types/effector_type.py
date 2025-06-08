@@ -23,4 +23,4 @@ class EffectorType(BaseModel):
     concept_fr: str|None = None
     concept_en: str|None = None
     #unique_ID: str|None = None
-    unique_ID: Optional[Annotated[str, Field(exclude=True)]]
+    unique_ID: Annotated[str|None, Field(exclude=True)] = None
