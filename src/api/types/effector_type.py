@@ -20,7 +20,6 @@ class EffectorType(BaseModel):
     effector_type: EffectorType|None
     need: list[NeedPy]|None
     situation: list[SituationPy]|None
-    concept_fr: str|None = None
-    concept_en: str|None = None
-    #unique_ID: str|None = None
+    concept_fr: Annotated[str|None, Field(exclude=True)] = None
+    concept_en: Annotated[str|None, Field(exclude=True)] = None
     unique_ID: Annotated[str|None, Field(exclude=True)] = None
