@@ -49,7 +49,7 @@ def get_effector_types(
         logger.debug(f"{ret_dct=}")
         try:
             et_dct=effector_type.__properties__
-            et_dct["effector_type"]=ret_dct
+            et_dct["effector_type"]=None
             et_dct["situation"]=None
             et_dct["need"]=None
             et=EffectorTypePy.model_validate(et_dct)
