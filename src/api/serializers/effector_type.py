@@ -28,12 +28,9 @@ def get_effector_types(
     )->list[EffectorTypePy]:
     label: str = "EffectorType"
     if uid:
-        query=f"""MATCH (et:{label}) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType)
-        WHERE et.uid="{uid}"
-        RETURN DISTINCT et,collect(s),collect(n),et2;"""
+        query=f"""MATCH (et:{label}) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType) WHERE et.uid="{uid}" RETURN DISTINCT et,collect(s),collect(n),et2;"""
     else:
-        query=f"""MATCH (et:{label}) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType)
-        RETURN DISTINCT et,collect(s),collect(n),et2;"""
+        query=f"""MATCH (et:{label}) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType) RETURN DISTINCT et,collect(s),collect(n),et2;"""
     q = db.cypher_query(query, resolve_objects = True)
     nodes: list[EffectorTypePy]=[]
     for row in q[0]:
@@ -50,7 +47,7 @@ def get_effector_types(
         ret_dct=None
         if related_effector_type:
             ret_dct=related_effector_type.__dict__
-        logger.debug(ret_dct)
+        logger.debug(f"{ret_dct=}")
         try:
             et_dct=effector_type.__properties__
             et_dct["effector_type"]=ret_dct

@@ -14,8 +14,11 @@ class EffectorType(BaseModel):
     synonyms_en: list[str]|None = Field(exclude=True)
     definition_fr: str|None
     definition_en: str|None = Field(exclude=True)
-    slug_en: str|None
-    slug_fr: str|None = Field(exclude=True)
+    slug_fr: str|None
+    slug_en: str|None = Field(exclude=True)
     effector_type: EffectorType|None
     need: list[NeedPy]|None
     situation: list[SituationPy]|None
+    concept_fr: str|None = Field(exclude=True)
+    concept_en: str|None = Field(exclude=True)
+    unique_ID: str|None = Field(exclude=True)
