@@ -37,7 +37,7 @@ def get_effector_types(
     q = db.cypher_query(query, resolve_objects = True)
     nodes: list[EffectorTypePy]=[]
     for row in q[0]:
-        logger.debug(row)
+        logger.debug(f"{row=}")
         (
             effector_type,
             situations,
@@ -47,10 +47,9 @@ def get_effector_types(
         logger.debug(effector_type)
         logger.debug(situations)
         logger.debug(needs)
+        ret_dct=None
         if related_effector_type:
             ret_dct=related_effector_type.__dict__
-        else:
-            ret_dct=None
         logger.debug(ret_dct)
         try:
             et_dct=effector_type.__properties__
