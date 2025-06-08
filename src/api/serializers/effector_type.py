@@ -28,11 +28,11 @@ def get_effector_types(
     )->list[EffectorTypePy]:
     label: str = "EffectorType"
     if uid:
-        query=f"""MATCH (n:{label})
-        WHERE n.uid="{uid}"
-        RETURN n;"""
+        query=f"""MATCH (et:{label}) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType)
+        WHERE et.uid="{uid}"
+        RETURN et,s,n,et2;"""
     else:
-        query=f"""MATCH (n:{label})
+        query=f"""MATCH (n:{label}) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType)
         RETURN n;"""
     results, cols = db.cypher_query(query)
     nodes: list[EffectorTypePy]=[]
