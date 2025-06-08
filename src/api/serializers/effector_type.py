@@ -26,11 +26,10 @@ def get_effector_types(
         uid: str|None = None,
         active: bool = True
     )->list[EffectorTypePy]:
-    label: str = "EffectorType"
     if uid:
-        query=f"""MATCH (et:{label}) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType) WHERE et.uid="{uid}" RETURN DISTINCT et,collect(s),collect(n),et2;"""
+        query=f"""MATCH (et:EffectorType) WHERE et.uid="{uid}" OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType)  RETURN DISTINCT et,collect(s),collect(n),et2;"""
     else:
-        query=f"""MATCH (et:{label}) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType) RETURN DISTINCT et,collect(s),collect(n),et2;"""
+        query=f"""MATCH (et:EffectorType) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType) RETURN DISTINCT et,collect(s),collect(n),et2;"""
     q = db.cypher_query(query, resolve_objects = True)
     nodes: list[EffectorTypePy]=[]
     for row in q[0]:
