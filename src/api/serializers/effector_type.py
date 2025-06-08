@@ -30,22 +30,36 @@ def get_effector_types(
     if uid:
         query=f"""MATCH (et:{label}) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType)
         WHERE et.uid="{uid}"
-        RETURN et,s,n,et2;"""
+        RETURN DISTINCT et,collect(s),collect(n),et2;"""
     else:
         query=f"""MATCH (n:{label}) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType)
-        RETURN n;"""
-    results, cols = db.cypher_query(query)
+        RETURN DISTINCT et,collect(s),collect(n),et2;"""
+    q = db.cypher_query(query, resolve_objects = True)
     nodes: list[EffectorTypePy]=[]
-    for row in results:
-        org=EffectorType.inflate(row[cols.index('n')])
-        logger.debug(org.__dict__)
-        logger.debug(org.__properties__)
-        logger.debug(org)
+    for row in q[0]:
+        logger.debug(row)
+        (
+            effector_type,
+            situations,
+            needs,
+            related_effector_type,
+        ) = row
+        logger.debug(effector_type.__dict__)
+        logger.debug(situations)
+        logger.debug(needs)
+        if related_effector_type:
+            ret_dct=related_effector_type.__dict__
+        else:
+            ret_dct=None
+        logger.debug(ret_dct)
         try:
-            org_dct=org.__properties__
-            org=EffectorTypePy.model_validate(org_dct)
-            logger.debug(org)
-            nodes.append(org)
+            et_dct=effector_type.__properties__
+            et_dct["effector_type"]=ret_dct
+            et_dct["situation"]=None
+            et_dct["need"]=None
+            et=EffectorTypePy.model_validate(et_dct)
+            logger.debug(et)
+            nodes.append(et)
         except ValidationError as e:
             logger.debug(e)
             raise ValidationError(e)
