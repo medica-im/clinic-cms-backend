@@ -19,6 +19,6 @@ class EffectorType(BaseModel):
     effector_type: EffectorType|None
     need: list[NeedPy]|None
     situation: list[SituationPy]|None
-    concept_fr: str|None = Field(exclude=True)
-    concept_en: str|None = Field(exclude=True)
-    unique_ID: str|None = Field(exclude=True)
+    concept_fr: str|None = None
+    concept_en: str|None = None
+    unique_ID: str|None = None
