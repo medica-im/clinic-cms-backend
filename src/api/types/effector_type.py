@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Annotated, Optional
 from pydantic import BaseModel, Field
 from api.types.need import NeedPy
 from api.types.situation import SituationPy
@@ -21,4 +22,5 @@ class EffectorType(BaseModel):
     situation: list[SituationPy]|None
     concept_fr: str|None = None
     concept_en: str|None = None
-    unique_ID: str|None = None
+    #unique_ID: str|None = None
+    unique_ID: Optional[Annotated[str, Field(exclude=True)]]
