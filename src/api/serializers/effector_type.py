@@ -44,9 +44,9 @@ def get_effector_types(
             needs,
             related_effector_type,
         ) = row
-        logger.debug(effector_type)
-        logger.debug(situations)
-        logger.debug(needs)
+        logger.debug(f"{effector_type=}")
+        logger.debug(f"{situations[0]=}")
+        logger.debug(f"{needs[0]}")
         ret_dct=None
         if related_effector_type:
             ret_dct=related_effector_type.__dict__
