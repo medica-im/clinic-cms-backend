@@ -32,7 +32,7 @@ def get_effector_types(
         WHERE et.uid="{uid}"
         RETURN DISTINCT et,collect(s),collect(n),et2;"""
     else:
-        query=f"""MATCH (n:{label}) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType)
+        query=f"""MATCH (et:{label}) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType)
         RETURN DISTINCT et,collect(s),collect(n),et2;"""
     q = db.cypher_query(query, resolve_objects = True)
     nodes: list[EffectorTypePy]=[]
@@ -44,7 +44,7 @@ def get_effector_types(
             needs,
             related_effector_type,
         ) = row
-        logger.debug(effector_type.__dict__)
+        logger.debug(effector_type)
         logger.debug(situations)
         logger.debug(needs)
         if related_effector_type:
