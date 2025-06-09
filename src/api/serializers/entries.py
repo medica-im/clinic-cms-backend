@@ -29,6 +29,12 @@ def get_entries(
     q = db.cypher_query(query,resolve_objects = True)
     uids=[]
     if q:
-        uids = q[0]
+        results = q[0]
+        uids = [
+            _uid
+            for xs in results
+            for _uid in xs
+            
+        ]
         logger.debug(uids)
     return uids
