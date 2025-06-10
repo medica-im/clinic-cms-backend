@@ -12,14 +12,17 @@ class GenderEnum(str, Enum):
     neutral = "N"
 
 
-class Effector(BaseModel):
+class EffectorPost(BaseModel):
     #element_id_property: str = Field(exclude=True)
-    uid: str
     name_fr: str
+    label_fr: str|None = None
+    slug_fr: str|None = None
+    gender: GenderEnum|None = None
+
+
+class Effector(EffectorPost):
+    uid: str
     name_en: str|None = Field(exclude=True)
-    label_fr: str
     label_en: str|None = Field(exclude=True)
-    slug_fr: str|None
     slug_en: str|None = Field(exclude=True)
     updatedAt: int = 0
-    gender: GenderEnum|None = None

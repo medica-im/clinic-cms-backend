@@ -201,6 +201,7 @@ class Effector(StructuredNode):
         cardinality=ZeroOrOne,
     )
     updatedAt = IntegerProperty(default=0)
+    createdAt = IntegerProperty(default=0)
     gender = StringProperty(
         choices=(("F","Feminine"), ("M","Masculine"),("N", "Neutral"))
     )
