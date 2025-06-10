@@ -10,7 +10,8 @@ from directory.models import (
     Website,
     DepartmentOfFrance
 )
-from api.types.effector import Effector
+from directory.models import Effector as EffectorNeo4j
+from api.types.effector import Effector as Effector
 
 logger = logging.getLogger(__name__)
 
@@ -63,3 +64,14 @@ def get_effectors(
                 raise ValidationError(e)
     return effectors
 
+def create_effector(kwargs)->Effector:
+    logger.debug(kwargs)
+    node = EffectorNeo4j(
+        name_fr=kwargs["name_fr"],
+        label_fr=kwargs["label_fr"],
+        slug_fr=kwargs["slug_fr"],
+        gender=kwargs["gender"],
+    ).save()
+    effector_dct=node.__properties__
+    effector=Effector.model_validate(effector_dct)
+    return effector
