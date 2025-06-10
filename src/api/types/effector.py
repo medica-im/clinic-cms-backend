@@ -7,7 +7,7 @@ from api.types.need import NeedPy
 from api.types.situation import SituationPy
 
 
-class GenderEnum(str, Enum):
+class GenderChoices(Enum):
     feminine = "F"
     masculine = "M"
     neutral = "N"
@@ -18,7 +18,7 @@ class EffectorPost(BaseModel):
     name_fr: str
     label_fr: str|None = None
     slug_fr: str|None = None
-    gender: Literal[GenderEnum.feminine, GenderEnum.masculine, GenderEnum.neutral]|None = None
+    gender: GenderChoices|None = None
 
 
 class Effector(EffectorPost):
