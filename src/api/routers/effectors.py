@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from src.api.serializers.effector import get_effector, get_effectors
+from api.serializers.effector import get_effector, get_effectors
 from api.types.effector import Effector
 from pydantic import ValidationError
 
