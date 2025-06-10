@@ -1,16 +1,9 @@
 from __future__ import annotations
-from typing import Annotated, Optional
-from typing_extensions import Literal
+from typing import Annotated, Optional, Literal
 from pydantic import BaseModel, Field
 from enum import Enum
 from api.types.need import NeedPy
 from api.types.situation import SituationPy
-
-
-class GenderChoices(Enum):
-    feminine = "F"
-    masculine = "M"
-    neutral = "N"
 
 
 class EffectorPost(BaseModel):
@@ -18,7 +11,7 @@ class EffectorPost(BaseModel):
     name_fr: str
     label_fr: str|None = None
     slug_fr: str|None = None
-    gender: GenderChoices|None = None
+    gender: Literal['F', 'M', 'N']|None = None
 
 
 class Effector(EffectorPost):
