@@ -22,4 +22,4 @@ class Effector(BaseModel):
     slug_fr: str|None
     slug_en: str|None = Field(exclude=True)
     updatedAt: int = 0
-    gender: GenderEnum
+    gender: GenderEnum|None = None
