@@ -11,7 +11,7 @@ from directory.models import (
     DepartmentOfFrance
 )
 from directory.models import Effector as EffectorNeo4j
-from api.types.effector import Effector as Effector
+from api.types.effector import Effector
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +72,8 @@ def create_effector(kwargs)->Effector:
         slug_fr=kwargs["slug_fr"],
         gender=kwargs["gender"],
     ).save()
-    effector_dct=node.__properties__
+    effector=EffectorNeo4j.nodes.get(uid=node.uid)
+    effector_dct=effector.__properties__
     effector=Effector.model_validate(effector_dct)
+    logger.debug(effector)
     return effector

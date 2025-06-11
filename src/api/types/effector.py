@@ -20,3 +20,4 @@ class Effector(EffectorPost):
     label_en: str|None = Field(exclude=True)
     slug_en: str|None = Field(exclude=True)
     updatedAt: int = 0
+    createdAt: int = 0
