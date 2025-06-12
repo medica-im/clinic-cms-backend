@@ -7,7 +7,10 @@ from directory.models import (
     OrganizationType,
     Commune,
     Website,
-    DepartmentOfFrance
+    DepartmentOfFrance,
+    Effector,
+    EffectorType,
+    Entry
 )
 logger = logging.getLogger(__name__)
 
@@ -39,3 +42,14 @@ def get_entries(
         logger.debug(uids)
     return uids
 
+def create_entry(kwargs)-> str:
+    entry=Entry()
+    entry.save()
+    effector=Effector.nodes.get(uid=kwargs["effector"])
+    effector_type=EffectorType.nodes.get(uid=kwargs["effector_type"])
+    facility=Facility.nodes.get(uid=kwargs["facility"])
+    entry.effector.connect(effector)
+    entry.effector_type.connect(effector_type)
+    entry.facility.connect(facility)
+    return str(entry.uid)
+    
