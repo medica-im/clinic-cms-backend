@@ -14,7 +14,7 @@ async def entries(effector_type: str|None = None, effector: str|None = None, fac
 @router.post("/entries/", status_code=status.HTTP_201_CREATED)
 async def post_entry(entry: EntryPost, request: Request) -> str:
     logger.debug(request)
-    logger.debug(f"{request.url=}")
+    logger.debug(f"{request.url.hostname=}")
     if request.client:
         try:
             client_host = request.client.host
