@@ -1,5 +1,6 @@
 import logging
 from django.contrib.sites.shortcuts import get_current_site
+from django.contrib.sites.models import Site
 from directory.models import (
     Directory,
     Effector,
@@ -37,6 +38,22 @@ def get_directory(request):
         return Directory.objects.get(site=site)
     except Directory.DoesNotExist:
         return
+
+def get_directory_from_hostname(hostname):
+    try:
+        site = Site.objects.get(domain=hostname)
+    except Site.DoesNotExist as e:
+        logger.error(
+            f'Site with domain {hostname} does not exist.'
+        )
+        raise e
+    try:
+        return Directory.objects.get(site=site)
+    except Directory.DoesNotExist as e:
+        logger.error(
+            f'Directory with site {site} does not exist.'
+        )
+        raise e
 
 def get_contact_related_elements(
         neo_entity,

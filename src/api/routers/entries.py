@@ -21,4 +21,4 @@ async def post_entry(entry: EntryPost, request: Request) -> str:
             logger.debug(client_host)
         except:
             pass
-    return create_entry(entry.model_dump())
+    return create_entry(request.url.hostname, entry.model_dump())

@@ -10,8 +10,11 @@ from directory.models import (
     DepartmentOfFrance,
     Effector,
     EffectorType,
-    Entry
+    Entry,
+    Neo4jDirectory,
 )
+from directory.utils import get_directory_from_hostname
+
 logger = logging.getLogger(__name__)
 
 def get_entries(
@@ -42,7 +45,9 @@ def get_entries(
         logger.debug(uids)
     return uids
 
-def create_entry(kwargs)-> str:
+def create_entry(hostname, kwargs)-> str:
+    directory=get_directory_from_hostname(hostname)
+    neo4j_directory=Neo4jDirectory.nodes.get(name=directory.name)
     entry=Entry()
     entry.save()
     effector=Effector.nodes.get(uid=kwargs["effector"])
@@ -51,5 +56,6 @@ def create_entry(kwargs)-> str:
     entry.effector.connect(effector)
     entry.effector_type.connect(effector_type)
     entry.facility.connect(facility)
+    neo4j_directory.entries.connect(entry)
     return str(entry.uid)
     
