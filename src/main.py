@@ -14,6 +14,7 @@ apps.populate(installed_apps=[
     'easy_thumbnails',
     'access',
     'addressbook',
+    'workforce',
 ])
 # Make sure the above apps were loaded
 apps.check_apps_ready()
