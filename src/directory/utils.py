@@ -1,4 +1,5 @@
 import logging
+from asgiref.sync import sync_to_async
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.sites.models import Site
 from directory.models import (
@@ -39,6 +40,7 @@ def get_directory(request):
     except Directory.DoesNotExist:
         return
 
+@sync_to_async
 def get_directory_from_hostname(hostname):
     try:
         site = Site.objects.get(domain=hostname)
