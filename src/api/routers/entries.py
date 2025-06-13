@@ -2,6 +2,7 @@ import logging
 from fastapi import APIRouter, status, Request
 from api.serializers.entries import get_entries, create_entry
 from api.types.entry import EntryPost
+from directory.utils import get_directory_from_hostname
 
 logger = logging.getLogger(__name__)
 
@@ -13,12 +14,5 @@ async def entries(effector_type: str|None = None, effector: str|None = None, fac
 
 @router.post("/entries/", status_code=status.HTTP_201_CREATED)
 async def post_entry(entry: EntryPost, request: Request) -> str:
-    logger.debug(request)
-    logger.debug(f"{request.url.hostname=}")
-    if request.client:
-        try:
-            client_host = request.client.host
-            logger.debug(client_host)
-        except:
-            pass
-    return create_entry(request.url.hostname, entry.model_dump())
+    directory = await get_directory_from_hostname(request.url.hostname)
+    return create_entry(directory.name, entry.model_dump())
