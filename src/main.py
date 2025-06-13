@@ -15,6 +15,7 @@ apps.populate(installed_apps=[
     'access',
     'addressbook',
     'workforce',
+    'facility',
 ])
 # Make sure the above apps were loaded
 apps.check_apps_ready()
