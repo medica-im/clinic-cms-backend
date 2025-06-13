@@ -11,6 +11,7 @@ apps.populate(installed_apps=[
     'rest_framework_simplejwt.token_blacklist',
     'accounts',
     'directory',
+    'easy_thumbnails'
 ])
 # Make sure the above apps were loaded
 apps.check_apps_ready()
