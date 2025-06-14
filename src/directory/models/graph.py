@@ -329,7 +329,7 @@ class RegionOfFrance(StructuredNode):
     code = StringProperty(unique_index=True)
     slug = StringProperty(unique_index=True)
     country = RelationshipTo(
-        'RegionOfFrance',
+        'Country',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
     )
 
