@@ -49,7 +49,7 @@ class Command(BaseCommand):
                     raise CommandError(f"Department with code {code_departement} does not exist")
                 try:
                     rof = RegionOfFrance.nodes.get(code=code_region)
-                except (neomodel.DoesNotExist, ValueError) as e:
+                except Exception as e:
                     rof = RegionOfFrance(
                         name=nom_region,
                         code=code_region,
