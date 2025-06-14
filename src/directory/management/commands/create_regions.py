@@ -27,7 +27,7 @@ class Command(BaseCommand):
         full_path=static_path + "/" + path
         self.warn(f"{full_path=}")
         with open(full_path, 'rt') as f:
-            csvreader = csv.reader(file)
+            csvreader = csv.reader(f)
             try:
                 france = Country.nodes.get(code="FR")
             except:
