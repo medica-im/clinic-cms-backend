@@ -29,5 +29,7 @@ from directory.models.graph import (
     HealthWorker,
     Entry,
     DepartmentOfFrance,
+    RegionOfFrance,
+    Country,
     Directory as Neo4jDirectory
 )

@@ -317,6 +317,28 @@ class DepartmentOfFrance(StructuredNode):
     code = StringProperty(unique_index=True)
     slug = StringProperty(unique_index=True)
     wikidata = StringProperty(unique_index=True)
+    region = RelationshipTo(
+        'RegionOfFrance',
+        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
+    )
+
+
+class RegionOfFrance(StructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    code = StringProperty(unique_index=True)
+    slug = StringProperty(unique_index=True)
+    country = RelationshipTo(
+        'RegionOfFrance',
+        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
+    )
+
+
+class Country(StructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    code = StringProperty(unique_index=True)
+    slug = StringProperty(unique_index=True)
 
 
 class MunicipalArrondissement(AdministrativeTerritorialEntityOfFrance):
