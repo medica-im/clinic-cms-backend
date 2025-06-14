@@ -1,4 +1,5 @@
 import csv
+from django.conf import settings
 from django.templatetags.static import static
 from django.contrib.staticfiles import finders
 from django.utils.text import slugify
@@ -18,10 +19,14 @@ class Command(BaseCommand):
     
     def handle(self, *args, **options):
         path=options['path']
+        static_path=settings.STATIC_ROOT
+        self.warn(static_path)
         result = finders.find(path)
         self.warn(result)
         self.warn(static(path))
-        file = open(static(path))
+        full_path=static_path + "/" + path
+        self.warn(f"{full_path=}")
+        file = open(static(full_path))
         csvreader = csv.reader(file)
         try:
             france = Country.nodes.get(code="FR")
