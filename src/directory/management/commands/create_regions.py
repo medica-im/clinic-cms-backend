@@ -1,5 +1,6 @@
 import csv
 from django.templatetags.static import static
+from django.contrib.staticfiles import finders
 from django.utils.text import slugify
 from django.core.management.base import BaseCommand, CommandError
 from directory.models import Country, RegionOfFrance, DepartmentOfFrance
@@ -17,6 +18,9 @@ class Command(BaseCommand):
     
     def handle(self, *args, **options):
         path=options['path']
+        result = finders.find(path)
+        self.warn(result)
+        self.warn(static(path))
         file = open(static(path))
         csvreader = csv.reader(file)
         try:
