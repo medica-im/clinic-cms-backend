@@ -5,6 +5,7 @@ from django.contrib.staticfiles import finders
 from django.utils.text import slugify
 from django.core.management.base import BaseCommand, CommandError
 from directory.models import Country, RegionOfFrance, DepartmentOfFrance
+from neomodel import DoesNotExist
 
 class Command(BaseCommand):
     help = 'Create regions of France nodes on neo4j'
@@ -44,11 +45,11 @@ class Command(BaseCommand):
                 nom_region=row[3]
                 try:
                     dpt = DepartmentOfFrance.nodes.get(code=code_departement)
-                except:
+                except DoesNotExist:
                     raise CommandError(f"Department with code {code_departement} does not exist")
                 try:
                     rof = RegionOfFrance.nodes.get(code=code_region)
-                except:
+                except DoesNotExist:
                     rof = RegionOfFrance(
                         name=nom_region,
                         code=code_region,
