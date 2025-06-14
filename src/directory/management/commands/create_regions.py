@@ -26,40 +26,40 @@ class Command(BaseCommand):
         self.warn(static(path))
         full_path=static_path + "/" + path
         self.warn(f"{full_path=}")
-        file = open(static(full_path))
-        csvreader = csv.reader(file)
-        try:
-            france = Country.nodes.get(code="FR")
-        except:
-            raise CommandError("Create France Country node")
-        rows = []
-        dpt_count=0
-        rof_count=0
-        for idx, row in enumerate(csvreader):
-            if idx==0:
-                continue
-            code_departement=row[0]
-            nom_departement=row[1]
-            code_region=row[2]
-            nom_region=row[3]
+        with open(full_path, 'rt') as f:
+            csvreader = csv.reader(file)
             try:
-                dpt = DepartmentOfFrance.nodes.get(code=code_departement)
+                france = Country.nodes.get(code="FR")
             except:
-                raise CommandError(f"Department with code {code_departement} does not exist")
-            try:
-                rof = RegionOfFrance.nodes.get(code=code_region)
-            except:
-                rof = RegionOfFrance(
-                    name=nom_region,
-                    code=code_region,
-                    slug=slugify(nom_region)
-                ).save()
-                if not rof.country.is_connected(france):
-                    rof.country.connect(france)
-                    rof_count+=1
-            if not dpt.region.is_connected(rof):
-                dpt.region.connect(rof)
-                dpt_count+=1
+                raise CommandError("Create France Country node")
+            rows = []
+            dpt_count=0
+            rof_count=0
+            for idx, row in enumerate(csvreader):
+                if idx==0:
+                    continue
+                code_departement=row[0]
+                nom_departement=row[1]
+                code_region=row[2]
+                nom_region=row[3]
+                try:
+                    dpt = DepartmentOfFrance.nodes.get(code=code_departement)
+                except:
+                    raise CommandError(f"Department with code {code_departement} does not exist")
+                try:
+                    rof = RegionOfFrance.nodes.get(code=code_region)
+                except:
+                    rof = RegionOfFrance(
+                        name=nom_region,
+                        code=code_region,
+                        slug=slugify(nom_region)
+                    ).save()
+                    if not rof.country.is_connected(france):
+                        rof.country.connect(france)
+                        rof_count+=1
+                if not dpt.region.is_connected(rof):
+                    dpt.region.connect(rof)
+                    dpt_count+=1
         self.warn(
             f"Regions created: {rof_count}"
             f"Departments connected to their region: {dpt_count}\n"
