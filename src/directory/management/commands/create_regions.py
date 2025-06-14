@@ -1,4 +1,5 @@
 import csv
+from django.templatetags.static import static
 from django.utils.text import slugify
 from django.core.management.base import BaseCommand, CommandError
 from directory.models import Country, RegionOfFrance, DepartmentOfFrance
@@ -16,7 +17,7 @@ class Command(BaseCommand):
     
     def handle(self, *args, **options):
         path=options['path']
-        file = open(path)
+        file = open(static(path))
         csvreader = csv.reader(file)
         try:
             france = Country.nodes.get(code="FR")
