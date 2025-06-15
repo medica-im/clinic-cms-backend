@@ -92,7 +92,7 @@ def createFacilityResources(request, nodes):
         except Exception as e:
             logger.error(e)
             commune_uid = None
-        address = get_address(node,commune,country)
+        address = get_address(facility,commune,country)
         organizations = [org.uid for org in facility.organization.all()]
         phones = get_phones_neomodel(f=facility)
         emails = get_emails_neomodel(f=facility)
