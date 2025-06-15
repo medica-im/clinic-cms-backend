@@ -328,22 +328,26 @@ def get_facilities(
         active: bool = True,
     ):
     if uid:
-        query=f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
+        query=f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
         WHERE f.uid="{uid}"
-        RETURN f;"""
+        RETURN f,commune,country;"""
     else:
         query=f"""MATCH (d:Directory)-[:HAS_ENTRY]->(e:Entry),
         (e)-[:HAS_EFFECTOR]->(:Effector),
-        (e)-[:HAS_FACILITY]->(f:Facility)
+        (e)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
         WHERE d.name="{directory.name}"
         AND e.active={str(active)}
-        RETURN DISTINCT f;"""
+        RETURN DISTINCT f,commune,country;"""
     results, cols = db.cypher_query(query)
     _facilities=[]
     try:
         for row in results:
             _facilities.append(
-                Facility.inflate(row[cols.index('f')])
+                {
+                    "facility": Facility.inflate(row[cols.index('f')]),
+                    "commune": Commune.inflate(row[cols.index['commune']]),
+                    "country": Country.inflate(row[cols.index['country']])
+                }
             )
     except:
         pass

@@ -25,6 +25,7 @@ from tastypie.utils import (
     string_to_python,
     trailing_slash,
 )
+from directory.tasty.facilities import createFacilityResources
 from django.conf import settings
 
 logger=logging.getLogger(__name__)
@@ -59,7 +60,7 @@ class FacilityObj(object):
         self.socialnetworks = socialnetworks
         self.avatar = avatar
         self.effectors = effectors
-
+"""
 def createFacilityResources(request, nodes):
     data= []
     for node in nodes:
@@ -114,7 +115,7 @@ def createFacilityResources(request, nodes):
         )
         data.append(obj)
     return data
-
+"""
 class FacilityUidResource(Resource):
     # Just like a Django ``Form`` or ``Model``, we're defining all the
     # fields we're going to handle with the API here.
