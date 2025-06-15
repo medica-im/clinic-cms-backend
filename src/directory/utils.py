@@ -274,6 +274,12 @@ def get_avatar_url(
 
 def get_address(facility: Facility, commune: Commune, country: Country):
     logger.debug(f"{facility.location=}")
+    if facility.location:
+        longitude=facility.location.longitude
+        latitude=facility.location.latitude
+    else:
+        longitude=None
+        latitude=None
     _dct = {
        "facility_uid": facility.uid,
        "country": country.name,
