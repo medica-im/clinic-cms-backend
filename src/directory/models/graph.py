@@ -368,6 +368,10 @@ class Facility(StructuredNode):
     street = StringProperty()
     geographical_complement = StringProperty()
     zip = StringProperty()
+    tooltip_permanent = BooleanProperty()
+    tooltip_text = StringProperty()
+    DIRECTIONS = {'top': 'Top', 'bottom': 'Bottom', 'left': 'Left', 'right': 'Right'}
+    tooltip_direction = StringProperty(choices=DIRECTIONS)
 
 
 class Entry(StructuredNode):

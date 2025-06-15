@@ -10,6 +10,7 @@ from directory.models import (
     Facility,
     EffectorFacility,
     Commune,
+    Country,
     ThirdPartyPayer,
     PaymentMethod,
     HealthWorker,
@@ -271,13 +272,23 @@ def get_avatar_url(
     if (e is None and ef is None and f):
         return get_avatar_dict(f_avatar)
 
-def get_address(facility: Facility):
-    try:
-        contact = Contact.objects.get(neomodel_uid=facility.uid)
-    except Contact.DoesNotExist:
-        return
-    serializer = AddressSerializer(contact.address)
-    return serializer.data
+def get_address(facility: Facility, commune: Commune, country: Country):
+    _dct = {
+       "facility_uid": facility.uid,
+       "country": country.name,
+       "city": commune.name_fr,
+       "geographical_complement": facility.geographical_complement,
+       "street": facility.street,
+       "building": facility.building,
+       "longitude": facility.location.x,
+       "latitude": facility.location.y,
+       "zoom": facility.zoom,
+       "tooltip_direction": facility.tooltip_direction,
+       "tooltip_permanent": facility.tooltip_permanent,
+       "tooltip_direction": facility.tooltip_direction, 
+    }
+    logger.debug(_dct)
+    return _dct
 
 def org_uids(orgs):
     try:
@@ -431,11 +442,11 @@ def directory_effectors(
         active: bool = True,
     ):
     if uid:
-        query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)
+        query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
         WHERE rel.directories=["{directory.name}"] AND (rel.uid="{uid}")
         RETURN e,et,rel,f,c;"""
     else:
-        query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)
+        query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
         WHERE rel.directories=["{directory.name}"] AND rel.active={str(active)}
         RETURN e,et,rel,f,c;"""
     results, cols = db.cypher_query(query)
@@ -446,9 +457,10 @@ def directory_effectors(
             location=EffectorFacility.inflate(row[cols.index('rel')])
             facility=Facility.inflate(row[cols.index('f')])
             commune=Commune.inflate(row[cols.index('c')])
+            country=Country.inflate(row[cols.index('country')])
             types=EffectorType.inflate(row[cols.index('et')])
             types = types if isinstance(types, list) else [types]
-            address = get_address(facility)
+            address = get_address(facility,commune,country)
             avatar=get_avatar_url(effector, location, facility)
             effectors.append(
                 {
@@ -477,14 +489,14 @@ def get_entries(
         query=f"""
         MATCH (entry:Entry) WHERE entry.uid="{uid}"
         WITH entry
-        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
         MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
         MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
         WITH *
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
-        RETURN entry,e,et,f,rel,o,employer,commune;
+        RETURN entry,e,et,f,rel,o,employer,commune,country;
         """
     else:
         query=f"""
@@ -492,14 +504,14 @@ def get_entries(
         WITH d
         MATCH (d)-[:HAS_ENTRY]->(entry:Entry) WHERE entry.active={str(active)}
         WITH entry
-        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
         MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
         MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
         WITH *
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
-        RETURN entry,e,et,f,rel,o,employer,commune;
+        RETURN entry,e,et,f,rel,o,employer,commune,country;
         """
     q = db.cypher_query(query,resolve_objects = True)
     logger.debug(f'{display(q[0][0])}')
@@ -518,9 +530,10 @@ def get_entries(
                 location,
                 organizations,
                 employers,
-                commune
+                commune,
+                country,
             ) = row
-            address = get_address(facility)
+            address = get_address(facility,commune,country)
             avatar=get_avatar_url(effector, location, facility)
             entries.append(
                 {
@@ -651,7 +664,7 @@ def find_entry(
         WITH d
         MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
         WITH entry
-        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune),
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country),
         (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
         (entry)-[:HAS_EFFECTOR]->(e:Effector)
         WHERE e.slug_fr="{effector_slug}"
@@ -663,7 +676,7 @@ def find_entry(
         OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN rel.thirdPartyPayment
         WITH *, COLLECT(tpp) AS tpp
         OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN rel.payment
-        RETURN et,e,rel,f,c,tpp,COLLECT(pm) AS pm;
+        RETURN et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm;
         """
     )
     results, cols = db.cypher_query(query)
@@ -675,9 +688,10 @@ def find_entry(
     effector=Effector.inflate(row[cols.index('e')])
     effector_facility=EffectorFacility.inflate(row[cols.index('rel')])
     facility=Facility.inflate(row[cols.index('f')])
-    #commune=Commune.inflate(row[cols.index('c')])
+    commune=Commune.inflate(row[cols.index('c')])
+    country=Country.inflate(row[cols.index('country')])
     effector_type=EffectorType.inflate(row[cols.index('et')])
-    address = get_address(facility)
+    address = get_address(facility,commune,country)
     phones = get_phones_neomodel(
         e=effector,
         ef=effector_facility,
