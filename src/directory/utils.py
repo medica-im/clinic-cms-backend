@@ -346,8 +346,8 @@ def get_facilities(
             _facilities.append(
                 {
                     "facility": Facility.inflate(row[cols.index('f')]),
-                    "commune": Commune.inflate(row[cols.index['commune']]),
-                    "country": Country.inflate(row[cols.index['country']])
+                    "commune": Commune.inflate(row[cols.index('commune')]),
+                    "country": Country.inflate(row[cols.index('country')])
                 }
             )
     except:
