@@ -339,6 +339,7 @@ def get_facilities(
         AND e.active={str(active)}
         RETURN DISTINCT f,commune,country;"""
     results, cols = db.cypher_query(query)
+    logger.debug(results)
     _facilities=[]
     try:
         for row in results:
@@ -508,8 +509,7 @@ def get_entries(
         WITH d
         MATCH (d)-[:HAS_ENTRY]->(entry:Entry) WHERE entry.active={str(active)}
         WITH entry
-        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
-        MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
         MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
         WITH *
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
