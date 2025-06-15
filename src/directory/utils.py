@@ -273,6 +273,7 @@ def get_avatar_url(
         return get_avatar_dict(f_avatar)
 
 def get_address(facility: Facility, commune: Commune, country: Country):
+    logger.debug(f"{facility.location=}\n{facility.location.__dict__}")
     _dct = {
        "facility_uid": facility.uid,
        "country": country.name,
