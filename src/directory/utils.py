@@ -672,7 +672,7 @@ def find_entry(
         AND f.slug="{facility_slug}"
         AND et.slug_fr="{effector_type_slug}"
         WITH *
-        OPTION MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
+        OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
         WITH *
         OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN rel.thirdPartyPayment
         WITH *, COLLECT(tpp) AS tpp
