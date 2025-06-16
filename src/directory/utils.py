@@ -687,7 +687,10 @@ def find_entry(
         logger.error(e)
         return
     effector=Effector.inflate(row[cols.index('e')])
-    effector_facility=EffectorFacility.inflate(row[cols.index('rel')])
+    try:
+        effector_facility=EffectorFacility.inflate(row[cols.index('rel')])
+    except Exception as e:
+        effector_facility=None
     facility=Facility.inflate(row[cols.index('f')])
     commune=Commune.inflate(row[cols.index('c')])
     country=Country.inflate(row[cols.index('country')])
