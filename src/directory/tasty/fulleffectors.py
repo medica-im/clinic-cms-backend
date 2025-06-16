@@ -235,7 +235,7 @@ def createEffectorRessources(request, nodes):
 class FullEffectorResource(Resource):
     # Just like a Django ``Form`` or ``Model``, we're defining all the
     # fields we're going to handle with the API here.
-    uid = fields.CharField(attribute='uid')
+    uid = fields.CharField(attribute='uid', null=True)
     effector_uid = fields.CharField(attribute='effector_uid')
     label = fields.CharField(attribute='label')
     name = fields.CharField(attribute='name')
