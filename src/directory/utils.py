@@ -494,36 +494,25 @@ def display(_list):
 def get_entries(
         directory: Directory,
         uid = None,
-        label: str = "Effector",
         active: bool = True,
     ):
     if uid:
-        query=f"""
-        MATCH (entry:Entry) WHERE entry.uid="{uid}"
-        WITH entry
-        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
-        MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
-        MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
-        WITH *
-        MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
+        query=f"""MATCH (entry:Entry) WHERE entry.uid="{uid}" WITH entry MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector) WITH * OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
-        RETURN entry,e,et,f,rel,o,employer,commune,country;
-        """
+        RETURN entry,e,et,f,rel,o,employer,commune,country;"""
     else:
-        query=f"""
-        MATCH (d:Directory) WHERE d.name="{directory.name}"
+        query=f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
         WITH d
         MATCH (d)-[:HAS_ENTRY]->(entry:Entry) WHERE entry.active={str(active)}
         WITH entry
         MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
         MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
         WITH *
-        MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
+        OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
-        RETURN entry,e,et,f,rel,o,employer,commune,country;
-        """
+        RETURN entry,e,et,f,rel,o,employer,commune,country;"""
     q = db.cypher_query(query,resolve_objects = True)
     logger.debug(f"{q=}")
     #logger.debug(f'{display(q[0][0])}')
