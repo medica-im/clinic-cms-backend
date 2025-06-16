@@ -525,9 +525,10 @@ def get_entries(
         RETURN entry,e,et,f,rel,o,employer,commune,country;
         """
     q = db.cypher_query(query,resolve_objects = True)
-    logger.debug(f'{display(q[0][0])}')
-    logger.debug(f'****************************\nq:\n{len(q[0][0])}')
-    logger.debug(f'****************************\nq:\n{q[0][0][0].__properties__}')
+    logger.debug(f"{q=}")
+    #logger.debug(f'{display(q[0][0])}')
+    #logger.debug(f'****************************\nq:\n{len(q[0][0])}')
+    #logger.debug(f'****************************\nq:\n{q[0][0][0].__properties__}')
     if q:
         entries=[]
         for row in q[0]:

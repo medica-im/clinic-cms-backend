@@ -224,7 +224,7 @@ class EntryResource(Resource):
         uid= kwargs['uid']
         directory=get_directory(bundle.request)
         try :
-            nodes = get_entries(directory, uid)
+            nodes = get_entries(directory, uid=uid)
             entry = createEntryResources(bundle.request, nodes)
             return entry[0]
         except Exception as e : 
