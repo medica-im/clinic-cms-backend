@@ -93,7 +93,10 @@ class EffectorObj(object):
 
 def createEffectorRessource(request, node):
     location=node["location"]
-    uid = location.uid
+    try:
+        uid = location.uid
+    except Exception as e:
+        uid = None
     effector_node=node["effector"]
     health_worker=node["health_worker"]
     address=node["address"]
@@ -144,7 +147,7 @@ def createEffectorRessource(request, node):
         [
             effector_node.updatedAt,
             node["facility"].contactUpdatedAt,
-            location.contactUpdatedAt,
+            #location.contactUpdatedAt,
         ]
     )
     facility = {
@@ -165,7 +168,10 @@ def createEffectorRessource(request, node):
     except IndexError:
         convention = None
     # carte vitale
-    carte_vitale = location.carteVitale
+    try:
+        carte_vitale = location.carteVitale
+    except Exception as e:
+        carte_vitale = False
     #third party payer 
     serializer = ThirdPartyPayerSerializer(
         node["third_party_payers"],
