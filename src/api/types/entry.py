@@ -5,3 +5,4 @@ class EntryPost(BaseModel):
     effector: str
     effector_type: str
     facility: str
+    organizations: list[str]|None

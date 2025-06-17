@@ -55,5 +55,14 @@ def create_entry(dir_name, kwargs)-> str:
     entry.effector_type.connect(effector_type)
     entry.facility.connect(facility)
     neo4j_directory.entries.connect(entry)
+    organizations = kwargs["organizations"]
+    if organizations:
+        for org_uid in organizations:
+            try:
+                org = Organization.nodes.get(uid=org_uid)
+                entry.organizations.connect(org)
+            except Exception as e:
+                logger.error(e)
+                raise Exception(e)
     return str(entry.uid)
     

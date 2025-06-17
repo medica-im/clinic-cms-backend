@@ -387,6 +387,7 @@ class Entry(StructuredNode):
     effector = RelationshipTo('Effector', 'HAS_EFFECTOR')
     facility = RelationshipTo('Facility', 'HAS_FACILITY')
     effector_type = RelationshipTo('EffectorType', 'HAS_EFFECTOR_TYPE')
+    organizations = RelationshipTo('Organization', 'MEMBER_OF')
 
 
 class Directory(StructuredNode):
