@@ -1,5 +1,6 @@
 import logging
 from neomodel import db
+from fastapi import HTTPException
 from directory.models import (
     Directory,
     Facility,
@@ -44,18 +45,24 @@ def get_entries(
         logger.debug(uids)
     return uids
 
-def create_entry(dir_name, kwargs)-> str:
-    neo4j_directory=Neo4jDirectory.nodes.get(name=dir_name)
-    entry=Entry()
-    entry.save()
-    effector=Effector.nodes.get(uid=kwargs["effector"])
-    effector_type=EffectorType.nodes.get(uid=kwargs["effector_type"])
-    facility=Facility.nodes.get(uid=kwargs["facility"])
-    entry.effector.connect(effector)
-    entry.effector_type.connect(effector_type)
-    entry.facility.connect(facility)
-    neo4j_directory.entries.connect(entry)
-    organizations = kwargs["organizations"]
+def entry_if_exists(effector: Effector, effector_type: EffectorType, facility: Facility):
+    try:
+        entry = Entry.nodes.get(
+            effector=effector,
+            effector_type=effector_type,
+            facility=facility
+        )
+        if entry.active:
+            raise HTTPException(status_code=452, detail="Active Entry with same effector, effector_type and facility already exists.")
+        else:
+            entry.active=True
+            entry.save()
+            return entry
+    except Exception as e:
+        logger.debug(e)
+        return
+
+def connect_orgs(entry:Entry, organizations: list[str]|None):
     if organizations:
         for org_uid in organizations:
             try:
@@ -64,5 +71,20 @@ def create_entry(dir_name, kwargs)-> str:
             except Exception as e:
                 logger.error(e)
                 raise Exception(e)
+
+def create_entry(dir_name, kwargs)-> str:
+    organizations = kwargs["organizations"]
+    neo4j_directory=Neo4jDirectory.nodes.get(name=dir_name)
+    effector=Effector.nodes.get(uid=kwargs["effector"])
+    effector_type=EffectorType.nodes.get(uid=kwargs["effector_type"])
+    facility=Facility.nodes.get(uid=kwargs["facility"])
+    entry=entry_if_exists(effector,effector_type,facility)
+    if not entry:
+        entry=Entry()
+        entry.save()
+        entry.effector.connect(effector)
+        entry.effector_type.connect(effector_type)
+        entry.facility.connect(facility)
+    connect_orgs(entry, organizations)
+    neo4j_directory.entries.connect(entry)
     return str(entry.uid)
-    
