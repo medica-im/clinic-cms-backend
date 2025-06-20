@@ -330,13 +330,22 @@ def get_effector_nodes(
 
 def get_facilities(
         directory: Directory|None = None,
-        uid = None,
-        label: str = "Effector",
+        uid: str|None = None,
+        slug: str|None = None,
         active: bool = True,
     ):
     if uid:
-        query=f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
+        query=f"""MATCH (f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
         WHERE f.uid="{uid}"
+        AND e.active={str(active)}
+        RETURN f,commune,country;"""
+    elif slug:
+        query=f"""MATCH (d:Directory)-[:HAS_ENTRY]->(e:Entry),
+        (e)-[:HAS_EFFECTOR]->(:Effector),
+        (e)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
+        WHERE f.slug="{slug}"
+        AND d.name="{directory.name}"
+        AND e.active={str(active)}
         RETURN f,commune,country;"""
     else:
         query=f"""MATCH (d:Directory)-[:HAS_ENTRY]->(e:Entry),

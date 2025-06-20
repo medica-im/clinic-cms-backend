@@ -179,10 +179,11 @@ class FacilityResource(Resource):
         return self.get_object_list(bundle.request)
 
     def obj_get(self, bundle, **kwargs):
+        directory=get_directory(bundle.request)
         slug= kwargs['slug']
-        try :
-            facility = Facility.nodes.get(slug=slug)
-            objects = createFacilityResources(bundle.request, [facility])
+        facilities = get_facilities(directory=directory, slug=slug)
+        objects = createFacilityResources(bundle.request, facilities)
+        try:
             return objects[0]
         except Exception as e:
             raise Exception(f"{e}\nCan't find Facility {slug}")

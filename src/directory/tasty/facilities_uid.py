@@ -177,10 +177,11 @@ class FacilityUidResource(Resource):
         return self.get_object_list(bundle.request)
 
     def obj_get(self, bundle, **kwargs):
+        directory=get_directory(bundle.request)
         uid= kwargs['uid']
         try :
-            facility = Facility.nodes.get(uid=uid)
-            objects = createFacilityResources(bundle.request, [facility])
+            facilities = get_facilities(directory=directory, uid=uid)
+            objects = createFacilityResources(bundle.request, facilities)
             return objects[0]
         except Exception as e:
             raise Exception(f"{e}\nCan't find Facility {uid}")
