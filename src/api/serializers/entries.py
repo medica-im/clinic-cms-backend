@@ -46,21 +46,32 @@ def get_entries(
     return uids
 
 def entry_if_exists(effector: Effector, effector_type: EffectorType, facility: Facility):
-    try:
-        entry = Entry.nodes.get(
-            effector=effector,
-            effector_type=effector_type,
-            facility=facility
-        )
-        if entry.active:
-            raise HTTPException(status_code=452, detail="Active Entry with same effector, effector_type and facility already exists.")
-        else:
-            entry.active=True
-            entry.save()
-            return entry
-    except Exception as e:
-        logger.debug(e)
+    entry_uids: list[str] = get_entries(
+        effector=effector.uid,
+        effector_type=effector_type.uid,
+        facility=facility.uid
+    )
+    if not entry_uids:
         return
+    active_entries = []
+    inactive_entries = []
+    for uid in entry_uids:
+        entry=Entry.nodes.get(uid=uid)
+        if entry.active:
+            active_entries.append(entry)
+        else:
+             inactive_entries.append(entry)
+    if len(active_entries) > 1:
+        raise HTTPException(status_code=452, detail=f"{len(active_entries)} active Entry objects with same effector, effector_type and facility already exist.")
+    if len(active_entries) == 1:
+        raise HTTPException(status_code=452, detail="One active Entry object with same effector, effector_type and facility already exists.")
+    if len(inactive_entries) > 1:
+        raise HTTPException(status_code=452, detail=f"{len(inactive_entries)} inactive Entry objects with same effector, effector_type and facility already exist.")
+    if len(inactive_entries) == 1:
+        entry = inactive_entries[0]
+        entry.active = True
+        entry.save()
+        return entry
 
 def connect_orgs(entry:Entry, organizations: list[str]|None):
     if organizations:
