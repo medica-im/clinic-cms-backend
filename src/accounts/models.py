@@ -6,6 +6,7 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
 )
+from django.contrib.sites.models import Site
 from django.utils.translation import gettext_lazy as _
 from django.db import models
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -75,6 +76,19 @@ class User(AbstractBaseUser, PermissionsMixin):
     effector = models.UUIDField(
         null=True,
         blank=True
+    )
+    site = models.ForeignKey(
+        Site,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+    )
+    role = models.ForeignKey(
+        "access.Role",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        help_text="Access Role of the user in the context of the Site",
     )
 
     USERNAME_FIELD = 'email'

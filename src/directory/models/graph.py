@@ -181,8 +181,8 @@ class Effector(StructuredNode):
     label_fr = StringProperty()
     name_en = StringProperty()
     name_fr = StringProperty()
-    slug_en = StringProperty(unique_index=True)
-    slug_fr = StringProperty(unique_index=True)
+    slug_en = StringProperty()
+    slug_fr = StringProperty()
     type = RelationshipTo('EffectorType', 'IS_A')
     organization = RelationshipTo('Organization', 'MEMBER_OF')
     facility = RelationshipTo(
