@@ -44,11 +44,14 @@ class CustomUserAdmin(UserAdmin):
         'grammatical_gender',
         'last_login',
         'effector',
+        'site',
+        'role',
     )
     list_filter = (
         'is_staff',
         'is_active',
         'grammatical_gender',
+        'site',
     )
     fieldsets = (
         (
@@ -64,6 +67,8 @@ class CustomUserAdmin(UserAdmin):
                     'grammatical_gender',
                     'node',
                     'effector',
+                    'site',
+                    'role',
                 )
             },
         ),
