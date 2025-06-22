@@ -100,13 +100,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         """Return a string representation of this `User`."""
-        #string = self.email if self.email != '' else self.get_full_name()
-        try:
-            formatted_name = self.contact.formatted_name
-        except:
-            formatted_name = ""
-        return f'{formatted_name} {self.username or ""} {self.email or ""}'
-
+        return f'{self.full_name or ""} {self.username or ""} {self.email or ""}'
     @property
     def tokens(self) -> dict[str, str]:
         """Allow us to get a user's token by calling `user.token`."""
@@ -117,7 +111,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         """Return the full name of the user."""
         return self.full_name
 
-    def get_short_name(self) -> str:
+    def get_short_name(self) -> str|None:
         """Return user username."""
         return self.username
 
