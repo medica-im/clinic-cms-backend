@@ -14,7 +14,9 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
+from django.views.generic import TemplateView
+from accounts.reset import PasswordResetConfirmRedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -27,6 +29,21 @@ urlpatterns = [
     path('api/v1/directory/', include('directory.urls', namespace='directory')),
     path('api/v1/workforce/', include('workforce.urls', namespace='workforce')),
     path('form/', include('contact.urls', namespace='contact')),
+    path('dj-rest-auth/', include('dj_rest_auth.urls')),
+    # this url is used to generate email content
+    #re_path(
+    #    r"^password-reset/confirm/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,32})/$",
+    #    TemplateView.as_view(template_name="password_reset_confirm.html"),
+    #    name="password_reset_confirm",
+    #),
+    re_path(
+        r"^password-reset/confirm/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,32})/$",
+        PasswordResetConfirmRedirectView.as_view(),
+        name="password_reset_confirm",
+    ),
+    re_path(r'^password-reset/confirm/$',
+        TemplateView.as_view(template_name="password_reset_confirm.html"),
+        name='password-reset-confirm'),
 ]
 
 # Use static() to add url mappings to serve static files during development (only)

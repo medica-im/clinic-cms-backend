@@ -166,6 +166,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'simple_history',
+    'dj_rest_auth',
     # local apps
     'backend',
     'accounts',
@@ -401,3 +402,12 @@ NEO4J_7687_EXTERNAL_PORT= config('{NEO4J_7687_EXTERNAL_PORT}', default='7687')
 #neomodel
 TASTYPIE_FULL_DEBUG = True
 neomodel_config.DATABASE_URL = f"bolt://{NEO4J_USERNAME}:{NEO4J_PASSWORD}@neo4j:{NEO4J_7687_EXTERNAL_PORT}"
+
+REST_AUTH = {
+    'PASSWORD_RESET_USE_SITES_DOMAIN': True,
+    'PASSWORD_RESET_SERIALIZER': 'dj_rest_auth.serializers.PasswordResetSerializer',
+    'PASSWORD_RESET_CONFIRM_SERIALIZER': 'dj_rest_auth.serializers.PasswordResetConfirmSerializer',
+    'USE_JWT': True,
+    'JWT_AUTH_COOKIE': 'jwt-auth',
+    'JWT_AUTH_REFRESH_COOKIE': 'my-refresh-token',
+}

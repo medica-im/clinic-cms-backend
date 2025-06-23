@@ -27,3 +27,4 @@ pandas
 https://github.com/django-tastypie/django-tastypie/archive/master.tar.gz
 colorlog
 requests
+dj-rest-auth
