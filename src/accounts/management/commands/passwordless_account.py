@@ -23,6 +23,12 @@ def validateEmail( email ):
     except ValidationError:
         return False
     
+def validate_username(username):
+    if len(username)>255:
+        return False
+    else:
+        return True
+    
 def list_sites():
     return [site.name for site in Site.objects.all()]
 
@@ -32,12 +38,13 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('email', type=str)
+        parser.add_argument('--username', type=str, help="max 255 chars")
         parser.add_argument(
             '--site',
             type=str,
             choices=list_sites(),
             help=f"site name among {list_sites()}"
-            )
+        )
         parser.add_argument('--effector', type=str, help="Effector node UID")
         parser.add_argument('--formatted_name', type=str)
         parser.add_argument(
@@ -57,6 +64,11 @@ class Command(BaseCommand):
             return
         if not validateEmail(email):
             raise CommandError('Email "%s" is not valid' % email)
+        username: str = options['username']
+        if not username:
+            raise CommandError('You must provide a username.')
+        if not validate_username(username):
+            raise CommandError('username "%s" is not valid' % username)
         try:
             user, created = User.objects.get_or_create(
                 email=email
@@ -104,6 +116,7 @@ class Command(BaseCommand):
                 raise CommandError(
                     f'Error during creation of Contact object: $s' % e
                 )
+        user.username=username
         user.effector=effector
         user.full_name=formatted_name
         role_name=options["role"]
