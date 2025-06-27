@@ -1,4 +1,6 @@
 from django.contrib.auth import authenticate
+from django.contrib.auth.backends import ModelBackend
+from django.contrib.sites.shortcuts import get_current_site
 from rest_framework import exceptions, serializers
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from django.contrib.auth import get_user_model
@@ -6,7 +8,10 @@ from access.utils import get_role
 from access.serializers import RoleSerializer
 from .models import User, GrammaticalGender
 from .utils import validate_email as email_is_valid
+from typing import cast
+import logging
 
+logger = logging.getLogger(__name__)
 
 class RegistrationSerializer(serializers.ModelSerializer[User]):
     """Serializers registration requests and creates a new user."""
@@ -80,8 +85,15 @@ class LoginSerializer(serializers.ModelSerializer[User]):
             raise serializers.ValidationError('A password is required to log in.')
 
         user = authenticate(username=email, password=password)
+        user = cast(User, user)
+        site = get_current_site(self.context['request'])
+        logger.debug(f"{site=}")
+        logger.debug(f"{user.site is not site=}")
 
         if user is None:
+            raise serializers.ValidationError('A user with this email and password was not found.')
+        
+        if (not user.is_superuser) and (user.site is not site):
             raise serializers.ValidationError('A user with this email and password was not found.')
 
         if not user.is_active:
