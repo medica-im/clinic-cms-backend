@@ -89,6 +89,9 @@ class LoginSerializer(serializers.ModelSerializer[User]):
         site = get_current_site(self.context['request'])
         logger.debug(f"{site=}")
 
+        if site is None:
+            raise serializers.ValidationError('This website is not kown in our database.')
+
         if user is None:
             raise serializers.ValidationError('A user with this email and password was not found.')
         
@@ -96,7 +99,7 @@ class LoginSerializer(serializers.ModelSerializer[User]):
             try:
                 logger.debug(f"{user.site=}")
                 logger.debug(f"{site=}")
-                logger.debug(f"{user.site is not site=}")
+                logger.debug(f"{user.site.id == site.id=}")
             except Exception as e:
                 pass
             raise serializers.ValidationError('A user with this email and password was not found.')
