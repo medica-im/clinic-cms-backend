@@ -94,6 +94,8 @@ class LoginSerializer(serializers.ModelSerializer[User]):
         
         if (not user.is_superuser) and (user.site is not site):
             try:
+                logger.debug(f"{user.site=}")
+                logger.debug(f"{site=}")
                 logger.debug(f"{user.site is not site=}")
             except Exception as e:
                 pass
