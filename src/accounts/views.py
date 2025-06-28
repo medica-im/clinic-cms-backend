@@ -51,7 +51,7 @@ class LoginAPIView(APIView):
         """Return user after login."""
         user = request.data.get('user', {})
 
-        serializer = self.serializer_class(data=user)
+        serializer = self.serializer_class(data=user, context={'request': request})
         if not serializer.is_valid():
             print(serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
