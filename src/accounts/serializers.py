@@ -96,13 +96,6 @@ class LoginSerializer(serializers.ModelSerializer[User]):
             raise serializers.ValidationError('A user with this email and password was not found.')
         
         if (not user.is_superuser) and user.site and not (user.site.name == site.name):
-            try:
-                logger.debug(f"{user=}")
-                logger.debug(f"{user.site=}")
-                logger.debug(f"{site=}")
-                logger.debug(f"{user.site.name == site.name=}")
-            except Exception as e:
-                pass
             raise serializers.ValidationError('A user with this email and password was not found.')
 
         if not user.is_active:
