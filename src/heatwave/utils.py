@@ -1,5 +1,6 @@
 import logging
 from django.conf import settings
+from django.core.cache import cache
 import requests
 
 logger=logging.getLogger(__name__)
@@ -118,6 +119,13 @@ domain_id_idx = {
     "01": 104
 }
 
+def get_warning_cached():
+    return cache.get_or_set(
+        "vigilance_cdp_textes",
+        lambda: get_warning(),
+        3600
+    )
+
 def get_warning():
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
@@ -136,12 +144,13 @@ def get_heatwave_by_department(dpt_code: str):
         "stop": None,
         "risk_code": None
     }
-    data=None
     try:
-        data=get_warning()
+        data=get_warning_cached()
     except Exception as e:
-        return data
+        return 
+
     idx = domain_id_idx[dpt_code]
+
     try:
         test = data["product"]["text_bloc_items"][idx]
         logger.debug(test)
