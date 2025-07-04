@@ -1,4 +1,5 @@
 import logging, os
+import logging.config
 import colorlog
 from datetime import timedelta
 from django.utils.log import DEFAULT_LOGGING
@@ -112,7 +113,7 @@ DICT_CONFIG = {
         "django.server": DEFAULT_LOGGING["loggers"]["django.server"],
     },
 }
-#logging.config.dictConfig(DICT_CONFIG)
+logging.config.dictConfig(DICT_CONFIG)
 
 ADMIN = config('ADMIN', cast=Csv(post_process=tuple))
 ADMINS = [ADMIN]
@@ -158,7 +159,7 @@ INSTALLED_APPS = [
     'contact',
     'opengraph',
     'nlp',
-    'heatwave',
+    #'heatwave',
 ]
 
 if DEBUG:
