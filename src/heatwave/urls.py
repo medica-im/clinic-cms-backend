@@ -11,6 +11,10 @@ app_name = 'heatwave'
 urlpatterns = [
     path(
         'warning/<str:pk>/',
-        views.heatwave_department.as_view(),
+        views.Heatwave.as_view(),
+    ),
+    path(
+        'api-auth/',
+        include('rest_framework.urls', namespace='rest_framework')
     )
 ]
