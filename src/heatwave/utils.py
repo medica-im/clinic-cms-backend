@@ -142,7 +142,7 @@ def get_warning():
 def get_heatwave_by_department(dpt_code: str):
     res = {
         "start_time": None,
-        "stop_time": None,
+        "end_time": None,
         "risk_code": None
     }
     try:
@@ -161,7 +161,7 @@ def get_heatwave_by_department(dpt_code: str):
         if text_item["hazard_code"] == '6':
             term_item=text_item["term_items"][0]
             res["start_time"]=term_item["start_time"]
-            res["stop_time"]=term_item["stop_time"]
+            res["end_time"]=term_item["end_time"]
             res["risk_code"]=term_item["risk_code"]
     return res
 
