@@ -8,7 +8,9 @@ router = routers.DefaultRouter()
 # Additionally, we include login URLs for the browsable API.
 app_name = 'heatwave'
 
+
 urlpatterns = [
+"""
     path(
         'warning/<str:pk>/',
         views.Heatwave.as_view(),
@@ -17,4 +19,5 @@ urlpatterns = [
         'api-auth/',
         include('rest_framework.urls', namespace='rest_framework')
     )
+"""
 ]
