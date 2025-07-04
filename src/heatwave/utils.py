@@ -2,6 +2,7 @@ import logging
 from django.conf import settings
 from django.core.cache import cache
 import requests
+import json
 
 logger=logging.getLogger(__name__)
 
@@ -153,6 +154,7 @@ def get_heatwave_by_department(dpt_code: str):
 
     try:
         test = data["product"]["text_bloc_items"][idx]
-        logger.debug(test)
+        test_json = json.dumps(test)
+        return test_json
     except:
         return res
