@@ -1,3 +1,16 @@
 from django.shortcuts import render
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from heatwave.utils import get_heatwave_by_department
 
-# Create your views here.
+@api_view()
+def heatwave_department(request, pk):
+    """
+    List all code snippets, or create a new snippet.
+    """
+    try:
+        res_dct = get_heatwave_by_department(pk)
+    except Exception as e:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    return Response(res_dct)
