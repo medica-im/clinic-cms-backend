@@ -154,6 +154,7 @@ def get_heatwave_by_department(dpt_code: str):
     if data:
         try:
             DEP_SUIVI__TEXT_ITEMS: list = data["product"]["text_bloc_items"][idx]["bloc_items"][1]["text_items"]
+            logger.debug(DEP_SUIVI__TEXT_ITEMS)
         except:
             return res
     
