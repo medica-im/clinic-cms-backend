@@ -151,6 +151,7 @@ INSTALLED_APPS = [
     'django.contrib.postgres',
     'rest_framework_simplejwt',
     'rest_framework',
+    'rest_framework.authtoken',
     'rest_framework_simplejwt.token_blacklist',
     'easy_thumbnails',
     'constance.backends.database',
@@ -173,7 +174,7 @@ INSTALLED_APPS = [
     'contact',
     'opengraph',
     'nlp',
-    #'heatwave',
+    'heatwave',
 ]
 
 if DEBUG:

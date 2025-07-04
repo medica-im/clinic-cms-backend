@@ -6,9 +6,6 @@ from rest_framework.response import Response
 from heatwave.utils import get_heatwave_by_department
 from rest_framework.views import APIView
 
-
-
-
 logger = logging.getLogger(__name__)
 
 class Heatwave(APIView):
