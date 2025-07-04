@@ -153,7 +153,8 @@ def get_heatwave_by_department(dpt_code: str):
     idx = domain_id_idx[dpt_code]
 
     try:
-        test = data["product"]["text_bloc_items"][idx]
-        return str(test)
+        DEP_SUIVI__TEXT_ITEMS = data["product"]["text_bloc_items"][idx]["bloc_items"][1]["text_items"]
+        print(DEP_SUIVI__TEXT_ITEMS)
+        return DEP_SUIVI__TEXT_ITEMS
     except:
         return res
