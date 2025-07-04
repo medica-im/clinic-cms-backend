@@ -1,14 +1,15 @@
+import logging
 from django.shortcuts import render
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from heatwave.utils import get_heatwave_by_department
 
+logger = logging.getLogger(__name__)
+
 @api_view()
 def heatwave_department(request, pk):
-    """
-    List all code snippets, or create a new snippet.
-    """
+    logger.debug(f"heatwave view, {pk=}")
     try:
         res_dct = get_heatwave_by_department(pk)
     except Exception as e:
