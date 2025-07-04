@@ -154,7 +154,6 @@ def get_heatwave_by_department(dpt_code: str):
 
     try:
         test = data["product"]["text_bloc_items"][idx]
-        test_json = json.dumps(test)
-        return test_json
+        return str(test)
     except:
         return res
