@@ -141,8 +141,8 @@ def get_warning():
     
 def get_heatwave_by_department(dpt_code: str):
     res = {
-        "start": None,
-        "stop": None,
+        "start_time": None,
+        "stop_time": None,
         "risk_code": None
     }
     try:
@@ -151,10 +151,17 @@ def get_heatwave_by_department(dpt_code: str):
         return 
 
     idx = domain_id_idx[dpt_code]
-
     try:
-        DEP_SUIVI__TEXT_ITEMS = data["product"]["text_bloc_items"][idx]["bloc_items"][1]["text_items"]
+        DEP_SUIVI__TEXT_ITEMS: list = data["product"]["text_bloc_items"][idx]["bloc_items"][1]["text_items"]
         print(DEP_SUIVI__TEXT_ITEMS)
-        return DEP_SUIVI__TEXT_ITEMS
     except:
         return res
+    
+    for text_item in DEP_SUIVI__TEXT_ITEMS:
+        if text_item["hazard_code"] == 6:
+            term_item=text_item["term_items"][0]
+            res["start_time"]=term_item["start_time"]
+            res["stop_time"]=term_item["stop_time"]
+            res["risk_code"]=term_item["risk_code"]
+    return res
+
