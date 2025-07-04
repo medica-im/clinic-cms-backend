@@ -148,20 +148,20 @@ def get_heatwave_by_department(dpt_code: str):
     try:
         data=get_warning_cached()
     except Exception as e:
-        return 
+        raise Exception(e)
 
     idx = domain_id_idx[dpt_code]
-    try:
-        DEP_SUIVI__TEXT_ITEMS: list = data["product"]["text_bloc_items"][idx]["bloc_items"][1]["text_items"]
-        print(DEP_SUIVI__TEXT_ITEMS)
-    except:
-        return res
+    if data:
+        try:
+            DEP_SUIVI__TEXT_ITEMS: list = data["product"]["text_bloc_items"][idx]["bloc_items"][1]["text_items"]
+        except:
+            return res
     
-    for text_item in DEP_SUIVI__TEXT_ITEMS:
-        if text_item["hazard_code"] == '6':
-            term_item=text_item["term_items"][0]
-            res["start_time"]=term_item["start_time"]
-            res["end_time"]=term_item["end_time"]
-            res["risk_code"]=term_item["risk_code"]
+        for text_item in DEP_SUIVI__TEXT_ITEMS:
+            if text_item["hazard_code"] == '6':
+                term_item=text_item["term_items"][0]
+                res["start_time"]=term_item["start_time"]
+                res["end_time"]=term_item["end_time"]
+                res["risk_code"]=term_item["risk_code"]
     return res
 

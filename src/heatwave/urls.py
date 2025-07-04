@@ -8,7 +8,7 @@ app_name = 'heatwave'
 
 urlpatterns = [
     path(
-        'warning/<pk>/',
+        'warning/<str:pk>/',
         views.heatwave_department.as_view(),
     )
 ]
