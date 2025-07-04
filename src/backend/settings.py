@@ -112,7 +112,7 @@ DICT_CONFIG = {
         "django.server": DEFAULT_LOGGING["loggers"]["django.server"],
     },
 }
-logging.config.dictConfig(DICT_CONFIG)
+#logging.config.dictConfig(DICT_CONFIG)
 
 ADMIN = config('ADMIN', cast=Csv(post_process=tuple))
 ADMINS = [ADMIN]
