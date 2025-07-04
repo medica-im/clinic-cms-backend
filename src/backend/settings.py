@@ -93,18 +93,6 @@ DICT_CONFIG = {
             ],
             "level": LOG_LEVEL,
         },
-        "bot.stream": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "bot.tasks": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "bot.doctoctocbot": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
         "messenger.tasks": {
             "handlers": ["console", "console_debug_false", "mail_admins"],
             "level": LOG_LEVEL,
@@ -118,14 +106,6 @@ DICT_CONFIG = {
             "level": LOG_LEVEL,
         },
         "django-invitations": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "bot.bin.thread": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "moderation.tasks": {
             "handlers": ["console", "console_debug_false", "mail_admins"],
             "level": LOG_LEVEL,
         },
