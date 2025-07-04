@@ -156,7 +156,6 @@ INSTALLED_APPS = [
     'django.contrib.postgres',
     'rest_framework_simplejwt',
     'rest_framework',
-    'rest_framework.authtoken',
     'rest_framework_simplejwt.token_blacklist',
     'easy_thumbnails',
     'constance.backends.database',
@@ -167,8 +166,6 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'simple_history',
-    'dj_rest_auth',
-    'anymail',
     # local apps
     'backend',
     'accounts',
@@ -181,6 +178,7 @@ INSTALLED_APPS = [
     'contact',
     'opengraph',
     'nlp',
+    'heatwave',
 ]
 
 if DEBUG:
@@ -293,7 +291,7 @@ REST_FRAMEWORK = {
     'NON_FIELD_ERRORS_KEY': 'error',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        #'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ),
 }
@@ -382,12 +380,6 @@ CONSTANCE_CONFIG = {
 }
 
 #Email
-EMAIL_BACKEND=config('EMAIL_BACKEND')
-ANYMAIL = {
-    "MAILGUN_API_KEY": config('MAILGUN_API_KEY'),
-    "DEBUG_API_REQUESTS": config("DEBUG_API_REQUESTS", cast=bool, default=False),
-    "MAILGUN_API_URL": "https://api.eu.mailgun.net/v3",
-}
 DEFAULT_FROM_EMAIL=config('DEFAULT_FROM_EMAIL', default="webmaster@localhost")
 EMAIL_HOST=config('EMAIL_HOST')
 EMAIL_PORT=config('EMAIL_PORT')
@@ -411,11 +403,5 @@ NEO4J_7687_EXTERNAL_PORT= config('{NEO4J_7687_EXTERNAL_PORT}', default='7687')
 TASTYPIE_FULL_DEBUG = True
 neomodel_config.DATABASE_URL = f"bolt://{NEO4J_USERNAME}:{NEO4J_PASSWORD}@neo4j:{NEO4J_7687_EXTERNAL_PORT}"
 
-REST_AUTH = {
-    'PASSWORD_RESET_USE_SITES_DOMAIN': True,
-    'PASSWORD_RESET_SERIALIZER': 'dj_rest_auth.serializers.PasswordResetSerializer',
-    'PASSWORD_RESET_CONFIRM_SERIALIZER': 'dj_rest_auth.serializers.PasswordResetConfirmSerializer',
-    'USE_JWT': True,
-    'JWT_AUTH_COOKIE': 'jwt-auth',
-    'JWT_AUTH_REFRESH_COOKIE': 'my-refresh-token',
-}
+#heatwave
+PUBLIC_API_METEOFRANCE = config('PUBLIC_API_METEOFRANCE')
