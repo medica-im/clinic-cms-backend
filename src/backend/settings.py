@@ -26,6 +26,20 @@ DEBUG = config('DEBUG', cast=bool, default=False)
 
 LOG_LEVEL = config('LOG_LEVEL', default='DEBUG')
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+}
+
 DICT_CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -113,7 +127,7 @@ DICT_CONFIG = {
         "django.server": DEFAULT_LOGGING["loggers"]["django.server"],
     },
 }
-logging.config.dictConfig(DICT_CONFIG)
+#logging.config.dictConfig(DICT_CONFIG)
 
 ADMIN = config('ADMIN', cast=Csv(post_process=tuple))
 ADMINS = [ADMIN]
