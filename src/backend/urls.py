@@ -30,6 +30,7 @@ urlpatterns = [
     path('api/v1/workforce/', include('workforce.urls', namespace='workforce')),
     path('form/', include('contact.urls', namespace='contact')),
     path('dj-rest-auth/', include('dj_rest_auth.urls')),
+    path('api/v1/heatwave/', include('heatwave.urls', namespace='heatwave')),
     # this url is used to generate email content
     #re_path(
     #    r"^password-reset/confirm/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,32})/$",
