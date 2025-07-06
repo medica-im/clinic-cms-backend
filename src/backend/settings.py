@@ -178,7 +178,6 @@ INSTALLED_APPS = [
     'contact',
     'opengraph',
     'nlp',
-    'heatwave',
 ]
 
 if DEBUG:
@@ -402,6 +401,3 @@ NEO4J_7687_EXTERNAL_PORT= config('{NEO4J_7687_EXTERNAL_PORT}', default='7687')
 #neomodel
 TASTYPIE_FULL_DEBUG = True
 neomodel_config.DATABASE_URL = f"bolt://{NEO4J_USERNAME}:{NEO4J_PASSWORD}@neo4j:{NEO4J_7687_EXTERNAL_PORT}"
-
-#heatwave
-PUBLIC_API_METEOFRANCE = config('PUBLIC_API_METEOFRANCE')
