@@ -5,7 +5,6 @@ Created on Nov 5, 2023
 '''
 from tastypie import fields
 import logging
-from directory.utils import directory_effectors, get_directory
 from directory.models import Commune
 from django.urls import re_path
 from tastypie.authorization import Authorization
