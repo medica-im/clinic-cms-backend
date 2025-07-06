@@ -57,6 +57,7 @@ class Need(StructuredNode):
 
 
 class EffectorType(StructuredNode):
+    __optional_labels__ = ["OrganizationType"]
     uid = UniqueIdProperty()
     label_fr = StringProperty(unique_index=True)
     label_en = StringProperty(unique_index=True)
@@ -108,6 +109,7 @@ class Situation(StructuredNode):
 
 
 class OrganizationType(StructuredNode):
+    __optional_labels__ = ["EffectorType"]
     uid = UniqueIdProperty()
     label_en = StringProperty(unique_index=True)
     label_fr = StringProperty(unique_index=True)
