@@ -465,11 +465,11 @@ def directory_effectors(
     if uid:
         query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
         WHERE rel.directories=["{directory.name}"] AND (rel.uid="{uid}")
-        RETURN e,et,rel,f,c;"""
+        RETURN e,et,rel,f,c,country;"""
     else:
         query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
         WHERE rel.directories=["{directory.name}"] AND rel.active={str(active)}
-        RETURN e,et,rel,f,c;"""
+        RETURN e,et,rel,f,c,country;"""
     results, cols = db.cypher_query(query)
     if results:
         effectors=[]
