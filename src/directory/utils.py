@@ -474,7 +474,7 @@ def get_entries(
         WITH *
         MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
-        RETURN entry,e,et,f,commune,rel,o;
+        RETURN COLLECT(DISTINCT entry) AS entry,e,et,f,commune,rel,o;
         """
     results, cols = db.cypher_query(query)
     if results:
