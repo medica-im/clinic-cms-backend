@@ -284,6 +284,7 @@ def get_address(facility: Facility, commune: Commune, country: Country):
        "facility_uid": facility.uid,
        "country": country.name,
        "city": commune.name_fr,
+       "zip": facility.zip,
        "geographical_complement": facility.geographical_complement,
        "street": facility.street,
        "building": facility.building,
