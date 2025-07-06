@@ -16,7 +16,6 @@ from tastypie.utils import (
     string_to_python,
     trailing_slash,
 )
-from directory.tasty.types import createEffectorTypeResources
 from django.core.cache import cache
 from django.conf import settings
 

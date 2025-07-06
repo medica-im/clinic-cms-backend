@@ -158,7 +158,7 @@ class EffectorTypeResource(Resource):
 
     def get_object_list(self, request):
         nodes = EffectorType.nodes.all()
-        effector_types = createEffectorTypeResources(request, nodes)
+        effector_types = [createEffectorTypeResources(node) for node in nodes]
         return effector_types
 
     def obj_get_list(self, bundle, **kwargs):
@@ -168,7 +168,7 @@ class EffectorTypeResource(Resource):
         uid= kwargs['uid']
         try :
             node = EffectorType.nodes.get(uid=uid)
-            effector_type = createEffectorTypeResources([node])
-            return effector_type[0]
+            effector_type = createEffectorTypeResources(node)
+            return effector_type
         except Exception as e:
             raise Exception(f"{e}\nCan't find EffectorType {uid}")
