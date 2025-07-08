@@ -1,7 +1,10 @@
+import logging
 from facility.models import Organization, Category, Facility, LegalEntity
 from addressbook.api.serializers import ContactSerializer
 from rest_framework import serializers
+from directory.models import Organization
 
+logger = logging.getLogger(__name__)
 
 class LegalEntitySerializer(serializers.ModelSerializer):
 
@@ -39,6 +42,33 @@ class OrganizationSerializer(serializers.ModelSerializer):
     facility = FacilitySerializer(many=True, read_only=True)
     legal_entity = LegalEntitySerializer(many=False, read_only=True)
     uid = serializers.UUIDField(format='hex', source='neomodel_uid')
+    department = serializers.SerializerMethodField()
+
+    def get_department(self, obj):  # type: ignore
+        try:
+            organization: Organization = Organization.nodes.get(uid=obj.neomodel_uid)
+        except Exception as e:
+            logger.error(f"{e}\n Cannot find an Organization neo4j node with uid {obj.neomomodel_uid} for Organization {obj.name}")
+            return
+        try:
+            commune = organization.commune
+        except Exception as e:
+            logger.error(f"{e}")
+        try:
+            department = commune.department
+        except Exception as e:
+            logger.error(f"{e}")
+        try:
+            return {
+                "uid": department.uid,
+                "name": department.name,
+                "code": department.code,
+                "slug": department.slug,
+                "wikidata": department.wikidata
+            }
+        except Exception as e:
+            return
+
 
     class Meta:
         model = Organization
