@@ -2,7 +2,7 @@ import logging
 from facility.models import Organization, Category, Facility, LegalEntity
 from addressbook.api.serializers import ContactSerializer
 from rest_framework import serializers
-from directory.models import Organization
+from directory.models import Organization as Neo4jOrganization
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     def get_department(self, obj):  # type: ignore
         try:
-            organization: Organization = Organization.nodes.get(uid=obj.neomodel_uid)
+            organization = Neo4jOrganization.nodes.get(uid=obj.neomodel_uid)
         except Exception as e:
             logger.error(f"{e}\n Cannot find an Organization neo4j node with uid {obj.neomomodel_uid} for Organization {obj.name}")
             return
