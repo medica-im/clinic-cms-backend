@@ -46,9 +46,9 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     def get_department(self, obj):  # type: ignore
         try:
-            organization = Neo4jOrganization.nodes.get(uid=obj.neomodel_uid)
+            organization = Neo4jOrganization.nodes.get(uid=obj.neomodel_uid.hex)
         except Exception as e:
-            logger.error(f"{e}\n Cannot find an Organization neo4j node with uid {obj.neomodel_uid} for Organization {obj.name}")
+            logger.error(f"{e}\n Cannot find an Organization neo4j node with uid {obj.neomodel_uid.hex} for Organization {obj.name}")
             return
         try:
             commune = organization.commune
