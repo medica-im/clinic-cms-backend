@@ -51,11 +51,11 @@ class OrganizationSerializer(serializers.ModelSerializer):
             logger.error(f"{e}\n Cannot find an Organization neo4j node with uid {obj.neomodel_uid.hex} for Organization {obj.name}")
             return
         try:
-            commune = organization.commune
+            commune = organization.commune.all()[0]
         except Exception as e:
             logger.error(f"{e}")
         try:
-            department = commune.department
+            department = commune.department.all()[0]
         except Exception as e:
             logger.error(f"{e}")
         try:
