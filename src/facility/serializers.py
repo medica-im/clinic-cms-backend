@@ -89,6 +89,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'city',
             'legal_entity',
             'uid',
+            'department',
         ]
         depth = 4
 
