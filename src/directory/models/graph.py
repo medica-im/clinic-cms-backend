@@ -17,6 +17,7 @@ from neomodel import (
     StructuredRel,
     ZeroOrOne,
     OneOrMore,
+    One,
 )
 from django.utils.translation import get_language
 
@@ -142,7 +143,8 @@ class Organization(StructuredNode):
     )
     commune = RelationshipTo(
         'Commune',
-        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
+        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY',
+        cardinality=One
     )
     website = RelationshipTo(
         'Website',
