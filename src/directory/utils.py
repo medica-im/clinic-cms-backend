@@ -344,9 +344,7 @@ def get_facilities(
         active: bool = True,
     ):
     if uid:
-        query=f"""MATCH (f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
-        WHERE f.uid="{uid}"
-        RETURN f,commune,country;"""
+        query=f"""MATCH (f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) WHERE f.uid="{uid}" RETURN f,commune,country;"""
     elif slug:
         query=f"""MATCH (d:Directory)-[:HAS_ENTRY]->(e:Entry),
         (e)-[:HAS_EFFECTOR]->(:Effector),
