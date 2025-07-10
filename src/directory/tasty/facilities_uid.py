@@ -65,11 +65,12 @@ class FacilityObj(object):
 def createFacilityResources(request, nodes):
     data= []
     for node in nodes:
-        uid = node.uid
-        name = node.name
+        facility=node["facility"]
+        uid = facility.uid
+        name = facility.name
         if not name:
             try:
-                org=node.organization.all()[0]
+                org=facility.organization.all()[0]
                 name = getattr(
                     org,
                     f'name_{settings.LANGUAGE_CODE}',
@@ -80,25 +81,28 @@ def createFacilityResources(request, nodes):
                     )
                 )
             except:
-                name=node.uid
+                name=uid
         try:
-            label = node.label
+            label = facility.label
         except:
             label = name
-        slug = node.slug
+        slug = facility.slug
         address = _get_address(node)
         try:
-            commune = node.commune.all()[0].uid
+            commune = node["commune"].uid
         except Exception as e:
             logger.error(e)
             commune = None
-        organizations = [org.uid for org in node.organization.all()]
-        phones = get_phones_neomodel(f=node)
-        emails = get_emails_neomodel(f=node)
-        websites = get_websites_neomodel(f=node)
-        socialnetworks=get_socialnetworks_neomodel(f=node)
-        avatar = get_avatar_url(f=node)
-        effectors=[e.uid for e in node.effectors.all()]
+        organizations = [org.uid for org in facility.organization.all()]
+        phones = get_phones_neomodel(f=facility)
+        emails = get_emails_neomodel(f=facility)
+        websites = get_websites_neomodel(f=facility)
+        socialnetworks=get_socialnetworks_neomodel(f=facility)
+        avatar = get_avatar_url(f=facility)
+        try:
+            effectors=[e.uid for e in node.effectors.all()]
+        except Exception:
+            effectors=None
         obj = FacilityObj(
             uid,
             name,
