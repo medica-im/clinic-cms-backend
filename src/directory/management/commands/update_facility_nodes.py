@@ -49,8 +49,8 @@ class Command(BaseCommand):
         for node_id in nodes:
             node=neomodel.db.cypher_query(f"MATCH (f:Facility) WHERE id(f) = {node_id} return f", resolve_objects=True)[0][0][0]
             #self.warn(node)
-            if (node.building or node.street or node.geographical_complement or node.zip or node.location):
-                continue
+            #if (node.building or node.street or node.geographical_complement or node.zip or node.location):
+            #    continue
             url=f"{api_url}{node.uid}/"
             f=dict()
             try:
@@ -79,7 +79,7 @@ class Command(BaseCommand):
             try:
                 node.location=NeomodelPoint(lng_lat, crs='wgs-84')
             except ValueError as e:
-                self.warn(f'{node}\n{e}')
+                self.warn(f'{node=}\n{lng_lat=}\n{e}')
                 if _continue:
                     pass
                 else:
