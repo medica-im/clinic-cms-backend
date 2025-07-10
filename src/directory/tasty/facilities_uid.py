@@ -67,33 +67,28 @@ def createFacilityResources(request, nodes):
     for node in nodes:
         facility=node["facility"]
         uid = facility.uid
-        name = facility.name
-        if not name:
-            try:
-                org=facility.organization.all()[0]
-                name = getattr(
-                    org,
-                    f'name_{settings.LANGUAGE_CODE}',
-                    getattr(
-                        org,
-                        'label_en',
-                        None
-                    )
-                )
-            except:
-                name=uid
+        try:
+            name = facility.name
+        except Exception:
+            name = None
         try:
             label = facility.label
-        except:
-            label = name
-        slug = facility.slug
-        address = _get_address(node)
+        except Exception:
+            label = None
+        try:
+            slug = facility.slug
+        except Exception:
+            slug = None
+        address = _get_address(facility)
         try:
             commune = node["commune"].uid
         except Exception as e:
             logger.error(e)
             commune = None
-        organizations = [org.uid for org in facility.organization.all()]
+        try:
+            organizations = [org.uid for org in facility.organization.all()]
+        except Exception:
+            organizations = None
         phones = get_phones_neomodel(f=facility)
         emails = get_emails_neomodel(f=facility)
         websites = get_websites_neomodel(f=facility)
@@ -137,7 +132,7 @@ class FacilityUidResource(Resource):
     websites = fields.ListField(attribute='websites', null=True)
     socialnetworks = fields.ListField(attribute='socialnetworks', null=True)
     avatar = fields.DictField(attribute='avatar', null=True)
-    effectors = fields.ListField(attribute='effectors')
+    effectors = fields.ListField(attribute='effectors', null=True)
 
 
     class Meta:
