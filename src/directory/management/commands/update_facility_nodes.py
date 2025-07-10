@@ -47,7 +47,7 @@ class Command(BaseCommand):
             nodes = Facility.nodes.all(lazy=True)
         count=0
         for node_id in nodes:
-            node=neomodel.db.cypher_query(f"MATCH (f:Facility) WHERE id(f) = {node_id} return f", resolve_objects=True)[0][0][0]
+            node=neomodel.db.cypher_query(f"MATCH (f:Facility) WHERE id(f)= {node_id} return f", resolve_objects=True)[0][0][0]
             #self.warn(node)
             #if (node.building or node.street or node.geographical_complement or node.zip or node.location):
             #    continue
@@ -57,7 +57,7 @@ class Command(BaseCommand):
                 r = requests.get(url, timeout=1, verify=True)
                 r.raise_for_status()
                 f=r.json()
-                #self.notice(f)
+                self.notice(f)
             except requests.exceptions.HTTPError as errh:
                 print("HTTP Error")
                 self.warn(f"{node_id=}")
