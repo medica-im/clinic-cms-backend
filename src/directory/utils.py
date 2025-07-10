@@ -271,6 +271,14 @@ def get_avatar_url(
         return get_avatar_dict(ef_avatar)
     if (e is None and ef is None and f):
         return get_avatar_dict(f_avatar)
+    
+def _get_address(facility: Facility):
+    try:
+        contact = Contact.objects.get(neomodel_uid=facility.uid)
+    except Contact.DoesNotExist:
+        return
+    serializer = AddressSerializer(contact.address)
+    return serializer.data
 
 def get_address(facility: Facility, commune: Commune, country: Country):
     logger.debug(f"{facility.location=}")
