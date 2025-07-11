@@ -150,7 +150,7 @@ class Command(BaseCommand):
                 raise ValueError("Can't have maps and lat/long options")
             lng_lat=None
             if latitude and longitude:
-                lng_lat = (longitude, latitude)
+                lng_lat = float(longitude), float(latitude)
             elif maps:
                 lng_lat = maps_dms_to_dd(maps)
             if lng_lat:
