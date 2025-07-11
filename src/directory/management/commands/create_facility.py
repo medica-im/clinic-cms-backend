@@ -149,11 +149,13 @@ class Command(BaseCommand):
                 raise ValueError("Can't have maps and lat/long options")
             lng_lat=None
             if latitude and longitude:
-                lng_lat = float(longitude), float(latitude)
+                lng_lat = (float(longitude),float(latitude))
+                self.warn(f"{lng_lat=}")
             elif maps:
                 lng_lat = maps_dms_to_dd(maps)
             if lng_lat:
                 location=NeomodelPoint(lng_lat, crs='wgs-84')
+                self.warn(f"{location=}")
                 facility.location=location
             facility.save()
         self.warn(
