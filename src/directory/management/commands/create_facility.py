@@ -143,21 +143,17 @@ class Command(BaseCommand):
             if zoom:
                 facility.zoom=zoom
             latitude = options["latitude"]
-            self.warn(f"{latitude=}")
             longitude = options["longitude"]
-            self.warn(f"{longitude=}")
             maps = options["maps"]
             if latitude and longitude and maps:
                 raise ValueError("Can't have maps and lat/long options")
             lng_lat=None
             if latitude and longitude:
                 lng_lat = (float(longitude),float(latitude))
-                self.warn(f"{lng_lat=}")
             elif maps:
                 lng_lat = maps_dms_to_dd(maps)
             if lng_lat:
                 location=NeomodelPoint(lng_lat, crs='wgs-84')
-                self.warn(f"{location=}")
                 facility.location=location
             facility.save()
         self.warn(
@@ -172,5 +168,6 @@ class Command(BaseCommand):
             f"geo: {facility.geographical_complement}\n"
             f"zip: {facility.zip}\n"
             f"location: {facility.location}\n"
+            f"zoom: {facility.zoom}\n"
             f"tooltip_text: {facility.tooltip_text}\n"
         )
