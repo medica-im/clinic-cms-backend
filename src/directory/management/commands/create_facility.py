@@ -78,8 +78,8 @@ class Command(BaseCommand):
         parser.add_argument('--label', type=str)
         parser.add_argument('--slug', type=str)
         parser.add_argument('--tooltip_text', type=str)
-        parser.add_argument('--latitude', type=restricted_float)
-        parser.add_argument('--longitude', type=restricted_float)
+        parser.add_argument('--latitude', type=str)
+        parser.add_argument('--longitude', type=str)
         parser.add_argument(
             '--maps',
             type=str,
