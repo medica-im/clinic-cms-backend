@@ -112,10 +112,10 @@ class Command(BaseCommand):
                 facility.commune.connect(commune)
             if options["name"]:
                 facility.name=options["name"]
-                facility.save()
             if options["label"]:
                 facility.label=options["label"]
-                facility.save()
+            else:
+                facility.label=options["name"]
             if options["slug"]:
                 slug = options["slug"]
             elif options["name"]:
@@ -124,7 +124,6 @@ class Command(BaseCommand):
                 slug = None
             if slug:
                 facility.slug=slug
-                facility.save()
             street = options["street"]
             if street:
                 facility.street=street
@@ -156,7 +155,7 @@ class Command(BaseCommand):
             if lng_lat:
                 location=NeomodelPoint(lng_lat, crs='wgs-84')
                 facility.location=location
-
+            facility.save()
         self.warn(
             f"{facility}\n"
             f"Commune: {display_relationship(facility.commune)}\n"
