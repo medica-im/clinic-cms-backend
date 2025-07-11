@@ -143,7 +143,9 @@ class Command(BaseCommand):
             if zoom:
                 facility.zoom=zoom
             latitude = options["latitude"]
+            self.warn(f"{latitude=}")
             longitude = options["longitude"]
+            self.warn(f"{longitude=}")
             maps = options["maps"]
             if latitude and longitude and maps:
                 raise ValueError("Can't have maps and lat/long options")
