@@ -2,9 +2,6 @@ import logging
 import json
 from typing import Union
 from pydantic import ValidationError
-from api.types.facility import Facility as FacilityPy
-from api.types.organization_types import OrganizationTypePy
-from api.types.organization import OrganizationPy
 from api.types.geography import Commune as CommunePy, DepartmentOfFrance as DepartmentOfFrancePy
 from neomodel import db
 from neomodel.contrib.spatial_properties import NeomodelPoint, PointProperty
