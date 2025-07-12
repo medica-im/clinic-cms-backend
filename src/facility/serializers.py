@@ -3,6 +3,7 @@ from facility.models import Organization, Category, Facility, LegalEntity
 from addressbook.api.serializers import ContactSerializer
 from rest_framework import serializers
 from directory.models import Organization as Neo4jOrganization
+from directory.models import Entry
 
 logger = logging.getLogger(__name__)
 
@@ -49,11 +50,21 @@ class OrganizationSerializer(serializers.ModelSerializer):
             organization = Neo4jOrganization.nodes.get(uid=obj.neomodel_uid.hex)
         except Exception as e:
             logger.error(f"{e}\n Cannot find an Organization neo4j node with uid {obj.neomodel_uid.hex} for Organization {obj.name}")
-            return
-        try:
-            commune = organization.commune.all()[0]
-        except Exception as e:
-            logger.error(f"{e}")
+            try:
+                entry = Entry.nodes.get(uid=obj.neomodel_uid.hex)
+            except Exception as e:
+                logger.error(f"{e}\n Cannot find an Entry neo4j node with uid {obj.neomodel_uid.hex} for Organization {obj.name}")
+                return
+        if organization:
+            try:
+                commune = organization.commune.all()[0]
+            except Exception as e:
+                logger.error(f"{e}")
+        elif entry:
+            try:
+                commune = entry.facility.all()[0].commune.all()[0]
+            except Exception as e:
+                logger.error(e)
         try:
             department = commune.department.all()[0]
         except Exception as e:
