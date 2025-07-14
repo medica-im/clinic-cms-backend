@@ -1,2 +1,3 @@
 fastapi[standard]>=0.115.0,<0.116.0
 pydantic-extra-types
+fastapi-jwt[authlib]
