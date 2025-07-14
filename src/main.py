@@ -21,7 +21,7 @@ apps.populate(installed_apps=[
 apps.check_apps_ready()
 apps.check_models_ready()
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.security import OpenIdConnect
 from api.routers import organizations, organization_types, effector_types, facilities, communes, departments, entries, effectors
 from django.conf import settings
@@ -50,3 +50,7 @@ app.include_router(effectors.router)
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+@app.get("/foo")
+async def bar(token = Depends(oidc)):
+    return token
