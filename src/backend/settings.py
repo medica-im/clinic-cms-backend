@@ -162,6 +162,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'simple_history',
+    'oauth2_provider',
     # local apps
     'backend',
     'accounts',
