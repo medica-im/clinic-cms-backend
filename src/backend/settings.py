@@ -411,6 +411,9 @@ OAUTH2_PROVIDER = {
     "OIDC_ENABLED": True,
     "OIDC_RSA_PRIVATE_KEY": config("OIDC_RSA_PRIVATE_KEY"),
     "SCOPES": {
+        'read': 'Read scope',
+        'write': 'Write scope',
+        'userinfo': 'User info scope',
         "openid": "OpenID Connect scope",
         # ... any other scopes that you use
     },
