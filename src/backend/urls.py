@@ -18,10 +18,12 @@ from django.urls import include, path, re_path
 from django.views.generic import TemplateView
 from accounts.reset import PasswordResetConfirmRedirectView
 from oauth2_provider import urls as oauth2_urls
+#from django.contrib.auth.views import LoginView
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    #path('admin/login/', LoginView.as_view(template_name='login/login.html'), name='login'),
     path('api/v1/accounts/', include('accounts.urls', namespace='accounts')),
     path('addressbook/', include('addressbook.urls', namespace='addressbook')),
     path('api/v1/addressbook/', include('addressbook.api.urls', namespace='addressbook_api')),

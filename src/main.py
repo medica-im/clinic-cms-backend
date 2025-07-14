@@ -22,9 +22,21 @@ apps.check_apps_ready()
 apps.check_models_ready()
 
 from fastapi import FastAPI
+from fastapi.security import OpenIdConnect
 from api.routers import organizations, organization_types, effector_types, facilities, communes, departments, entries, effectors
+from django.conf import settings
 
-app = FastAPI()
+oidc = OpenIdConnect(openIdConnectUrl=settings.OPEN_ID_CONNECT_URL)
+
+
+app = FastAPI(
+    swagger_ui_init_oauth = {
+        "clientId": "docs", 
+        "appName": "Doc Tools", 
+        "usePkceWithAuthorizationCodeGrant": True, 
+        "scopes": "openid",
+    }
+)
 
 app.include_router(organizations.router)
 app.include_router(organization_types.router)
