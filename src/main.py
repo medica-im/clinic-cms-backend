@@ -31,10 +31,10 @@ oidc = OpenIdConnect(openIdConnectUrl=settings.OPEN_ID_CONNECT_URL)
 
 app = FastAPI(
     swagger_ui_init_oauth = {
-        "clientId": settings.OPENAPI_CLIENT_ID, 
-        "appName": "test", 
+        "clientId": "docs", 
+        "appName": "Doc Tools", 
         "usePkceWithAuthorizationCodeGrant": True, 
-        "scopes": "openid",
+        "scopes": "openid profile",
     }
 )
 
