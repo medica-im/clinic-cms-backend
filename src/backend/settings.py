@@ -40,100 +40,12 @@ LOGGING = {
     },
 }
 
-DICT_CONFIG = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    'filters': {
-        'require_debug_false': {
-            '()': 'django.utils.log.RequireDebugFalse',
-        },
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
-        },
-    },
-    "formatters": {
-        "default": {
-            "format": "%(asctime)s %(name)s %(pathname)s:%(lineno)s:%(funcName)s %(levelname)s %(message)s",
-        },
-        "django.server": DEFAULT_LOGGING['formatters']['django.server'],
-        "colored_verbose": {
-            "()": "colorlog.ColoredFormatter",
-            "format": "%(log_color)s%(levelname)-8s%(red)s%(module)-30s%(reset)s %(blue)s%(message)s"
-        },
-    },
-
-    "handlers": {
-        'console': {
-            'level': LOG_LEVEL,
-            'class': 'logging.StreamHandler',
-            'formatter': 'default',
-            'filters': ['require_debug_true'],
-    },
-        'colored_console': {
-            'level': LOG_LEVEL,
-            'class': 'logging.StreamHandler',
-            'formatter': 'colored_verbose',
-            'filters': ['require_debug_true'],
-    },
-        "console_debug_false": {
-            "level": LOG_LEVEL,
-            "filters": ["require_debug_false"],
-            "class": "logging.StreamHandler",
-        },
-
-        "mail_admins": {
-            "level": "ERROR",
-            "filters": ["require_debug_false"],
-            "class": "django.utils.log.AdminEmailHandler"
-        },
-        #"applogfile": {
-        #    "level": "DEBUG",
-        #    "class": "logging.FileHandler",
-        #    "filename": LOG_FILE,
-        #},
-        "django.server": DEFAULT_LOGGING["handlers"]["django.server"],
-    },
-
-    "loggers": {
-        '': {
-            'level': LOG_LEVEL,
-            'handlers': ['colored_console', 'console_debug_false',],
-            'propagate': True,
-        },
-        "django": {
-            "handlers": [
-                "colored_console",
-                "console_debug_false",
-                "mail_admins",
-            ],
-            "level": LOG_LEVEL,
-        },
-        "messenger.tasks": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "tagging.tasks": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "timeline": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "django-invitations": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "django.server": DEFAULT_LOGGING["loggers"]["django.server"],
-    },
-}
-#logging.config.dictConfig(DICT_CONFIG)
-
 ADMIN = config('ADMIN', cast=Csv(post_process=tuple))
 ADMINS = [ADMIN]
 MANAGERS = ADMINS
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
+ALLOWED_HOSTS = ['*']
+#ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 
 # Application definition
 
