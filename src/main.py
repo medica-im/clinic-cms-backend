@@ -34,7 +34,7 @@ app = FastAPI(
         "clientId": settings.OPENAPI_CLIENT_ID, 
         "appName": "Doc Tools", 
         "usePkceWithAuthorizationCodeGrant": True, 
-        "scopes": "openid profile",
+        "scopes": "openid",
     }
 )
 
