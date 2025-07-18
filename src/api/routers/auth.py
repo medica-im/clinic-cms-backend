@@ -74,7 +74,7 @@ async def auth_google(request: Request, credential: str|None = None):
     # Here you would typically:
     # 1. Check if the user exists in your database
     try:
-        site = get_site_from_hostname(request.url.hostname)
+        site = await get_site_from_hostname(request.url.hostname)
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
