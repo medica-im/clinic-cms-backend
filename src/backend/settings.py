@@ -32,11 +32,22 @@ LOGGING = {
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
         },
     },
     "root": {
         "handlers": ["console"],
-        "level": "WARNING",
+        "level": "DEBUG",
     },
 }
 
@@ -337,3 +348,8 @@ AUTHENTICATION_BACKENDS = [
     'oauth2_provider.backends.OAuth2Backend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+# FAST API JWT
+JWT_SECRET_KEY=config('JWT_SECRET_KEY')
+ACCESS_TOKEN_EXPIRE_MINUTES=config('ACCESS_TOKEN_EXPIRE_MINUTES', cast=int, default=30)
+OIDC_GOOGLE_CLIENT_ID=config('OIDC_GOOGLE_CLIENT_ID')
