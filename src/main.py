@@ -1,5 +1,9 @@
 # Let Django knows where the project's settings is.
 import os
+import logging
+
+logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 
 from django.apps import apps
