@@ -81,7 +81,7 @@ async def auth_google(request: Request, credential: str|None = None):
             detail="Unauthorized client"
         )
     try:
-        user = User.objects.get(email=user_infos['email'], site=site)
+        user = await User.objects.aget(email=user_infos['email'], site=site)
         logger.debug(user)
     except User.DoesNotExist:
         raise HTTPException(
