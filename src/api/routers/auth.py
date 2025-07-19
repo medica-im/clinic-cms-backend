@@ -100,12 +100,14 @@ async def auth_google(request: Request, credential: str|None = None):
     response.set_cookie(
         key="refresh-token",
         value=refresh_token,
-        path="/"
+        path="/",
+        httponly=False,
     )
     response.set_cookie(
         key="access-token",
         value=access_token,
-        path="/"
+        path="/",
+        httponly=False,
     )
     return response
 
