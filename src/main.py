@@ -26,7 +26,7 @@ apps.populate(installed_apps=[
 apps.check_apps_ready()
 apps.check_models_ready()
 
-from fastapi import FastAPI, Depends, Cookie
+from fastapi import FastAPI, Depends, Cookie, Response
 from fastapi.security import OpenIdConnect
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import organizations, organization_types, effector_types, facilities, communes, departments, entries, effectors, auth
@@ -71,7 +71,12 @@ async def root():
 
 @app.get("/foo")
 async def bar(token = Depends(oidc)):
-    return token
+    return 
+
+@app.get("/set-cookie")
+def set_cookie(response: Response):
+    response.set_cookie(key="mycookie", value="Hello FastAPI")
+    return {"message": "Cookie has been set"}
 
 @app.get("/get-cookie")
 def get_cookie(mycookie: str = Cookie(None)):
