@@ -95,9 +95,11 @@ async def auth_google(response: Response, request: Request, credential: str|None
     # 3. Generate your application's JWT token
     subject={"sub": user_infos['email']}
     access_token = access_security.create_access_token(subject=subject)
+    logger.debug(f"{access_token=}")
     refresh_token = refresh_security.create_refresh_token(subject=subject)
+    logger.debug(f"{refresh_token}")
     #response = JSONResponse({"success" : "true"}, status_code=200)
-    response.set_cookie(key="myothercookie", value="Hello FastAPI")
+    response.set_cookie(key="myothercookie", value="Hello FastAPI from google endpoint")
     response.set_cookie(
         key="refresh-token",
         value=refresh_token,
