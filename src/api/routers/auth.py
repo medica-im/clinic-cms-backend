@@ -97,6 +97,7 @@ async def auth_google(request: Request, credential: str|None = None):
     access_token = access_security.create_access_token(subject=subject)
     refresh_token = refresh_security.create_refresh_token(subject=subject)
     response = JSONResponse({"success" : "true"}, status_code=200)
+    response.set_cookie(key="mycookie", value="Hello FastAPI")
     response.set_cookie(
         key="refresh-token",
         value=refresh_token,
