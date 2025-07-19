@@ -3,6 +3,7 @@ import os
 import logging
 
 logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
+logger = logging.getLogger(__name__)
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 
@@ -27,6 +28,7 @@ apps.check_models_ready()
 
 from fastapi import FastAPI, Depends
 from fastapi.security import OpenIdConnect
+from fastapi.middleware.cors import CORSMiddleware
 from api.routers import organizations, organization_types, effector_types, facilities, communes, departments, entries, effectors, auth
 from django.conf import settings
 
@@ -40,6 +42,17 @@ app = FastAPI(
         "usePkceWithAuthorizationCodeGrant": True, 
         "scopes": "openid",
     }
+)
+
+origins = settings.CORS_ALLOWED_ORIGINS
+logger.debug(f"{origins=}")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(organizations.router)
