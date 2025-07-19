@@ -1,7 +1,7 @@
 import logging
 from datetime import timedelta
 from django.contrib.auth import get_user_model
-from fastapi import APIRouter, Security, HTTPException, status, Request
+from fastapi import APIRouter, Security, HTTPException, status, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi_jwt import (
     JwtAccessBearerCookie,
@@ -54,7 +54,7 @@ def get_user_infos_from_google_token(id_token_str):
     }
 
 @router.get("/google")
-async def auth_google(request: Request, credential: str|None = None):
+async def auth_google(response: Response, request: Request, credential: str|None = None):
     logger.debug(f"{credential=}")
     if not credential:
         raise HTTPException(
@@ -96,8 +96,8 @@ async def auth_google(request: Request, credential: str|None = None):
     subject={"sub": user_infos['email']}
     access_token = access_security.create_access_token(subject=subject)
     refresh_token = refresh_security.create_refresh_token(subject=subject)
-    response = JSONResponse({"success" : "true"}, status_code=200)
-    response.set_cookie(key="mycookie", value="Hello FastAPI")
+    #response = JSONResponse({"success" : "true"}, status_code=200)
+    response.set_cookie(key="myothercookie", value="Hello FastAPI")
     response.set_cookie(
         key="refresh-token",
         value=refresh_token,
@@ -114,7 +114,7 @@ async def auth_google(request: Request, credential: str|None = None):
         secure=True,
         samesite='lax'
     )
-    return response
+    return {"success" : "true"}
 
 @router.post("/auth")
 def auth():
