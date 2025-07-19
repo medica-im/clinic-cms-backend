@@ -2,6 +2,7 @@ import logging
 from datetime import timedelta
 from django.contrib.auth import get_user_model
 from fastapi import APIRouter, Security, HTTPException, status, Request
+from fastapi.responses import JSONResponse
 from fastapi_jwt import (
     JwtAccessBearerCookie,
     JwtAuthorizationCredentials,
@@ -95,7 +96,18 @@ async def auth_google(request: Request, credential: str|None = None):
     subject={"sub": user_infos['email']}
     access_token = access_security.create_access_token(subject=subject)
     refresh_token = refresh_security.create_refresh_token(subject=subject)
-    return {"access_token": access_token, "refresh_token": refresh_token}
+    response = JSONResponse({"success" : "true"}, status_code=200)
+    response.set_cookie(
+        key="refresh-token",
+        value=refresh_token,
+        path="/"
+    )
+    response.set_cookie(
+        key="access-token",
+        value=access_token,
+        path="/"
+    )
+    return response
 
 @router.post("/auth")
 def auth():
