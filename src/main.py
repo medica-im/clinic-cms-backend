@@ -26,11 +26,13 @@ apps.populate(installed_apps=[
 apps.check_apps_ready()
 apps.check_models_ready()
 
-from fastapi import FastAPI, Depends, Cookie, Response
+from fastapi import FastAPI, Depends, Cookie, Response, Request
+from fastapi.responses import JSONResponse
 from fastapi.security import OpenIdConnect
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import organizations, organization_types, effector_types, facilities, communes, departments, entries, effectors, auth
 from django.conf import settings
+from fastapi_nextauth_jwt.exceptions import MissingTokenError
 
 oidc = OpenIdConnect(openIdConnectUrl=settings.OPEN_ID_CONNECT_URL)
 
@@ -81,3 +83,10 @@ def set_cookie(response: Response):
 @app.get("/get-cookie")
 def get_cookie(mycookie: str = Cookie(None)):
     return {"mycookie": mycookie}
+
+@app.exception_handler(MissingTokenError)
+async def unicorn_exception_handler(request: Request, exc: MissingTokenError):
+    return JSONResponse(
+        status_code=401,
+        content={"message": "Oops! We couldn't find a cookie with a proper JWT token. Authenticate first."},
+    )
