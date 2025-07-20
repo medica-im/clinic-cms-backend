@@ -32,108 +32,31 @@ LOGGING = {
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
         },
     },
     "root": {
         "handlers": ["console"],
-        "level": "WARNING",
+        "level": "DEBUG",
     },
 }
-
-DICT_CONFIG = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    'filters': {
-        'require_debug_false': {
-            '()': 'django.utils.log.RequireDebugFalse',
-        },
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
-        },
-    },
-    "formatters": {
-        "default": {
-            "format": "%(asctime)s %(name)s %(pathname)s:%(lineno)s:%(funcName)s %(levelname)s %(message)s",
-        },
-        "django.server": DEFAULT_LOGGING['formatters']['django.server'],
-        "colored_verbose": {
-            "()": "colorlog.ColoredFormatter",
-            "format": "%(log_color)s%(levelname)-8s%(red)s%(module)-30s%(reset)s %(blue)s%(message)s"
-        },
-    },
-
-    "handlers": {
-        'console': {
-            'level': LOG_LEVEL,
-            'class': 'logging.StreamHandler',
-            'formatter': 'default',
-            'filters': ['require_debug_true'],
-    },
-        'colored_console': {
-            'level': LOG_LEVEL,
-            'class': 'logging.StreamHandler',
-            'formatter': 'colored_verbose',
-            'filters': ['require_debug_true'],
-    },
-        "console_debug_false": {
-            "level": LOG_LEVEL,
-            "filters": ["require_debug_false"],
-            "class": "logging.StreamHandler",
-        },
-
-        "mail_admins": {
-            "level": "ERROR",
-            "filters": ["require_debug_false"],
-            "class": "django.utils.log.AdminEmailHandler"
-        },
-        #"applogfile": {
-        #    "level": "DEBUG",
-        #    "class": "logging.FileHandler",
-        #    "filename": LOG_FILE,
-        #},
-        "django.server": DEFAULT_LOGGING["handlers"]["django.server"],
-    },
-
-    "loggers": {
-        '': {
-            'level': LOG_LEVEL,
-            'handlers': ['colored_console', 'console_debug_false',],
-            'propagate': True,
-        },
-        "django": {
-            "handlers": [
-                "colored_console",
-                "console_debug_false",
-                "mail_admins",
-            ],
-            "level": LOG_LEVEL,
-        },
-        "messenger.tasks": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "tagging.tasks": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "timeline": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "django-invitations": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "django.server": DEFAULT_LOGGING["loggers"]["django.server"],
-    },
-}
-#logging.config.dictConfig(DICT_CONFIG)
 
 ADMIN = config('ADMIN', cast=Csv(post_process=tuple))
 ADMINS = [ADMIN]
 MANAGERS = ADMINS
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
+ALLOWED_HOSTS = ['*']
+#ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 
 # Application definition
 
@@ -162,6 +85,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'simple_history',
+    'oauth2_provider',
     # local apps
     'backend',
     'accounts',
@@ -191,6 +115,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'oauth2_provider.middleware.OAuth2TokenMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.contrib.sites.middleware.CurrentSiteMiddleware',
@@ -401,3 +326,30 @@ neomodel_config.DATABASE_URL = f"bolt://{NEO4J_USERNAME}:{NEO4J_PASSWORD}@neo4j:
 
 #heatwave
 PUBLIC_API_METEOFRANCE = config('PUBLIC_API_METEOFRANCE')
+
+#OAUTH2
+OPEN_ID_CONNECT_URL=config('OPEN_ID_CONNECT_URL')
+OPENAPI_CLIENT_ID=config('OPENAPI_CLIENT_ID')
+LOGIN_URL = '/admin/login/'
+OAUTH2_PROVIDER = {
+    "OIDC_ENABLED": True,
+    "OIDC_RSA_PRIVATE_KEY": config("OIDC_RSA_PRIVATE_KEY"),
+    "SCOPES": {
+        'read': 'Read scope',
+        'write': 'Write scope',
+        'userinfo': 'User info scope',
+        "openid": "OpenID Connect scope",
+        # ... any other scopes that you use
+    },
+    # ... any other settings you want
+}
+
+AUTHENTICATION_BACKENDS = [
+    'oauth2_provider.backends.OAuth2Backend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+# FAST API JWT
+JWT_SECRET_KEY=config('JWT_SECRET_KEY')
+ACCESS_TOKEN_EXPIRE_MINUTES=config('ACCESS_TOKEN_EXPIRE_MINUTES', cast=int, default=30)
+OIDC_GOOGLE_CLIENT_ID=config('OIDC_GOOGLE_CLIENT_ID')

@@ -42,6 +42,16 @@ def get_directory(request):
         return
 
 @sync_to_async
+def get_site_from_hostname(hostname) -> Site:
+    try:
+        return Site.objects.get(domain=hostname)
+    except Site.DoesNotExist as e:
+        logger.error(
+            f'Site with domain {hostname} does not exist.'
+        )
+        raise e
+
+@sync_to_async
 def get_directory_from_hostname(hostname):
     try:
         site = Site.objects.get(domain=hostname)
