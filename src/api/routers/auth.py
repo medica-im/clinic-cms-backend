@@ -61,7 +61,10 @@ def get_user_infos_from_google_token(id_token_str):
 
 @router.get("/jwt")
 async def return_jwt(jwt: Annotated[dict, Depends(JWT)]):
-    return {"message": f"Hi {jwt['name']}. Greetings from fastapi!"}
+    try:
+        return {"message": f"Hi {jwt['name']}. Greetings from fastapi!"}
+    except Exception as e:
+        logger.debug(e)
 
 @router.get("/google")
 async def auth_google(response: Response, request: Request, credential: str|None = None):
