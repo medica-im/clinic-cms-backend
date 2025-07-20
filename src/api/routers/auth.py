@@ -1,7 +1,9 @@
 import logging
+import os
+from typing import Annotated
 from datetime import timedelta
 from django.contrib.auth import get_user_model
-from fastapi import APIRouter, Security, HTTPException, status, Request, Response
+from fastapi import APIRouter, Security, HTTPException, status, Request, Response, Depends
 from fastapi.responses import JSONResponse
 from fastapi_jwt import (
     JwtAccessBearerCookie,
@@ -10,12 +12,16 @@ from fastapi_jwt import (
 )
 from django.conf import settings
 from directory.utils import get_site_from_hostname
+from fastapi_nextauth_jwt import NextAuthJWT
 
 logger = logging.getLogger(__name__)
 
 User=get_user_model()
 
 router = APIRouter()
+auth_secret=os.getenv("AUTH_SECRET")
+if auth_secret:
+    JWT = NextAuthJWT(secret=auth_secret)
 
 # Read access token from bearer header and cookie (bearer priority)
 access_security = JwtAccessBearerCookie(
@@ -52,6 +58,10 @@ def get_user_infos_from_google_token(id_token_str):
         "status": True,
         "user_infos": user_infos
     }
+
+@router.get("/jwt")
+async def return_jwt(jwt: Annotated[dict, Depends(JWT)]):
+    return {"message": f"Hi {jwt['name']}. Greetings from fastapi!"}
 
 @router.get("/google")
 async def auth_google(response: Response, request: Request, credential: str|None = None):
@@ -97,7 +107,7 @@ async def auth_google(response: Response, request: Request, credential: str|None
     access_token = access_security.create_access_token(subject=subject)
     logger.debug(f"{access_token=}")
     refresh_token = refresh_security.create_refresh_token(subject=subject)
-    logger.debug(f"{refresh_token}")
+    logger.debug(f"{refresh_token=}")
     #response = JSONResponse({"success" : "true"}, status_code=200)
     response.set_cookie(key="myothercookie", value="Hello FastAPI from google endpoint")
     response.set_cookie(
@@ -106,7 +116,7 @@ async def auth_google(response: Response, request: Request, credential: str|None
         path="/",
         httponly=True,
         secure=True,
-        samesite='lax'
+        samesite='strict'
     )
     response.set_cookie(
         key="access-token",
@@ -114,7 +124,7 @@ async def auth_google(response: Response, request: Request, credential: str|None
         path="/",
         httponly=True,
         secure=True,
-        samesite='lax'
+        samesite='strict'
     )
     return {"success" : "true"}
 
