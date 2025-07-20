@@ -131,7 +131,7 @@ def get_warning():
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         data = response.json()
-        logger.debug(f"{data=}")
+        #logger.debug(f"{data=}")
         return data
     else:
         # Print an error message
