@@ -29,4 +29,3 @@ colorlog
 requests
 dj-rest-auth
 django-anymail[mailgun]
-django-oauth-toolkit

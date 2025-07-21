@@ -17,8 +17,6 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 from django.views.generic import TemplateView
 from accounts.reset import PasswordResetConfirmRedirectView
-from oauth2_provider import urls as oauth2_urls
-from oauth2_provider.views import ConnectDiscoveryInfoView
 #from django.contrib.auth.views import LoginView
 
 
@@ -50,7 +48,6 @@ urlpatterns = [
     re_path(r'^password-reset/confirm/$',
         TemplateView.as_view(template_name="password_reset_confirm.html"),
         name='password-reset-confirm'),
-    path('o/', include(oauth2_urls)),
 ]
 
 # Use static() to add url mappings to serve static files during development (only)

@@ -85,7 +85,6 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'simple_history',
-    'oauth2_provider',
     # local apps
     'backend',
     'accounts',
@@ -115,7 +114,6 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'oauth2_provider.middleware.OAuth2TokenMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.contrib.sites.middleware.CurrentSiteMiddleware',
@@ -327,27 +325,7 @@ neomodel_config.DATABASE_URL = f"bolt://{NEO4J_USERNAME}:{NEO4J_PASSWORD}@neo4j:
 #heatwave
 PUBLIC_API_METEOFRANCE = config('PUBLIC_API_METEOFRANCE')
 
-#OAUTH2
-OPEN_ID_CONNECT_URL=config('OPEN_ID_CONNECT_URL')
-OPENAPI_CLIENT_ID=config('OPENAPI_CLIENT_ID')
 LOGIN_URL = '/admin/login/'
-OAUTH2_PROVIDER = {
-    "OIDC_ENABLED": True,
-    "OIDC_RSA_PRIVATE_KEY": config("OIDC_RSA_PRIVATE_KEY"),
-    "SCOPES": {
-        'read': 'Read scope',
-        'write': 'Write scope',
-        'userinfo': 'User info scope',
-        "openid": "OpenID Connect scope",
-        # ... any other scopes that you use
-    },
-    # ... any other settings you want
-}
-
-AUTHENTICATION_BACKENDS = [
-    'oauth2_provider.backends.OAuth2Backend',
-    'django.contrib.auth.backends.ModelBackend',
-]
 
 # FAST API JWT
 JWT_SECRET_KEY=config('JWT_SECRET_KEY')

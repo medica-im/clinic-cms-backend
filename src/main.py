@@ -26,28 +26,16 @@ apps.populate(installed_apps=[
 apps.check_apps_ready()
 apps.check_models_ready()
 
-from fastapi import FastAPI, Depends, Cookie, Response, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from fastapi.security import OpenIdConnect
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import organizations, organization_types, effector_types, facilities, communes, departments, entries, effectors, auth
 from django.conf import settings
 from fastapi_nextauth_jwt.exceptions import MissingTokenError
 
-oidc = OpenIdConnect(openIdConnectUrl=settings.OPEN_ID_CONNECT_URL)
-
-
-app = FastAPI(
-    swagger_ui_init_oauth = {
-        "clientId": settings.OPENAPI_CLIENT_ID, 
-        "appName": "Doc Tools", 
-        "usePkceWithAuthorizationCodeGrant": True, 
-        "scopes": "openid",
-    }
-)
+app = FastAPI()
 
 origins = settings.CORS_ALLOWED_ORIGINS
-logger.debug(f"{origins=}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -70,19 +58,6 @@ app.include_router(auth.router)
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
-
-@app.get("/foo")
-async def bar(token = Depends(oidc)):
-    return 
-
-@app.get("/set-cookie")
-def set_cookie(response: Response):
-    response.set_cookie(key="mycookie", value="Hello FastAPI")
-    return {"message": "Cookie has been set"}
-
-@app.get("/get-cookie")
-def get_cookie(mycookie: str = Cookie(None)):
-    return {"mycookie": mycookie}
 
 @app.exception_handler(MissingTokenError)
 async def unicorn_exception_handler(request: Request, exc: MissingTokenError):
