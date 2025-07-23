@@ -5,7 +5,7 @@ from rest_framework import serializers
 from facility.utils import get_organization
 from workforce.utils import occupation
 from django.contrib.sites.shortcuts import get_current_site
-from access.utils import get_role, get_roles, authorize
+from access.utils import get_role, authorize
 from access.models import Endpoint, AccessControl
 from addressbook.models import (
     PhoneNumber,
@@ -334,10 +334,10 @@ class WorkforceUserSerializer(serializers.ModelSerializer):
         return appointments
 
     def get_socialnetworks(self, obj):
-        roles = get_roles(self.context["request"])
+        role = get_role(self.context["request"])
         queryset = SocialNetwork.objects.filter(
             contact=obj.user.contact,
-            roles__in=roles
+            roles__in=[role]
         ).distinct()
         return SocialNetworkSerializer(queryset, many=True).data
  

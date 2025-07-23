@@ -1,7 +1,10 @@
 import logging
-from fastapi import APIRouter, status
+from typing import Annotated
+from fastapi import APIRouter, status, Depends, Request
 from api.serializers.facility import get_facilities, get_facility, create_facility, delete_facility
 from api.types.facility import Facility, FacilityPost
+from api.auth import JWT, authorize_api
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -20,5 +23,6 @@ async def post_facility(facility: FacilityPost) -> Facility:
     return create_facility(facility.model_dump())
 
 @router.delete("/facilities/{uid}", status_code=status.HTTP_200_OK)
-async def delete(uid: str):
+async def delete(uid: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
+    await authorize_api("", request, jwt)
     return delete_facility(uid)

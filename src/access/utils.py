@@ -21,20 +21,6 @@ def get_role_objs():
             return
     return roles
 
-def get_roles(request: HttpRequest)->[Role]:
-    user = request.user
-    role_objs = get_role_objs()
-    if user.is_anonymous:
-        return [role_objs["anonymous"]]
-    roles = []
-    if user.is_superuser:
-        roles.append(role_objs["superuser"])
-    if is_staff(request):
-        roles.append(role_objs["staff"])
-    if user.is_authenticated:
-        roles.append(role_objs["registered"])
-    return roles
-
 def get_role(request: HttpRequest):
     user = request.user
     roles = get_role_objs()

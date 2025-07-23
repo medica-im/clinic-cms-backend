@@ -1,7 +1,7 @@
 import logging
+from directory.utils import get_site_from_request
 from asgiref.sync import sync_to_async
 from django.contrib.sites.shortcuts import get_current_site
-from django.contrib.sites.models import Site
 from directory.models import (
     Directory,
     Effector,
@@ -40,33 +40,6 @@ def get_directory(request):
         return Directory.objects.get(site=site)
     except Directory.DoesNotExist:
         return
-
-@sync_to_async
-def get_site_from_hostname(hostname) -> Site:
-    try:
-        return Site.objects.get(domain=hostname)
-    except Site.DoesNotExist as e:
-        logger.error(
-            f'Site with domain {hostname} does not exist.'
-        )
-        raise e
-
-@sync_to_async
-def get_directory_from_hostname(hostname):
-    try:
-        site = Site.objects.get(domain=hostname)
-    except Site.DoesNotExist as e:
-        logger.error(
-            f'Site with domain {hostname} does not exist.'
-        )
-        raise e
-    try:
-        return Directory.objects.get(site=site)
-    except Directory.DoesNotExist as e:
-        logger.error(
-            f'Directory with site {site} does not exist.'
-        )
-        raise e
 
 def get_contact_related_elements(
         neo_entity,

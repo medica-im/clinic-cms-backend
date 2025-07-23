@@ -1,0 +1,80 @@
+import logging
+import os
+from access.models import Role
+from workforce.utils import is_staff
+from django.http import HttpRequest
+from access.models import AccessControl, Endpoint, Role
+from rest_framework import permissions
+from accounts.models import User
+from django.contrib.sites.models import Site
+from fastapi import Request, HTTPException, status
+from api.utils import get_site_from_request
+from fastapi_nextauth_jwt import NextAuthJWT
+
+logger = logging.getLogger(__name__)
+
+auth_secret=os.getenv("AUTH_SECRET")
+if auth_secret:
+    JWT = NextAuthJWT(secret=auth_secret)
+
+async def get_user(jwt: dict) -> User|None:
+    email = jwt['email']
+    try:
+        return await User.objects.aget(email=email)
+    except User.DoesNotExist as e:
+        return None
+
+def get_role_objs():
+    roles = dict()
+    for role in [
+        "superuser", "administrator", "staff", "registered", "anonymous"
+    ]:
+        try:
+            roles[role] = Role.objects.get(name=role)
+        except Role.DoesNotExist:
+            error_msg = f'You must create a Role named {role}.'
+            logger.error(error_msg)
+            raise Role.DoesNotExist(error_msg)
+    return roles
+
+def get_role(user: User|None, site: Site) -> Role:
+    roles = get_role_objs()
+    if not user:
+        return roles["anonymous"]
+    elif user.is_superuser:
+        return roles["superuser"]
+    elif user.site==site:
+        return roles["staff"]
+    else:
+        return roles["registered"]
+
+async def authorize_api(endpoint: str, request: Request, jwt: dict):
+    # get post put patch delete
+    site = await get_site_from_request(request)
+    user = await get_user(jwt)
+    role = get_role(user, site)
+    if request.method in permissions.SAFE_METHODS:
+        permission = 1 
+    elif request.method == "POST":
+        permission = 2
+    elif request.method in ["PUT", "PATCH"]:
+        permission = 4
+    elif request.method == "DELETE":
+        permission = 8
+    return await authorize(endpoint, role, permission)
+
+async def authorize(endpoint_name: str, role: Role, permissions: int):
+    try:
+        endpoint = Endpoint.objects.aget(name=endpoint_name)
+    except Endpoint.DoesNotExist:
+        return False
+    try:
+        ac = await AccessControl.objects.aget(endpoint=endpoint, role=role)
+    except AccessControl.DoesNotExist:
+        return False
+    if not ac.check_permission(permissions):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Insufficient permissions"
+        )
+    

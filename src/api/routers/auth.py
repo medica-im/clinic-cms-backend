@@ -11,7 +11,7 @@ from fastapi_jwt import (
     JwtRefreshBearer,
 )
 from django.conf import settings
-from directory.utils import get_site_from_hostname
+from api.utils import get_site_from_request
 from fastapi_nextauth_jwt import NextAuthJWT
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ def get_user_infos_from_google_token(id_token_str):
     }
 
 @router.get("/jwt")
-async def return_jwt(jwt: Annotated[dict, Depends(JWT)]):
+async def return_jwt(jwt: Annotated[dict, Depends(JWT)], request: Request):
     try:
         return {"message": f"Hi {jwt['name']}. Greetings from fastapi!"}
     except Exception as e:
@@ -89,7 +89,7 @@ async def auth_google(response: Response, request: Request, credential: str|None
     # Here you would typically:
     # 1. Check if the user exists in your database
     try:
-        site = await get_site_from_hostname(request.url.hostname)
+        site = await get_site_from_request(request)
         logger.debug(site)
     except Exception:
         raise HTTPException(
