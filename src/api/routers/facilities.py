@@ -1,13 +1,19 @@
+import os
 import logging
 from typing import Annotated
 from fastapi import APIRouter, status, Depends, Request
 from api.serializers.facility import get_facilities, get_facility, create_facility, delete_facility
 from api.types.facility import Facility, FacilityPost
-from api.auth import JWT, authorize_api
+from api.auth import authorize_api
+from fastapi_nextauth_jwt import NextAuthJWT
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+auth_secret=os.getenv("AUTH_SECRET")
+if auth_secret:
+    JWT = NextAuthJWT(secret=auth_secret)
 
 @router.get("/facilities")
 async def facilities() -> list[Facility]:
