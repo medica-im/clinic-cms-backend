@@ -1,5 +1,4 @@
 import logging
-from directory.utils import get_site_from_request
 from asgiref.sync import sync_to_async
 from django.contrib.sites.shortcuts import get_current_site
 from directory.models import (

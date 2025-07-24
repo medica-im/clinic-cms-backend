@@ -1,7 +1,6 @@
 Django>=4.2,<5
 python-decouple
 djangorestframework
-djangorestframework-simplejwt
 gunicorn
 psycopg2-binary
 django-modeltranslation

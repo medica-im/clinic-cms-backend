@@ -9,7 +9,6 @@ from django.contrib.auth.models import (
 from django.contrib.sites.models import Site
 from django.utils.translation import gettext_lazy as _
 from django.db import models
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class UserManager(BaseUserManager):
@@ -100,11 +99,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self) -> str:
         """Return a string representation of this `User`."""
         return f'{self.full_name or ""} {self.username or ""} {self.email or ""}'
-    @property
-    def tokens(self) -> dict[str, str]:
-        """Allow us to get a user's token by calling `user.token`."""
-        refresh = RefreshToken.for_user(self)
-        return {'refresh': str(refresh), 'access': str(refresh.access_token)}
 
     def get_full_name(self) -> Optional[str]:
         """Return the full name of the user."""

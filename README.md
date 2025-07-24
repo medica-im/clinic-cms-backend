@@ -2,11 +2,15 @@
 
 # Clinic CMS
 
-Content Management System for health centers, outpatient clinics and private medical practices.
+Content Management System for health centers, outpatient clinics, private medical practices and healthcare organizations.
 
-This is the backend component of Clinic CMS.
+This repository contains the Python backend code of Clinic CMS.
 
-You can find the frontend component of Clinic CMS at https://github.com/medica-im/clinic-cms-frontend
+You can find a library regrouping frontend components of Clinic CMS at https://github.com/medica-im/sklib
+
+Examples of frontends:
+* Outpatient clinic: https://github.com/medica-im/skcms
+* Addressbook of healthcare organizations and health professionals: https://github.com/medica-im/addressbook 
 
 The idea behind this framework is to put the biggest amount of data in the database and automate the rendering. For instance, if you add a new healthcare professional in the database, all related components (addressbook, healthcare workers count, list of medical specialties available) will be automatically updated. Likewise if you add a new facility to your organization or if you modify an existing one. Thanks to our Svelte components and reactive store variables, all the pages of your website are always up-to-date.
 
@@ -16,7 +20,7 @@ It is divided into a single backend server (which can host the data for one or m
 
 Backend (server) and frontend (clients) communicate through REST API calls only.
 
-We are using nginx to dispatch requests to the gunicorn server (backend) or node server (frontend).
+We are using nginx to dispatch requests to the backend (gunicorn for the legacy API v1 endpoints run by Django Rest Framework or FastAPI for the new v2 API endpoints) or to the frontend (node server running Sveltekit).
 
 The frontend is a SvelteKit SSR rendered app / website. It gives you the best of the classic multi-page website world (immediate rendering on first page visit, search engine referencement) and the best of the pure JavaScript app world (advanced, fast web apps). We plan to add PWA support.
 
@@ -24,10 +28,10 @@ The frontend is a SvelteKit SSR rendered app / website. It gives you the best of
 * Django
 * Django Rest Framework
 * gunicorn
-* Wagtail (used only to store data for Timeline.js, will be discontinued and replaced by our own timeline editor or a simple json file)
+* FastAPI
 * neo4j
 
-The main database is Postgres. The graph database is neo4j.
+We believe healthcare organizations are first and foremost social networks. The graph database running our social networks is neo4j. The legacy database for tabular data is Postgres. 
 
 ## Backup
 
@@ -64,8 +68,6 @@ We are also making use of django-postgresql-dag (Django & Postgresql-based Direc
 ## Languages
 * Code, comments and variables: English only.
 * All i18n variables have corresponding English and French strings.
-
-There is some static content inside +page.svelte files using the French language, as this repository is currently used to power the first website in production. This will eventually be cleared and replaced by sample English demonstrating components usage.
 
 ## License
 GPL v.3
