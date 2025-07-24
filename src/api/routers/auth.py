@@ -73,6 +73,13 @@ async def return_jwt_delete(jwt: Annotated[dict, Depends(JWT)], request: Request
     except Exception as e:
         logger.debug(e)
 
+@router.post("/post")
+async def test_jwt_post(jwt: Annotated[dict, Depends(JWT)], request: Request):
+    try:
+        return {"message": f"Hi {jwt['name']}. Greetings from fastapi!"}
+    except Exception as e:
+        logger.debug(e)
+
 """
 @router.get("/google")
 async def auth_google(response: Response, request: Request, credential: str|None = None):
