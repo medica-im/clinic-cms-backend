@@ -24,5 +24,5 @@ async def post_facility(facility: FacilityPost) -> Facility:
 
 @router.delete("/facilities/{uid}", status_code=status.HTTP_200_OK)
 async def delete(uid: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    await authorize_api("", request, jwt)
+    await authorize_api("facilities_v2", request, jwt)
     return delete_facility(uid)
