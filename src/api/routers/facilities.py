@@ -35,6 +35,7 @@ async def read_items(request: Request):
     try:
         cookie: str | None = request.cookies.get("""__Secure-authjs.session-token""")
         logger.debug(f"{cookie=}")
+        return { "cookie": cookie }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Invalid authentication"
