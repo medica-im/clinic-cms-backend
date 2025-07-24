@@ -13,7 +13,10 @@ router = APIRouter()
 
 auth_secret=os.getenv("AUTH_SECRET")
 if auth_secret:
-    JWT = NextAuthJWT(secret=auth_secret)
+    JWT = NextAuthJWT(
+        secret=auth_secret,
+        csrf_prevention_enabled=False
+    )
 
 @router.get("/facilities")
 async def facilities() -> list[Facility]:
