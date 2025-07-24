@@ -1,7 +1,7 @@
 import os
 import logging
-from typing import Annotated
-from fastapi import APIRouter, status, Depends, Request
+from typing import Annotated, Union
+from fastapi import APIRouter, status, Depends, Request, HTTPException
 from api.serializers.facility import get_facilities, get_facility, create_facility, delete_facility
 from api.types.facility import Facility, FacilityPost
 from api.auth import authorize_api
@@ -27,6 +27,18 @@ async def facility(uid: str) -> Facility:
 async def post_facility(facility: FacilityPost) -> Facility:
     logger.debug(facility.model_dump())
     return create_facility(facility.model_dump())
+
+from fastapi import Cookie
+
+@router.get("/show")
+async def read_items(request: Request):
+    try:
+        cookie: str | None = request.cookies.get("""__Secure-authjs.session-token""")
+        logger.debug(f"{cookie=}")
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid authentication"
+        )
 
 @router.delete("/facilities/{uid}")
 async def delete(uid: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
