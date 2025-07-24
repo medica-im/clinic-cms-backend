@@ -13,8 +13,7 @@ from directory.models import (
     ThirdPartyPayer,
     PaymentMethod,
     HealthWorker,
-    Entry,
-    Organization,
+    Entry
 )
 from addressbook.models import Contact
 from neomodel import db

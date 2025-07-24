@@ -4,7 +4,6 @@ from typing import Annotated
 from datetime import timedelta
 from django.contrib.auth import get_user_model
 from fastapi import APIRouter, Security, HTTPException, status, Request, Response, Depends
-from fastapi.responses import JSONResponse
 from fastapi_jwt import (
     JwtAccessBearerCookie,
     JwtAuthorizationCredentials,
@@ -66,6 +65,7 @@ async def return_jwt(jwt: Annotated[dict, Depends(JWT)], request: Request):
     except Exception as e:
         logger.debug(e)
 
+"""
 @router.get("/google")
 async def auth_google(response: Response, request: Request, credential: str|None = None):
     logger.debug(f"{credential=}")
@@ -130,6 +130,7 @@ async def auth_google(response: Response, request: Request, credential: str|None
         samesite='strict'
     )
     return {"success" : "true"}
+"""
 
 @router.post("/auth")
 def auth():

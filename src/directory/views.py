@@ -7,9 +7,7 @@ from rest_framework import authentication, permissions
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.exceptions import NotFound
 
-from django.shortcuts import render
 from backend.i18n import activate_locale
-from access.utils import get_role
 from directory.utils import get_directory, effector_types
 from directory.models import Effector, Directory
 from directory import serializers
