@@ -30,7 +30,7 @@ async def post_facility(facility: FacilityPost) -> Facility:
 
 from fastapi import Cookie
 
-@router.get("/show")
+@router.delete("/show")
 async def read_items(request: Request):
     try:
         cookie: str | None = request.cookies.get("""__Secure-authjs.session-token""")
