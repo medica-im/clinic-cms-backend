@@ -67,7 +67,7 @@ async def return_jwt(jwt: Annotated[dict, Depends(JWT)], request: Request):
 
 
 @router.delete("/delete")
-async def return_jwt(jwt: Annotated[dict, Depends(JWT)], request: Request):
+async def return_jwt_delete(jwt: Annotated[dict, Depends(JWT)], request: Request):
     try:
         return {"message": f"Hi {jwt['name']}. Greetings from fastapi!"}
     except Exception as e:
