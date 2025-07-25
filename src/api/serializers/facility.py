@@ -28,9 +28,9 @@ def get_facility(
             uid=uid,
             active=active
         )[0]
-    except Exception as e:
+    except IndexError as e:
         logger.debug(e)
-        raise Exception(e)
+        raise HTTPException(status_code=404, detail=f"Facility {uid} not found")
 
 def get_facilities(
         directory: Directory|None = None,
