@@ -62,4 +62,4 @@ async def read_items2(request: Request, jwt: Annotated[dict, Depends(JWT)]):
 @router.delete("/facilities/{uid}")
 async def delete(uid: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
     await authorize_api("facilities_v2", request, jwt)
-    return delete_facility(uid)
+    return await delete_facility(uid)
