@@ -37,8 +37,8 @@ async def get_role_objs():
             raise Role.DoesNotExist(error_msg)
     return roles
 
-def get_role(user: User|None, site: Site) -> Role:
-    roles = get_role_objs()
+async def get_role(user: User|None, site: Site) -> Role:
+    roles = await get_role_objs()
     if not user:
         return roles["anonymous"]
     elif user.is_superuser:
@@ -54,7 +54,7 @@ async def authorize_api(endpoint: str, request: Request, jwt: dict):
     logger.debug(site)
     user = await get_user(jwt)
     logger.debug(user)
-    role = get_role(user, site)
+    role = await get_role(user, site)
     if request.method in permissions.SAFE_METHODS:
         permission = 1 
     elif request.method == "POST":
