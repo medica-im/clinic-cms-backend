@@ -33,7 +33,7 @@ class Slug(models.Model):
     )
 
     def __str__(self):
-        return "Slug %s %s %s" % (self.id, self.slug, self.site.domain)
+        return "Slug %s %s %s" % (self.pk, self.slug, self.site.domain)
 
     class Meta:
         constraints = [
@@ -59,7 +59,7 @@ class RejectSlug(models.Model):
     )
 
     def __str__(self):
-        return "RejectSlug %s %s" % (self.id, self.slug)
+        return "RejectSlug %s %s" % (self.pk, self.slug)
 
 
 class Directory(models.Model):
@@ -142,7 +142,7 @@ class Asset(models.Model):
     )
 
     def __str__(self):
-        return f"Asset {self.id} {self.neomodel_uid}"
+        return f"Asset {self.pk} {self.neomodel_uid}"
 
 
 class InputField(models.Model):

@@ -105,9 +105,9 @@ class Contact(models.Model):
 
     def __str__(self):
         if self.formatted_name:
-            return "%s %s" % (self.id, self.formatted_name)
+            return "%s %s" % (self.pk, self.formatted_name)
         else:
-            return "%s %s %s" % (self.id, self.first_name, self.last_name)
+            return "%s %s %s" % (self.pk, self.first_name, self.last_name)
 
     def natural_key(self):
         return (self.neomodel_uid,)
