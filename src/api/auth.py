@@ -50,12 +50,14 @@ async def get_role(user: User|None, site: Site) -> Role:
 
 async def authorize_api(endpoint: str, request: Request, jwt: dict):
     # get post put patch delete
+    logger.debug(f"{request.method=}")
     site = await get_site_from_request(request)
     logger.debug(site)
     user = await get_user(jwt)
     logger.debug(user)
     role = await get_role(user, site)
-    if request.method in permissions.SAFE_METHODS:
+    permission = 0
+    if request.method == "GET":
         permission = 1 
     elif request.method == "POST":
         permission = 2
