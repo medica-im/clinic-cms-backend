@@ -1,6 +1,5 @@
 import logging
 import os
-from access.models import Role
 from access.models import AccessControl, Endpoint, Role
 from accounts.models import User
 from django.contrib.sites.models import Site
@@ -66,7 +65,7 @@ async def authorize_api(endpoint: str, request: Request, jwt: dict):
 
 async def authorize(endpoint_name: str, role: Role, permissions: int):
     try:
-        endpoint = Endpoint.objects.aget(name=endpoint_name)
+        endpoint = await Endpoint.objects.aget(name=endpoint_name)
     except Endpoint.DoesNotExist:
         return False
     try:
