@@ -5,7 +5,7 @@ class Endpoint(models.Model):
     name = models.CharField(max_length=255, unique=True)
 
     def __str__(self):
-        return "%s" % (self.name)
+        return self.name
 
 
 class RoleManager(models.Manager):
@@ -22,7 +22,7 @@ class Role(models.Model):
     objects = RoleManager()
 
     def __str__(self):
-        return "%s" % (self.name)
+        return self.name
 
     def natural_key(self):
         return (self.name,)
@@ -51,7 +51,7 @@ class AccessControl(models.Model):
 
     def __str__(self):
         return (
-            "%s %s %s %s" %
+            "%s %s %s" %
             (self.endpoint.name, self.role.name, self.permissions)
         )
 
