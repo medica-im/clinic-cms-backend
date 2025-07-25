@@ -131,7 +131,7 @@ def create_facility(kwargs)->FacilityPy:
 
 async def delete_facility(uid: str)->dict:
     try:
-        Facility.nodes.aget(uid=uid)
+        await Facility.nodes.aget(uid=uid)
     except:
         raise HTTPException(status_code=404, detail="Facility not found")
     query=(
