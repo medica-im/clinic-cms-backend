@@ -74,7 +74,7 @@ async def authorize(endpoint_name: str, role: Role, permissions: int):
         ac = await AccessControl.objects.aget(endpoint=endpoint, role=role)
     except AccessControl.DoesNotExist:
         return False
-    if not ac.async_check_permission(permissions):
+    if not await ac.async_check_permission(permissions):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
             detail="Insufficient permissions"
