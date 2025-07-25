@@ -59,3 +59,8 @@ class AccessControl(models.Model):
         if not 0 <= permissions < 16:
             return False
         return (permissions & self.permissions) > 0
+    
+    async def async_check_permission(self, permissions: int):
+        if not 0 <= permissions < 16:
+            return False
+        return (permissions & self.permissions) > 0
