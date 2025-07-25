@@ -13,11 +13,7 @@ from neomodel.contrib.spatial_properties import NeomodelPoint, PointProperty
 from directory.models import (
     Directory,
     Facility,
-    Organization,
-    OrganizationType,
     Commune,
-    Website,
-    DepartmentOfFrance
 )
 logger = logging.getLogger(__name__)
 
@@ -130,9 +126,12 @@ def create_facility(kwargs)->FacilityPy:
     return facility
 
 async def delete_facility(uid: str)->dict:
-    try:
-        await Facility.nodes.aget(uid=uid)
-    except:
+    query=(
+        f"""MATCH (f:Facility) WHERE f.uid="{uid}" RETURN f;"""
+    )
+    results, cols = await adb.cypher_query(query)
+    logger.debug(f"{results=}\n{cols=}")
+    if not results:
         raise HTTPException(status_code=404, detail="Facility not found")
     query=(
         f"""MATCH (f:Facility) WHERE f.uid="{uid}" DETACH DELETE f;"""
