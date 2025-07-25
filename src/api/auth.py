@@ -24,13 +24,13 @@ async def get_user(jwt: dict) -> User|None:
     except User.DoesNotExist as e:
         return None
 
-def get_role_objs():
+async def get_role_objs():
     roles = dict()
     for role in [
         "superuser", "administrator", "staff", "registered", "anonymous"
     ]:
         try:
-            roles[role] = Role.objects.get(name=role)
+            roles[role] = await Role.objects.aget(name=role)
         except Role.DoesNotExist:
             error_msg = f'You must create a Role named {role}.'
             logger.error(error_msg)
