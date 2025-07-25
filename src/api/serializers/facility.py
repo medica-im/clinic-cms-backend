@@ -8,6 +8,7 @@ from api.types.organization_types import OrganizationTypePy
 from api.types.organization import OrganizationPy
 from api.types.geography import Commune as CommunePy, DepartmentOfFrance as DepartmentOfFrancePy
 from neomodel import db
+from neomodel import adb
 from neomodel.contrib.spatial_properties import NeomodelPoint, PointProperty
 from directory.models import (
     Directory,
@@ -128,15 +129,15 @@ def create_facility(kwargs)->FacilityPy:
     facility = get_facility(uid=str(node.uid))
     return facility
 
-def delete_facility(uid: str)->dict:
+async def delete_facility(uid: str)->dict:
     try:
-        Facility.nodes.get(uid=uid)
+        Facility.nodes.aget(uid=uid)
     except:
         raise HTTPException(status_code=404, detail="Facility not found")
     query=(
         f"""MATCH (f:Facility) WHERE f.uid="{uid}" DETACH DELETE f;"""
     )
-    results, cols = db.cypher_query(query)
+    results, cols = await adb.cypher_query(query)
     logger.debug(f"{results=}\n{cols=}")
     return {"ok": True}
         
