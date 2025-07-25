@@ -52,7 +52,7 @@ class AccessControl(models.Model):
     def __str__(self):
         return (
             "%s %s %s %s" %
-            (self.id, self.endpoint.name, self.role.name, self.permissions)
+            (self.endpoint.name, self.role.name, self.permissions)
         )
 
     def check_permission(self, permissions: int):
