@@ -3,7 +3,7 @@ from uuid import uuid4
 from neomodel.contrib import spatial_properties as neomodel_spatial
 from neomodel import (
     config,
-    StructuredNode,
+    AsyncStructuredNode,
     ArrayProperty,
     BooleanProperty,
     StringProperty,
@@ -11,19 +11,19 @@ from neomodel import (
     DateTimeFormatProperty,
     UniqueIdProperty,
     ArrayProperty,
-    RelationshipTo,
-    RelationshipFrom,
-    Relationship,
-    StructuredRel,
-    ZeroOrOne,
+    AsyncRelationshipTo,
+    AsyncRelationshipFrom,
+    AsyncRelationship,
+    AsyncStructuredRel,
+    AsyncZeroOrOne,
     OneOrMore,
-    One,
+    AsyncOne,
 )
 from django.utils.translation import get_language
 
 logger=logging.getLogger(__name__)
 
-class PaymentMethod(StructuredNode):
+class PaymentMethod(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name = StringProperty(unique_index=True)
     label_fr = StringProperty()
@@ -32,7 +32,7 @@ class PaymentMethod(StructuredNode):
     definition_en = StringProperty()
 
 
-class ThirdPartyPayer(StructuredNode):
+class ThirdPartyPayer(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name = StringProperty(unique_index=True)
     label_fr = StringProperty()
@@ -41,23 +41,23 @@ class ThirdPartyPayer(StructuredNode):
     definition_en = StringProperty()
 
 
-class Convention(StructuredNode):
+class Convention(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name = StringProperty(unique_index=True)
     label = StringProperty()
     definition = StringProperty()
 
 
-class Need(StructuredNode):
+class Need(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name_fr = StringProperty(unique_index=True)
     name_en = StringProperty(unique_index=True)
     definition_fr = StringProperty()
     definition_en = StringProperty()
-    need = RelationshipTo('Need', 'PART_OF')
+    need = AsyncRelationshipTo('Need', 'PART_OF')
 
 
-class EffectorType(StructuredNode):
+class EffectorType(AsyncStructuredNode):
     uid = UniqueIdProperty()
     label_fr = StringProperty(unique_index=True)
     label_en = StringProperty(unique_index=True)
@@ -69,9 +69,9 @@ class EffectorType(StructuredNode):
     synonyms_en = ArrayProperty(base_property=StringProperty())
     definition_fr = StringProperty()
     definition_en = StringProperty()
-    need = RelationshipTo('Need', 'MANAGES')
-    situation = RelationshipTo('Situation', 'MANAGES')
-    effector_type = RelationshipTo(
+    need = AsyncRelationshipTo('Need', 'MANAGES')
+    situation = AsyncRelationshipTo('Situation', 'MANAGES')
+    effector_type = AsyncRelationshipTo(
         'EffectorType',
         'IS_A'
     )
@@ -81,10 +81,10 @@ class HCW(EffectorType):
     concept_en = StringProperty(unique_index=True)
     concept_fr = StringProperty(unique_index=True)
     unique_ID = StringProperty(unique_index=True)
-    hcw = RelationshipTo('HCW', 'IS_A')
+    hcw = AsyncRelationshipTo('HCW', 'IS_A')
 
 
-class MESH(StructuredNode):
+class MESH(AsyncStructuredNode):
     uid = UniqueIdProperty()
     label_fr = StringProperty(unique_index=True)
     label_en = StringProperty(unique_index=True)
@@ -93,22 +93,22 @@ class MESH(StructuredNode):
     concept_en = StringProperty(unique_index=True)
     concept_fr = StringProperty(unique_index=True)
     unique_ID = StringProperty(unique_index=True)
-    is_a = RelationshipTo('MESH', 'IS_A')
-    need = RelationshipTo('Need', 'MANAGES')
-    situation = RelationshipTo('Situation', 'MANAGES')
+    is_a = AsyncRelationshipTo('MESH', 'IS_A')
+    need = AsyncRelationshipTo('Need', 'MANAGES')
+    situation = AsyncRelationshipTo('Situation', 'MANAGES')
 
 
-class Situation(StructuredNode):
+class Situation(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name_en = StringProperty(unique_index=True)
     name_fr = StringProperty(unique_index=True)
     definition_en = StringProperty()
     definition_fr = StringProperty()
     ICD_11 = ArrayProperty(StringProperty())
-    impacts_need = RelationshipTo('Need', 'IMPACTS')
+    impacts_need = AsyncRelationshipTo('Need', 'IMPACTS')
 
 
-class OrganizationType(StructuredNode):
+class OrganizationType(AsyncStructuredNode):
     uid = UniqueIdProperty()
     label_en = StringProperty(unique_index=True)
     label_fr = StringProperty(unique_index=True)
@@ -116,47 +116,47 @@ class OrganizationType(StructuredNode):
     name_fr = StringProperty(unique_index=True)
     synonyms_fr = ArrayProperty(base_property=StringProperty())
     synonyms_en = ArrayProperty(base_property=StringProperty())
-    organization_type = RelationshipTo(
+    organization_type = AsyncRelationshipTo(
         'OrganizationType',
         'PART_OF'
     )
 
 
-class Website(StructuredNode):
+class Website(AsyncStructuredNode):
     uid = UniqueIdProperty()
     url = StringProperty(unique_index=True)
 
 
-class Organization(StructuredNode):
+class Organization(AsyncStructuredNode):
     uid = UniqueIdProperty()
     label_en = StringProperty(unique_index=True)
     label_fr = StringProperty(unique_index=True)
     name_en = StringProperty(unique_index=True)
     name_fr = StringProperty(unique_index=True)
-    type = RelationshipTo(
+    type = AsyncRelationshipTo(
         'OrganizationType',
         'IS_A'
     )
-    organization = RelationshipTo(
+    organization = AsyncRelationshipTo(
         'Organization',
         'PART_OF'
     )
-    commune = RelationshipTo(
+    commune = AsyncRelationshipTo(
         'Commune',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY',
-        cardinality=One
+        cardinality=AsyncOne
     )
-    website = RelationshipTo(
+    website = AsyncRelationshipTo(
         'Website',
         'OFFICIAL_WEBSITE'
     )
-    division = RelationshipTo(
+    division = AsyncRelationshipTo(
         'Effector',
         'HAS_DIVISION'
     )
 
 
-class EffectorFacility(StructuredRel):
+class EffectorFacility(AsyncStructuredRel):
     """
     Location relationship between an Effector and a Facility. Includes relevant
     directory.
@@ -177,7 +177,7 @@ class EffectorFacility(StructuredRel):
     )
 
 
-class Effector(StructuredNode):
+class Effector(AsyncStructuredNode):
     uid = UniqueIdProperty()
     label_en = StringProperty()
     label_fr = StringProperty()
@@ -185,22 +185,22 @@ class Effector(StructuredNode):
     name_fr = StringProperty()
     slug_en = StringProperty()
     slug_fr = StringProperty()
-    type = RelationshipTo('EffectorType', 'IS_A')
-    organization = RelationshipTo('Organization', 'MEMBER_OF')
-    facility = RelationshipTo(
+    type = AsyncRelationshipTo('EffectorType', 'IS_A')
+    organization = AsyncRelationshipTo('Organization', 'MEMBER_OF')
+    facility = AsyncRelationshipTo(
         "Facility",
         "LOCATION",
         model = EffectorFacility
     )
-    effector = RelationshipTo('Effector', 'PART_OF')
+    effector = AsyncRelationshipTo('Effector', 'PART_OF')
     #commune = RelationshipTo(
     #    'Commune',
     #    'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
     #)
-    convention = RelationshipTo(
+    convention = AsyncRelationshipTo(
         'Convention',
         'HAS_CONVENTION',
-        cardinality=ZeroOrOne,
+        cardinality=AsyncZeroOrOne,
     )
     updatedAt = IntegerProperty(default=0)
     createdAt = IntegerProperty(default=0)
@@ -226,10 +226,7 @@ class Effector(StructuredNode):
         try:
             types_array = self.type.all()
         except Exception as e:
-            logger.error(
-                "\n**********************************************************\n"
-                f"* {self.label_fr=} {e=} *\n"
-                "**********************************************************\n")
+            logger.error(f"{self.label_fr=} {e=}")
             return []
         for _type in types_array:
             name=getattr(_type, f'concept_{language}', None)
@@ -297,7 +294,7 @@ class HealthWorker(Effector):
     spoken_languages = ArrayProperty(base_property=StringProperty())
 
 
-class AdministrativeTerritorialEntityOfFrance(StructuredNode):
+class AdministrativeTerritorialEntityOfFrance(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name_en = StringProperty(unique_index=False)
     name_fr = StringProperty(unique_index=False)
@@ -307,36 +304,36 @@ class AdministrativeTerritorialEntityOfFrance(StructuredNode):
 
 
 class Commune(AdministrativeTerritorialEntityOfFrance):
-    department = RelationshipTo(
+    department = AsyncRelationshipTo(
         'DepartmentOfFrance',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
     )
 
 
-class DepartmentOfFrance(StructuredNode):
+class DepartmentOfFrance(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name = StringProperty(unique_index=True)
     code = StringProperty(unique_index=True)
     slug = StringProperty(unique_index=True)
     wikidata = StringProperty(unique_index=True)
-    region = RelationshipTo(
+    region = AsyncRelationshipTo(
         'RegionOfFrance',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
     )
 
 
-class RegionOfFrance(StructuredNode):
+class RegionOfFrance(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name = StringProperty(unique_index=True)
     code = StringProperty(unique_index=True)
     slug = StringProperty(unique_index=True)
-    country = RelationshipTo(
+    country = AsyncRelationshipTo(
         'Country',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
     )
 
 
-class Country(StructuredNode):
+class Country(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name = StringProperty(unique_index=True)
     code = StringProperty(unique_index=True)
@@ -344,13 +341,13 @@ class Country(StructuredNode):
 
 
 class MunicipalArrondissement(AdministrativeTerritorialEntityOfFrance):
-    commune = RelationshipTo('Commune', 'PART_OF')
+    commune = AsyncRelationshipTo('Commune', 'PART_OF')
 
 
-class Facility(StructuredNode):
+class Facility(AsyncStructuredNode):
     uid = UniqueIdProperty()
-    organization = RelationshipTo('Organization', 'PART_OF')
-    commune = RelationshipTo(
+    organization = AsyncRelationshipTo('Organization', 'PART_OF')
+    commune = AsyncRelationshipTo(
         'Commune',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
     )
@@ -360,12 +357,12 @@ class Facility(StructuredNode):
     label = StringProperty()
     slug = StringProperty()
     location = neomodel_spatial.PointProperty(crs='wgs-84')
-    effectors = RelationshipFrom(
+    effectors = AsyncRelationshipFrom(
         'Effector',
         "LOCATION",
         model = EffectorFacility
     )
-    entries = RelationshipFrom(
+    entries = AsyncRelationshipFrom(
         'Entry',
         "HAS_FACILITY"
     )
@@ -380,7 +377,7 @@ class Facility(StructuredNode):
     tooltip_direction = StringProperty(choices=DIRECTIONS)
 
 
-class Entry(StructuredNode):
+class Entry(AsyncStructuredNode):
     uid = UniqueIdProperty()
     active = BooleanProperty(
         index=True,
@@ -390,16 +387,16 @@ class Entry(StructuredNode):
     deactivation_reason = StringProperty()
     updatedAt = IntegerProperty(default=0)
     contactUpdatedAt = IntegerProperty(default=0)
-    effector = RelationshipTo('Effector', 'HAS_EFFECTOR')
-    facility = RelationshipTo('Facility', 'HAS_FACILITY')
-    effector_type = RelationshipTo('EffectorType', 'HAS_EFFECTOR_TYPE')
-    organizations = RelationshipTo('Organization', 'MEMBER_OF')
-    memberships = RelationshipTo('Entry', 'MEMBER_OF')
+    effector = AsyncRelationshipTo('Effector', 'HAS_EFFECTOR')
+    facility = AsyncRelationshipTo('Facility', 'HAS_FACILITY')
+    effector_type = AsyncRelationshipTo('EffectorType', 'HAS_EFFECTOR_TYPE')
+    organizations = AsyncRelationshipTo('Organization', 'MEMBER_OF')
+    memberships = AsyncRelationshipTo('Entry', 'MEMBER_OF')
 
 
-class Directory(StructuredNode):
+class Directory(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name = StringProperty(unique_index=True)
-    entries = RelationshipTo('Entry', 'HAS_ENTRY')
-    organization = RelationshipTo('Organization', 'OWNED_BY')
-    owner = RelationshipTo('Entry', 'OWNED_BY')
+    entries = AsyncRelationshipTo('Entry', 'HAS_ENTRY')
+    organization = AsyncRelationshipTo('Organization', 'OWNED_BY')
+    owner = AsyncRelationshipTo('Entry', 'OWNED_BY')

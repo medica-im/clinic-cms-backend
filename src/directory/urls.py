@@ -3,9 +3,6 @@ from tastypie.api import Api, NamespacedApi
 from rest_framework import routers
 from directory import views
 
-from directory.tasty.effectors import (
-    EffectorResource,
-)
 from directory.tasty.situations import (
     SituationResource,
 )
@@ -26,7 +23,6 @@ from directory.tasty.entries import EntryResource
 
 # tastypie
 v1_api = NamespacedApi(api_name='v1', urlconf_namespace='directory')
-v1_api.register(EffectorResource())
 v1_api.register(SituationResource())
 v1_api.register(EffectorTypeResource())
 v1_api.register(CommuneResource())

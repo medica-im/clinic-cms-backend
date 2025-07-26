@@ -44,7 +44,7 @@ class FacilityObj(object):
             websites,
             socialnetworks,
             avatar,
-            effectors,
+            entries,
         ):
         self.uid = uid
         self.name = name
@@ -58,7 +58,7 @@ class FacilityObj(object):
         self.websites = websites
         self.socialnetworks = socialnetworks
         self.avatar = avatar
-        self.effectors = effectors
+        self.entries = entries
 
 def createFacilityResources(request, nodes):
     data= []
@@ -99,7 +99,7 @@ def createFacilityResources(request, nodes):
         websites = get_websites_neomodel(f=facility)
         socialnetworks=get_socialnetworks_neomodel(f=facility)
         avatar = get_avatar_url(f=facility)
-        effectors=[e.uid for e in facility.effectors.all()]
+        entries=[e.uid for e in facility.entries.all()]
         obj = FacilityObj(
             uid,
             name,
@@ -113,7 +113,7 @@ def createFacilityResources(request, nodes):
             websites,
             socialnetworks,
             avatar,
-            effectors,
+            entries,
         )
         data.append(obj)
     return data
@@ -133,7 +133,7 @@ class FacilityResource(Resource):
     websites = fields.ListField(attribute='websites', null=True)
     socialnetworks = fields.ListField(attribute='socialnetworks', null=True)
     avatar = fields.DictField(attribute='avatar', null=True)
-    effectors = fields.ListField(attribute='effectors')
+    entries = fields.ListField(attribute='entries')
 
 
     class Meta:
