@@ -357,11 +357,6 @@ class Facility(AsyncStructuredNode):
     label = StringProperty()
     slug = StringProperty()
     location = neomodel_spatial.PointProperty(crs='wgs-84')
-    effectors = AsyncRelationshipFrom(
-        'Effector',
-        "LOCATION",
-        model = EffectorFacility
-    )
     entries = AsyncRelationshipFrom(
         'Entry',
         "HAS_FACILITY"

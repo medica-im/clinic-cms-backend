@@ -360,11 +360,6 @@ class Facility(StructuredNode):
     label = StringProperty()
     slug = StringProperty()
     location = neomodel_spatial.PointProperty(crs='wgs-84')
-    effectors = RelationshipFrom(
-        'Effector',
-        "LOCATION",
-        model = EffectorFacility
-    )
     entries = RelationshipFrom(
         'Entry',
         "HAS_FACILITY"
