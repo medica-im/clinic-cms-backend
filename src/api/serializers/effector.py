@@ -52,7 +52,7 @@ def get_effectors(
     elif commune:
         filter.append(f'commune.uid="{commune}"')
     elif department_of_france:
-        filter.append(f'dof.uid="{department_of_france}"')
+        filter.append(f'dof.code="{department_of_france}"')
     if uid:
         query = (f"""MATCH (effector:Effector) WHERE effector.uid="{uid}" RETURN effector;""")
     elif not filter:
