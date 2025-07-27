@@ -37,17 +37,31 @@ def get_effector(
 
 def get_effectors(
         effector_type: str|None = None,
+        department_of_france: str|None = None,
+        commune: str|None = None,
         facility: str|None = None,
         directory: Directory|None = None,
         uid: str|None = None,
         active: bool = True
     )->list[Effector]:
+    filter: list = []
+    if effector_type:
+        filter.append(f'et.uid="{effector_type}"')
+    if facility:
+        filter.append(f'f.uid="{facility}"')
+    elif commune:
+        filter.append(f'commune.uid="{commune}"')
+    elif department_of_france:
+        filter.append(f'dof.uid="{department_of_france}"')
     if uid:
         query = (f"""MATCH (effector:Effector) WHERE effector.uid="{uid}" RETURN effector;""")
-    elif effector_type and facility:
-        query=(f"""MATCH (entry:Entry)-[:HAS_FACILITY]->(f:Facility) WHERE f.uid="{facility}" MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) WHERE et.uid="{effector_type}" MATCH (entry)-[:HAS_EFFECTOR]->(effector:Effector) RETURN DISTINCT effector;""")
-    else:
+    elif not filter:
         query=(f"""MATCH (effector:Effector) RETURN effector;""")
+    else:
+        query=(f"""MATCH (entry:Entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY
+]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY
+]->(dof:DepartmentOfFrance), (effector:Effector)<-[:HAS_EFFECTOR]-(entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) WHERE {" AND ".join(filter)} RETURN DISTINCT effector;""")
+    logger.debug(f"{query=}")
     q = db.cypher_query(query,resolve_objects = True)
     effectors: list[Effector]=[]
     if q:
