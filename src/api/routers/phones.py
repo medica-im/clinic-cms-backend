@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.put("/phones/{item_id}", response_model=Phone)
-async def update_item(item_id: str, item: Phone):
+def update_item(item_id: str, item: Phone):
     logger.debug(item)
     update_item_encoded = jsonable_encoder(item)
     logger.debug(update_item_encoded)
