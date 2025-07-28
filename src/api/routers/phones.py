@@ -20,4 +20,7 @@ def update_item(item_id: str, item: Phone):
     except PhoneNumber.DoesNotExist:
         raise HTTPException(status_code=404, detail=f"PhoneNumber not found")
     logger.debug(update_item_encoded)
+    phone_number.type=update_item_encoded.type
+    phone_number.phone=update_item_encoded.phone
+    phone_number.save()
     return update_item_encoded
