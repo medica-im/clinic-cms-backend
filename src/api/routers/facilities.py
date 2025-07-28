@@ -31,34 +31,6 @@ async def post_facility(facility: FacilityPost) -> Facility:
     logger.debug(facility.model_dump())
     return create_facility(facility.model_dump())
 
-from fastapi import Cookie
-
-@router.delete("/show")
-async def read_items(request: Request):
-    try:
-        cookie: str | None = request.cookies.get("""__Secure-authjs.session-token""")
-        logger.debug(f"{cookie=}")
-        return { "cookie": cookie }
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid authentication"
-        )
-
-@router.delete("/show2")
-async def read_items2(request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    try:
-        cookie: str | None = request.cookies.get("""__Secure-authjs.session-token""")
-        logger.debug(f"{cookie=}")
-        logger.debug(f"{jwt=}")
-        return { "cookie": cookie,
-                "name": jwt["name"]
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid authentication"
-        )
-
-
 @router.delete("/facilities/{uid}")
 async def delete(uid: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
     await authorize_api("facilities_v2", request, jwt)
