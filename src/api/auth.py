@@ -11,7 +11,10 @@ logger = logging.getLogger(__name__)
 
 auth_secret=os.getenv("AUTH_SECRET")
 if auth_secret:
-    JWT = NextAuthJWT(secret=auth_secret)
+    JWT = NextAuthJWT(
+        secret=auth_secret,
+        csrf_prevention_enabled=False
+    )
 
 async def get_user(jwt: dict) -> User|None:
     email = jwt['email']

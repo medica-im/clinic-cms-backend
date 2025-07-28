@@ -20,7 +20,10 @@ User=get_user_model()
 router = APIRouter()
 auth_secret=os.getenv("AUTH_SECRET")
 if auth_secret:
-    JWT = NextAuthJWT(secret=auth_secret)
+    JWT = NextAuthJWT(
+        secret=auth_secret,
+        csrf_prevention_enabled=False
+    )
 
 # Read access token from bearer header and cookie (bearer priority)
 access_security = JwtAccessBearerCookie(
