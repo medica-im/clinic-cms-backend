@@ -79,15 +79,15 @@ def get_effectors(
                 raise ValidationError(e)
     return effectors
 
-def create_effector(kwargs)->Effector:
+async def create_effector(kwargs)->Effector:
     logger.debug(kwargs)
-    node = EffectorNeo4j(
+    node = await EffectorNeo4j(
         name_fr=kwargs["name_fr"],
         label_fr=kwargs["label_fr"] or kwargs["name_fr"],
         slug_fr=kwargs["slug_fr"] or slugify(kwargs["name_fr"]),
         gender=kwargs["gender"],
     ).save()
-    effector=EffectorNeo4j.nodes.get(uid=node.uid)
+    effector= await EffectorNeo4j.nodes.get(uid=node.uid)
     effector_dct=effector.__properties__
     effector=Effector.model_validate(effector_dct)
     logger.debug(effector)

@@ -22,4 +22,4 @@ async def effector(uid: str)->Effector:
 @router.post("/effectors/", status_code=status.HTTP_201_CREATED)
 async def post_effector(effector: EffectorPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> Effector:
     await authorize_api("effectors_v2", request, jwt)
-    return create_effector(effector.model_dump())
+    return await create_effector(effector.model_dump())
