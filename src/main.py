@@ -25,7 +25,7 @@ apps.populate(installed_apps=[
 apps.check_apps_ready()
 apps.check_models_ready()
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Cookie
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import organizations, organization_types, effector_types, facilities, communes, departments, entries, effectors, auth, phones
@@ -36,13 +36,15 @@ app = FastAPI()
 
 origins = settings.CORS_ALLOWED_ORIGINS
 
+"""
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+"""
 
 app.include_router(organizations.router)
 app.include_router(organization_types.router)
@@ -58,6 +60,16 @@ app.include_router(phones.router)
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+@app.get('/cookie')
+async def get_cookie(request: Request):
+    logger.debug(request.cookies.get('__Secure-authjs.session-token'))
+    return request.cookies.get('__Secure-authjs.session-token')
+
+@app.post('/cookie')
+async def post_cookie(request: Request):
+    logger.debug(request.cookies.get('__Secure-authjs.session-token'))
+    return request.cookies.get('__Secure-authjs.session-token')
 
 @app.exception_handler(MissingTokenError)
 async def unicorn_exception_handler(request: Request, exc: MissingTokenError):
