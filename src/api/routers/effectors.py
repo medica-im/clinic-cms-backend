@@ -1,13 +1,21 @@
-import logging
+import logging, os
 from typing import Annotated
 from fastapi import APIRouter, status, Depends, Request
 from api.serializers.effector import get_effector, get_effectors, create_effector
 from api.types.effector import Effector, EffectorPost
 from pydantic import ValidationError
-from api.auth import JWT
+#from api.auth import JWT
 from api.auth import authorize_api
+from fastapi_nextauth_jwt import NextAuthJWT
 
 logger = logging.getLogger(__name__)
+
+auth_secret=os.getenv("AUTH_SECRET")
+if auth_secret:
+    JWT = NextAuthJWT(
+        secret=auth_secret,
+        csrf_prevention_enabled=False
+    )
 
 router = APIRouter()
 
