@@ -74,6 +74,9 @@ services:
     ports:
       - ${NEO4J_7474_EXTERNAL_PORT}:7474
       - ${NEO4J_7687_EXTERNAL_PORT}:7687
+      - 5001:5000
+      - 6001:6000
+      - 7001:7000
     volumes:
       - ${NEO4J_CONF}:/conf
       - ${NEO4J_DATA}:/data
