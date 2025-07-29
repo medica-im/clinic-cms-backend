@@ -27,8 +27,8 @@ async def effectors(effector_type: str|None = None, department_of_france: str|No
 async def effector(uid: str)->Effector:
     return get_effector(uid=uid)
 
-@router.post("/effectors/", status_code=status.HTTP_201_CREATED)
-async def post_effector(effector: EffectorPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> Effector:
+@router.post("/effectors/")
+async def post_effector(jwt: Annotated[dict, Depends(JWT)], effector: EffectorPost, request: Request) -> Effector:
     logger.debug(f"hello post_effector {effector}")
     await authorize_api("effectors_v2", request, jwt)
     return await create_effector(effector.model_dump())

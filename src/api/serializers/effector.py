@@ -11,7 +11,7 @@ from directory.models import (
     Website,
     DepartmentOfFrance
 )
-from directory.models import Effector as EffectorNeo4j
+from directory.models.agraph import Effector as EffectorNeo4j
 from api.types.effector import Effector
 
 logger = logging.getLogger(__name__)
