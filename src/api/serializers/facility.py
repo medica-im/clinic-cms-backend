@@ -61,25 +61,20 @@ def get_facilities(
     facilities: list[FacilityPy]=[]
     if q:
         for row in q[0]:
-            logger.debug(row)
             (
                 facility,
                 commune,
                 department,
                 effectors,
             ) = row
-            logger.debug(effectors)
             commune_dct = commune.__properties__
             commune_dct["department"]=department.__properties__
-            logger.debug(facility)
             facility_dct=facility.__properties__
-            logger.debug(facility_dct)
             point=facility.location
             try:
                 location_dct={"longitude": point.longitude, "latitude": point.latitude}
             except:
                 location_dct=None
-            logger.debug(location_dct)
             facility_dct["commune"]=commune_dct
             facility_dct["effectors"]=effectors[0]
             facility_dct["location"]=location_dct
