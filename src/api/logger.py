@@ -3,7 +3,7 @@ import sys
 from fastapi.logger import logger
     
 # gunicorn logging settings
-gunicorn_logger = logging.getLogger('gunicorn.error')
+gunicorn_logger = logging.getLogger('uvicorn.error')
 logger.handlers = gunicorn_logger.handlers
 logger.setLevel(logging.DEBUG)
     
