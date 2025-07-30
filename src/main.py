@@ -2,8 +2,10 @@
 import os
 import logging
 
-logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
-logger = logging.getLogger(__name__)
+#logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
+logger = logging.getLogger('uvicorn.error')
+logger.setLevel(logging.DEBUG)
+#logger = logging.getLogger(__name__)
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 
