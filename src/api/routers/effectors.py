@@ -7,10 +7,9 @@ from pydantic import ValidationError
 #from api.auth import JWT
 from api.auth import authorize_api
 from fastapi_nextauth_jwt import NextAuthJWT
+from api.logger import get_logger
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger = get_logger(__name__)
 
 auth_secret=os.getenv("AUTH_SECRET")
 if auth_secret:
