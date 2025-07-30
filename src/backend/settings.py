@@ -24,7 +24,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', cast=bool, default=False)
 
-LOG_LEVEL = config('LOG_LEVEL', default='DEBUG')
+LOG_LEVEL = config('DJANGO_LOG_LEVEL', default='DEBUG')
 
 LOGGING = {
     "version": 1,
