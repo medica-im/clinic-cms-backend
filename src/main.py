@@ -1,11 +1,11 @@
 # Let Django knows where the project's settings is.
 import os
 import logging
+from logging.config import dictConfig
+from fastapi_log_conf import log_config
 
-#logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
-logger = logging.getLogger('uvicorn.error')
-logger.setLevel(logging.DEBUG)
-#logger = logging.getLogger(__name__)
+dictConfig(log_config)
+logger = logging.getLogger('foo-logger')
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 
