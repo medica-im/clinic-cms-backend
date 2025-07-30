@@ -27,10 +27,24 @@ router = APIRouter()
 @router.get('/cookie')
 async def get_cookie(request: Request):
     logger.debug(request.cookies.get('__Secure-authjs.session-token'))
+    logger.info(request.client)
+    logger.info(request.headers)
+    logger.info(request.cookies)
+    return request.cookies.get('__Secure-authjs.session-token')
+
+@router.post('/debug')
+async def post_debug(request: Request):
+    logger.info(request.client)
+    logger.info(request.headers)
+    logger.info(request.cookies)
+    logger.debug(request.cookies.get('__Secure-authjs.session-token'))
     return request.cookies.get('__Secure-authjs.session-token')
 
 @router.post('/cookie')
 async def post_cookie(request: Request, jwt: Annotated[dict, Depends(JWT)]):
+    logger.info(request.client)
+    logger.info(request.headers)
+    logger.info(request.cookies)
     logger.debug(request.cookies.get('__Secure-authjs.session-token'))
     return request.cookies.get('__Secure-authjs.session-token')
 
