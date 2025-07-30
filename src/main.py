@@ -4,8 +4,13 @@ import logging
 from logging.config import dictConfig
 from fastapi_log_conf import log_config
 
-dictConfig(log_config)
-logger = logging.getLogger('foo-logger')
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+#dictConfig(log_config)
+logger = logging.getLogger(__name__)
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 
