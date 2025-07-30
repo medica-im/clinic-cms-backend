@@ -9,6 +9,7 @@ from api.auth import authorize_api
 from fastapi_nextauth_jwt import NextAuthJWT
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 auth_secret=os.getenv("AUTH_SECRET")
 if auth_secret:
