@@ -63,11 +63,14 @@ def get_user_infos_from_google_token(id_token_str):
 
 @router.get("/jwt")
 async def return_jwt(jwt: Annotated[dict, Depends(JWT)], request: Request):
+    logger.info(request.client)
+    logger.info(request.headers)
+    logger.info(request.cookies)
+    logger.debug(request.cookies.get('__Secure-authjs.session-token'))
     try:
         return {"message": f"Hi {jwt['name']}. Greetings from fastapi!"}
     except Exception as e:
         logger.debug(e)
-
 
 @router.delete("/delete")
 async def return_jwt_delete(jwt: Annotated[dict, Depends(JWT)], request: Request):
