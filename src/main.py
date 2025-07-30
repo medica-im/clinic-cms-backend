@@ -34,7 +34,7 @@ from api.routers import organizations, organization_types, effector_types, facil
 from django.conf import settings
 from fastapi_nextauth_jwt.exceptions import MissingTokenError
 
-app = FastAPI()
+app = FastAPI(debug=True)
 
 origins = settings.CORS_ALLOWED_ORIGINS
 
