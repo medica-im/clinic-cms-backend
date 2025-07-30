@@ -28,24 +28,24 @@ router = APIRouter()
 async def get_cookie(request: Request):
     logger.debug(f"{request.cookies.get('__Secure-authjs.session-token')=}")
     logger.info(f"{request.client=}")
-    logger.info(f"{request.headers=}")
-    logger.info(f"{request.cookies=}")
+    logger.info(f"get cookie {request.headers=}")
+    logger.info(f"get cookie {request.cookies=}")
     return request.cookies.get('__Secure-authjs.session-token')
 
 @router.post('/debug')
 async def post_debug(request: Request):
     logger.info(f"{request.client=}")
-    logger.info(f"{request.headers=}")
-    logger.info(f"{request.cookies=}")
+    logger.info(f"post debug {request.headers=}")
+    logger.info(f"post debug \n{request.cookies=}")
     logger.debug(request.cookies.get('__Secure-authjs.session-token'))
     return request.cookies.get('__Secure-authjs.session-token')
 
 @router.post('/cookie')
 async def post_cookie(request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    logger.info(request.client)
-    logger.info(request.headers)
-    logger.info(request.cookies)
-    logger.debug(request.cookies.get('__Secure-authjs.session-token'))
+    logger.info(f"JWT cookie {request.client=}")
+    logger.info(f"JWT cookie {request.headers}")
+    logger.info(f"JWT cookie {request.cookies}")
+    logger.debug(f"JWT cookie {request.cookies.get('__Secure-authjs.session-token')=}")
     return request.cookies.get('__Secure-authjs.session-token')
 
 @router.get("/effectors")
