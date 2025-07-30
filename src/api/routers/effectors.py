@@ -1,4 +1,4 @@
-import logging, os
+import logging, os, sys
 from typing import Annotated
 from fastapi import APIRouter, status, Depends, Request
 from api.serializers.effector import get_effector, get_effectors, create_effector
@@ -7,7 +7,12 @@ from pydantic import ValidationError
 #from api.auth import JWT
 from api.auth import authorize_api
 from fastapi_nextauth_jwt import NextAuthJWT
-
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stdout
+)
 logger = logging.getLogger(__name__)
 
 auth_secret=os.getenv("AUTH_SECRET")
