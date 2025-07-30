@@ -1,5 +1,5 @@
 # Let Django knows where the project's settings is.
-import os
+import os, sys
 import logging
 from logging.config import dictConfig
 from fastapi_log_conf import log_config
@@ -8,6 +8,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stdout
 )
 #dictConfig(log_config)
 logger = logging.getLogger(__name__)
@@ -61,6 +62,8 @@ app.include_router(entries.router)
 app.include_router(effectors.router)
 app.include_router(auth.router)
 app.include_router(phones.router)
+
+logger.debug("hello debug logger")
 
 @app.get("/")
 async def root():
