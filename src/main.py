@@ -59,16 +59,6 @@ app.include_router(phones.router)
 async def root():
     return {"message": "Hello World"}
 
-@app.get('/cookie')
-async def get_cookie(request: Request):
-    logger.debug(request.cookies.get('__Secure-authjs.session-token'))
-    return request.cookies.get('__Secure-authjs.session-token')
-
-@app.post('/cookie')
-async def post_cookie(request: Request):
-    logger.debug(request.cookies.get('__Secure-authjs.session-token'))
-    return request.cookies.get('__Secure-authjs.session-token')
-
 @app.exception_handler(MissingTokenError)
 async def unicorn_exception_handler(request: Request, exc: MissingTokenError):
     return JSONResponse(

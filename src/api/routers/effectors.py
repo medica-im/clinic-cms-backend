@@ -19,6 +19,16 @@ if auth_secret:
 
 router = APIRouter()
 
+@router.get('/cookie')
+async def get_cookie(request: Request):
+    print(request.cookies.get('__Secure-authjs.session-token'))
+    return request.cookies.get('__Secure-authjs.session-token')
+
+@router.post('/cookie')
+async def post_cookie(request: Request, jwt: Annotated[dict, Depends(JWT)]):
+    print(request.cookies.get('__Secure-authjs.session-token'))
+    return request.cookies.get('__Secure-authjs.session-token')
+
 @router.get("/effectors")
 async def effectors(effector_type: str|None = None, department_of_france: str|None = None, commune: str|None = None, facility: str|None = None ) -> list[Effector]:
     return get_effectors(effector_type=effector_type, department_of_france=department_of_france, commune=commune, facility=facility)
