@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from api.auth import authorize_api
 from fastapi_nextauth_jwt import NextAuthJWT
 
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -22,12 +23,12 @@ router = APIRouter()
 
 @router.get('/cookie')
 async def get_cookie(request: Request):
-    print(request.cookies.get('__Secure-authjs.session-token'))
+    logger.debug(request.cookies.get('__Secure-authjs.session-token'))
     return request.cookies.get('__Secure-authjs.session-token')
 
 @router.post('/cookie')
 async def post_cookie(request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    print(request.cookies.get('__Secure-authjs.session-token'))
+    logger.debug(request.cookies.get('__Secure-authjs.session-token'))
     return request.cookies.get('__Secure-authjs.session-token')
 
 @router.get("/effectors")
