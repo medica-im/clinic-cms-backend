@@ -88,7 +88,7 @@ async def test_jwt_post(jwt: Annotated[dict, Depends(JWT)], request: Request):
         logger.debug(e)
 
 @router.get("/auth")
-async def auth_google(jwt: Annotated[dict, Depends(JWT)], redirect: str|None, response: Response, request: Request):
+async def auth_google(jwt: Annotated[dict, Depends(JWT)], request: Request, redirect: str|None, response_class=RedirectResponse):
     user_infos = jwt
     logger.debug(user_infos)
     # Here you would typically:
@@ -116,6 +116,7 @@ async def auth_google(jwt: Annotated[dict, Depends(JWT)], redirect: str|None, re
     logger.debug(f"{access_token=}")
     refresh_token = refresh_security.create_refresh_token(subject=subject)
     logger.debug(f"{refresh_token=}")
+    response = RedirectResponse(url=f"/{redirect}")
     access_security.set_access_cookie(response, access_token)
     access_security.set_refresh_cookie(response, refresh_token)
     #response = JSONResponse({"success" : "true"}, status_code=200)
@@ -137,7 +138,7 @@ async def auth_google(jwt: Annotated[dict, Depends(JWT)], redirect: str|None, re
         samesite='strict'
     )
     """
-    return RedirectResponse(f"/{redirect}")
+    return response
 
 @router.post("/refresh")
 def refresh(
