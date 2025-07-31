@@ -5,7 +5,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from fastapi import APIRouter, Security, HTTPException, status, Request, Response, Depends
 from fastapi_jwt import (
-    JwtAccessBearerCookie,
+    JwtAccessBearer,
     JwtAuthorizationCredentials,
     JwtRefreshBearer,
 )
@@ -26,7 +26,7 @@ if auth_secret:
     )
 
 # Read access token from bearer header and cookie (bearer priority)
-access_security = JwtAccessBearerCookie(
+access_security = JwtAccessBearer(
     secret_key=settings.JWT_SECRET_KEY,
     auto_error=False,
     access_expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)  # change access token validation timedelta
@@ -86,27 +86,10 @@ async def test_jwt_post(jwt: Annotated[dict, Depends(JWT)], request: Request):
     except Exception as e:
         logger.debug(e)
 
-"""
-@router.get("/google")
-async def auth_google(response: Response, request: Request, credential: str|None = None):
-    logger.debug(f"{credential=}")
-    if not credential:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="No credential provided."
-        )
-
-    # Verify the Google token
-    check = get_user_infos_from_google_token(credential)
-    if check['status'] is False:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Invalid credential"
-        )
-
-    user_infos = check['user_infos']
+@router.get("/auth")
+async def auth_google(jwt: Annotated[dict, Depends(JWT)], response: Response, request: Request):
+    user_infos = jwt
     logger.debug(user_infos)
-
     # Here you would typically:
     # 1. Check if the user exists in your database
     try:
@@ -132,8 +115,10 @@ async def auth_google(response: Response, request: Request, credential: str|None
     logger.debug(f"{access_token=}")
     refresh_token = refresh_security.create_refresh_token(subject=subject)
     logger.debug(f"{refresh_token=}")
+    access_security.set_access_cookie(response, access_token)
+    access_security.set_refresh_cookie(response, refresh_token)
     #response = JSONResponse({"success" : "true"}, status_code=200)
-    response.set_cookie(key="myothercookie", value="Hello FastAPI from google endpoint")
+    """
     response.set_cookie(
         key="refresh-token",
         value=refresh_token,
@@ -150,18 +135,8 @@ async def auth_google(response: Response, request: Request, credential: str|None
         secure=True,
         samesite='strict'
     )
+    """
     return {"success" : "true"}
-"""
-
-@router.post("/auth")
-def auth():
-    # subject (actual payload) is any json-able python dict
-    subject = {"username": "username", "role": "user"}
-
-    # Create new access/refresh tokens pair
-    access_token = access_security.create_access_token(subject=subject)
-    refresh_token = refresh_security.create_refresh_token(subject=subject)
-    return {"access_token": access_token, "refresh_token": refresh_token}
 
 @router.post("/refresh")
 def refresh(
@@ -171,7 +146,6 @@ def refresh(
     # We can customize expires_delta when creating
     access_token = access_security.create_access_token(subject=credentials.subject)
     refresh_token = refresh_security.create_refresh_token(subject=credentials.subject, expires_delta=timedelta(days=2))
-
     return {"access_token": access_token, "refresh_token": refresh_token}
 
 @router.get("/users/me")
