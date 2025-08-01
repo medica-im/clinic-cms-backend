@@ -4,7 +4,7 @@ from fastapi import APIRouter, status, Request, Depends
 from api.types.monkey import Monkey, MonkeyPost
 from directory.models.agraph import Monkey as AsyncMonkey
 
-from auth import JWT
+from api.auth import JWT
 
 logger = logging.getLogger(__name__)
 
