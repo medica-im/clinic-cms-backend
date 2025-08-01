@@ -3,5 +3,4 @@ django-debug-toolbar
 django-cors-headers
 django-extensions
 Werkzeug
-matplotlib
 colorlog
