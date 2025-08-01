@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, status, Request, Depends
 from api.types.monkey import Monkey, MonkeyPost
 from directory.models.agraph import Monkey as AsyncMonkey
+from api.auth import authorize_api
 
 from api.auth import JWT
 
@@ -17,5 +18,6 @@ async def entries() -> list[Monkey]:
 
 @router.post("/monkeys/", status_code=status.HTTP_201_CREATED)
 async def post_entry(monkey: MonkeyPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> Monkey:
+    await authorize_api("facilities_v2", request, jwt)
     _monkey = await AsyncMonkey(name=monkey.name).save()
     return Monkey.model_validate(_monkey.__properties__)
