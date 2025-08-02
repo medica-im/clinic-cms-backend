@@ -223,6 +223,10 @@ THUMBNAIL_ALIASES = {
         'avatar_facebook': {'size': (170, 170), 'crop': False},
         'avatar_linkedin_twitter': {'size': (400, 400), 'crop': False},
     },
+    'facility.Organization.logo': {
+        'avatar_facebook': {'size': (170, 170), 'crop': False},
+        'avatar_linkedin_twitter': {'size': (400, 400), 'crop': False},
+    }
 }
 
 DEFAULT_FILE_STORAGE='django.core.files.storage.FileSystemStorage'
