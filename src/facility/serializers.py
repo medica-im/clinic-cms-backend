@@ -99,6 +99,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'legal_entity',
             'uid',
             'department',
+            'logo',
+            'logo_alt',
         ]
         depth = 4
 

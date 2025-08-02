@@ -1,5 +1,5 @@
 from django.contrib import admin
-
+from django.utils.safestring import mark_safe
 from .models import Organization, Category, Facility, LegalEntity
 from modeltranslation.admin import TranslationAdmin
 
@@ -30,6 +30,46 @@ class OrganizationAdmin(TranslationAdmin):
         'name', 'formatted_name', 'city', 'company_name', 'neomodel_uid'
     ]
     autocomplete_fields = ['contact',]
+    fields = (
+        'name',
+        'neomodel_uid',
+        'contact',
+        'company_name',
+        'formatted_name',
+        'formatted_name_definite_article',
+        'website_title',
+        'website_description',
+        'active',
+        'created',
+        'updated',
+        'site',
+        'language',
+        'category',
+        'city',
+        'logo',
+        'logo_tag',
+        'logo_alt',
+        'google_site_verification'
+    )
+    readonly_fields = (
+        'logo_tag'
+    )
+
+    @admin.display(description='Profile img')
+    def logo_tag(self, obj):
+        if obj.profile_image:
+            try:
+                return mark_safe(
+                    '<img src="%s" alt="profile picture" width="%s" height="%s">'
+                    % (
+                        obj.profile_image["avatar_facebook"].url,
+                        obj.profile_image["avatar_facebook"].thumbnail_options["size"][0],
+                        "100%"
+                    )
+                )
+            except Exception as e:
+                return
+
 
 
 @admin.register(Category)

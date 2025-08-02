@@ -75,8 +75,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'easy_thumbnails',
-    'constance.backends.database',
-    'constance',
     'addressbook',
     'taggit',
     'taggit_labels',
@@ -92,7 +90,6 @@ INSTALLED_APPS = [
     'staff',
     'directory',
     'access',
-    'contact',
     'opengraph',
     'nlp',
     'heatwave',
@@ -240,26 +237,6 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": "redis://" + REDIS_HOST + ":" + REDIS_PORT + "/" + REDIS_DATABASE_ID,
     }
-}
-
-#Constance
-CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
-CONSTANCE_DATABASE_CACHE_BACKEND = 'default'
-CONSTANCE_IGNORE_ADMIN_VERSION_CHECK = True
-
-CONSTANCE_CONFIG = {
-    'ADMIN_SEARCH_CONFIG': (
-        'french',
-        'You can specify the config attribute to a SearchVector and '
-        'SearchQuery to use a different search configuration. This allows '
-        'using different language parsers and dictionaries as defined by the '
-        'database'
-    ),
-    'CONTACT_NOSMOKING_RECIPIENT_LIST': (
-        '',
-        'List of email addresses separated by a comma.',
-        str
-    ),
 }
 
 #Email

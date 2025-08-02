@@ -4,12 +4,23 @@ from django.contrib.sites.models import Site
 from workforce.models import NodeSet
 import logging
 from django.conf import settings
-#import reversion
+from easy_thumbnails.fields import (
+    ThumbnailerImageField,
+    ThumbnailerField,
+)
+from django.utils.text import slugify
 from django.core.exceptions import ValidationError
 
 from django.utils.translation import gettext_lazy as _
 
 logger = logging.getLogger(__name__)
+
+def logo_path(instance, filename):
+    # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
+    ext = filename.split('.')[-1]
+    filename = slugify(instance.company_name)
+    path = "organization/logo"
+    return '{0}/{1}.{2}'.format(path, filename, ext)
 
 
 class OrganizationManager(models.Manager):
@@ -94,6 +105,14 @@ class Organization(models.Model):
         null=True,
         blank=True,
         unique=True,
+    )
+    logo = ThumbnailerImageField(
+        upload_to=logo_path,
+        blank=True,
+        null=True
+    )
+    logo_alt = models.TextField(
+        blank=True
     )
 
     objects = OrganizationManager()

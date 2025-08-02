@@ -19,7 +19,6 @@ from django.utils.safestring import mark_safe
 from simple_history.admin import SimpleHistoryAdmin
 from django.db.models import F
 from django.contrib.postgres.search import SearchVector, SearchQuery
-from constance import config
 from neomodel import db
 from directory.models import Effector, Directory
 from directory.models import Facility as NeoFacility

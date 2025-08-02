@@ -15,7 +15,6 @@ django-countries[pyuca]
 vobject
 django-cors-headers
 django-simple-history
-django-constance[database]
 redis
 django-contact-form[akismet]
 langcodes[data]
