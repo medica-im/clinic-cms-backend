@@ -12,6 +12,9 @@ async def organizations() -> list[OrganizationPy]:
 async def organization(organization_uid: str) -> OrganizationPy :
     return get_organization(uid=organization_uid)
 
+# deprecate organizations
+""""
 @router.post("/organizations/", status_code=status.HTTP_201_CREATED)
 async def post_organization(organization: OrganizationPy) -> OrganizationPy:
     return create_organization(organization.model_dump())
+"""
