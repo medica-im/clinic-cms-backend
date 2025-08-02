@@ -52,6 +52,8 @@ class OrganizationAdmin(TranslationAdmin):
         'google_site_verification'
     )
     readonly_fields = (
+        'created',
+        'updated',
         'logo_tag',
     )
 
