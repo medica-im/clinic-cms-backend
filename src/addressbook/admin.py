@@ -300,7 +300,7 @@ class ContactAdmin(admin.ModelAdmin):
             return search_queryset, may_have_duplicates
         query_ids = queryset.values_list('id', flat=True)
         final_queryset = Contact.objects.none()
-        _config = config.ADMIN_SEARCH_CONFIG
+        _config = 'french'
         queryset_field = self.model.objects.annotate(
             search=SearchVector('formatted_name', config=_config) \
             + SearchVector('last_name', config=_config) \
