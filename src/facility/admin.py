@@ -57,21 +57,20 @@ class OrganizationAdmin(TranslationAdmin):
         'logo_tag',
     )
 
-    @admin.display(description='Profile img')
+    @admin.display(description='Logo thumbnail')
     def logo_tag(self, obj):
-        if obj.profile_image:
+        if obj.logo:
             try:
                 return mark_safe(
                     '<img src="%s" alt="profile picture" width="%s" height="%s">'
                     % (
-                        obj.profile_image["avatar_facebook"].url,
-                        obj.profile_image["avatar_facebook"].thumbnail_options["size"][0],
+                        obj.logo["avatar_facebook"].url,
+                        obj.logo["avatar_facebook"].thumbnail_options["size"][0],
                         "100%"
                     )
                 )
             except Exception as e:
                 return
-
 
 
 @admin.register(Category)
