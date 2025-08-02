@@ -52,7 +52,7 @@ class OrganizationAdmin(TranslationAdmin):
         'google_site_verification'
     )
     readonly_fields = (
-        'logo_tag'
+        'logo_tag',
     )
 
     @admin.display(description='Profile img')
