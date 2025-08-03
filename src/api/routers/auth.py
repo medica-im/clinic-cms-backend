@@ -154,11 +154,7 @@ def refresh(
 
 @router.get("/users/me")
 def read_current_user(
-        credentials: JwtAuthorizationCredentials = Security(access_security)
+        jwt: Annotated[dict, Depends(JWT)], request: Request
 ):  
-    # auto_error=False, so we should check manually
-    if not credentials:
-        raise HTTPException(status_code=401, detail='my-custom-details')
-
     # now we can access Credentials object
-    return {"username": credentials["username"], "role": credentials["role"]}
+    return jwt
