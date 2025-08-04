@@ -65,10 +65,13 @@ class Command(BaseCommand):
         if not validateEmail(email):
             raise CommandError('Email "%s" is not valid' % email)
         username: str = options['username']
-        if not username:
-            raise CommandError('You must provide a username.')
+        #if not username:
+        #    raise CommandError('You must provide a username.')
         if not validate_username(username):
             raise CommandError('username "%s" is not valid' % username)
+        site=options['site']
+        if site and site not in list_sites():
+            raise CommandError('site "%s" is not valid' % site)
         try:
             user, created = User.objects.get_or_create(
                 email=email
@@ -90,7 +93,6 @@ class Command(BaseCommand):
             raise CommandError('User creation failed. %s' % e)
 
         # create Slug
-        site=options['site']
         if site:
             try:
                 site = Site.objects.get(name=options['site'])
