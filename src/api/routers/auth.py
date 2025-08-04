@@ -14,10 +14,10 @@ from django.conf import settings
 from api.utils import get_site_from_request
 from api.auth import get_user, get_role
 from fastapi_nextauth_jwt import NextAuthJWT
+from accounts.models import User
 
 logger = logging.getLogger(__name__)
 
-User=get_user_model()
 
 router = APIRouter()
 auth_secret=os.getenv("AUTH_SECRET")
@@ -158,7 +158,13 @@ async def read_current_user(
         jwt: Annotated[dict, Depends(JWT)], request: Request
 ):  
     site = await get_site_from_request(request)
-    django_user = await get_user(jwt)
+    try:
+        django_user = await User.objects.select_related('grammatical_gender').aget(email=jwt["email"])
+    except User.DoesNotExist:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Insufficient permissions"
+        )
     role = await get_role(django_user, site)
     gg = getattr(
         getattr(django_user, "grammatical_gender", None),
