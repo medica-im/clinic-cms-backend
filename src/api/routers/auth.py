@@ -12,6 +12,7 @@ from fastapi_jwt import (
 )
 from django.conf import settings
 from api.utils import get_site_from_request
+from api.auth import get_user, get_role
 from fastapi_nextauth_jwt import NextAuthJWT
 
 logger = logging.getLogger(__name__)
@@ -153,8 +154,30 @@ def refresh(
     return {"access_token": access_token, "refresh_token": refresh_token}
 
 @router.get("/users/me")
-def read_current_user(
+async def read_current_user(
         jwt: Annotated[dict, Depends(JWT)], request: Request
 ):  
-    # now we can access Credentials object
-    return jwt
+    site = await get_site_from_request(request)
+    django_user = await get_user(jwt)
+    role = await get_role(django_user, site)
+    gg = getattr(
+        getattr(django_user, "grammatical_gender", None),
+        "code",
+        None
+    )
+    effector = getattr(
+        getattr(django_user, "effector", None),
+        "hex",
+        None
+    )
+    full_name = getattr(django_user, "full_name", None)
+    return {
+        "name": jwt["name"],
+        "email": jwt["email"],
+        "picture": jwt["picture"],
+        "role": role.name,
+        "gender": gg,
+        "effector": effector,
+        "full_name": full_name
+    }
+

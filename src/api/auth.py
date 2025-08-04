@@ -42,10 +42,12 @@ async def get_role(user: User|None, site: Site) -> Role:
         return roles["anonymous"]
     elif user.is_superuser:
         return roles["superuser"]
+    elif user.role and user.site==site:
+        return user.role
     elif user.site==site:
-        return roles["staff"]
-    else:
         return roles["registered"]
+    else:
+        return roles["anonymous"]
 
 async def authorize_api(endpoint: str, request: Request, jwt: dict):
     # get post put patch delete

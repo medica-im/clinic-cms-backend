@@ -1,6 +1,6 @@
 import logging
 from django.contrib.sites.models import Site
-from fastapi import Request
+from fastapi import Request, HTTPException, status
 from directory.models import Directory
 
 logger = logging.getLogger(__name__)
@@ -12,7 +12,9 @@ async def get_site_from_request(request: Request) -> Site:
         logger.error(
             f'Site with domain {request.url.hostname} does not exist.'
         )
-        raise e
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN
+        )
 
 async def get_directory_from_hostname(hostname):
     try:
