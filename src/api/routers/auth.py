@@ -159,7 +159,7 @@ async def read_current_user(
 ):  
     site = await get_site_from_request(request)
     try:
-        django_user = await User.objects.select_related('grammatical_gender').aget(email=jwt["email"])
+        django_user = await User.objects.select_related('grammatical_gender', 'role').aget(email=jwt["email"])
     except User.DoesNotExist:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
