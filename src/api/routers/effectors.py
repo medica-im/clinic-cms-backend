@@ -56,7 +56,7 @@ async def effectors(effector_type: str|None = None, department_of_france: str|No
 async def effector(uid: str)->Effector:
     return get_effector(uid=uid)
 
-@router.post("/effectors/")
+@router.post("/effectors")
 async def post_effector(jwt: Annotated[dict, Depends(JWT)], effector: EffectorPost, request: Request) -> Effector:
     logger.debug(f"hello post_effector {effector}")
     await authorize_api("effectors_v2", request, jwt)
