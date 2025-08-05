@@ -15,7 +15,7 @@ router = APIRouter()
 async def entries(effector_type: str|None = None, effector: str|None = None, facility: str|None = None ) -> list[str]:
     return get_entries(effector_type=effector_type, effector=effector, facility=facility)
 
-@router.post("/entries/", status_code=status.HTTP_201_CREATED)
+@router.post("/entries", status_code=status.HTTP_201_CREATED)
 async def post_entry(entry: EntryPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> str:
     await authorize_api("entries_v2", request, jwt)
     directory = await get_directory_from_hostname(request.url.hostname)
