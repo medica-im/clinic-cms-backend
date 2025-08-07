@@ -108,8 +108,8 @@ def create_facility(kwargs)->FacilityPy:
         street=kwargs["street"],
         geographical_complement=kwargs["geographical_complement"],
         zip=kwargs["zip"],
-        ban_id=kwargs["ban_id"]
-        ban_banId=kwargs["ban_banId"]
+        ban_id=kwargs["ban_id"],
+        ban_banId=kwargs["ban_banId"],
         location=location
     ).save()
     commune=kwargs["commune"]
