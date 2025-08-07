@@ -10,7 +10,6 @@ from neomodel import (
     IntegerProperty,
     DateTimeFormatProperty,
     UniqueIdProperty,
-    ArrayProperty,
     RelationshipTo,
     RelationshipFrom,
     Relationship,
@@ -373,6 +372,8 @@ class Facility(StructuredNode):
     tooltip_text = StringProperty()
     DIRECTIONS = {'top': 'Top', 'bottom': 'Bottom', 'left': 'Left', 'right': 'Right'}
     tooltip_direction = StringProperty(choices=DIRECTIONS)
+    ban_id = StringProperty()
+    ban_banId = StringProperty()
 
 
 class Entry(StructuredNode):

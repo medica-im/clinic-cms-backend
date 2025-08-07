@@ -370,6 +370,8 @@ class Facility(AsyncStructuredNode):
     tooltip_text = StringProperty()
     DIRECTIONS = {'top': 'Top', 'bottom': 'Bottom', 'left': 'Left', 'right': 'Right'}
     tooltip_direction = StringProperty(choices=DIRECTIONS)
+    ban_id = StringProperty()
+    ban_banId = StringProperty()
 
 
 class Entry(AsyncStructuredNode):

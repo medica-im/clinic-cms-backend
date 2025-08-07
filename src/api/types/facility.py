@@ -23,3 +23,5 @@ class Facility(FacilityBase):
 
 class FacilityPost(FacilityBase):
     commune: str
+    ban_id: str
+    ban_banId: str
