@@ -124,7 +124,7 @@ def get_warning_cached():
     return cache.get_or_set(
         "vigilance_cdp_textes",
         lambda: get_warning(),
-        3600
+        settings.PUBLIC_API_METEOFRANCE_TTL
     )
 
 def get_warning():
