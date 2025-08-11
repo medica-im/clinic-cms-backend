@@ -160,7 +160,7 @@ def get_heatwave_by_department(dpt_code: str):
     
         for text_item in DEP_SUIVI__TEXT_ITEMS:
             if text_item["hazard_code"] == '6':
-                term_item=text_item["term_items"][0]
+                term_item=text_item["term_items"][-1]
                 res["start_time"]=term_item["start_time"]
                 res["end_time"]=term_item["end_time"]
                 res["risk_code"]=term_item["risk_code"]

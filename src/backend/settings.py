@@ -269,6 +269,7 @@ neomodel_config.DATABASE_URL = f"bolt://{NEO4J_USERNAME}:{NEO4J_PASSWORD}@neo4j:
 
 #heatwave
 PUBLIC_API_METEOFRANCE = config('PUBLIC_API_METEOFRANCE')
+PUBLIC_API_METEOFRANCE_TTL = config('PUBLIC_API_METEOFRANCE_TTL', cast=int, default=600)
 
 LOGIN_URL = '/admin/login/'
 
