@@ -27,3 +27,13 @@ async def update_item(item_id: str, item: Phone, request: Request, jwt: Annotate
     phone_number.phone=update_item_encoded['phone']
     await phone_number.asave()
     return update_item_encoded
+
+@router.get("/phones/{item_id}", response_model=Phone)
+async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
+    await authorize_api("phones_v2", request, jwt)
+    try:
+        phone_number = await PhoneNumber.objects.aget(id=item_id)
+        logger.debug(phone_number)
+    except PhoneNumber.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"PhoneNumber not found")
+    return phone_number
