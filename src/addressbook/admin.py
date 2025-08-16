@@ -394,7 +394,17 @@ class AddressAdmin(admin.ModelAdmin):
     autocomplete_fields = ['contact']
 
 
-admin.site.register(PhoneNumber, admin.ModelAdmin)
+@admin.register(PhoneNumber)
+class PhoneNumberAdmin(admin.ModelAdmin):
+    list_display = (
+        "pk",
+        "contact",
+        "type",
+        "phone",
+    )
+    list_filter = ["type"]
+
+
 admin.site.register(Website, admin.ModelAdmin)
 admin.site.register(SocialNetwork, admin.ModelAdmin)
 admin.site.register(Email, admin.ModelAdmin)
