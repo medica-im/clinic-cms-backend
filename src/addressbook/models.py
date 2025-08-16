@@ -277,7 +277,6 @@ class PhoneNumber(models.Model):
         MOBILE_WORK = 'MW', _('Mobile Work')
         WORK = 'W', _('Work')
         FAX = 'F', _('Fax')
-        SKYPE = 'S', _('Skype')
         ANSWERING_SERVICE = 'AS', _('Answering service')
 
     contact = models.ForeignKey(
