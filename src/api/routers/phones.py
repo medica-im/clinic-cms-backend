@@ -26,7 +26,7 @@ async def update_item(item_id: str, item: Phone, request: Request, jwt: Annotate
     update_item_encoded = jsonable_encoder(item)
     logger.debug(update_item_encoded)
     try:
-        phone_number = await PhoneNumber.objects.select_related('contact', 'roles', 'organization').aget(id=item_id)
+        phone_number = await PhoneNumber.objects.select_related('contact').aget(id=item_id)
         logger.debug(phone_number)
     except PhoneNumber.DoesNotExist:
         raise HTTPException(status_code=404, detail=f"PhoneNumber not found")
