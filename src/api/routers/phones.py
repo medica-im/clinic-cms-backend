@@ -11,6 +11,14 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+@router.delete("/phones/{item_id}")
+async def delete_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
+    await authorize_api("phones_v2", request, jwt)
+    try:
+        await PhoneNumber.objects.filter(id=item_id).adelete()
+    except PhoneNumber.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"PhoneNumber not found")
+
 @router.put("/phones/{item_id}", response_model=Phone)
 async def update_item(item_id: str, item: Phone, request: Request, jwt: Annotated[dict, Depends(JWT)]):
     await authorize_api("phones_v2", request, jwt)
