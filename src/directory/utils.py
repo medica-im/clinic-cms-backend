@@ -218,6 +218,7 @@ def get_phones(request, effector):
         return phones
 
 def get_avatar_url(
+        entry: Entry|None=None,
         e: Effector | None = None,
         ef: EffectorFacility | None = None,
         f: Facility | None = None
@@ -242,7 +243,10 @@ def get_avatar_url(
             "lt": lt,
             "raw": raw
         }
-
+    try:
+        entry_avatar = Contact.objects.get(neomodel_uid=entry.uid).profile_image
+    except (Contact.DoesNotExist, AttributeError):
+        entry_avatar = None
     try:
         e_avatar = Contact.objects.get(neomodel_uid=e.uid).profile_image
     except (Contact.DoesNotExist, AttributeError):
@@ -255,6 +259,8 @@ def get_avatar_url(
         f_avatar = Contact.objects.get(neomodel_uid=f.uid).profile_image
     except (Contact.DoesNotExist, AttributeError):
         f_avatar = None
+    if (entry_avatar):
+        return get_avatar_dict(entry_avatar)
     if (e_avatar and ef_avatar):
         return get_avatar_dict(ef_avatar)
     if (not ef_avatar and e_avatar):
@@ -749,7 +755,7 @@ def find_entry(
         for pm in row[cols.index('pm')]
     ]
     health_worker=HealthWorker.inflate(row[cols.index('e')])
-    avatar=get_avatar_url(effector, effector_facility, facility)
+    avatar=get_avatar_url(entry, effector, effector_facility, facility)
     return {
         "entry": entry,
         "effector": effector,
