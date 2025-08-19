@@ -1,5 +1,4 @@
 from django.core.management.base import BaseCommand, CommandError
-from django.contrib.auth import get_user_model
 from accounts.models import User
 from workforce.models import NetworkNode, NodeSet
 from facility.models import Organization, Facility
@@ -45,7 +44,7 @@ class Command(BaseCommand):
             choices=list_sites(),
             help=f"site name among {list_sites()}"
         )
-        parser.add_argument('--effector', type=str, help="Effector node UID")
+        parser.add_argument('--entry', type=str, help="Entry node UID")
         parser.add_argument('--formatted_name', type=str)
         parser.add_argument(
             '--role',
@@ -104,30 +103,31 @@ class Command(BaseCommand):
 
         # create Contact
         formatted_name = options['formatted_name']
-        effector = options['effector']
+        entry = options['entry']
         if formatted_name:
             person_type=Contact.PersonType.NATURAL
             try:
                 Contact.objects.get_or_create(
                     person_type=person_type,
                     user=user,
-                    formatted_name=formatted_name,
-                    neomodel_uid=effector
+                    formatted_name=formatted_name
                 )
             except Exception as e:
                 raise CommandError(
                     f'Error during creation of Contact object: $s' % e
                 )
+        if entry:
+            user.effector=entry
         user.username=username
-        user.effector=effector
         user.full_name=formatted_name
         role_name=options["role"]
         if role_name:
             try:
                 role = Role.objects.get(name=role_name)
-                user.role=role
             except Role.DoesNotExist:
                 raise CommandError(f'Role {role_name} does not exist.')
+        if role is not None:
+            user.role=role
         user.save()
         self.stdout.write(
             self.style.SUCCESS(
