@@ -94,7 +94,7 @@ class EffectorObj(object):
 def createEffectorRessource(request, node):
     location=node["location"]
     try:
-        uid = location.uid
+        uid = node["entry"].uid
     except Exception as e:
         uid = None
     effector_node=node["effector"]
@@ -233,8 +233,6 @@ def createEffectorRessources(request, nodes):
     return data
 
 class FullEffectorResource(Resource):
-    # Just like a Django ``Form`` or ``Model``, we're defining all the
-    # fields we're going to handle with the API here.
     uid = fields.CharField(attribute='uid', null=True)
     effector_uid = fields.CharField(attribute='effector_uid')
     label = fields.CharField(attribute='label')

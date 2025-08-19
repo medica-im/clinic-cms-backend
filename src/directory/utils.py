@@ -58,16 +58,17 @@ def get_contact_related_elements(
         return None
 
 def get_contact_related_neomodel(
+        entry: Entry|None = None,
         e: Effector|None = None,
         ef: EffectorFacility|None = None,
         f: Facility|None = None,
         attribute: str = "",
-        Serializer:  ModelSerializer = None,
+        Serializer:  ModelSerializer|None = None,
         many: bool = True,
         first_hit = False,
     ):
     elements = set()
-    for neo_entity in [e, ef, f]:
+    for neo_entity in [entry, e, ef, f]:
         new_elements = get_contact_related_elements(
             neo_entity=neo_entity,
             attribute=attribute,
@@ -94,8 +95,9 @@ def get_contact_related_neomodel(
             return
         return serializer.data
 
-def get_profile_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
+def get_profile_neomodel(entry: Entry, e: Effector, ef: EffectorFacility, f: Facility):
     return get_contact_related_neomodel(
+        entry=entry,
         e=e,
         ef=ef,
         f=f,
@@ -104,8 +106,9 @@ def get_profile_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
         many=False
     )
 
-def get_appointments_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
+def get_appointments_neomodel(entry: Entry, e: Effector, ef: EffectorFacility, f: Facility):
     return get_contact_related_neomodel(
+        entry=entry,
         e=e,
         ef=ef,
         f=f,
@@ -114,11 +117,13 @@ def get_appointments_neomodel(e: Effector, ef: EffectorFacility, f: Facility):
 )
 
 def get_websites_neomodel(
+        entry: Entry|None=None,
         e: Effector | None = None,
         ef: EffectorFacility | None = None,
         f: Facility | None = None
     ):
     return get_contact_related_neomodel(
+        entry=entry,
         e=e,
         ef=ef,
         f=f,
@@ -127,11 +132,13 @@ def get_websites_neomodel(
     )
 
 def get_socialnetworks_neomodel(
+        entry: Entry|None=None,
         e: Effector | None = None,
         ef: EffectorFacility | None = None,
         f: Facility | None = None,
     ):
     return get_contact_related_neomodel(
+        entry=entry,
         e=e,
         ef=ef,
         f=f,
@@ -140,11 +147,13 @@ def get_socialnetworks_neomodel(
     )
 
 def get_phones_neomodel(
+        entry: Entry|None = None,
         e: Effector | None = None,
         ef: EffectorFacility | None = None,
         f: Facility | None = None,
     ):
     return get_contact_related_neomodel(
+        entry=entry,
         e=e,
         ef=ef,
         f=f,
@@ -155,11 +164,13 @@ def get_phones_neomodel(
     )
 
 def get_emails_neomodel(
+        entry: Entry|None=None,
         e: Effector | None = None,
         ef: EffectorFacility | None = None,
         f: Facility | None = None
     ):
     return get_contact_related_neomodel(
+        entry=entry,
         e=e,
         ef=ef,
         f=f,
@@ -673,7 +684,7 @@ def find_entry(
         OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN rel.thirdPartyPayment
         WITH *, COLLECT(tpp) AS tpp
         OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN rel.payment
-        RETURN et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm;
+        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm;
         """
     )
     results, cols = db.cypher_query(query)
@@ -682,6 +693,7 @@ def find_entry(
     except Exception as e:
         logger.error(e)
         return
+    entry=Entry.inflate(row[cols.index('entry')])
     effector=Effector.inflate(row[cols.index('e')])
     try:
         effector_facility=EffectorFacility.inflate(row[cols.index('rel')])
@@ -693,31 +705,37 @@ def find_entry(
     effector_type=EffectorType.inflate(row[cols.index('et')])
     address = get_address(facility,commune,country)
     phones = get_phones_neomodel(
+        entry=entry,
         e=effector,
         ef=effector_facility,
         f=facility
     )
     emails = get_emails_neomodel(
+        entry=entry,
         e=effector,
         ef=effector_facility,
         f=facility
     )
     websites = get_websites_neomodel(
+        entry=entry,
         e=effector,
         ef=effector_facility,
         f=facility
     )
     socialnetworks = get_socialnetworks_neomodel(
+        entry=entry,
         e=effector,
         ef=effector_facility,
         f=facility
     )
     appointments = get_appointments_neomodel(
+        entry=entry,
         e=effector,
         ef=effector_facility,
         f=facility
     )
     profile = get_profile_neomodel(
+        entry=entry,
         e=effector,
         ef=effector_facility,
         f=facility
@@ -733,6 +751,7 @@ def find_entry(
     health_worker=HealthWorker.inflate(row[cols.index('e')])
     avatar=get_avatar_url(effector, effector_facility, facility)
     return {
+        "entry": entry,
         "effector": effector,
         "location": effector_facility,
         "address": address,
