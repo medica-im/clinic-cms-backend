@@ -54,7 +54,7 @@ async def create_item(item: PhonePost, request: Request, jwt: Annotated[dict, De
     i = item.model_dump()
     logger.debug(i)
     try:
-        contact = Contact.objects.aget(neomodel_uid=i['entry'])
+        contact = await Contact.objects.aget(neomodel_uid=i['entry'])
     except Contact.DoesNotExist:
         raise HTTPException(status_code=404, detail=f"Contact {i['entry']} not found")
     roles=Role.objects.filter(name__in=i['roles'])
