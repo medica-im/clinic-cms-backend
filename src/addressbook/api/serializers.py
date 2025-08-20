@@ -75,6 +75,8 @@ class PhoneNumberSerializer(serializers.ModelSerializer):
             'phone',
             'type',
             'type_display',
+            'roles',
+            'contact',
         ]
         depth = 2
 
