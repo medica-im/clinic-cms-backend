@@ -69,5 +69,5 @@ async def create_item(item: PhonePost, request: Request, jwt: Annotated[dict, De
         raise HTTPException(status_code=404, detail=f"PhoneNumber not found")
     await phone_number.asave()
     if roles:
-        phone_number.roles.set(roles)
+        await phone_number.roles.aset(roles)
     return i
