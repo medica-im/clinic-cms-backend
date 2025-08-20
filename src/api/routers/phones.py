@@ -2,8 +2,9 @@ import logging
 from typing import Annotated
 from fastapi import APIRouter, status, HTTPException, Depends, Request
 from fastapi.encoders import jsonable_encoder
-from addressbook.models import PhoneNumber
-from api.types.phones import Phone
+from addressbook.models import PhoneNumber, Contact
+from access.models import Role
+from api.types.phones import Phone, PhonePost
 from api.auth import JWT
 from api.auth import authorize_api
 
@@ -45,3 +46,28 @@ async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(
     except PhoneNumber.DoesNotExist:
         raise HTTPException(status_code=404, detail=f"PhoneNumber not found")
     return phone_number
+
+@router.post("/phones/", response_model=Phone)
+async def create_item(item: PhonePost, request: Request, jwt: Annotated[dict, Depends(JWT)]):
+    await authorize_api("phones_v2", request, jwt)
+    logger.debug(item)
+    i = item.model_dump()
+    logger.debug(i)
+    try:
+        contact = Contact.objects.aget(neomodel_uid=i['entry'])
+    except Contact.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Contact {i['entry']} not found")
+    roles=Role.objects.filter(name_in=i['roles'])
+    try:
+        phone_number = await PhoneNumber.objects.acreate(
+            contact = contact,
+            phone = i['phone'],
+            type = i['type']
+        )
+        logger.debug(phone_number)
+    except PhoneNumber.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"PhoneNumber not found")
+    await phone_number.asave()
+    if roles:
+        phone_number.roles.set(roles)
+    return i
