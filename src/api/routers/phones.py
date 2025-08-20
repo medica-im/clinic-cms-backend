@@ -57,7 +57,11 @@ async def create_item(item: PhonePost, request: Request, jwt: Annotated[dict, De
         contact = await Contact.objects.aget(neomodel_uid=i['entry'])
     except Contact.DoesNotExist:
         raise HTTPException(status_code=404, detail=f"Contact {i['entry']} not found")
-    roles=Role.objects.filter(name__in=i['roles'])
+    roles_qs=Role.objects.filter(name__in=i['roles'])
+    roles = []
+    async for id in roles_qs.values_list('id', flat=True):
+        roles.append(id)
+    logger.debug(f'{roles=}')
     try:
         phone_number = await PhoneNumber.objects.acreate(
             contact = contact,
