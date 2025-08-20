@@ -7,5 +7,8 @@ class Phone(BaseModel):
     roles: list[str]|None = None
 
 
-class PhonePost(Phone):
+class PhonePost(BaseModel):
     entry: str
+    type: str
+    phone: str
+    roles: list[str]|None = None
