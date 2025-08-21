@@ -32,7 +32,7 @@ class Command(BaseCommand):
 
 
     def test_is_location(self, neomodel_uid: str, contact: Contact):
-        query=f"""MATCH (f:Facility)<-[:HAS_LOCATION]-(entry:Entry)-[:HAS_EFFECTOR]->(e:Effector)-[rel:LOCATION]-(f:Facility)
+        query=f"""MATCH (f:Facility)<-[:HAS_FACILITY]-(entry:Entry)-[:HAS_EFFECTOR]->(e:Effector)-[rel:LOCATION]-(f:Facility)
         WHERE rel.uid="{neomodel_uid}"
         RETURN entry;"""
         q = db.cypher_query(query, resolve_objects = True)
@@ -76,7 +76,7 @@ class Command(BaseCommand):
                     facility_count+=1
                     continue
                 if self.test_is_location(neomodel_uid.hex, contact):
-                    self.warn(f"{contact} neomodel node is a Facility.")
+                    self.warn(f"{contact} neomodel node is a location.")
                     location_updated_count+=1
                     location_count+=1
                     continue
@@ -86,6 +86,7 @@ class Command(BaseCommand):
             f'There are {total} Contact records.\n'
             f'{empty_count} of those have an empty neomodel_uid field.\n'
             f'{entry_count} of those have a neomodel_uid field linked to an Entry node.\n'
+            f'{facility_count} of those have a neomodel_uid field linked to a Facility node.\n'
             f'{location_count} of those had a neomodel_uid field linked to a LOCATION relationship.\n'
             f'{location_updated_count} contacts with location relationship uid have been updated to Entry node uid.'
         )
