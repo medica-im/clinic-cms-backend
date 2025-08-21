@@ -24,7 +24,7 @@ class Command(BaseCommand):
                 return True
             
     def test_is_facility(self, neomodel_uid: str):
-        query=f"""MATCH (f:Facility) WHERE facility.uid="{neomodel_uid}" RETURN facility;"""
+        query=f"""MATCH (f:Facility) WHERE f.uid="{neomodel_uid}" RETURN f;"""
         q = db.cypher_query(query, resolve_objects = True)
         for row in q[0]:
             if row:
