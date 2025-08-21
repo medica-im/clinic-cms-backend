@@ -17,7 +17,7 @@ class Command(BaseCommand):
     help = 'Update neomodel_uid field in Contact objects to the Entry node uid.'
 
     def test_is_entry(self, neomodel_uid: str):
-        query=f"""MATCH (entry:Entry) WHERE entry.uid={neomodel_uid} RETURN entry;"""
+        query=f"""MATCH (entry:Entry) WHERE entry.uid="{neomodel_uid}" RETURN entry;"""
         q = db.cypher_query(query, resolve_objects = True)
         for row in q[0]:
             if row:
