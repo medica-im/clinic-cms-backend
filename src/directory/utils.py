@@ -279,7 +279,6 @@ def _get_address(facility: Facility):
     return serializer.data
 
 def get_address(facility: Facility, commune: Commune, country: Country):
-    logger.debug(f"{facility.location=}")
     if facility.location:
         longitude=facility.location.longitude
         latitude=facility.location.latitude
@@ -301,7 +300,6 @@ def get_address(facility: Facility, commune: Commune, country: Country):
        "tooltip_permanent": facility.tooltip_permanent,
        "tooltip_direction": facility.tooltip_direction, 
     }
-    logger.debug(_dct)
     return _dct
 
 def org_uids(orgs):
@@ -359,7 +357,6 @@ def get_facilities(
         AND e.active={str(active)}
         RETURN DISTINCT f,commune,country;"""
     results, cols = db.cypher_query(query)
-    logger.debug(results)
     _facilities=[]
     try:
         for row in results:
@@ -527,15 +524,12 @@ def get_entries(
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
         RETURN entry,e,et,f,rel,o,employer,commune,country;"""
     q = db.cypher_query(query,resolve_objects = True)
-    logger.debug(f"{q=}")
     #logger.debug(f'{display(q[0][0])}')
     #logger.debug(f'****************************\nq:\n{len(q[0][0])}')
     #logger.debug(f'****************************\nq:\n{q[0][0][0].__properties__}')
     if q:
         entries=[]
         for row in q[0]:
-            logger.debug(len(row))
-            logger.debug(row)
             (
                 entry,
                 effector,
