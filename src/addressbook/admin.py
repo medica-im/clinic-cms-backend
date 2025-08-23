@@ -20,7 +20,7 @@ from simple_history.admin import SimpleHistoryAdmin
 from django.db.models import F
 from django.contrib.postgres.search import SearchVector, SearchQuery
 from neomodel import db
-from directory.models import Effector, Directory
+from directory.models import Entry, Directory
 from directory.models import Facility as NeoFacility
 from directory.utils import contact_uids
 import logging
@@ -235,54 +235,16 @@ class ContactAdmin(admin.ModelAdmin):
 
     @admin.display(description='Name')
     def name_tag(self, obj):
-        if obj.formatted_name:
-            return obj.formatted_name
         if not obj.neomodel_uid:
             return
         try:
-            return f"E: {Effector.nodes.get(uid=obj.neomodel_uid.hex).name_fr}"
+            entry = Entry.nodes.get(uid=obj.neomodel_uid.hex)
         except:
-            pass
-        # node uid is the UUID4 hex representation without dashes:
-        # FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-        results, _meta = db.cypher_query(
-            f"""MATCH (f:Facility)
-            WHERE f.uid="{obj.neomodel_uid.hex}"
-            RETURN f"""
-        )
-        if results:
-            f=NeoFacility.inflate(results[0][0])
-            organization_array=f.organization.all()
-            if organization_array:
-                organization=organization_array[0]
-                return f'O: {organization.name_fr or organization.label_fr}'
-            else:
-                return f'F: {f.name}'
-
-        results, _meta = db.cypher_query(
-            f"""MATCH (e:Effector)-[l:LOCATION]-(f:Facility)
-            WHERE f.uid="{obj.neomodel_uid.hex}"
-            RETURN e"""
-        )
-        if results:
-            names=[]
-            for e in results:
-                effector=Effector.inflate(e[0])
-                names.append(effector.name_fr or effector.label_fr)
-            return f'F: {", ".join(names)}'
-        # relationship uid is the UUID4 string representation with dashes:
-        # FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF
-        query=f"""MATCH (e:Effector)-[rel:LOCATION {{ uid: "{obj.neomodel_uid}"}}]->(f:Facility) RETURN e"""
-        results, cols = db.cypher_query(query)
-        if results:
-            effector = Effector.inflate(results[0][cols.index('e')])
-            return f"EF: {effector.name_fr}"
-        # check for hex version of uid
-        query=f"""MATCH (e:Effector)-[rel:LOCATION {{ uid: "{obj.neomodel_uid.hex}"}}]->(f:Facility) RETURN e"""
-        results, cols = db.cypher_query(query)
-        if results:
-            effector = Effector.inflate(results[0][cols.index('e')])
-            return f"EF: {effector.name_fr}"
+            return
+        try:
+            return entry.effector.all()[0].name_fr
+        except:
+            return
 
     def get_search_results(self, request, queryset, search_term):
         is_uuid = False
