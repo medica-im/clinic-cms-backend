@@ -130,7 +130,6 @@ class ContactAdmin(admin.ModelAdmin):
         'neomodel_uid',
         'phone_tag',
         'user_tag',
-        'type_tag',
         'title',
         'email_tag',
         'profile_tag',
@@ -144,7 +143,6 @@ class ContactAdmin(admin.ModelAdmin):
         'profile_image_tag',
         'phone_tag',
         'user_tag',
-        'type_tag',
         'title',
         'email_tag',
         'profile_image',
@@ -156,7 +154,6 @@ class ContactAdmin(admin.ModelAdmin):
         'profile_image_tag',
         'phone_tag',
         'user_tag',
-        'type_tag',
         'email_tag',
         'profile_image_tag',
     )
@@ -171,10 +168,10 @@ class ContactAdmin(admin.ModelAdmin):
         ProfileInline,
     ]
     list_filter = [
-        ContactOrganizationFilter,
-        ContactFacilityFilter,
-        ("neomodel_uid", admin.EmptyFieldListFilter),
-        ContactDirectoryFilter,
+        #ContactOrganizationFilter,
+        #ContactFacilityFilter,
+        #("neomodel_uid", admin.EmptyFieldListFilter),
+        #ContactDirectoryFilter,
     ]
 
     def get_queryset(self, request):
@@ -297,16 +294,7 @@ class ContactAdmin(admin.ModelAdmin):
             except Exception as e:
                 logger.error(e)
                 return
-
-    @admin.display(description='Type')
-    def type_tag(self, obj):
-        if obj.user:
-            return _("Django User")
-        elif obj.organization:
-            return _("Organization")
-        elif obj.facility:
-            return _("Facility")
-        
+    
     @admin.display(description=_('Profile'))
     def profile_tag(self, obj):
         return obj.profile.text[:35]
