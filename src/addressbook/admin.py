@@ -244,6 +244,7 @@ class ContactAdmin(admin.ModelAdmin):
             logger.debug(e)
             return
         effector: list[Effector]= entry.effector.all()
+        logger.debug(effector)
         try:
             return effector[0].name_fr
         except Exception as e:
