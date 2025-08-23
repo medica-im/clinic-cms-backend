@@ -177,6 +177,13 @@ class ContactAdmin(admin.ModelAdmin):
         ContactDirectoryFilter,
     ]
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if self.model == Contact:
+            logger.debug(qs)
+            return Contact.objects.all()
+        return qs
+
     @admin.display(description='User')
     def user_tag(self, obj):
         if not obj.user:
