@@ -130,12 +130,10 @@ class ContactAdmin(admin.ModelAdmin):
         'neomodel_uid',
         'phone_tag',
         'user_tag',
-        'title',
         'email_tag',
         'profile_tag',
     )
     fields = (
-        'person_type',
         'formatted_name',
         'formatted_name_definite_article',
         'user',
@@ -143,7 +141,6 @@ class ContactAdmin(admin.ModelAdmin):
         'profile_image_tag',
         'phone_tag',
         'user_tag',
-        'title',
         'email_tag',
         'profile_image',
         'neomodel_uid',
@@ -174,13 +171,6 @@ class ContactAdmin(admin.ModelAdmin):
         #ContactDirectoryFilter,
     ]
 
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        if self.model == Contact:
-            logger.debug(qs)
-            return Contact.objects.all()
-        return qs
-
     @admin.display(description='User')
     def user_tag(self, obj):
         if not obj.user:
@@ -192,30 +182,27 @@ class ContactAdmin(admin.ModelAdmin):
 
     @admin.display(description=_('Building'))
     def building_tag(self, obj):
-        return obj.address.building
+        return
 
     @admin.display(description=_('Street'))
     def street_tag(self, obj):
-        return obj.address.street
+        return
 
     @admin.display(description=_('Geo complement'))
     def geographical_complement_tag(self, obj):
-        return obj.address.geographical_complement
+        return
 
     @admin.display(description='zip')
     def zip_tag(self, obj):
-        return obj.address.zip
+        return
 
     @admin.display(description=_('City'))
     def city_tag(self, obj):
-        return obj.address.city
+        return
         
     @admin.display(description='GPS')
     def gps_tag(self, obj):
-        if obj.address.latitude and obj.address.longitude:
-            return "✔️"
-        else:
-            return "❌"
+        return
 
     @admin.display(description='Name')
     def name_tag(self, obj):
@@ -234,42 +221,6 @@ class ContactAdmin(admin.ModelAdmin):
         except Exception as e:
             logger.debug(e)
             return
-
-    def get_search_results(self, request, queryset, search_term):
-        is_uuid = False
-        try:
-            _uuid = uuid.UUID(search_term)
-            is_uuid=True
-        except ValueError:
-            pass
-        if is_uuid:
-            search_queryset, may_have_duplicates = super().get_search_results(
-            request,
-            queryset,
-            _uuid,
-            )
-            return search_queryset, may_have_duplicates
-        query_ids = queryset.values_list('id', flat=True)
-        final_queryset = Contact.objects.none()
-        _config = 'french'
-        queryset_field = self.model.objects.annotate(
-            search=SearchVector('formatted_name', config=_config) \
-            + SearchVector('last_name', config=_config) \
-            + SearchVector('first_name', config=_config) \
-            + SearchVector('middle_name', config=_config),
-            ).filter(
-                search=SearchQuery(search_term, config=_config),
-                id__in=query_ids
-            )
-        uids=contact_uids(search=search_term)
-        final_queryset |= queryset_field
-        if uids:
-            queryset_cypher = self.model.objects.filter(
-                neomodel_uid__in=uids,
-                id__in=query_ids
-            )
-            final_queryset |= queryset_cypher
-        return final_queryset.distinct(), False
 
     @admin.display(description='Phones')
     def phone_tag(self, obj):
