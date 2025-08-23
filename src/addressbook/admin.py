@@ -132,7 +132,6 @@ class ContactAdmin(admin.ModelAdmin):
         'user_tag',
         'type_tag',
         'title',
-        'organization',
         'email_tag',
         'profile_tag',
     )
@@ -147,7 +146,6 @@ class ContactAdmin(admin.ModelAdmin):
         'user_tag',
         'type_tag',
         'title',
-        'organization',
         'email_tag',
         'profile_image',
         'neomodel_uid',
