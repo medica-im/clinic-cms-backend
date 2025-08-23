@@ -97,7 +97,7 @@ class Contact(models.Model):
         unique=True,
     )
 
-    objects = ContactManager()
+    #objects = ContactManager()
 
     def natural_key(self):
         return (self.neomodel_uid,)
