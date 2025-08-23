@@ -20,7 +20,7 @@ from simple_history.admin import SimpleHistoryAdmin
 from django.db.models import F
 from django.contrib.postgres.search import SearchVector, SearchQuery
 from neomodel import db
-from directory.models import Entry, Directory
+from directory.models import Effector, Entry, Directory
 from directory.models import Facility as NeoFacility
 from directory.utils import contact_uids
 import logging
@@ -239,11 +239,15 @@ class ContactAdmin(admin.ModelAdmin):
             return
         try:
             entry = Entry.nodes.get(uid=obj.neomodel_uid.hex)
-        except:
+            logger.debug(entry)
+        except Exception as e:
+            logger.debug(e)
             return
+        effector: list[Effector]= entry.effector.all()
         try:
-            return entry.effector.all()[0].name_fr
-        except:
+            return effector[0].name_fr
+        except Exception as e:
+            logger.debug(e)
             return
 
     def get_search_results(self, request, queryset, search_term):
