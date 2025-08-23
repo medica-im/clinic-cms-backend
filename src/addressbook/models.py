@@ -99,16 +99,6 @@ class Contact(models.Model):
 
     objects = ContactManager()
 
-    class Meta:
-        ordering = ['formatted_name', 'last_name', 'first_name']
-
-
-    def __str__(self):
-        if self.formatted_name:
-            return "%s %s" % (self.pk, self.formatted_name)
-        else:
-            return "%s %s %s" % (self.pk, self.first_name, self.last_name)
-
     def natural_key(self):
         return (self.neomodel_uid,)
     
@@ -117,7 +107,7 @@ class Contact(models.Model):
         try:
             update_contact_timestamp(self.neomodel_uid)
         except TypeError as e:
-            logger.warn(f'uid is {self.neomodel_uid} {e}')
+            logger.warning(f'uid is {self.neomodel_uid} {e}')
 
 
 class AddressManager(models.Manager):
