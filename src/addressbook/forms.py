@@ -39,7 +39,7 @@ class WebsiteForm(ModelForm):
 class EmailForm(ModelForm):
     class Meta:
         model = Email
-        fields = ('email', 'type', 'public_visible', 'contact_visible')
+        fields = ('email', 'public_visible', 'contact_visible')
 
 
 class PhoneForm(ModelForm):

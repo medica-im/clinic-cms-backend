@@ -321,11 +321,6 @@ class PhoneNumber(models.Model):
 
 class Email(models.Model):
 
-    class EmailType(models.TextChoices):
-        PERSONAL = 'P', _('Personal')
-        WORK = 'W', _('Work')
-        MSSANTE = 'M', 'MSSanté'
-
     contact = models.ForeignKey(
         Contact,
         on_delete=models.CASCADE,
@@ -341,7 +336,6 @@ class Email(models.Model):
         blank=True
     )
     email = models.EmailField()
-    type = models.CharField(max_length=255, choices=EmailType.choices)
     public_visible = models.BooleanField(default=False)
     contact_visible = models.BooleanField(default=False)
 
