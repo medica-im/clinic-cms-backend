@@ -82,18 +82,12 @@ class PhoneNumberSerializer(serializers.ModelSerializer):
 
 
 class EmailSerializer(serializers.ModelSerializer):
-    type_display = serializers.CharField(
-        source='get_type_display'
-    )
     class Meta:
         model = Email
         fields = [
             'id',
             'email',
-            'type',
-            'type_display',
         ]
-        depth = 2
 
 
 class WebsiteSerializer(serializers.ModelSerializer):
