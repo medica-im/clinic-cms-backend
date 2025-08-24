@@ -248,9 +248,9 @@ def get_avatar_url(
     except (Contact.DoesNotExist, AttributeError):
         entry_avatar = None
     try:
-        e_avatar = Contact.objects.get(neomodel_uid=e.uid).profile_image
+        effector_avatar = Contact.objects.get(neomodel_uid=e.uid).profile_image
     except (Contact.DoesNotExist, AttributeError):
-        e_avatar = None
+        effector_avatar = None
     try:
         ef_avatar = Contact.objects.get(neomodel_uid=ef.uid).profile_image
     except (Contact.DoesNotExist, AttributeError):
@@ -261,13 +261,11 @@ def get_avatar_url(
         f_avatar = None
     if (entry_avatar):
         return get_avatar_dict(entry_avatar)
-    if (e_avatar and ef_avatar):
-        return get_avatar_dict(ef_avatar)
-    if (not ef_avatar and e_avatar):
-        return get_avatar_dict(e_avatar)
     if (ef_avatar):
         return get_avatar_dict(ef_avatar)
-    if (e is None and ef is None and f):
+    if (effector_avatar):
+        return get_avatar_dict(effector_avatar)
+    if (f_avatar):
         return get_avatar_dict(f_avatar)
     
 def _get_address(facility: Facility):
@@ -542,7 +540,7 @@ def get_entries(
                 country,
             ) = row
             address = get_address(facility,commune,country)
-            avatar=get_avatar_url(effector, location, facility)
+            avatar=get_avatar_url(entry, effector, location, facility)
             entries.append(
                 {
                     "effector": effector,
