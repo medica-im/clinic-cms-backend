@@ -74,5 +74,5 @@ async def create_item(item: PhonePost, request: Request, jwt: Annotated[dict, De
     await phone_number.asave()
     if roles:
         await phone_number.roles.aset(roles)
-    i['id']=phone_number.id
+    i['id']=phone_number.pk
     return i
