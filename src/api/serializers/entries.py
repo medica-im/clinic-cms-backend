@@ -1,6 +1,8 @@
 import logging
 from neomodel import db
 from fastapi import HTTPException
+from django.db import IntegrityError
+from addressbook.models import Contact
 from directory.models import (
     Directory,
     Facility,
@@ -98,4 +100,8 @@ def create_entry(dir_name, kwargs)-> str:
         entry.facility.connect(facility)
     connect_orgs(entry, organizations)
     neo4j_directory.entries.connect(entry)
+    try:
+        Contact.objects.create(neomodel_uid=entry.uid)
+    except IntegrityError:
+        pass
     return str(entry.uid)
