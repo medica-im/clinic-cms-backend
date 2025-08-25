@@ -24,18 +24,22 @@ async def delete_item(item_id: str, request: Request, jwt: Annotated[dict, Depen
 async def update_item(item_id: str, item: Phone, request: Request, jwt: Annotated[dict, Depends(JWT)]):
     await authorize_api("phones_v2", request, jwt)
     logger.debug(item)
-    update_item_encoded = jsonable_encoder(item)
-    logger.debug(update_item_encoded)
+    i = jsonable_encoder(item)
     try:
         phone_number = await PhoneNumber.objects.select_related('contact').aget(id=item_id)
         logger.debug(phone_number)
     except PhoneNumber.DoesNotExist:
         raise HTTPException(status_code=404, detail=f"PhoneNumber not found")
-    logger.debug(update_item_encoded)
-    phone_number.type=update_item_encoded['type']
-    phone_number.phone=update_item_encoded['phone']
+    phone_number.type=i['type']
+    phone_number.phone=i['phone']
     await phone_number.asave()
-    return update_item_encoded
+    roles_qs=Role.objects.filter(name__in=i['roles'])
+    roles = []
+    async for id in roles_qs.values_list('id', flat=True):
+        roles.append(id)
+    if roles:
+        await phone_number.roles.aset(roles)
+    return i
 
 @router.get("/phones/{item_id}", response_model=Phone)
 async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
