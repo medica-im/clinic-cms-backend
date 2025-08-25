@@ -87,7 +87,9 @@ class EmailSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'email',
+            'roles',
         ]
+        depth = 2
 
 
 class WebsiteSerializer(serializers.ModelSerializer):
