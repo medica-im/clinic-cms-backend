@@ -33,7 +33,7 @@ class SocialNetworkForm(ModelForm):
 class WebsiteForm(ModelForm):
     class Meta:
         model = Website
-        fields = ('website', 'public_visible', 'contact_visible')
+        fields = ('url', 'public_visible', 'contact_visible')
 
 
 class EmailForm(ModelForm):

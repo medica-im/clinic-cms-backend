@@ -105,7 +105,7 @@ class WebsiteSerializer(serializers.ModelSerializer):
         model = Website
         fields = [
             'id',
-            'website',
+            'url',
             'roles',
         ]
         depth = 2

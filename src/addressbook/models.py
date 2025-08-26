@@ -370,12 +370,12 @@ class Website(models.Model):
         "facility.Organization",
         blank=True
     )
-    website = models.URLField(blank=True)
+    url = models.URLField(blank=True)
     public_visible = models.BooleanField(default=False)
     contact_visible = models.BooleanField(default=False)
 
     def __str__(self):
-        return "%s %s: %s" % (self.contact.first_name, self.website)
+        return "%s: %s" % (self.contact.neomodel_uid, self.url)
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.

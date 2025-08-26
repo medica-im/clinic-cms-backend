@@ -60,7 +60,6 @@ country=(address.country.name, ) )
         for email in emails:
             e = card.add('email')
             e.value = email.email
-            e.type_param = email.type
 
     def add_phones(self):
         contact = self.contact
@@ -78,7 +77,6 @@ country=(address.country.name, ) )
         for web in websites:
             w = card.add('url')
             w.value = web.website
-            w.type_param = web.type
 
     def add_socialnetworks(self):
         contact = self.contact
