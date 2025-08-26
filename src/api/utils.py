@@ -39,5 +39,4 @@ async def set_roles(object, roles):
     async for id in roles_qs.values_list('id', flat=True):
         roles.append(id)
     if roles:
-        roles = getattr(object, 'roles')
-        await roles.aset(roles)
+        await object.roles.aset(roles)
