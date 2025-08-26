@@ -1,5 +1,6 @@
 import logging
 from django.contrib.sites.models import Site
+from access.models import Role
 from fastapi import Request, HTTPException, status
 from directory.models import Directory
 
@@ -31,3 +32,12 @@ async def get_directory_from_hostname(hostname):
             f'Directory with site {site} does not exist.'
         )
         raise e
+
+async def set_roles(object, roles):
+    roles_qs=Role.objects.filter(name__in=roles)
+    roles = []
+    async for id in roles_qs.values_list('id', flat=True):
+        roles.append(id)
+    if roles:
+        roles = getattr(object, 'roles')
+        await roles.aset(roles)

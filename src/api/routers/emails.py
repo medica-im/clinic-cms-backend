@@ -8,6 +8,7 @@ from access.models import Role
 from api.types.email import Email, EmailPost
 from api.auth import JWT
 from api.auth import authorize_api
+from api.utils import set_roles
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +26,18 @@ async def delete_item(item_id: str, request: Request, jwt: Annotated[dict, Depen
 async def update_item(item_id: str, item: Email, request: Request, jwt: Annotated[dict, Depends(JWT)]):
     await authorize_api("emails_v2", request, jwt)
     logger.debug(item)
-    update_item_encoded = jsonable_encoder(item)
-    logger.debug(update_item_encoded)
+    i = jsonable_encoder(item)
+    logger.debug(i)
     try:
         email = await DjangoEmail.objects.select_related('contact').aget(id=item_id)
     except DjangoEmail.DoesNotExist:
         raise HTTPException(status_code=404, detail=f"Email not found")
-    logger.debug(update_item_encoded)
-    email.email=update_item_encoded['email']
+    logger.debug(i)
+    email.email=i['email']
     await email.asave()
-    return update_item_encoded
+    await set_roles(email,i['roles'] )
+    logger.debug(email)
+    return i
 
 @router.get("/emails/{item_id}", response_model=Email)
 async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
