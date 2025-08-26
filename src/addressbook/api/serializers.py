@@ -24,7 +24,14 @@ class SocialNetworkSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SocialNetwork
-        fields = ['type', 'type_display', 'handle', 'url']
+        fields = [
+            'type',
+            'type_display',
+            'handle',
+            'url',
+            'roles',
+        ]
+        depth = 2
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -93,16 +100,13 @@ class EmailSerializer(serializers.ModelSerializer):
 
 
 class WebsiteSerializer(serializers.ModelSerializer):
-    type_display = serializers.CharField(
-        source='get_type_display'
-    )
+
     class Meta:
         model = Website
         fields = [
             'id',
             'website',
-            'type',
-            'type_display',
+            'roles',
         ]
         depth = 2
 

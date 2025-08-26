@@ -356,12 +356,6 @@ class Email(models.Model):
 
 class Website(models.Model):
     
-    class WebsiteType(models.TextChoices):
-        WORK = 'W', _('Work')
-        PERSONAL = 'PE', _('Personal')
-        PORTFOLIO = 'PO', _('Portfolio')
-        BLOG = 'Blog', _('Blog')
-
     contact = models.ForeignKey(
         Contact,
         on_delete=models.CASCADE,
@@ -377,26 +371,24 @@ class Website(models.Model):
         blank=True
     )
     website = models.URLField(blank=True)
-    type = models.CharField(max_length=255, choices=WebsiteType.choices)
     public_visible = models.BooleanField(default=False)
     contact_visible = models.BooleanField(default=False)
 
     def __str__(self):
-        return "%s %s: %s" % (self.contact.first_name, self.type, self.website)
+        return "%s %s: %s" % (self.contact.first_name, self.website)
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
         try:
             update_contact_timestamp(self.contact.neomodel_uid)
         except TypeError as e:
-            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
+            logger.warning(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class SocialNetwork(models.Model):
 
     class SocialNetworkType(models.TextChoices):
-        SKYPE = 'S', 'Skype'
-        TWITTER = 'T', 'Twitter'
+        TWITTER = 'T', 'X'
         LINKEDIN = 'LI', 'LinkedIn'
         FACEBOOK = 'F', 'Facebook'
         PINTEREST = 'P', 'Pinterest'
@@ -405,6 +397,8 @@ class SocialNetwork(models.Model):
         TIKTOK = 'TT', 'TikTok'
         SNAPCHAT = 'SC', 'Snapchat'
         TWITCH = 'TH', 'Twitch'
+        BLUESKY = 'B', 'Bluesky'
+        MASTODON = 'M', 'Mastodon'
 
     contact = models.ForeignKey(
         Contact,
