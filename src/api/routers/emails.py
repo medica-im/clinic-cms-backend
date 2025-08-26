@@ -56,10 +56,6 @@ async def create_item(item: EmailPost, request: Request, jwt: Annotated[dict, De
         contact = await Contact.objects.aget(neomodel_uid=i['entry'])
     except Contact.DoesNotExist:
         raise HTTPException(status_code=404, detail=f"Contact {i['entry']} not found")
-    roles_qs=Role.objects.filter(name__in=i['roles'])
-    roles = []
-    async for id in roles_qs.values_list('id', flat=True):
-        roles.append(id)
     try:
         email = await DjangoEmail.objects.acreate(
             contact = contact,
@@ -68,7 +64,6 @@ async def create_item(item: EmailPost, request: Request, jwt: Annotated[dict, De
     except DatabaseError as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
     await email.asave()
-    if roles:
-        await email.roles.aset(roles)
+    await set_roles(email,i['roles'] )
     i['id']=email.pk
     return i
