@@ -14,3 +14,4 @@ class Website(BaseModel):
 class WebsitePost(BaseModel):
     url: str
     roles: list[Roles]
+    entry: str
