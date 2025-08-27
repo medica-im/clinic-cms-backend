@@ -39,6 +39,7 @@ async def update_item(item_id: str, item: Phone, request: Request, jwt: Annotate
         roles.append(id)
     if roles:
         await phone_number.roles.aset(roles)
+    logger.debug(f'after aset: {phone_number.roles.all()}')
     return i
 
 @router.get("/phones/{item_id}", response_model=Phone)
