@@ -171,7 +171,7 @@ def createEffectorRessource(request, node):
     try:
         carte_vitale = location.carteVitale
     except Exception as e:
-        carte_vitale = False
+        carte_vitale = None
     #third party payer 
     serializer = ThirdPartyPayerSerializer(
         node["third_party_payers"],
