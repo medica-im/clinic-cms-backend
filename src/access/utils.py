@@ -56,4 +56,13 @@ def authorize(endpoint: str, role: Role, permissions: int):
     except AccessControl.DoesNotExist:
         return False
     return ac.check_permission(permissions)
-    
+
+def get_access(roles: list[Role]):
+    role_names = [role.name for role in roles]
+    roles_set=set(role_names)
+    if roles_set == set(['anonymous', 'staff', 'administrator', 'superuser']):
+        return 'W'
+    elif roles_set == set(['staff', 'administrator', 'superuser']):
+        return 'M'
+    elif roles_set == set(['administrator', 'superuser']):
+        return 'A'

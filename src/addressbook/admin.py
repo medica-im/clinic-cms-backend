@@ -23,9 +23,11 @@ from neomodel import db
 from directory.models import Effector, Entry, Directory
 from directory.models import Facility as NeoFacility
 from directory.utils import contact_uids
+from access.utils import get_access
 import logging
 
 logger=logging.getLogger(__name__)
+
 
 class ContactDirectoryFilter(admin.SimpleListFilter):
     title = 'Directory'
@@ -298,7 +300,28 @@ class PhoneNumberAdmin(admin.ModelAdmin):
     list_filter = ["type"]
 
 
-admin.site.register(Website, admin.ModelAdmin)
+@admin.register(Website)
+class WebsiteAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'url',
+        'access_tag',
+        'contact',
+    )
+    fields = (
+        'id',
+        'url',
+        'access_tag',
+        'contact',
+    )
+    readonly_fields = (
+        'access_tag',
+    )
+    @admin.display(description=_('Access'))
+    def access_tag(self, obj):
+        return get_access(obj.roles.all())
+
+
 admin.site.register(SocialNetwork, admin.ModelAdmin)
 admin.site.register(Email, admin.ModelAdmin)
 admin.site.register(Profile, SimpleHistoryAdmin)
