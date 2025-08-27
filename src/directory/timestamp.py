@@ -5,7 +5,7 @@ from neomodel import db
 
 logger = logging.getLogger(__name__)
 
-def update_contact_timestamp(uid: uuid.UUID):
+def update_contact_timestamp(uid: uuid.UUID|None):
     if not isinstance(uid, uuid.UUID):
         try:
             uid=uuid.UUID(uid)

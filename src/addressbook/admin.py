@@ -63,17 +63,18 @@ class ContactOrganizationFilter(admin.SimpleListFilter):
         )
         lookups.append((0, _('None')))
         return lookups
-        
+
     def queryset(self, request, queryset):
-        if not self.value():
+        id = self.value()
+        if not id:
             return queryset
-        if self.value() == '0':
+        elif id == '0':
             org = None
         else:
-            org = Organization.objects.get(id=int(self.value()))
+            org = Organization.objects.get(id=int(id))
         return queryset.filter(organisation=org)
-    
-    
+
+
 class ContactFacilityFilter(admin.SimpleListFilter):
     title = 'Facility'
     parameter_name = 'facility'

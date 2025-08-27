@@ -252,12 +252,12 @@ class Address(models.Model):
             logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
 
 
-class PhoneNumberManager(models.Manager):
-    def get_by_natural_key(self, phone, contact):
-        return self.get(
-            phone=phone,
-            contact=Contact.objects.get_by_natural_key(contact)
-        )
+#class PhoneNumberManager(models.Manager):
+#    def get_by_natural_key(self, phone, contact):
+#        return self.get(
+#            phone=phone,
+#            contact=Contact.objects.get_by_natural_key(contact)
+#        )
 
 
 class PhoneNumber(models.Model):
@@ -287,7 +287,7 @@ class PhoneNumber(models.Model):
     type = models.CharField(max_length=255, choices=TelephoneType.choices)
     public_visible = models.BooleanField(default=False)
     contact_visible = models.BooleanField(default=False)
-    objects = PhoneNumberManager()
+#    objects = PhoneNumberManager()
 
     class Meta:
         managed = True
@@ -303,20 +303,20 @@ class PhoneNumber(models.Model):
             self.phone
         )
 
-    def natural_key(self):
-        return (self.phone,) + self.contact.natural_key()
+#    def natural_key(self):
+#        return (self.phone,) + self.contact.natural_key()
 
-    natural_key.dependencies = [
-        'addressbook.contact',
-        'facility.organization'
-    ]
+#    natural_key.dependencies = [
+#        'addressbook.contact',
+#        'facility.organization'
+#    ]
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
         try:
             update_contact_timestamp(self.contact.neomodel_uid)
         except TypeError as e:
-            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
+            logger.warning(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class Email(models.Model):
@@ -431,7 +431,7 @@ class SocialNetwork(models.Model):
         try:
             update_contact_timestamp(self.contact.neomodel_uid)
         except TypeError as e:
-            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
+            logger.warning(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class Profile(models.Model):
@@ -535,8 +535,8 @@ class Appointment(models.Model):
 
     def __str__(self):
         return "%s: %s" % (
-            self.contact.formatted_name,
-            self.phone or self.url or self.app.name
+            self.contact.neomodel_uid,
+            self.phone or self.url or self.app
         )
 
     def save(self, *args, **kwargs):
@@ -544,7 +544,7 @@ class Appointment(models.Model):
         try:
             update_contact_timestamp(self.contact.neomodel_uid)
         except TypeError as e:
-            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
+            logger.warning(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class App(models.Model):
