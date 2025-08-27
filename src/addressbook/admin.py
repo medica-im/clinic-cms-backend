@@ -304,13 +304,11 @@ class PhoneNumberAdmin(admin.ModelAdmin):
 @admin.register(Website)
 class WebsiteAdmin(admin.ModelAdmin):
     list_display = (
-        'id',
         'url',
         'access_tag',
         'contact',
     )
     fields = (
-        'id',
         'url',
         'access_tag',
         'contact',
