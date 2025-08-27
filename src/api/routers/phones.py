@@ -39,6 +39,7 @@ async def update_item(item_id: str, item: Phone, request: Request, jwt: Annotate
         roles.append(id)
     if roles:
         await phone_number.roles.aset(roles)
+    phone_number = await PhoneNumber.objects.prefetch_related("roles").aget(id=item_id)
     logger.debug(f'after aset: {phone_number.roles.all()}')
     return i
 
