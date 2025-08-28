@@ -117,7 +117,7 @@ async def get_entry(uid:str)->Entry:
 async def update_entry(uid:str, update_data: dict[str, Any]):
     logger.debug(update_data)
     entry = await EntryAgraph.nodes.get(uid=uid)
-    if update_data['carte_vitale']:
+    if update_data['carte_vitale'] != None:
         entry.carte_vitale=update_data['carte_vitale']
         await entry.save()
     return Entry.model_validate(entry.__properties__)
