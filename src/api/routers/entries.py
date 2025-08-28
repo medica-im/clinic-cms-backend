@@ -16,8 +16,8 @@ async def entries(effector_type: str|None = None, effector: str|None = None, fac
     return get_entries(effector_type=effector_type, effector=effector, facility=facility)
 
 @router.get("/entries/{uid}")
-async def entry(entry_uid: str) -> Entry:
-    return await get_entry(entry_uid)
+async def entry(uid: str) -> Entry:
+    return await get_entry(uid)
 
 @router.post("/entries", status_code=status.HTTP_201_CREATED)
 async def post_entry(entry: EntryPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> str:
@@ -26,8 +26,8 @@ async def post_entry(entry: EntryPost, request: Request, jwt: Annotated[dict, De
     return create_entry(directory.name, entry.model_dump())
 
 @router.patch("/entries/{uid}", status_code=status.HTTP_201_CREATED)
-async def patch_entry(entry_uid: str, entry: EntryPatch, request: Request) -> Entry:
+async def patch_entry(uid: str, entry: EntryPatch, request: Request) -> Entry:
     #await authorize_api("entries_v2", request, jwt)
     logger.warning('⚠ DANGER TEST MODE: ALWAYS AUTHORIZE {test=}')
-    return await update_entry(entry_uid, entry.model_dump(exclude_unset=True))
+    return await update_entry(uid, entry.model_dump(exclude_unset=True))
 
