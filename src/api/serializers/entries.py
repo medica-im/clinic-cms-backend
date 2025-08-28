@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 from neomodel import db
 from fastapi import HTTPException
 from django.db import IntegrityError
@@ -13,9 +14,11 @@ from directory.models import (
     DepartmentOfFrance,
     Effector,
     EffectorType,
-    Entry,
+    Entry as EntryGraph,
     Neo4jDirectory,
 )
+from directory.models.agraph import Entry as EntryAgraph
+from api.types.entry import EntryPatch, Entry
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +61,7 @@ def entry_if_exists(effector: Effector, effector_type: EffectorType, facility: F
     active_entries = []
     inactive_entries = []
     for uid in entry_uids:
-        entry=Entry.nodes.get(uid=uid)
+        entry=EntryGraph.nodes.get(uid=uid)
         if entry.active:
             active_entries.append(entry)
         else:
@@ -75,7 +78,7 @@ def entry_if_exists(effector: Effector, effector_type: EffectorType, facility: F
         entry.save()
         return entry
 
-def connect_orgs(entry:Entry, organizations: list[str]|None):
+def connect_orgs(entry:EntryGraph, organizations: list[str]|None):
     if organizations:
         for org_uid in organizations:
             try:
@@ -93,7 +96,7 @@ def create_entry(dir_name, kwargs)-> str:
     facility=Facility.nodes.get(uid=kwargs["facility"])
     entry=entry_if_exists(effector,effector_type,facility)
     if not entry:
-        entry=Entry()
+        entry=EntryGraph()
         entry.save()
         entry.effector.connect(effector)
         entry.effector_type.connect(effector_type)
@@ -105,3 +108,15 @@ def create_entry(dir_name, kwargs)-> str:
     except IntegrityError:
         pass
     return str(entry.uid)
+
+async def get_entry(uid:str)->Entry:
+    entry = await EntryAgraph.nodes.get(uid=uid)
+    return Entry.model_validate(entry.__properties__)
+
+async def update_entry(uid:str, update_data: dict[str, Any]):
+    logger.debug(update_data)
+    entry = await EntryAgraph.nodes.get(uid=uid)
+    if update_data['carte_vitale']:
+        entry.carte_vitale=update_data['carte_vitale']
+        await entry.save()
+    return Entry.model_validate(entry.__properties__)

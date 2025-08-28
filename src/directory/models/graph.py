@@ -391,6 +391,10 @@ class Entry(StructuredNode):
     effector_type = RelationshipTo('EffectorType', 'HAS_EFFECTOR_TYPE')
     organizations = RelationshipTo('Organization', 'MEMBER_OF')
     memberships = RelationshipTo('Entry', 'MEMBER_OF')
+    carte_vitale = BooleanProperty(
+        index=True,
+        default=None
+    )
 
 
 class Directory(StructuredNode):

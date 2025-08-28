@@ -389,6 +389,10 @@ class Entry(AsyncStructuredNode):
     effector_type = AsyncRelationshipTo('EffectorType', 'HAS_EFFECTOR_TYPE')
     organizations = AsyncRelationshipTo('Organization', 'MEMBER_OF')
     memberships = AsyncRelationshipTo('Entry', 'MEMBER_OF')
+    carte_vitale = BooleanProperty(
+        index=True,
+        default=None
+    )
 
 
 class Directory(AsyncStructuredNode):
