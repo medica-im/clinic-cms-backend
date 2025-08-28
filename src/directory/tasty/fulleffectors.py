@@ -172,7 +172,7 @@ def createEffectorRessource(request, node):
         carte_vitale=node["entry"].carte_vitale
     except Exception as e:
         carte_vitale = None
-    if not carte_vitale:
+    if carte_vitale is None:
         try:
             carte_vitale = location.carteVitale
         except Exception as e:
