@@ -111,6 +111,7 @@ def create_entry(dir_name, kwargs)-> str:
 
 async def get_entry(uid:str)->Entry:
     entry = await EntryAgraph.nodes.get(uid=uid)
+    logger.debug(entry.__properties__)
     return Entry.model_validate(entry.__properties__)
 
 async def update_entry(uid:str, update_data: dict[str, Any]):

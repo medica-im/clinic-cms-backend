@@ -16,8 +16,8 @@ class EntryPatch(BaseModel):
 class Entry(BaseModel):
     uid: str
     active: bool
-    deactivation_datetime: str
-    deactivation_reason: str
+    deactivation_datetime: str|None
+    deactivation_reason: str|None
     updatedAt: int = 0
     contactUpdatedAt: int = 0
     effector: Any = Field(exclude=True)
