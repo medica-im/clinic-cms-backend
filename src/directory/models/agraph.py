@@ -287,10 +287,6 @@ class HealthWorker(Effector):
         unique_index=True,
         max_length=11
     )
-    adeli = StringProperty(
-        unique_index=True,
-        max_length=9
-    )
     spoken_languages = ArrayProperty(base_property=StringProperty())
 
 

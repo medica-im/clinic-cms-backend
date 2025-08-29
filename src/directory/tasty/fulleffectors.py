@@ -62,7 +62,6 @@ class EffectorObj(object):
             third_party_payers,
             payment_methods,
             rpps,
-            adeli,
             spoken_languages,
             avatar,
         ):
@@ -87,7 +86,6 @@ class EffectorObj(object):
         self.third_party_payers = third_party_payers
         self.payment_methods = payment_methods
         self.rpps = rpps
-        self.adeli = adeli
         self.spoken_languages = spoken_languages
         self.avatar = avatar
 
@@ -172,11 +170,6 @@ def createEffectorRessource(request, node):
         carte_vitale=node["entry"].carte_vitale
     except Exception as e:
         carte_vitale = None
-    if carte_vitale is None:
-        try:
-            carte_vitale = location.carteVitale
-        except Exception as e:
-            carte_vitale = None
     #third party payer 
     serializer = ThirdPartyPayerSerializer(
         node["third_party_payers"],
@@ -190,7 +183,6 @@ def createEffectorRessource(request, node):
     )
     payment_methods = serializer.data
     rpps=health_worker.rpps
-    adeli=health_worker.adeli
     try:
         spoken_languages=[
             display_tag_name(t) for t in health_worker.spoken_languages
@@ -221,7 +213,6 @@ def createEffectorRessource(request, node):
         third_party_payers,
         payment_methods,
         rpps,
-        adeli,
         spoken_languages,
         avatar,
     )
@@ -265,7 +256,6 @@ class FullEffectorResource(Resource):
         null=True
     )
     rpps = fields.CharField(attribute='rpps', null=True)
-    adeli = fields.CharField(attribute='adeli', null=True)
     spoken_languages = fields.ListField(attribute='spoken_languages', null=True)
     avatar = fields.DictField(attribute='avatar', null=True)
 

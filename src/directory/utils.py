@@ -679,9 +679,9 @@ def find_entry(
         WITH *
         OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
         WITH *
-        OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN rel.thirdPartyPayment
+        OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN entry.third_party_payment
         WITH *, COLLECT(tpp) AS tpp
-        OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN rel.payment
+        OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN entry.payment
         RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm;
         """
     )

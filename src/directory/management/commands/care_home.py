@@ -7,16 +7,7 @@ from django.contrib.auth import get_user_model
 from workforce.models import NetworkEdge, NodeSet, NetworkNode
 from facility.models import Organization
 from django.db import DatabaseError, IntegrityError
-from directory.models import (
-    Effector,
-    HCW,
-    EffectorType,
-    Commune,
-    Organization,
-    Facility,
-    Directory,
-    EffectorFacility,
-)
+from directory.models import Effector
 from addressbook.models import Contact, PhoneNumber
 from neomodel import Q, db
 import uuid
