@@ -745,7 +745,7 @@ def find_entry(
     payment_methods = [
         PaymentMethod.inflate(pm)
         for pm in row[cols.index('pm')]
-    ]
+    ] or None
     health_worker=HealthWorker.inflate(row[cols.index('e')])
     avatar=get_avatar_url(entry, effector, effector_facility, facility)
     return {
