@@ -36,7 +36,7 @@ apps.check_models_ready()
 from fastapi import FastAPI, Request, Cookie
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers import organizations, organization_types, effector_types, facilities, communes, departments, entries, effectors, auth, phones, monkeys, emails, websites
+from api.routers import organizations, organization_types, effector_types, facilities, communes, departments, entries, effectors, auth, phones, monkeys, emails, websites, payment_methods
 from django.conf import settings
 from fastapi_nextauth_jwt.exceptions import MissingTokenError
 
@@ -64,7 +64,8 @@ app.include_router(auth.router)
 app.include_router(phones.router)
 app.include_router(monkeys.router)
 app.include_router(emails.router)
-app.include_router(websites.router )
+app.include_router(websites.router)
+app.include_router(payment_methods.router)
 
 @app.get("/")
 async def root():
