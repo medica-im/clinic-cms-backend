@@ -4,7 +4,6 @@ from neomodel.contrib import spatial_properties as neomodel_spatial
 from neomodel import (
     config,
     AsyncStructuredNode,
-    ArrayProperty,
     BooleanProperty,
     StringProperty,
     IntegerProperty,
@@ -165,7 +164,6 @@ class EffectorFacility(AsyncStructuredRel):
     uid = StringProperty(default=uuid4)
     directories = ArrayProperty(base_property=StringProperty())
     thirdPartyPayment = ArrayProperty(base_property=StringProperty())
-    payment = ArrayProperty(base_property=StringProperty())
     contactUpdatedAt = IntegerProperty(default=0)
     active = BooleanProperty(
         index=True,
@@ -389,6 +387,7 @@ class Entry(AsyncStructuredNode):
         index=True,
         default=None
     )
+    payment = ArrayProperty(base_property=StringProperty())
 
 
 class Directory(AsyncStructuredNode):

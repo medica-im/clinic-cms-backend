@@ -164,7 +164,6 @@ class EffectorFacility(StructuredRel):
     uid = StringProperty(default=uuid4)
     directories = ArrayProperty(base_property=StringProperty())
     thirdPartyPayment = ArrayProperty(base_property=StringProperty())
-    payment = ArrayProperty(base_property=StringProperty())
     contactUpdatedAt = IntegerProperty(default=0)
     active = BooleanProperty(
         index=True,
@@ -391,6 +390,7 @@ class Entry(StructuredNode):
         index=True,
         default=None
     )
+    payment = ArrayProperty(base_property=StringProperty())
 
 
 class Directory(StructuredNode):

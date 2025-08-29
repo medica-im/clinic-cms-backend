@@ -119,5 +119,7 @@ async def update_entry(uid:str, update_data: dict[str, Any]):
     entry = await EntryAgraph.nodes.get(uid=uid)
     if 'carte_vitale' in update_data.keys():
         entry.carte_vitale=update_data['carte_vitale']
-        await entry.save()
+    if 'payment' in update_data.keys():
+        entry.payment=update_data['payment']
+    await entry.save()
     return Entry.model_validate(entry.__properties__)
