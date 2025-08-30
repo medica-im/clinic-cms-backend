@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated
 from fastapi import APIRouter, status, Request, Depends
-from src.api.types.third_party_payer import ThirdPartyPayer
+from api.types.third_party_payer import ThirdPartyPayer
 from directory.models.agraph import ThirdPartyPayer as AsyncThirdPartyPayer
 from api.auth import authorize_api
 from api.auth import JWT
