@@ -388,6 +388,7 @@ class Entry(AsyncStructuredNode):
         default=None
     )
     payment = ArrayProperty(base_property=StringProperty())
+    third_party_payer = ArrayProperty(base_property=StringProperty())
 
 
 class Directory(AsyncStructuredNode):
