@@ -29,4 +29,4 @@ class Entry(BaseModel):
     #memberships: Any = Field(exclude=True)
     carte_vitale: bool|None = None
     payment: list[str]|None =None
-    third_party_payment: list[str]|None = None
+    third_party_payer: list[str]|None = None
