@@ -121,7 +121,7 @@ async def update_entry(uid:str, update_data: dict[str, Any]):
         entry.carte_vitale=update_data['carte_vitale']
     if 'payment' in update_data.keys():
         entry.payment=update_data['payment']
-    if 'third_party_payment' in update_data.keys():
-        entry.third_party_payment=update_data['third_party_payment']
+    if 'third_party_payer' in update_data.keys():
+        entry.third_party_payer=update_data['third_party_payer']
     await entry.save()
     return Entry.model_validate(entry.__properties__)
