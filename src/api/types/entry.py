@@ -12,6 +12,7 @@ class EntryPost(BaseModel):
 class EntryPatch(BaseModel):
     carte_vitale: bool|None = None
     payment: list[str]|None = None
+    third_party_payment: list[str]|None = None
 
 
 class Entry(BaseModel):
@@ -27,3 +28,5 @@ class Entry(BaseModel):
     #organizations: Any = Field(exclude=True)
     #memberships: Any = Field(exclude=True)
     carte_vitale: bool|None = None
+    payment: list[str]|None =None
+    third_party_payment: list[str]|None = None
