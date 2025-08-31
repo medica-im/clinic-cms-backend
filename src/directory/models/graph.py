@@ -195,11 +195,6 @@ class Effector(StructuredNode):
     #    'Commune',
     #    'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
     #)
-    convention = RelationshipTo(
-        'Convention',
-        'HAS_CONVENTION',
-        cardinality=ZeroOrOne,
-    )
     updatedAt = IntegerProperty(default=0)
     createdAt = IntegerProperty(default=0)
     gender = StringProperty(
@@ -392,7 +387,7 @@ class Entry(StructuredNode):
     )
     payment = ArrayProperty(base_property=StringProperty())
     third_party_payer = ArrayProperty(base_property=StringProperty())
-
+    convention = StringProperty()
 
 
 class Directory(StructuredNode):
