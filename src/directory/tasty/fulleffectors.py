@@ -160,10 +160,11 @@ def createEffectorRessource(request, node):
     appointments = node["appointments"]
     profile = node["profile"]
     # convention
-    serializer = ConventionSerializer(node["convention"])
-    try:
+    convention_db = node["convention"]
+    if convention_db:
+        serializer = ConventionSerializer(convention_db)
         convention = serializer.data
-    except IndexError:
+    else:
         convention = None
     # carte vitale
     try:
