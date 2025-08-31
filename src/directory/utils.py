@@ -15,6 +15,7 @@ from directory.models import (
     HealthWorker,
     Entry
 )
+from directory.models.graph import Convention
 from addressbook.models import Contact
 from neomodel import db
 from addressbook.api.serializers import (
@@ -682,7 +683,8 @@ def find_entry(
         OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN entry.third_party_payer
         WITH *, COLLECT(tpp) AS tpp
         OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN entry.payment
-        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm;
+        OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
+        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm,convention;
         """
     )
     results, cols = db.cypher_query(query)
@@ -746,6 +748,10 @@ def find_entry(
         PaymentMethod.inflate(pm)
         for pm in row[cols.index('pm')]
     ] or None
+    try:
+        convention =  Convention.inflate(row[cols.index('convention')])
+    except:
+        convention = None
     health_worker=HealthWorker.inflate(row[cols.index('e')])
     avatar=get_avatar_url(entry, effector, effector_facility, facility)
     return {
@@ -765,7 +771,8 @@ def find_entry(
         "third_party_payers": third_party_payers,
         "payment_methods": payment_methods,
         "health_worker": health_worker,
-        "avatar": avatar
+        "avatar": avatar,
+        "convention": convention
     }
 
 def effector_types(directory: Directory) -> list[str]:
