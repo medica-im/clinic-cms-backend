@@ -13,6 +13,7 @@ class EntryPatch(BaseModel):
     carte_vitale: bool|None = None
     payment: list[str]|None = None
     third_party_payer: list[str]|None = None
+    convention: str|None = None
 
 
 class Entry(BaseModel):
