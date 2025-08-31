@@ -741,7 +741,7 @@ def find_entry(
     third_party_payers = [
         ThirdPartyPayer.inflate(payer)
         for payer in row[cols.index('tpp')]
-    ]
+    ] or None
     payment_methods = [
         PaymentMethod.inflate(pm)
         for pm in row[cols.index('pm')]
