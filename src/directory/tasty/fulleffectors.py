@@ -175,7 +175,7 @@ def createEffectorRessource(request, node):
         node["third_party_payers"],
         many=True
     )
-    third_party_payers = serializer.data
+    third_party_payers = serializer.data or None
     # payment_methods (reuse ThirdPartyPayerSerialize)
     serializer = ThirdPartyPayerSerializer(
         node["payment_methods"],
