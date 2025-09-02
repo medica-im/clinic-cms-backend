@@ -34,4 +34,4 @@ class Command(BaseCommand):
             except ValueError:
                 neomodel_uid=None
             if neomodel_uid:
-                self.notice(f"{neomodel_uid.hex=}")
+                self.notice(f"{neomodel_uid.hex=}, {a.house_call=}")
