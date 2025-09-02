@@ -398,3 +398,17 @@ class Directory(AsyncStructuredNode):
 class Monkey(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name = StringProperty(unique_index=True)
+
+
+class Appointment(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    url = StringProperty()
+    phone = StringProperty()
+
+
+class Office(Appointment):
+    pass
+
+
+class HouseCall(Appointment):
+    pass

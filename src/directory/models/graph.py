@@ -396,3 +396,17 @@ class Directory(StructuredNode):
     entries = RelationshipTo('Entry', 'HAS_ENTRY')
     organization = RelationshipTo('Organization', 'OWNED_BY')
     owner = RelationshipTo('Entry', 'OWNED_BY')
+
+
+class Appointment(StructuredNode):
+    uid = UniqueIdProperty()
+    url = StringProperty()
+    phone = StringProperty()
+
+
+class Office(Appointment):
+    pass
+
+
+class HouseCall(Appointment):
+    pass
