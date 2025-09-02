@@ -50,9 +50,9 @@ class Command(BaseCommand):
                 if to_continue:
                     continue
                 if _a.house_call:
-                    a = HouseCall(phone=_a.phone, url=_a.url)
+                    a = HouseCall(phone=_a.phone or None, url=_a.url or None)
                 else:
-                    a = Appointment(phone=_a.phone, url=_a.url)
+                    a = Appointment(phone=_a.phone or None, url=_a.url or None)
                 a.save()
                 entry.appointments.connect(a)
                 new_count+=1
