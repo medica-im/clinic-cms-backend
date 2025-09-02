@@ -37,11 +37,12 @@ class Command(BaseCommand):
                 neomodel_uid=None
             if neomodel_uid:
                 self.notice(f"{_a=}")
+                to_continue=False
                 try:
                     entry: Entry = Entry.nodes.get(uid=neomodel_uid.hex)
                 except:
-                    raise CommandError("Entry not found for uid={neomodel_uid}")
-                to_continue=False
+                    self.warn(f"Entry not found for uid={neomodel_uid}. Skipping...")
+                    continue
                 for a in entry.appointments.all():
                     if (a.phone and a.phone == _a.phone) or (a.url and a.url == _a.url):
                         to_continue=True
