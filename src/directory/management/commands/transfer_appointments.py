@@ -38,7 +38,7 @@ class Command(BaseCommand):
             if neomodel_uid:
                 self.notice(f"{_a=}")
                 try:
-                    entry: Entry = Entry.nodes.get(uid=neomodel_uid)
+                    entry: Entry = Entry.nodes.get(uid=neomodel_uid.hex)
                 except:
                     raise CommandError("Entry not found for uid={neomodel_uid}")
                 to_continue=False
