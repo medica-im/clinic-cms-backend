@@ -388,7 +388,7 @@ class Entry(StructuredNode):
     payment = ArrayProperty(base_property=StringProperty())
     third_party_payer = ArrayProperty(base_property=StringProperty())
     convention = StringProperty()
-
+    appointments = RelationshipTo('Appointment', 'HAS_APPOINTMENT') 
 
 class Directory(StructuredNode):
     uid = UniqueIdProperty()
