@@ -29,4 +29,3 @@ async def create_item(item: AppointmentPost, request: Request):
     appointment_node = serializer.save()
     appointment_dict = appointments_from_neomodel(i["entry"], appointment_node)
     return appointment_dict
-    

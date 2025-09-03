@@ -15,7 +15,7 @@ from directory.models import (
     HealthWorker,
     Entry
 )
-from directory.models.graph import Appointment
+from directory.models.graph import Appointment, Office, HouseCall
 from directory.models.graph import Convention
 from addressbook.models import Contact
 from neomodel import db
@@ -122,7 +122,7 @@ def appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment)
     logger.debug(f"{type(nodes) is Appointment=}")
     if not nodes:
         return None
-    if type(nodes) is Appointment:
+    if type(nodes) in [Appointment, Office, HouseCall]:
         nodes = [nodes]
     data = [
         {
