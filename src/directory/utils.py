@@ -108,7 +108,7 @@ def get_profile_neomodel(entry: Entry, e: Effector, ef: EffectorFacility, f: Fac
         many=False
     )
 
-def get_appointments_neomodel(entry: str, nodes: list[Appointment]):
+def get_appointments_neomodel(entry: str, nodes: list[Appointment]|Appointment):
     def get_location(node: Appointment):
         labels = node.labels()
         if 'HouseCall' in labels:
@@ -119,9 +119,10 @@ def get_appointments_neomodel(entry: str, nodes: list[Appointment]):
             return None
     logger.debug(f"{type(nodes)=}")
     logger.debug(f"{type(nodes) is Appointment=}")
-
     if not nodes:
         return None
+    if type(nodes) is Appointment:
+        nodes = [nodes]
     data = [
         {
             'entry': entry,
