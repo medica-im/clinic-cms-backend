@@ -126,6 +126,7 @@ def get_appointments_neomodel(entry: str, nodes: list[Appointment]|Appointment):
         nodes = [nodes]
     data = [
         {
+            'uid': node.uid,
             'entry': entry,
             'phone': node.phone,
             'url': node.url,
