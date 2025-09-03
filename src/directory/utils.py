@@ -24,10 +24,10 @@ from addressbook.api.serializers import (
     EmailSerializer,
     WebsiteSerializer,
     SocialNetworkSerializer,
-    AppointmentSerializer,
     AddressSerializer,
     ProfileSerializer,
 )
+from api.serializers.appointment import AppointmentSerializer
 from access.utils import get_role
 from rest_framework.serializers import ModelSerializer
 from rdflib.plugins.shared.jsonld.keys import NONE
