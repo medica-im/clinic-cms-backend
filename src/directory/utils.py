@@ -726,7 +726,7 @@ def find_entry(
     country=Country.inflate(row[cols.index('country')])
     effector_type=EffectorType.inflate(row[cols.index('et')])
     address = get_address(facility,commune,country)
-    appointment_nodes = Appointment.inflate(row[cols.index('a')])
+    appointment_nodes = [Appointment.inflate(node) for node in row[cols.index('a')]]
     phones = get_phones_neomodel(
         entry=entry,
         e=effector,
