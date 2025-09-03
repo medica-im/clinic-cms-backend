@@ -706,7 +706,7 @@ def find_entry(
         OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN entry.payment
         OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
         OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
-        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm,convention,a;
+        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm,convention,COLLECT(a) AS a;
         """
     )
     results, cols = db.cypher_query(query)
