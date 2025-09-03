@@ -111,33 +111,6 @@ class WebsiteSerializer(serializers.ModelSerializer):
         depth = 2
 
 
-class AppointmentSerializer(serializers.Serializer):
-    uid = serializers.CharField(required=False)
-    entry = serializers.CharField()
-    url = serializers.URLField(required=False, allow_null=True)
-    phone = serializers.CharField(required=False, allow_null=True)
-    location = serializers.ChoiceField(choices=['office', 'house_call'], allow_null=True)
-
-    def create(self, validated_data):
-        location = validated_data["location"]
-        kwargs = {
-            'url': validated_data["url"],
-            'phone': validated_data["phone"]
-        }
-        if  location is None:
-            a = Appointment(**kwargs)
-        elif location == 'office':
-            a = Office(**kwargs)
-        elif location == 'house_call':
-            a = HouseCall(**kwargs)
-        a.save()
-        try:
-            entry = Entry.nodes.get(uid=validated_data['entry'])
-        except Exception as e:
-            logger.error(e)
-            raise serializers.ValidationError(f"Entry {validated_data.entry} not found")
-        entry.appointments.connect(a)
-        return a
 
 
 class ContactSerializer(serializers.ModelSerializer):

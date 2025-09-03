@@ -9,7 +9,7 @@ from api.types.appointment import Appointment, AppointmentPost
 from api.auth import JWT
 from api.auth import authorize_api
 from api.utils import set_roles
-from addressbook.api.serializers import AppointmentSerializer
+from api.serializers.appointment import AppointmentSerializer
 from directory.utils import appointments_from_neomodel
 
 logger = logging.getLogger(__name__)
