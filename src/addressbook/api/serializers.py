@@ -112,6 +112,7 @@ class WebsiteSerializer(serializers.ModelSerializer):
 
 
 class AppointmentSerializer(serializers.Serializer):
+    uid = serializers.CharField(required=False)
     entry = serializers.CharField()
     url = serializers.URLField(required=False, allow_null=True)
     phone = serializers.CharField(required=False, allow_null=True)

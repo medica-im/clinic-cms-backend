@@ -108,7 +108,7 @@ def get_profile_neomodel(entry: Entry, e: Effector, ef: EffectorFacility, f: Fac
         many=False
     )
 
-def get_appointments_neomodel(entry: str, nodes: list[Appointment]|Appointment):
+def appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment):
     def get_location(node: Appointment):
         labels = node.labels()
         if 'HouseCall' in labels:
@@ -752,7 +752,7 @@ def find_entry(
         ef=effector_facility,
         f=facility
     )
-    appointments = get_appointments_neomodel(
+    appointments = appointments_from_neomodel(
         entry=entry.uid,
         nodes=appointment_nodes
     )

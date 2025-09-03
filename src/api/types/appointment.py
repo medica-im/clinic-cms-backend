@@ -7,9 +7,12 @@ class Locations(str, Enum):
     OFFICE = 'office'
 
 
-class Appointment(BaseModel):
-    uid: str
+class AppointmentPost(BaseModel):
     entry: str
     url: str|None = None
     phone: str|None = None
     location: Locations|None = None
+
+
+class Appointment(AppointmentPost):
+    uid: str
