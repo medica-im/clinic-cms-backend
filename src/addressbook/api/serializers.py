@@ -119,13 +119,17 @@ class AppointmentSerializer(serializers.Serializer):
     location = serializers.ChoiceField(choices=['office', 'house_call'], allow_null=True)
 
     def create(self, validated_data):
-        location = validated_data["location"] 
+        location = validated_data["location"]
+        kwargs = {
+            'url': validated_data["url"],
+            'phone': validated_data["phone"]
+        }
         if  location is None:
-            a = Appointment(url=validated_data.url,phone=validated_data.phone)
+            a = Appointment(**kwargs)
         elif location == 'office':
-            a = Office(url=validated_data.url,phone=validated_data.phone)
+            a = Office(**kwargs)
         elif location == 'house_call':
-            a = HouseCall(url=validated_data.url,phone=validated_data.phone)
+            a = HouseCall(**kwargs)
         try:
             entry = Entry.nodes.get(uid=validated_data['entry'])
         except Exception as e:
