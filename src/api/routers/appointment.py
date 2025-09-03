@@ -25,7 +25,7 @@ async def create_item(item: AppointmentPost, request: Request):
     #await authorize_api("appointments_v2", request, jwt)
     i = item.model_dump()
     serializer = AppointmentSerializer(data=i)
-    serializer.is_valid(raise_exception=True):
+    serializer.is_valid(raise_exception=True)
     appointment_node = serializer.save()
     appointment_dict = appointments_from_neomodel(i["entry"], appointment_node)
     return appointment_dict
