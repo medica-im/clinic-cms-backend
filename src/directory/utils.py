@@ -15,6 +15,7 @@ from directory.models import (
     HealthWorker,
     Entry
 )
+from directory.models.graph import Appointment
 from directory.models.graph import Convention
 from addressbook.models import Contact
 from neomodel import db
@@ -107,15 +108,28 @@ def get_profile_neomodel(entry: Entry, e: Effector, ef: EffectorFacility, f: Fac
         many=False
     )
 
-def get_appointments_neomodel(entry: Entry, e: Effector, ef: EffectorFacility, f: Facility):
-    return get_contact_related_neomodel(
-        entry=entry,
-        e=e,
-        ef=ef,
-        f=f,
-        attribute="appointments",
-        Serializer=AppointmentSerializer
-)
+def get_appointments_neomodel(entry: str, nodes: list[Appointment]):
+    def get_location(node: Appointment):
+        labels = node.labels()
+        if 'HouseCall' in labels:
+            return 'house_call'
+        elif 'Office' in labels:
+            return 'office'
+        else:
+            return None
+    data = [
+        {
+            'entry': entry,
+            'phone': node.phone,
+            'url': node.url,
+            'location': get_location(node)
+        } for node in nodes
+    ]
+    serializer = AppointmentSerializer(data=data)
+    if serializer.is_valid():
+        return serializer.validated_data
+    else:
+        logger.error(serializer.errors)
 
 def get_websites_neomodel(
         entry: Entry|None=None,
@@ -684,7 +698,8 @@ def find_entry(
         WITH *, COLLECT(tpp) AS tpp
         OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN entry.payment
         OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
-        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm,convention;
+        OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
+        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm,convention, a;
         """
     )
     results, cols = db.cypher_query(query)
@@ -704,6 +719,7 @@ def find_entry(
     country=Country.inflate(row[cols.index('country')])
     effector_type=EffectorType.inflate(row[cols.index('et')])
     address = get_address(facility,commune,country)
+    appointment_nodes = Appointment.inflate(row[cols.index('a')])
     phones = get_phones_neomodel(
         entry=entry,
         e=effector,
@@ -729,10 +745,8 @@ def find_entry(
         f=facility
     )
     appointments = get_appointments_neomodel(
-        entry=entry,
-        e=effector,
-        ef=effector_facility,
-        f=facility
+        entry=entry.uid,
+        nodes=appointment_nodes
     )
     profile = get_profile_neomodel(
         entry=entry,

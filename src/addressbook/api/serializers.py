@@ -9,10 +9,11 @@ from addressbook.models import (
     PhoneNumber,
     Email,
     Website,
-    Appointment,
     Address,
 )
+from directory.models.graph import Appointment, Office, HouseCall, Entry
 from rest_framework import serializers
+from fastapi import HTTPException, status
 
 logger=logging.getLogger(__name__)
 
@@ -111,16 +112,29 @@ class WebsiteSerializer(serializers.ModelSerializer):
         depth = 2
 
 
-class AppointmentSerializer(serializers.ModelSerializer):
+class AppointmentSerializer(serializers.Serializer):
+    entry = serializers.CharField()
+    url = serializers.URLField(required=False)
+    phone = serializers.CharField(required=False)
+    location = serializers.ChoiceField(choices=['office', 'house_call', None])
 
-    class Meta:
-        model = Appointment
-        fields = [
-            'url',
-            'phone',
-            'house_call',
-        ]
-        depth = 1
+    def create(self, validated_data):
+        if validated_data.location is None:
+            a = Appointment(url=validated_data.url,phone=validated_data.phone)
+        elif validated_data.location == 'office':
+            a = Office(url=validated_data.url,phone=validated_data.phone)
+        elif validated_data.location == 'house_call':
+            a = HouseCall(url=validated_data.url,phone=validated_data.phone)
+        try:
+            entry = Entry.nodes.get(uid=validated_data.entry)
+        except Exception as e:
+            logger.error(e)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                detail=f"Entry {validated_data.entry} not found"
+            )
+        entry.appointments.connect(a)
+        return a
 
 
 class ContactSerializer(serializers.ModelSerializer):
