@@ -117,6 +117,7 @@ def get_appointments_neomodel(entry: str, nodes: list[Appointment]|Appointment):
             return 'office'
         else:
             return None
+    logger.debug(f"{nodes=}")
     logger.debug(f"{type(nodes)=}")
     logger.debug(f"{type(nodes) is Appointment=}")
     if not nodes:
@@ -705,7 +706,7 @@ def find_entry(
         OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN entry.payment
         OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
         OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
-        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm,convention, a;
+        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm,convention,a;
         """
     )
     results, cols = db.cypher_query(query)
