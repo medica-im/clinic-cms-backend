@@ -15,7 +15,7 @@ def same_nodes(entry, location, **kwargs):
         label=""
     phone =  f'phone: "{kwargs["phone"]}"' if kwargs["phone"] else ""
     url =  f'url: "{kwargs["url"]}"' if kwargs["url"] else ""
-    query = f"""MATCH (:Entry{label} {{uid:"{entry}"}})-[:HAS_APPOINTMENT]->(a:Appointment {{{phone}{url}}}) RETURN a;
+    query = f"""MATCH (:Entry {{uid:"{entry}"}})-[:HAS_APPOINTMENT]->(a:Appointment{label} {{{phone}{url}}}) RETURN a;
 """
     logger.debug(f"{query=}")
     q = db.cypher_query(query, resolve_objects = True)
