@@ -13,7 +13,6 @@ from addressbook.models import (
 )
 from directory.models.graph import Appointment, Office, HouseCall, Entry
 from rest_framework import serializers
-from fastapi import HTTPException, status
 
 logger=logging.getLogger(__name__)
 
@@ -129,10 +128,7 @@ class AppointmentSerializer(serializers.Serializer):
             entry = Entry.nodes.get(uid=validated_data.entry)
         except Exception as e:
             logger.error(e)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-                detail=f"Entry {validated_data.entry} not found"
-            )
+            raise serializers.ValidationError(f"Entry {validated_data.entry} not found")
         entry.appointments.connect(a)
         return a
 
