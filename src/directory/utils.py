@@ -131,7 +131,7 @@ def get_appointments_neomodel(entry: str, nodes: list[Appointment]|Appointment):
             'location': get_location(node)
         } for node in nodes
     ]
-    serializer = AppointmentSerializer(data=data)
+    serializer = AppointmentSerializer(data=data, many=True)
     if serializer.is_valid():
         return serializer.validated_data
     else:
