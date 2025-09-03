@@ -118,6 +118,8 @@ def get_appointments_neomodel(entry: str, nodes: list[Appointment]):
         else:
             return None
     logger.debug(f"{type(nodes)=}")
+    logger.debug(f"{type(nodes) is Appointment=}")
+
     if not nodes:
         return None
     data = [
