@@ -117,6 +117,8 @@ def get_appointments_neomodel(entry: str, nodes: list[Appointment]):
             return 'office'
         else:
             return None
+    if not nodes:
+        return None
     data = [
         {
             'entry': entry,
