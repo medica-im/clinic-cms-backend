@@ -6,7 +6,7 @@ from neomodel import db
 logger=logging.getLogger(__name__)
 
 
-def same_nodes(entry, location, kwargs):
+def same_nodes(entry, location, **kwargs):
     if location=='office':
         label=":Office"
     elif location=='house_call':
