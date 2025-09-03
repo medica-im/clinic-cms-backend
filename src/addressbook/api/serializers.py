@@ -113,9 +113,9 @@ class WebsiteSerializer(serializers.ModelSerializer):
 
 class AppointmentSerializer(serializers.Serializer):
     entry = serializers.CharField()
-    url = serializers.URLField(required=False, null=True)
-    phone = serializers.CharField(required=False, null=True)
-    location = serializers.ChoiceField(choices=['office', 'house_call', None])
+    url = serializers.URLField(required=False, allow_null=True)
+    phone = serializers.CharField(required=False, allow_null=True)
+    location = serializers.ChoiceField(choices=['office', 'house_call'], allow_null=True)
 
     def create(self, validated_data):
         if validated_data.location is None:
