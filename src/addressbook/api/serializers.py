@@ -130,6 +130,7 @@ class AppointmentSerializer(serializers.Serializer):
             a = Office(**kwargs)
         elif location == 'house_call':
             a = HouseCall(**kwargs)
+        a.save()
         try:
             entry = Entry.nodes.get(uid=validated_data['entry'])
         except Exception as e:
