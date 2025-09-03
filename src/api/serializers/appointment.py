@@ -13,8 +13,8 @@ def same_nodes(entry, location, **kwargs):
         label=":HouseCall"
     else:
         label=""
-    phone =  f'phone="{kwargs["phone"]}' if kwargs["phone"] else ""
-    url =  f'url="{kwargs["url"]}' if kwargs["url"] else ""
+    phone =  f'phone="{kwargs["phone"]}"' if kwargs["phone"] else ""
+    url =  f'url="{kwargs["url"]}"' if kwargs["url"] else ""
     query = f"""MATCH (:Entry{label} {{uid="{entry}"}})-[:HAS_APPOINTMENT]->(a:Appointment {{{phone}{url}}}) RETURN a;
 """
     logger.debug(f"{query=}")
