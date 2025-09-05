@@ -7,7 +7,7 @@ logger=logging.getLogger(__name__)
 
 
 def update_labels(instance: Appointment|Office|HouseCall, location: str):
-    labels=instance.labels()
+    labels= instance.labels()
     if not location and labels==["Appointment"]:
         return instance
     if location == "office" and "Office" in labels:
