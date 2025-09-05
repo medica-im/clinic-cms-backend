@@ -35,7 +35,7 @@ async def create_item(item: AppointmentPost, request: Request):
 async def update_item(item_uid: str, item: AppointmentPut, request: Request):
     #await authorize_api("appointments_v2", request, jwt)
     i = item.model_dump()
-    instance = await GraphAppointment.nodes.get(uid=item_uid)
+    instance = GraphAppointment.nodes.get(uid=item_uid)
     serializer = AppointmentSerializer(instance, data=i)
     serializer.is_valid(raise_exception=True)
     appointment_node = serializer.save()
