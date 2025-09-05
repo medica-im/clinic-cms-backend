@@ -5,7 +5,8 @@ from fastapi.encoders import jsonable_encoder
 from addressbook.models import Email as DjangoEmail, Contact
 from django.db.utils import DatabaseError
 from access.models import Role
-from api.types.appointment import Appointment, AppointmentPost
+from directory.models.agraph import Appointment as AsyncAppointment
+from api.types.appointment import Appointment, AppointmentPost, AppointmentPut
 from api.auth import JWT
 from api.auth import authorize_api
 from api.utils import set_roles
@@ -25,6 +26,17 @@ async def create_item(item: AppointmentPost, request: Request):
     #await authorize_api("appointments_v2", request, jwt)
     i = item.model_dump()
     serializer = AppointmentSerializer(data=i)
+    serializer.is_valid(raise_exception=True)
+    appointment_node = serializer.save()
+    appointment_dict = appointments_from_neomodel(i["entry"], appointment_node)
+    return appointment_dict[0] # type: ignore
+
+@router.put("/appointments/{item_uid}", response_model=Appointment)
+async def update_item(item_uid: str, item: AppointmentPut, request: Request):
+    #await authorize_api("appointments_v2", request, jwt)
+    i = item.model_dump()
+    instance = await AsyncAppointment.nodes.get(uid=item_uid)
+    serializer = AppointmentSerializer(instance, data=i)
     serializer.is_valid(raise_exception=True)
     appointment_node = serializer.save()
     appointment_dict = appointments_from_neomodel(i["entry"], appointment_node)

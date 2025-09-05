@@ -6,6 +6,27 @@ from neomodel import db
 logger=logging.getLogger(__name__)
 
 
+def update_labels(instance: Appointment|Office|HouseCall, location: str):
+    labels=instance.labels()
+    if not location and labels==["Appointment"]:
+        return instance
+    if location == "office" and "Office" in labels:
+        return instance
+    if location == "house_call" and "HouseCall" in labels:
+        return instance
+    if location == 'office':
+        set = ":Office"
+    elif location == 'house_call':
+        set = ":HouseCall"
+    else:
+        set = ""
+    query = f"""MATCH (n:Appointment) WHERE n.uid="{instance.uid}" REMOVE n:Office:HouseCall SET n:Appointment{set} RETURN n;
+"""
+    logger.debug(query)
+    q = db.cypher_query(query, resolve_objects = True)
+    logger.debug(q[0][0])
+    return q[0][0]
+
 def same_nodes(entry, location, **kwargs):
     if location=='office':
         label=":Office"
@@ -30,7 +51,7 @@ def same_nodes(entry, location, **kwargs):
 
 class AppointmentSerializer(serializers.Serializer):
     uid = serializers.CharField(required=False)
-    entry = serializers.CharField()
+    entry = serializers.CharField(required=False)
     url = serializers.URLField(required=False, allow_null=True)
     phone = serializers.CharField(required=False, allow_null=True)
     location = serializers.ChoiceField(choices=['office', 'house_call'], allow_null=True)
@@ -59,3 +80,14 @@ class AppointmentSerializer(serializers.Serializer):
             raise serializers.ValidationError(f"Entry {entry_uid} not found")
         entry.appointments.connect(a)
         return a
+
+    def update(self, instance: Appointment|Office|HouseCall, validated_data):
+        location = validated_data["location"]
+        url = validated_data["url"]
+        phone = validated_data["phone"]
+        instance.url=url
+        instance.phone=phone
+        instance.save()
+        update_instance = update_labels(instance, location)
+        return update_instance
+
