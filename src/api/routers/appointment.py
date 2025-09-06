@@ -39,7 +39,7 @@ async def update_item(item_uid: str, item: AppointmentPut, request: Request):
     appointment_dict = appointments_from_neomodel(i["entry"], appointment_node)
     return appointment_dict[0] # type: ignore
 
-@router.delete("/appointments/{item_uid}", response_model=Appointment)
+@router.delete("/appointments/{item_uid}")
 async def delete_item(item_uid: str, request: Request):
     #await authorize_api("appointments_v2", request, jwt)
     query = f"""MATCH(n:Appointment) WHERE n.uid="{item_uid}" DETACH DELETE n"""
