@@ -12,14 +12,11 @@ from api.auth import authorize_api
 from api.utils import set_roles
 from api.serializers.appointment import AppointmentSerializer
 from directory.utils import appointments_from_neomodel
+from neomodel import db
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-@router.delete("/appointments/{item_uid}")
-async def delete_item(item_uid: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    await authorize_api("appointments_v2", request, jwt)
 
 @router.post("/appointments/", response_model=Appointment)
 async def create_item(item: AppointmentPost, request: Request):
@@ -41,3 +38,9 @@ async def update_item(item_uid: str, item: AppointmentPut, request: Request):
     appointment_node = serializer.save()
     appointment_dict = appointments_from_neomodel(i["entry"], appointment_node)
     return appointment_dict[0] # type: ignore
+
+@router.delete("/appointments/{item_uid}", response_model=Appointment)
+async def delete_item(item_uid: str, request: Request):
+    #await authorize_api("appointments_v2", request, jwt)
+    query = f"""MATCH(n:Appointment) WHERE n.uid="{item_uid}" DETACH DELETE n"""
+    db.cypher_query(query)
