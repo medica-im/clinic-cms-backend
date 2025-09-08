@@ -789,7 +789,7 @@ def find_entry(
         "address": address,
         #"commune": commune,
         "effector_type": effector_type,
-        "effector_type_labels": row[cols.index('country')],
+        "effector_type_labels": row[cols.index('typelabels')],
         "facility": facility,
         "phones": phones,
         "emails": emails,
