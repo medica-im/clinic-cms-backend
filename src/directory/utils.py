@@ -713,7 +713,7 @@ def find_entry(
         UNWIND allLabels AS labelList
         UNWIND labelList AS label
         WITH *, collect(DISTINCT label) AS typelabels
-        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm,convention,COLLECT(DISTINCT a) AS a,typelabels;
+        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,COLLECT(DISTINCT a) AS a,typelabels;
         """
     )
     results, cols = db.cypher_query(query)
