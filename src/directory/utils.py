@@ -708,11 +708,11 @@ def find_entry(
         OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
         OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
         MATCH (et)-[:IS_A*0..]->(b:EffectorType)
-        WITH et, collect(DISTINCT labels(b)) AS bLabels
-        WITH bLabels + labels(et) AS allLabels
+        WITH *, et, collect(DISTINCT labels(b)) AS bLabels
+        WITH *, bLabels + labels(et) AS allLabels
         UNWIND allLabels AS labelList
         UNWIND labelList AS label
-        WITH collect(DISTINCT label) AS typelabels
+        WITH *, collect(DISTINCT label) AS typelabels
         RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm,convention,COLLECT(DISTINCT a) AS a,typelabels;
         """
     )
