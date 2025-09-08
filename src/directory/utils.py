@@ -712,7 +712,7 @@ def find_entry(
         WITH bLabels + labels(et) AS allLabels
         UNWIND allLabels AS labelList
         UNWIND labelList AS label
-        collect(DISTINCT label) AS typelabels
+        WITH collect(DISTINCT label) AS typelabels
         RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(pm) AS pm,convention,COLLECT(DISTINCT a) AS a,typelabels;
         """
     )
