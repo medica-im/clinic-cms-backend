@@ -140,6 +140,7 @@ def createEffectorRessource(request, node):
         request
     )
     effector_type_dict=effector_type_obj.__dict__
+    effector_type_dict["labels"]=node["effector_type_labels"]
     phones = node["phones"]
     updatedAt = max(
         [
