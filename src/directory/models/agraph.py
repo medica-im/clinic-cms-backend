@@ -276,10 +276,7 @@ class CareHome(Effector):
 
 
 class HealthWorker(Effector):
-    rpps = IntegerProperty(
-        unique_index=True,
-        default=None
-    )
+    rpps = IntegerProperty(unique_index=True)
     spoken_languages = ArrayProperty(base_property=StringProperty())
 
 
