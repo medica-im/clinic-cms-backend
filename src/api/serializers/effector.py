@@ -92,3 +92,14 @@ async def create_effector(kwargs)->Effector:
     effector=Effector.model_validate(effector_dct)
     logger.debug(effector)
     return effector
+
+async def patch_effector(uid, kwargs)->Effector:
+    logger.debug(kwargs)
+    node = await EffectorNeo4j(uid=uid)
+    if "rpps" in kwargs.keys():
+        node.rpps=kwargs["rpps"]
+    await node.save()
+    effector_dct=node.__properties__
+    effector=Effector.model_validate(effector_dct)
+    logger.debug(effector)
+    return effector

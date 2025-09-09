@@ -82,4 +82,3 @@ async def authorize(endpoint_name: str, role: Role, permissions: int):
             status_code=status.HTTP_403_FORBIDDEN, 
             detail="Insufficient permissions"
         )
-    

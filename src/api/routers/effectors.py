@@ -1,8 +1,8 @@
 import logging, os, sys
 from typing import Annotated
 from fastapi import APIRouter, status, Depends, Request
-from api.serializers.effector import get_effector, get_effectors, create_effector
-from api.types.effector import Effector, EffectorPost
+from api.serializers.effector import get_effector, get_effectors, create_effector, patch_effector
+from api.types.effector import Effector, EffectorPost, EffectorPatch
 from pydantic import ValidationError
 #from api.auth import JWT
 from api.auth import authorize_api
@@ -61,3 +61,8 @@ async def post_effector(jwt: Annotated[dict, Depends(JWT)], effector: EffectorPo
     logger.debug(f"hello post_effector {effector}")
     await authorize_api("effectors_v2", request, jwt)
     return await create_effector(effector.model_dump())
+
+@router.patch("/effectors/{uid}")
+async def patch_entry(uid: str, effector: EffectorPatch, request: Request, jwt: Annotated[dict, Depends(JWT)]):
+    await authorize_api("effectors_v2", request, jwt)
+    return await patch_effector(uid, effector.model_dump(exclude_unset=True))
