@@ -95,7 +95,7 @@ async def create_effector(kwargs)->Effector:
 
 async def patch_effector(uid, kwargs)->Effector:
     logger.debug(kwargs)
-    node = await EffectorNeo4j(uid=uid)
+    node = await EffectorNeo4j.nodes.get(uid=uid)
     if "rpps" in kwargs.keys():
         node.rpps=kwargs["rpps"]
     await node.save()
