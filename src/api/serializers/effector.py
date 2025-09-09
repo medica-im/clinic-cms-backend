@@ -11,7 +11,8 @@ from directory.models import (
     Website,
     DepartmentOfFrance
 )
-from directory.models.agraph import Effector as EffectorNeo4j
+from directory.models.agraph import HealthWorker as AsyncHealthWorker
+from directory.models.agraph import Effector as AsyncEffector
 from api.types.effector import Effector
 
 logger = logging.getLogger(__name__)
@@ -81,13 +82,13 @@ def get_effectors(
 
 async def create_effector(kwargs)->Effector:
     logger.debug(kwargs)
-    node = await EffectorNeo4j(
+    node = await AsyncEffector(
         name_fr=kwargs["name_fr"],
         label_fr=kwargs["label_fr"] or kwargs["name_fr"],
         slug_fr=kwargs["slug_fr"] or slugify(kwargs["name_fr"]),
         gender=kwargs["gender"],
     ).save()
-    effector= await EffectorNeo4j.nodes.get(uid=node.uid)
+    effector= await AsyncEffector.nodes.get(uid=node.uid)
     effector_dct=effector.__properties__
     effector=Effector.model_validate(effector_dct)
     logger.debug(effector)
@@ -95,7 +96,7 @@ async def create_effector(kwargs)->Effector:
 
 async def patch_effector(uid, kwargs)->Effector:
     logger.debug(kwargs)
-    node = await EffectorNeo4j.nodes.get(uid=uid)
+    node = await AsyncEffector.nodes.get(uid=uid)
     logger.debug(kwargs.keys())
     logger.debug(f'{kwargs["rpps"]=} {type(kwargs["rpps"])=}')
     logger.debug("rpps" in kwargs.keys())
