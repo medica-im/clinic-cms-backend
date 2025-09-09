@@ -257,7 +257,7 @@ class FullEffectorResource(Resource):
         attribute='payment_methods',
         null=True
     )
-    rpps = fields.CharField(attribute='rpps', null=True)
+    rpps = fields.IntegerField(attribute='rpps', null=True)
     spoken_languages = fields.ListField(attribute='spoken_languages', null=True)
     avatar = fields.DictField(attribute='avatar', null=True)
 
