@@ -96,7 +96,7 @@ async def create_effector(kwargs)->Effector:
 
 async def patch_effector(uid, kwargs)->Effector:
     logger.debug(kwargs)
-    node = await AsyncEffector.nodes.get(uid=uid)
+    node = await AsyncHealthWorker.nodes.get(uid=uid)
     logger.debug(kwargs.keys())
     logger.debug(f'{kwargs["rpps"]=} {type(kwargs["rpps"])=}')
     logger.debug("rpps" in kwargs.keys())
