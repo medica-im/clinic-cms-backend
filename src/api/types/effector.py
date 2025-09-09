@@ -15,7 +15,7 @@ class EffectorPost(BaseModel):
     label_fr: str|None = None
     slug_fr: str|None = None
     gender: Literal['F', 'M', 'N']|None = None
-    rpss: RPPS|None = None
+    rpps: RPPS|None = None
 
 
 class Effector(EffectorPost):
