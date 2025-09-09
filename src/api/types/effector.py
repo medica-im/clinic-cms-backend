@@ -34,4 +34,4 @@ class EffectorPatch(BaseModel):
     name_fr: str|None = None
     label_fr: str|None = None
     slug_fr: str|None = None
-    rpss: RPPS|None = None
+    rpps: RPPS|None = None
