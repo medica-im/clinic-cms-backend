@@ -17,6 +17,14 @@ from directory.models import (
     Entry as EntryGraph,
     Neo4jDirectory,
 )
+from directory.models.agraph import (
+    Directory as AsyncDirectory,
+    Entry as AsyncEntry,
+    EffectorType as AsyncEffectorType,
+    Effector as AsyncEffector,
+    Facility as AsyncFacility,
+    Organization as AsyncOrganization,
+)
 from directory.models.agraph import Entry as EntryAgraph
 from api.types.entry import EntryPatch, Entry
 
@@ -78,33 +86,33 @@ def entry_if_exists(effector: Effector, effector_type: EffectorType, facility: F
         entry.save()
         return entry
 
-def connect_orgs(entry:EntryGraph, organizations: list[str]|None):
+async def connect_orgs(entry:AsyncEntry, organizations: list[str]|None):
     if organizations:
         for org_uid in organizations:
             try:
-                org = Organization.nodes.get(uid=org_uid)
+                org = await AsyncOrganization.nodes.get(uid=org_uid)
                 entry.organizations.connect(org)
             except Exception as e:
                 logger.error(e)
                 raise Exception(e)
 
-def create_entry(dir_name, kwargs)-> str:
+async def create_entry(dir_name, kwargs)-> str:
     organizations = kwargs["organizations"]
-    neo4j_directory=Neo4jDirectory.nodes.get(name=dir_name)
-    effector=Effector.nodes.get(uid=kwargs["effector"])
-    effector_type=EffectorType.nodes.get(uid=kwargs["effector_type"])
-    facility=Facility.nodes.get(uid=kwargs["facility"])
+    neo4j_directory = await AsyncDirectory.nodes.get(name=dir_name)
+    effector = await AsyncEffector.nodes.get(uid=kwargs["effector"])
+    effector_type = await AsyncEffectorType.nodes.get(uid=kwargs["effector_type"])
+    facility= await AsyncFacility.nodes.get(uid=kwargs["facility"])
     entry=entry_if_exists(effector,effector_type,facility)
     if not entry:
-        entry=EntryGraph()
-        entry.save()
+        entry=AsyncEntry()
+        await entry.save()
         entry.effector.connect(effector)
         entry.effector_type.connect(effector_type)
         entry.facility.connect(facility)
-    connect_orgs(entry, organizations)
+    await connect_orgs(entry, organizations)
     neo4j_directory.entries.connect(entry)
     try:
-        Contact.objects.create(neomodel_uid=entry.uid)
+        await Contact.objects.acreate(neomodel_uid=entry.uid)
     except IntegrityError:
         pass
     if "HCW" in effector_type.labels():
