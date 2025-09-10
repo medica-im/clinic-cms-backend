@@ -106,9 +106,9 @@ async def create_entry(dir_name, kwargs)-> str:
     if not entry:
         entry=AsyncEntry()
         await entry.save()
-        entry.effector.connect(effector)
-        entry.effector_type.connect(effector_type)
-        entry.facility.connect(facility)
+        await entry.effector.connect(effector)
+        await entry.effector_type.connect(effector_type)
+        await entry.facility.connect(facility)
     await connect_orgs(entry, organizations)
     neo4j_directory.entries.connect(entry)
     try:
