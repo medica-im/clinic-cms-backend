@@ -115,7 +115,7 @@ async def create_entry(dir_name, kwargs)-> str:
         await Contact.objects.acreate(neomodel_uid=entry.uid)
     except IntegrityError:
         pass
-    if "HCW" in effector_type.labels():
+    if "HCW" in await effector_type.labels():
         query = f"""MATCH (e:Effector) WHERE e.uid="{effector.uid}" SET e:HealthWorker RETURN labels(e);"""
         result = db.cypher_query(query)
         logger.debug(result[0][0])
