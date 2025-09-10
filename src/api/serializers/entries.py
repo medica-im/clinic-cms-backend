@@ -110,7 +110,7 @@ async def create_entry(dir_name, kwargs)-> str:
         await entry.effector_type.connect(effector_type)
         await entry.facility.connect(facility)
     await connect_orgs(entry, organizations)
-    neo4j_directory.entries.connect(entry)
+    await neo4j_directory.entries.connect(entry)
     try:
         await Contact.objects.acreate(neomodel_uid=entry.uid)
     except IntegrityError:
