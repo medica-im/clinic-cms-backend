@@ -118,8 +118,8 @@ async def create_entry(dir_name, kwargs)-> str:
     if "HCW" in await effector_type.labels():
         query = f"""MATCH (e:Effector) WHERE e.uid="{effector.uid}" SET e:HealthWorker RETURN labels(e);"""
         result = db.cypher_query(query)
-        logger.debug(result[0][0])
-        if "HealthWorker" not in result[0][0]:
+        logger.debug(result[0][0][0])
+        if "HealthWorker" not in result[0][0][0]:
             raise HTTPException(status_code=500, detail=f"Label 'HealthWorker' not applied to Effector {effector.uid} of type {effector_type.name_fr}")
     return str(entry.uid)
 
