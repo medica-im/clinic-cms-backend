@@ -20,8 +20,8 @@ async def entry(uid: str) -> Entry:
     return await get_entry(uid)
 
 @router.post("/entries", status_code=status.HTTP_201_CREATED)
-async def post_entry(entry: EntryPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> str:
-    await authorize_api("entries_v2", request, jwt)
+async def post_entry(entry: EntryPost, request: Request) -> str:
+    #await authorize_api("entries_v2", request, jwt)
     directory = await get_directory_from_hostname(request.url.hostname)
     return await create_entry(directory.name, entry.model_dump())
 
