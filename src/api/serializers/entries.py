@@ -91,7 +91,7 @@ async def connect_orgs(entry:AsyncEntry, organizations: list[str]|None):
         for org_uid in organizations:
             try:
                 org = await AsyncOrganization.nodes.get(uid=org_uid)
-                entry.organizations.connect(org)
+                await entry.organizations.connect(org)
             except Exception as e:
                 logger.error(e)
                 raise Exception(e)
