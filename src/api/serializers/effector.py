@@ -122,9 +122,6 @@ class EffectorSerializer(Serializer):
 async def patch_effector(uid, kwargs)->Effector:
     logger.debug(kwargs)
     node = await AsyncHealthWorker.nodes.get(uid=uid)
-    logger.debug(kwargs.keys())
-    logger.debug(f'{kwargs["rpps"]=} {type(kwargs["rpps"])=}')
-    logger.debug("rpps" in kwargs.keys())
     if "rpps" in kwargs.keys():
         node.rpps=kwargs["rpps"]
         await node.save()
