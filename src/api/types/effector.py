@@ -35,3 +35,4 @@ class EffectorPatch(BaseModel):
     label_fr: str|None = None
     slug_fr: str|None = None
     rpps: RPPS|None = None
+    spoken_languages: list[str]|None = None

@@ -27,3 +27,4 @@ colorlog
 requests
 dj-rest-auth
 django-anymail[mailgun]
+adrf

@@ -14,6 +14,8 @@ from directory.models import (
 from directory.models.agraph import HealthWorker as AsyncHealthWorker
 from directory.models.agraph import Effector as AsyncEffector
 from api.types.effector import Effector
+from rest_framework import serializers
+from adrf.serializers import Serializer
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +96,22 @@ async def create_effector(kwargs)->Effector:
     logger.debug(effector)
     return effector
 
+
+class EffectorSerializer(Serializer):
+    spoken_languages = serializers.ListField(required=False, allow_null=True)
+    rpps = serializers.IntegerField(required=False, allow_null=True)
+
+    async def update(self, instance, validated_data):
+        try:
+            spoken_languages_data = validated_data.pop('spoken_languages')
+            logger.debug(f"{spoken_languages_data=}")
+            instance.spoken_languages=spoken_languages_data
+        except validated_data.DoesNotExist:
+            pass
+        await instance.save()
+        return instance
+
+
 async def patch_effector(uid, kwargs)->Effector:
     logger.debug(kwargs)
     node = await AsyncHealthWorker.nodes.get(uid=uid)
@@ -102,7 +120,11 @@ async def patch_effector(uid, kwargs)->Effector:
     logger.debug("rpps" in kwargs.keys())
     if "rpps" in kwargs.keys():
         node.rpps=kwargs["rpps"]
-    await node.save()
+        await node.save()
+    if "spoken_languages" in kwargs.keys():
+        serializer = EffectorSerializer(node, data=kwargs, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            node = serializer.save()
     effector_dct=node.__properties__
     effector=Effector.model_validate(effector_dct)
     logger.debug(effector)

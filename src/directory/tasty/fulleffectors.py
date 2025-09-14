@@ -200,7 +200,6 @@ def createEffectorRessource(request, node):
         uid,
         effector_uid,
         effector_type_dict,
-        #commune,
         address,
         phones,
         updatedAt,
