@@ -128,7 +128,7 @@ async def patch_effector(uid, kwargs)->Effector:
     if "spoken_languages" in kwargs.keys():
         serializer = EffectorSerializer(node, data=kwargs, partial=True)
         if serializer.is_valid(raise_exception=True):
-            node = serializer.save()
+            node = await serializer.save()
     effector_dct=node.__properties__
     effector=Effector.model_validate(effector_dct)
     logger.debug(effector)
