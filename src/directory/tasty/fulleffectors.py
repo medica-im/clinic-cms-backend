@@ -34,6 +34,9 @@ from directory.models import Label
 
 logger=logging.getLogger(__name__)
 
+LANGUAGE = settings.LANGUAGE_CODE
+logger.debug(f'{LANGUAGE=}')
+
 # We need a generic object to shove data in/get data from.
 # Riak generally just tosses around dictionaries, so we'll lightly
 # wrap that.
@@ -187,7 +190,7 @@ def createEffectorRessource(request, node):
     rpps=health_worker.rpps
     try:
         spoken_languages=[
-            display_tag_name(t, settings.LANGUAGE_CODE) for t in health_worker.spoken_languages
+            display_tag_name(t, LANGUAGE) for t in health_worker.spoken_languages
         ]
     except TypeError:
         spoken_languages = None
