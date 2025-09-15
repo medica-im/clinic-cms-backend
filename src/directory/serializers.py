@@ -3,13 +3,14 @@ from rest_framework import serializers
 import langcodes
 from langcodes import Language
 from django.utils.translation import get_language
+from django.conf import settings
 import logging
 
 logger=logging.getLogger(__name__)
 
-def display_tag_name(tag: str)->str|None:
+def display_tag_name(tag: str, language=settings.LANGUAGE_CODE)->str|None:
         try:
-            return Language.make(language=tag).display_name(get_language())
+            return Language.make(language=tag).display_name(language)
         except:
             return
 

@@ -16,7 +16,7 @@ from directory.models.agraph import Effector as AsyncEffector
 from api.types.effector import Effector
 from rest_framework import serializers
 from adrf.serializers import Serializer
-from langcodes import *
+from langcodes import standardize_tag
 
 logger = logging.getLogger(__name__)
 
