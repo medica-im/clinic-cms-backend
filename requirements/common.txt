@@ -18,6 +18,7 @@ django-simple-history
 redis
 django-contact-form[akismet]
 langcodes[data]
+language_data
 neomodel
 shapely
 SPARQLWrapper
