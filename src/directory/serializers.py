@@ -10,7 +10,10 @@ logger=logging.getLogger(__name__)
 
 def display_tag_name(tag: str, language: str = settings.LANGUAGE_CODE)->str|None:
         try:
-            return Language.get(tag).display_name(language)
+            display_name = Language.get(tag).display_name(language)
+            if tag == "arb" and language == "fr":
+                display_name = "arabe standard moderne"
+            return display_name
         except:
             return
 
