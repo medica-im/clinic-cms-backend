@@ -84,6 +84,10 @@ class HCW(EffectorType):
     hcw = AsyncRelationshipTo('HCW', 'IS_A')
 
 
+class RPPS(HCW):
+    pass
+
+
 class MESH(AsyncStructuredNode):
     uid = UniqueIdProperty()
     label_fr = StringProperty(unique_index=True)

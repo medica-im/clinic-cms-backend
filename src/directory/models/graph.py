@@ -83,6 +83,10 @@ class HCW(EffectorType):
     hcw = RelationshipTo('HCW', 'IS_A')
 
 
+class RPPS(HCW):
+    pass
+
+
 class MESH(StructuredNode):
     uid = UniqueIdProperty()
     label_fr = StringProperty(unique_index=True)
