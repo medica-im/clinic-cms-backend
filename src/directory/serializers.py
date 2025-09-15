@@ -10,7 +10,7 @@ logger=logging.getLogger(__name__)
 
 def display_tag_name(tag: str, language: str = settings.LANGUAGE_CODE)->str|None:
         try:
-            return Language.make(language=tag).display_name(language)
+            return Language.get(tag).display_name(language)
         except:
             return
 
