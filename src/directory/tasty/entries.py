@@ -10,7 +10,7 @@ from tastypie.cache import SimpleCache
 
 from django.urls import re_path
 from django.core.cache import cache
-from directory.models import Effector, Situation, EffectorType, Commune
+from directory.models import Commune
 from tastypie.utils import (
     is_valid_jsonp_callback_value,
     string_to_python,
@@ -231,8 +231,10 @@ class EntryResource(Resource):
 
     def obj_get_list(self, bundle, **kwargs):
         directory=get_directory(bundle.request)
+        cache_key = self.generate_cache_key(directory=directory.name)
+        logger.debug(f"{cache_key=}")
         return cache.get_or_set(
-            f"{self.generate_cache_key(directory=directory.name)}",
+            cache_key,
             self.get_object_list(bundle.request),
             timeout=30
         )

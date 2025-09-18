@@ -19,7 +19,6 @@ from directory.models import (
     Directory,
     EffectorFacility,
     Convention,
-    HealthWorker,
     Entry,
 )
 from directory.models.graph import Directory as NeoDirectory
