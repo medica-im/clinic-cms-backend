@@ -226,7 +226,7 @@ class EntryResource(Resource):
     def get_object_list(self, request):
         directory=get_directory(request)
         nodes = cache.get_or_set(
-            f"{self.generate_cache_key(directory=directory)}",
+            f"{self.generate_cache_key(directory=directory.name)}",
             get_entries(directory),
             timeout=30
         )
