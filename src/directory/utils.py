@@ -37,7 +37,7 @@ def get_directory(request):
     try:
         return Directory.objects.get(site=site)
     except Directory.DoesNotExist:
-        return
+        raise Directory.DoesNotExist
 
 def get_contact_related_elements(
         neo_entity,

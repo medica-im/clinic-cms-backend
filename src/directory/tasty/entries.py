@@ -6,8 +6,10 @@ from tastypie.resources import Resource
 from tastypie.bundle import Bundle
 from tastypie.fields import ForeignKey
 from directory.tasty.communes import createCommuneResources
+from tastypie.cache import SimpleCache
 
 from django.urls import re_path
+from django.core.cache import cache
 from directory.models import Effector, Situation, EffectorType, Commune
 from tastypie.utils import (
     is_valid_jsonp_callback_value,
@@ -184,6 +186,20 @@ class EntryResource(Resource):
         collection_name = "entries"
         authorization = Authorization()
         detail_uri_name = 'uid'
+        cache = SimpleCache(timeout=60)
+
+    def generate_cache_key(self, *args, **kwargs):
+        """
+        Creates a unique-enough cache key.
+
+        This is based off the current api_name/resource_name/args/kwargs.
+        """
+        smooshed = ["%s=%s" % (key, value) for key, value in kwargs.items()]
+        directory=get_directory(self.request)
+        # Use a list plus a ``.join()`` because it's faster than concatenation.
+        cache_key = "%s:%s:%s:%s" % (self._meta.api_name, self._meta.resource_name, ':'.join(args), ':'.join(sorted(smooshed)))
+        logger.debug(f'{cache_key=}')
+        return cache_key
 
     def detail_uri_kwargs(self, bundle_or_obj):
         kwargs = {}
