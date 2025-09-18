@@ -233,13 +233,19 @@ class EntryResource(Resource):
         directory=get_directory(bundle.request)
         cache_key = self.generate_cache_key(directory.name)
         logger.debug(f"{cache_key=}")
-        data = cache.get_or_set(
-            cache_key,
-            self.get_object_list(bundle.request),
-            timeout=30
-        )
-        logger.debug(data)
-        return data
+        sentinel = object()
+        cache_is_empty = cache.get("my_key", sentinel) is sentinel
+        if cache_is_empty:
+            value = self.get_object_list(bundle.request)
+            logger.debug(value)
+            cache.set(
+                cache_key,
+                value,
+                timeout=30
+            )
+            return value
+        else:
+            return cache.get(cache_key, self.get_object_list(bundle.request))
 
     def obj_get(self, bundle, **kwargs):
         uid= kwargs['uid']
