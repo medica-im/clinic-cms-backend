@@ -225,16 +225,17 @@ class EntryResource(Resource):
 
     def get_object_list(self, request):
         directory=get_directory(request)
-        nodes = cache.get_or_set(
-            f"{self.generate_cache_key(directory=directory.name)}",
-            get_entries(directory),
-            timeout=30
-        )
+        nodes = get_entries(directory),
         contacts = createEntryResources(request, nodes)
         return contacts
 
     def obj_get_list(self, bundle, **kwargs):
-        return self.get_object_list(bundle.request)
+        directory=get_directory(bundle.request)
+        return cache.get_or_set(
+            f"{self.generate_cache_key(directory=directory.name)}",
+            self.get_object_list(bundle.request),
+            timeout=30
+        )
 
     def obj_get(self, bundle, **kwargs):
         uid= kwargs['uid']
