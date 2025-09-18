@@ -231,13 +231,15 @@ class EntryResource(Resource):
 
     def obj_get_list(self, bundle, **kwargs):
         directory=get_directory(bundle.request)
-        cache_key = self.generate_cache_key(directory=directory.name)
+        cache_key = self.generate_cache_key(directory.name)
         logger.debug(f"{cache_key=}")
-        return cache.get_or_set(
+        data = cache.get_or_set(
             cache_key,
             self.get_object_list(bundle.request),
             timeout=30
         )
+        logger.debug(data)
+        return data
 
     def obj_get(self, bundle, **kwargs):
         uid= kwargs['uid']
