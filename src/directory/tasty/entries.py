@@ -186,20 +186,15 @@ class EntryResource(Resource):
         collection_name = "entries"
         authorization = Authorization()
         detail_uri_name = 'uid'
-        cache = SimpleCache(timeout=60)
 
+    
     def generate_cache_key(self, *args, **kwargs):
-        """
-        Creates a unique-enough cache key.
-
-        This is based off the current api_name/resource_name/args/kwargs.
-        """
-        smooshed = ["%s=%s" % (key, value) for key, value in kwargs.items()]
-        directory=get_directory(self.request)
+        smooshed = []
+        for key, value in kwargs.items():
+            smooshed.append("%s=%s" % (key, value))
         # Use a list plus a ``.join()`` because it's faster than concatenation.
-        cache_key = "%s:%s:%s:%s" % (self._meta.api_name, self._meta.resource_name, ':'.join(args), ':'.join(sorted(smooshed)))
-        logger.debug(f'{cache_key=}')
-        return cache_key
+        cache_key = "%s:%s:%s:%s" % (self._meta.api_name, self._meta.resource_name, ':'.join(args), ':'.join(smooshed))
+        logger.debug(f"{cache_key=}")
 
     def detail_uri_kwargs(self, bundle_or_obj):
         kwargs = {}
@@ -229,7 +224,11 @@ class EntryResource(Resource):
 
     def get_object_list(self, request):
         directory=get_directory(request)
-        nodes = get_entries(directory)
+        nodes = cache.get_or_set(
+            f"{self.generate_cache_key(directory=directory)}",
+            get_entries(directory),
+            timeout=30
+        )
         contacts = createEntryResources(request, nodes)
         return contacts
 
