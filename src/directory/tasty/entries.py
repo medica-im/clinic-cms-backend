@@ -195,6 +195,7 @@ class EntryResource(Resource):
         # Use a list plus a ``.join()`` because it's faster than concatenation.
         cache_key = "%s:%s:%s:%s" % (self._meta.api_name, self._meta.resource_name, ':'.join(args), ':'.join(smooshed))
         logger.debug(f"{cache_key=}")
+        return cache_key
 
     def detail_uri_kwargs(self, bundle_or_obj):
         kwargs = {}
