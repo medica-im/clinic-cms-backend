@@ -224,12 +224,15 @@ class EntryResource(Resource):
         ]
 
     def get_object_list(self, request):
+        logger.debug("get_object_list")
         directory=get_directory(request)
-        nodes = get_entries(directory),
+        logger.debug(f"{directory=}")
+        nodes = get_entries(directory)
         contacts = createEntryResources(request, nodes)
         return contacts
 
     def obj_get_list(self, bundle, **kwargs):
+        logger.debug("obj_get_list")
         directory=get_directory(bundle.request)
         cache_key = self.generate_cache_key(directory.name)
         logger.debug(f"{cache_key=}")
