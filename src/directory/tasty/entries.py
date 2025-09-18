@@ -234,7 +234,7 @@ class EntryResource(Resource):
         cache_key = self.generate_cache_key(directory.name)
         logger.debug(f"{cache_key=}")
         sentinel = object()
-        cache_is_empty = cache.get("my_key", sentinel) is sentinel
+        cache_is_empty = cache.get(cache_key, sentinel) is sentinel
         if cache_is_empty:
             value = self.get_object_list(bundle.request)
             logger.debug(value)
