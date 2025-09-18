@@ -175,8 +175,8 @@ class EntryResource(Resource):
     facility = fields.DictField(attribute='facility')
     updatedAt = fields.IntegerField(attribute='updatedAt')
     avatar = fields.DictField(attribute='avatar', null=True)
-    organizations = fields.ListField(attribute='organizations', null=True)
-    employers = fields.ListField(attribute='employers', null=True)
+    organizations = fields.ListField(attribute='organizations')
+    employers = fields.ListField(attribute='employers')
 
     class Meta:
         resource_name = 'entries'
