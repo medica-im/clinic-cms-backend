@@ -39,7 +39,7 @@ def get_directory(request):
     try:
         return Directory.objects.get(site=site)
     except Directory.DoesNotExist:
-        return
+        raise Directory.DoesNotExist
 
 def get_contact_related_elements(
         neo_entity,
@@ -574,8 +574,8 @@ def get_entries(
                     "facility": facility,
                     "avatar": avatar,
                     "location": location,
-                    "organizations": org_uids(organizations),
-                    "employers": org_uids(employers),
+                    "organizations": org_uids(organizations) if organizations else [],
+                    "employers": org_uids(employers) if employers else [],
                 }
             )
         return entries

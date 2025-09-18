@@ -6,8 +6,10 @@ from tastypie.resources import Resource
 from tastypie.bundle import Bundle
 from tastypie.fields import ForeignKey
 from directory.tasty.communes import createCommuneResources
+from tastypie.cache import SimpleCache
 
 from django.urls import re_path
+from django.core.cache import cache
 from directory.models import Effector, Situation, EffectorType, Commune
 from tastypie.utils import (
     is_valid_jsonp_callback_value,
@@ -175,8 +177,8 @@ class EntryResource(Resource):
     facility = fields.DictField(attribute='facility')
     updatedAt = fields.IntegerField(attribute='updatedAt')
     avatar = fields.DictField(attribute='avatar', null=True)
-    organizations = fields.ListField(attribute='organizations', null=True)
-    employers = fields.ListField(attribute='employers', null=True)
+    organizations = fields.ListField(attribute='organizations')
+    employers = fields.ListField(attribute='employers')
 
     class Meta:
         resource_name = 'entries'
@@ -184,6 +186,16 @@ class EntryResource(Resource):
         collection_name = "entries"
         authorization = Authorization()
         detail_uri_name = 'uid'
+
+    
+    def generate_cache_key(self, *args, **kwargs):
+        smooshed = []
+        for key, value in kwargs.items():
+            smooshed.append("%s=%s" % (key, value))
+        # Use a list plus a ``.join()`` because it's faster than concatenation.
+        cache_key = "%s:%s:%s:%s" % (self._meta.api_name, self._meta.resource_name, ':'.join(args), ':'.join(smooshed))
+        logger.debug(f"{cache_key=}")
+        return cache_key
 
     def detail_uri_kwargs(self, bundle_or_obj):
         kwargs = {}
@@ -213,7 +225,11 @@ class EntryResource(Resource):
 
     def get_object_list(self, request):
         directory=get_directory(request)
-        nodes = get_entries(directory)
+        nodes = cache.get_or_set(
+            f"{self.generate_cache_key(directory=directory)}",
+            get_entries(directory),
+            timeout=30
+        )
         contacts = createEntryResources(request, nodes)
         return contacts
 
