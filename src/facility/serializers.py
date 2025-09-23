@@ -87,6 +87,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'company_name',
             'language',
             'formatted_name',
+            'formatted_name_short',
             'formatted_name_definite_article',
             'website_title',
             'website_description',
