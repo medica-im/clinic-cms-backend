@@ -43,6 +43,10 @@ class Organization(models.Model):
         max_length=255,
         blank=True,
     )
+    formatted_name_short = models.CharField(
+        max_length=255,
+        blank=True,
+    )
     formatted_name_definite_article = models.CharField(
         max_length=255,
         blank=True,
