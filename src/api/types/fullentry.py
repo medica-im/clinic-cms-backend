@@ -81,7 +81,7 @@ class Contact(BaseModel):
         organization: str
         person_type: str
         profile_image: str
-        qr_image: str
+        qr_image: str|None = None
         title: str
         twitter_handle: str|None = None
         url: str
@@ -145,7 +145,7 @@ class FullEntry(BaseModel):
     profile: str|None = None
     rpps: RPPS|None = None
     slug: str
-    socialnetworks: list[SocialNetwork]
+    socialnetworks: list[SocialNetwork]|None = None
     spoken_languages: list[str]
     third_party_payers: list[ThirdPartyPayer]|None = None
     uid: str

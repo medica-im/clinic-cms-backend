@@ -66,6 +66,8 @@ class EffectorObj(object):
             spoken_languages,
             avatar,
             active,
+            deactivation_datetime,
+            deactivation_reason,
         ):
         self.label = label
         self.name = name
@@ -90,6 +92,8 @@ class EffectorObj(object):
         self.spoken_languages = spoken_languages
         self.avatar = avatar
         self.active = active
+        self.deactivation_datetime = deactivation_datetime
+        self.deactivation_reason = deactivation_reason
 
 def createEffectorRessource(node):
     try:
@@ -190,6 +194,8 @@ def createEffectorRessource(node):
         active=node["entry"].active
     except:
         active=None
+    deactivation_datetime=node["entry"].deactivation_datetime
+    deactivation_reason=node["entry"].deactivation_reason
 
     effector = EffectorObj(
         label,
@@ -215,6 +221,8 @@ def createEffectorRessource(node):
         spoken_languages,
         avatar,
         active,
+        deactivation_datetime,
+        deactivation_reason,
     )
     return effector
 
@@ -258,6 +266,8 @@ class FullEffectorResource(Resource):
     rpps = fields.IntegerField(attribute='rpps', null=True)
     spoken_languages = fields.ListField(attribute='spoken_languages', null=True)
     avatar = fields.DictField(attribute='avatar', null=True)
+    deactivation_datetime = fields.CharField(attribute="deactivation_datetime", null=True)
+    deactivation_reason = fields.CharField(attribute="deactivation_reason", null=True)
 
     class Meta:
         resource_name = 'fulleffector'
@@ -312,7 +322,7 @@ class FullEffectorResource(Resource):
     def get_object_list(self, request):
         directory=get_directory(request)
         effectorNodes = directory_effectors(directory)
-        effectors = createEffectorRessources(request, effectorNodes)
+        effectors = createEffectorRessources(effectorNodes)
         return effectors
 
     def obj_get_list(self, bundle, **kwargs):
@@ -322,6 +332,6 @@ class FullEffectorResource(Resource):
         directory=get_directory(bundle.request)
         try:
             effector = find_entry(directory, kwargs["facility"], kwargs["type"], kwargs["name"])
-            return createEffectorRessource(bundle.request, effector)
+            return createEffectorRessource(effector)
         except Exception as e : 
             raise Exception(f'Cannot find Effector {kwargs["facility"]},{kwargs["type"]},{kwargs["name"]} {e}')
