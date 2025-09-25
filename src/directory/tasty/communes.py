@@ -28,7 +28,7 @@ class CommuneObj(object):
         self.slug = slug
         self.wikidata = wikidata
         
-def createCommuneResources(request, nodes):
+def createCommuneResources(nodes):
     data= []
     for node in nodes:
         uid=node.uid
@@ -107,8 +107,8 @@ class CommuneResource(Resource):
 
     def get_object_list(self, request):
         nodes = Commune.nodes.all()
-        situations = createCommuneResources(request, nodes)
-        return situations
+        communes = createCommuneResources(nodes)
+        return communes
 
     def obj_get_list(self, bundle, **kwargs):
         return self.get_object_list(bundle.request)

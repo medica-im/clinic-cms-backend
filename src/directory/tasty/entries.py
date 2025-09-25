@@ -75,10 +75,7 @@ def createEntryResource(request, node):
     effector_node=node["effector"]
     address=node["address"]
     commune_node: Commune = node["commune"]
-    commune_obj = createCommuneResources(
-        request,
-        [commune_node]
-    )[0]
+    commune_obj = createCommuneResources([commune_node])[0]
     commune = commune_obj.__dict__
     label = getattr(
         effector_node,
@@ -187,7 +184,7 @@ class EntryResource(Resource):
         authorization = Authorization()
         detail_uri_name = 'uid'
 
-    
+
     def generate_cache_key(self, *args, **kwargs):
         smooshed = []
         for key, value in kwargs.items():
@@ -199,7 +196,6 @@ class EntryResource(Resource):
 
     def detail_uri_kwargs(self, bundle_or_obj):
         kwargs = {}
-
         if isinstance(bundle_or_obj, Bundle):
             kwargs['uid'] = bundle_or_obj.obj.uid
         else:

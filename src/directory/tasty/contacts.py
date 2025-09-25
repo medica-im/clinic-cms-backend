@@ -7,7 +7,6 @@ from tastypie.resources import Resource, NamespacedModelResource
 
 from tastypie.bundle import Bundle
 from tastypie.fields import ForeignKey
-from directory.tasty.communes import createCommuneResources
 
 from django.urls import re_path
 from directory.models import Effector, Situation, EffectorType, Commune

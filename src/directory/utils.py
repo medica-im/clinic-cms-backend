@@ -682,23 +682,18 @@ def find_effector_uid(effector_type_slug, commune_slug, effector_slug):
         
         
 def find_entry(
-        directory: Directory,
-        facility_slug: str,
-        effector_type_slug: str,
-        effector_slug: str
+        directory: Directory|None = None,
+        facility_slug: str|None = None,
+        effector_type_slug: str|None = None,
+        effector_slug: str|None = None,
+        uid: str|None = None,
     ):
-    query=(
-        f"""
-        MATCH (d:Directory) WHERE d.name="{directory.name}"
-        WITH d
-        MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
-        WITH entry
-        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country),
+    if uid:
+        query=f"""
+        MATCH (entry:Entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country),
         (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
         (entry)-[:HAS_EFFECTOR]->(e:Effector)
-        WHERE e.slug_fr="{effector_slug}"
-        AND f.slug="{facility_slug}"
-        AND et.slug_fr="{effector_type_slug}"
+        WHERE entry.uid="{uid}"
         WITH *
         OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
         WITH *
@@ -712,9 +707,36 @@ def find_entry(
         WITH *, bLabels + labels(et) AS allLabels
         UNWIND allLabels AS labelList
         UNWIND labelList AS label
-        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,COLLECT(DISTINCT a) AS a,collect(DISTINCT label) AS typelabels;
-        """
-    )
+        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,COLLECT(DISTINCT a) AS a,collect(DISTINCT label) AS typelabels;"""
+    else:
+        query=(
+            f"""
+            MATCH (d:Directory) WHERE d.name="{directory.name}"
+            WITH d
+            MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
+            WITH entry
+            MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country),
+            (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
+            (entry)-[:HAS_EFFECTOR]->(e:Effector)
+            WHERE e.slug_fr="{effector_slug}"
+            AND f.slug="{facility_slug}"
+            AND et.slug_fr="{effector_type_slug}"
+            WITH *
+            OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
+            WITH *
+            OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN entry.third_party_payer
+            WITH *, COLLECT(tpp) AS tpp
+            OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN entry.payment
+            OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
+            OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
+            MATCH (et)-[:IS_A*0..]->(b:EffectorType)
+            WITH *, et, collect(DISTINCT labels(b)) AS bLabels
+            WITH *, bLabels + labels(et) AS allLabels
+            UNWIND allLabels AS labelList
+            UNWIND labelList AS label
+            RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,COLLECT(DISTINCT a) AS a,collect(DISTINCT label) AS typelabels;
+            """
+        )
     results, cols = db.cypher_query(query)
     try:
         row=results[0]

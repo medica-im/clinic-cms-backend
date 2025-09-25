@@ -18,7 +18,6 @@ logger=logging.getLogger(__name__)
 def flex_effector_type_label(
         effector,
         effector_type,
-        request,
     ):
     try:
         effector_type_label=Label.get_label(

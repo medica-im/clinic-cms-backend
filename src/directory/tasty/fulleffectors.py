@@ -14,7 +14,6 @@ from tastypie.utils import (
     trailing_slash,
 )
 
-#from directory.tasty.communes import createCommuneResources
 from directory.serializers import display_tag_name
 from directory.utils import (
     get_phones_neomodel,
@@ -50,7 +49,6 @@ class EffectorObj(object):
             uid,
             effector_uid,
             effector_type,
-            #commune,
             address,
             phones,
             updatedAt,
@@ -74,7 +72,6 @@ class EffectorObj(object):
         self.uid = uid
         self.effector_uid = effector_uid
         self.effector_type = effector_type
-        #self.commune = commune
         self.address = address
         self.phones = phones
         self.updatedAt = updatedAt
@@ -92,8 +89,7 @@ class EffectorObj(object):
         self.spoken_languages = spoken_languages
         self.avatar = avatar
 
-def createEffectorRessource(request, node):
-    location=node["location"]
+def createEffectorRessource(node):
     try:
         uid = node["entry"].uid
     except Exception as e:
@@ -101,12 +97,6 @@ def createEffectorRessource(request, node):
     effector_node=node["effector"]
     health_worker=node["health_worker"]
     address=node["address"]
-    #commune_node = node["commune"]
-    #commune_obj = createCommuneResources(
-    #    request,
-    #    [commune_node]
-    #)[0]
-    #commune = commune_obj.__dict__
     label = getattr(
         effector_node,
         f'label_{settings.LANGUAGE_CODE}',
@@ -140,7 +130,6 @@ def createEffectorRessource(request, node):
     effector_type_obj=flex_effector_type_label(
         effector_node,
         effector_type_obj,
-        request
     )
     effector_type_dict=effector_type_obj.__dict__
     effector_type_dict["labels"]=node["effector_type_labels"]
@@ -222,12 +211,12 @@ def createEffectorRessource(request, node):
     )
     return effector
 
-def createEffectorRessources(request, nodes):
+def createEffectorRessources(nodes):
     data= []
     # TODO manage Exception Value: 'NoneType' object is not iterable
     try:
         for node in nodes:
-            data.append(createEffectorRessource(request, node))
+            data.append(createEffectorRessource(node))
     except TypeError:
         pass
     return data
@@ -239,7 +228,6 @@ class FullEffectorResource(Resource):
     name = fields.CharField(attribute='name')
     slug = fields.CharField(attribute='slug')
     effector_type = fields.DictField(attribute='effector_type')
-    #commune = fields.DictField(attribute='commune')
     address = fields.DictField(attribute='address', null=True)
     phones = fields.ListField(attribute='phones', null=True)
     facility = fields.DictField(attribute='facility')
@@ -323,9 +311,6 @@ class FullEffectorResource(Resource):
         return self.get_object_list(bundle.request)
 
     def obj_get(self, bundle, **kwargs):
-        #logger.debug(f"!\n!\n!\n!\n!\n!!\n!\n!\n!\n!\n!{bundle.request.GET.__dict__=}\n{kwargs=}!\n!\n!\n!\n!\n!!\n!\n!\n!\n!\n!n")
-        #uid=find_effector_uid(kwargs["facility"],kwargs["type"],kwargs["name"])
-        #logger.debug(f"!\n!\n!\n!\n!\n!!\n!\n!\n!\n!\n!{uid=}\n!\n!\n!\n!\n!\n!!\n!\n!\n!\n!\n!n")
         directory=get_directory(bundle.request)
         try:
             effector = find_entry(directory, kwargs["facility"], kwargs["type"], kwargs["name"])
