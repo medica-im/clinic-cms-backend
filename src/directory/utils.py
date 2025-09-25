@@ -324,6 +324,8 @@ def get_address(facility: Facility, commune: Commune, country: Country):
     return _dct
 
 def org_uids(orgs):
+    if orgs and not isinstance(orgs, list):
+        orgs=[orgs]
     try:
         return [org.uid for org in orgs]
     except Exception as e:
