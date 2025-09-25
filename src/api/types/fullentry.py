@@ -125,7 +125,7 @@ class Website(BaseModel):
 class FullEntry(BaseModel):
     active: bool
     address: Address
-    appointments: list[Appointment]
+    appointments: list[Appointment]|None = None
     avatar: Avatar|None = None
     carte_vitale: bool|None = None
     convention: Convention|None = None
