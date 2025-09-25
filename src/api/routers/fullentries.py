@@ -12,5 +12,5 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/fullentries/{uid}")
-async def get(uid: str) -> FullEntry:
+def get(uid: str) -> FullEntry:
     return get_fullentry(uid)
