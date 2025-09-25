@@ -80,7 +80,7 @@ class Contact(BaseModel):
         neomodel_uid: str
         organization: str
         person_type: str
-        profile_image: str
+        profile_image: str|None = None
         qr_image: str|None = None
         title: str
         twitter_handle: str|None = None
@@ -126,11 +126,11 @@ class FullEntry(BaseModel):
     active: bool
     address: Address
     appointments: list[Appointment]
-    avatar: Avatar
+    avatar: Avatar|None = None
     carte_vitale: bool|None = None
     convention: Convention|None = None
-    deactivation_datetime: str|None
-    deactivation_reason: str|None
+    deactivation_datetime: str|None = None
+    deactivation_reason: str|None = None
     effector_uid: str
     emails: list[Email]|None = None
     facility: Facility
@@ -146,10 +146,10 @@ class FullEntry(BaseModel):
     rpps: RPPS|None = None
     slug: str
     socialnetworks: list[SocialNetwork]|None = None
-    spoken_languages: list[str]
+    spoken_languages: list[str]|None = None
     third_party_payers: list[ThirdPartyPayer]|None = None
     uid: str
     updatedAt: int = 0
-    websites: list[Website]
+    websites: list[Website]|None = None
     organizations: list[str]|None = None
     memberships: list[str]|None = None
