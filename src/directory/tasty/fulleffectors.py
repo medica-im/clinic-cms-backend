@@ -65,6 +65,7 @@ class EffectorObj(object):
             rpps,
             spoken_languages,
             avatar,
+            active,
         ):
         self.label = label
         self.name = name
@@ -88,6 +89,7 @@ class EffectorObj(object):
         self.rpps = rpps
         self.spoken_languages = spoken_languages
         self.avatar = avatar
+        self.active = active
 
 def createEffectorRessource(node):
     try:
@@ -184,6 +186,10 @@ def createEffectorRessource(node):
     except TypeError:
         spoken_languages = None
     avatar=node["avatar"]
+    try:
+        active=node["entry"].active
+    except:
+        active=None
 
     effector = EffectorObj(
         label,
@@ -208,6 +214,7 @@ def createEffectorRessource(node):
         rpps,
         spoken_languages,
         avatar,
+        active,
     )
     return effector
 
@@ -223,6 +230,7 @@ def createEffectorRessources(nodes):
 
 class FullEffectorResource(Resource):
     uid = fields.CharField(attribute='uid', null=True)
+    active = fields.BooleanField(attribute='active', null=True)
     effector_uid = fields.CharField(attribute='effector_uid')
     label = fields.CharField(attribute='label')
     name = fields.CharField(attribute='name')
