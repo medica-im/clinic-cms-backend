@@ -13,4 +13,4 @@ router = APIRouter()
 
 @router.get("/fullentries/{uid}")
 async def get(uid: str) -> FullEntry:
-    return await get_fullentry(uid)
+    return get_fullentry(uid)
