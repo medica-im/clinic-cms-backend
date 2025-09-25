@@ -107,7 +107,7 @@ def createEntryResource(request, node):
     )
     effector_uid = effector_node.uid
     type_object = createEffectorTypeResources(node["effector_type"])
-    type_object = flex_effector_type_label(effector_node, type_object, request)
+    type_object = flex_effector_type_label(effector_node, type_object)
     effector_type=type_object.__dict__
     phones = get_phones_neomodel(
         e=effector_node,
