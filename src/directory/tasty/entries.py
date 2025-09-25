@@ -156,7 +156,8 @@ def createEntryResources(request, nodes):
     try:
         for node in nodes:
             data.append(createEntryResource(request, node))
-    except TypeError:
+    except (TypeError, ValueError) as e:
+        logger.error(e)
         pass
     return data
 
@@ -224,7 +225,7 @@ class EntryResource(Resource):
         directory=get_directory(request)
         logger.debug(f"{directory=}")
         nodes = get_entries(directory)
-        logger.debug(f"{nodes[:5] if nodes else []}")
+        logger.debug(f"{nodes[:2] if nodes else []}")
         contacts = createEntryResources(request, nodes)
         return contacts
 
