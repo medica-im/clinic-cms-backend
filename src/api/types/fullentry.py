@@ -40,9 +40,9 @@ class Address(BaseModel):
 
 
 class Avatar(BaseModel):
-    fb: str
-    lt: str
-    raw: str
+    fb: str|None = None
+    lt: str|None = None
+    raw: str|None = None
 
 
 class EffectorType(BaseModel):
