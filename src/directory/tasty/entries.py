@@ -224,6 +224,7 @@ class EntryResource(Resource):
         directory=get_directory(request)
         logger.debug(f"{directory=}")
         nodes = get_entries(directory)
+        logger.debug(f"{nodes[:5] if nodes else []}")
         contacts = createEntryResources(request, nodes)
         return contacts
 
