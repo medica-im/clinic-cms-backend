@@ -5,5 +5,5 @@ from api.types.fullentry import FullEntry
 def get_fullentry(uid):
     entry_node = find_entry(uid=uid)
     entry_object = createEffectorRessource(entry_node)
-    entry_pydantic = FullEntry.model_validate(entry_object)
+    entry_pydantic = FullEntry.model_validate(entry_object.__dict__)
     return entry_pydantic
