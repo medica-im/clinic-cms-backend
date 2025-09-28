@@ -63,9 +63,9 @@ class Email(BaseModel):
 
 class Facility(BaseModel):
     uid: str
-    name: str
-    label: str
-    slug: str
+    name: str|None = None
+    label: str|None = None
+    slug: str|None = None
 
 
 class Contact(BaseModel):
