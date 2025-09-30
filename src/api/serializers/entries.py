@@ -55,7 +55,6 @@ def get_entries(
             for _uid in xs
             
         ]
-        logger.debug(uids)
     return uids
 
 def entry_if_exists(effector: Effector, effector_type: EffectorType, facility: Facility):
@@ -118,18 +117,18 @@ async def create_entry(dir_name, kwargs)-> str:
     if "HCW" in await effector_type.labels():
         query = f"""MATCH (e:Effector) WHERE e.uid="{effector.uid}" SET e:HealthWorker RETURN labels(e);"""
         result = db.cypher_query(query)
-        logger.debug(result[0][0][0])
+        #logger.debug(result[0][0][0])
         if "HealthWorker" not in result[0][0][0]:
             raise HTTPException(status_code=500, detail=f"Label 'HealthWorker' not applied to Effector {effector.uid} of type {effector_type.name_fr}")
     return str(entry.uid)
 
 async def get_entry(uid:str)->Entry:
     entry = await EntryAgraph.nodes.get(uid=uid)
-    logger.debug(entry.__properties__)
+    #logger.debug(entry.__properties__)
     return Entry.model_validate(entry.__properties__)
 
 async def update_entry(uid:str, update_data: dict[str, Any]):
-    logger.debug(update_data)
+    #logger.debug(update_data)
     entry = await EntryAgraph.nodes.get(uid=uid)
     if 'carte_vitale' in update_data.keys():
         entry.carte_vitale=update_data['carte_vitale']
