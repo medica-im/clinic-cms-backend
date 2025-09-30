@@ -221,16 +221,14 @@ class EntryResource(Resource):
         ]
 
     def get_object_list(self, request):
-        logger.debug("get_object_list")
         directory=get_directory(request)
         logger.debug(f"{directory=}")
         nodes = get_entries(directory)
-        logger.debug(f"{nodes[:2] if nodes else []}")
+        logger.debug(f"{nodes[:1] if nodes else []}")
         contacts = createEntryResources(request, nodes)
         return contacts
 
     def obj_get_list(self, bundle, **kwargs):
-        logger.debug("obj_get_list")
         directory=get_directory(bundle.request)
         cache_key = self.generate_cache_key(directory.name)
         logger.debug(f"{cache_key=}")
@@ -238,7 +236,7 @@ class EntryResource(Resource):
         cache_is_empty = cache.get(cache_key, sentinel) is sentinel
         if cache_is_empty:
             value = self.get_object_list(bundle.request)
-            logger.debug(value)
+            #logger.debug(value)
             cache.set(
                 cache_key,
                 value,

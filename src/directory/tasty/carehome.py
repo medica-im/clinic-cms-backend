@@ -139,7 +139,6 @@ class CareHomeResource(Resource):
 
     def get_object_list(self, request):
         directory=get_directory(request)
-        logger.debug(directory)
         nodes = get_effector_nodes(directory, label="CareHome")
         objs = createResources(request, nodes)
         return objs
