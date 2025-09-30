@@ -564,7 +564,6 @@ def get_entries(
                 commune,
                 country,
             ) = row
-            logger.debug(f"{organizations=}")
             address = get_address(facility,commune,country)
             avatar=get_avatar_url(entry, effector, location, facility)
             entries.append(

@@ -37,7 +37,6 @@ def createSituationResources(request, nodes):
             'name_en'
         )
         entries = entries_of_situation(request, node)
-        logger.debug(f'{entries=}')
         situation = SituationObj(
             uid,
             name,
