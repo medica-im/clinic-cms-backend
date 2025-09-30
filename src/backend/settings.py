@@ -262,6 +262,8 @@ NEO4J_USERNAME = config('NEO4J_USERNAME', default="neo4j")
 NEO4J_PASSWORD = config('NEO4J_PASSWORD', default="neo4j")
 NEO4J_AUTH = (NEO4J_USERNAME, NEO4J_PASSWORD)
 NEO4J_7687_EXTERNAL_PORT= config('{NEO4J_7687_EXTERNAL_PORT}', default='7687')
+neo4j_log = logging.getLogger("neo4j")
+neo4j_log.setLevel(logging.ERROR)
 
 #neomodel
 TASTYPIE_FULL_DEBUG = True
