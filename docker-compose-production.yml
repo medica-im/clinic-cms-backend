@@ -39,7 +39,7 @@ services:
       dockerfile: docker/django/Dockerfile
       target: prod
     image: backend_prod
-    command: bash -c "DJANGO_SETTINGS_MODULE=backend.settings python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn backend.wsgi:application --workers=${GUNICORN_WORKERS} --log-file=${GUNICORN_LOG}/gunicorn.log --log-level=${GUNICORN_LOG_LEVEL} -b '[::]:80' --worker-tmp-dir /dev/shm --timeout ${GUNICORN_TIMEOUT}"
+    command: bash -c "DJANGO_SETTINGS_MODULE=backend.settings python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn backend.wsgi:application --workers=${GUNICORN_WORKERS} --log-file=${GUNICORN_LOG}/gunicorn.log --log-level=${GUNICORN_LOG_LEVEL} -b '[::]:80' --worker-tmp-dir /dev/shm --timeout ${GUNICORN_TIMEOUT} --max-requests=${GUNICORN_MAX_REQUESTS:-500}"
     volumes:
       - ./src:/backend/src
       - ${STATIC_ROOT}:${STATIC_ROOT}
