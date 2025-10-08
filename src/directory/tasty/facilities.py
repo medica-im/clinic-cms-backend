@@ -81,7 +81,7 @@ def createFacilityResources(request, nodes):
                     )
                 )
             except:
-                name=facility.uid
+                name=None
         try:
             label = facility.label
         except:
