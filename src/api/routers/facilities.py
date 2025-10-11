@@ -21,8 +21,9 @@ async def facility(uid: str) -> Facility:
 
 @router.post("/facilities/", status_code=status.HTTP_201_CREATED)
 async def post_facility(facility: FacilityPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> Facility:
+    logger.debug(f'${facility=}')
     await authorize_api("facilities_v2", request, jwt)
-    return create_facility(facility.model_dump())
+    return create_facility(facility)
 
 @router.delete("/facilities/{uid}")
 async def delete(uid: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):

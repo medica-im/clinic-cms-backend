@@ -1,9 +1,10 @@
 import logging
 import json
+from decimal import Decimal
 from fastapi import HTTPException
-from typing import Union
-from pydantic import ValidationError
-from api.types.facility import Facility as FacilityPy
+from typing import Union, TypedDict
+from pydantic import ValidationError, ConfigDict, TypeAdapter
+from api.types.facility import FacilityPost, Facility as FacilityPy
 from api.types.organization_types import OrganizationTypePy
 from api.types.organization import OrganizationPy
 from api.types.geography import Commune as CommunePy, DepartmentOfFrance as DepartmentOfFrancePy
@@ -86,12 +87,11 @@ def get_facilities(
                 raise ValidationError(e)
     return facilities
 
-def create_facility(kwargs)->FacilityPy:
-    logger.debug(kwargs["location"])
+def create_facility(f: FacilityPost)->FacilityPy:
     try:
-        longitude: int=kwargs["location"]["longitude"]
+        longitude: Decimal|None = f.longitude
         logger.debug(longitude)
-        latitude: int=kwargs["location"]["latitude"]
+        latitude: Decimal|None = f.latitude
         logger.debug(latitude)
         lng_lat = (longitude,latitude)
         location=NeomodelPoint(lng_lat, crs='wgs-84')
@@ -100,19 +100,19 @@ def create_facility(kwargs)->FacilityPy:
         logger.debug(e)
         location=None
     node = Facility(
-        name=kwargs["name"],
-        label=kwargs["label"],
-        slug=kwargs["slug"],
-        zoom=kwargs["zoom"],
-        building=kwargs["building"],
-        street=kwargs["street"],
-        geographical_complement=kwargs["geographical_complement"],
-        zip=kwargs["zip"],
-        ban_id=kwargs["ban_id"],
-        ban_banId=kwargs["ban_banId"],
+        name=f.name,
+        label=f.label,
+        slug=f.slug,
+        zoom=f.zoom,
+        building=f.building,
+        street=f.street,
+        geographical_complement=f.geographical_complement,
+        zip=f.zip,
+        ban_id=f.ban_id,
+        ban_banId=f.ban_banId,
         location=location
     ).save()
-    commune=kwargs["commune"]
+    commune=f.commune
     if commune:
         try:
             commune_node = Commune.nodes.get(uid=commune)
