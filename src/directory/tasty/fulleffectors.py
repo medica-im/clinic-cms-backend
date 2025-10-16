@@ -185,7 +185,10 @@ def createEffectorRessource(node):
     rpps=health_worker.rpps
     try:
         spoken_languages=[
-            display_tag_name(t, LANGUAGE) for t in health_worker.spoken_languages
+            {
+                "tag": t,
+                "name": display_tag_name(t, LANGUAGE)
+            } for t in health_worker.spoken_languages
         ]
     except TypeError:
         spoken_languages = None

@@ -110,8 +110,6 @@ class EffectorSerializer(Serializer):
         try:
             spoken_languages_data = validated_data.pop('spoken_languages')
             logger.debug(f"{spoken_languages_data=}")
-            if spoken_languages_data:
-                spoken_languages_data=[standardize_tag(tag) for tag in spoken_languages_data]
             instance.spoken_languages=spoken_languages_data
         except validated_data.DoesNotExist:
             pass

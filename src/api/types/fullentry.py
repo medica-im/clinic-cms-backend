@@ -122,6 +122,11 @@ class Website(BaseModel):
     url: str
 
 
+class SpokenLanguage(BaseModel):
+    tag: str
+    name: str
+
+
 class FullEntry(BaseModel):
     active: bool
     address: Address
@@ -146,7 +151,7 @@ class FullEntry(BaseModel):
     rpps: RPPS|None = None
     slug: str
     socialnetworks: list[SocialNetwork]|None = None
-    spoken_languages: list[str]|None = None
+    spoken_languages: list[SpokenLanguage]|None = None
     third_party_payers: list[ThirdPartyPayer]|None = None
     uid: str
     updatedAt: int = 0
