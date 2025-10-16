@@ -13,6 +13,8 @@ def display_tag_name(tag: str, language: str = settings.LANGUAGE_CODE)->str|None
             display_name = Language.get(tag).display_name(language)
             if tag == "arb" and language == "fr":
                 display_name = "arabe standard moderne"
+            elif tag == "cmn" and language == "fr":
+                display_name = "mandarin"
             return display_name
         except:
             return
