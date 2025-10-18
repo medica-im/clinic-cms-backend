@@ -12,3 +12,6 @@ async def slug_find_entry(commune: str, effector: str, type: str)->str:
     logger.debug(f"{results=}\n{cols=}")
     if not results:
         raise HTTPException(status_code=404, detail="Entry not found")
+    uid = results[0][0]
+    logger.debug(f"{uid=}")
+    return uid
