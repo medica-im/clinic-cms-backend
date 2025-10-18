@@ -23,6 +23,7 @@ from addressbook.api.serializers import (
     PhoneNumberSerializer,
     EmailSerializer,
     WebsiteSerializer,
+    AsyncWebsiteSerializer,
     SocialNetworkSerializer,
     AddressSerializer,
     ProfileSerializer,
@@ -237,7 +238,7 @@ async def async_get_websites_neomodel(
         ef=ef,
         f=f,
         attribute="websites",
-        Serializer=WebsiteSerializer
+        Serializer=AsyncWebsiteSerializer
     )
 
 def get_socialnetworks_neomodel(
