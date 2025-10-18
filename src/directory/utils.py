@@ -162,7 +162,7 @@ async def async_get_contact_related_neomodel(
             )
         except AttributeError:
             return
-        return await serializer.data
+        return serializer.data
 
 def get_profile_neomodel(entry: Entry, e: Effector, ef: EffectorFacility, f: Facility):
     return get_contact_related_neomodel(
