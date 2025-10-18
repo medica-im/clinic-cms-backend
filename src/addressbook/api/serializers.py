@@ -13,7 +13,7 @@ from addressbook.models import (
 )
 from directory.models.graph import Appointment, Office, HouseCall, Entry
 from rest_framework import serializers
-from adrf import serializers as async_serializers
+from adrf.serializers import ModelSerializer
 
 logger=logging.getLogger(__name__)
 
@@ -112,15 +112,14 @@ class WebsiteSerializer(serializers.ModelSerializer):
         depth = 2
 
 
-class AsyncWebsiteSerializer(async_serializers.ModelSerializer):
-
+class AsyncWebsiteSerializer(ModelSerializer):
     class Meta:
         model = Website
-        fields = [
+        fields = (
             'id',
             'url',
             'roles',
-        ]
+        )
         depth = 2
 
 
