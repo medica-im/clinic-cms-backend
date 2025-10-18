@@ -1159,7 +1159,7 @@ async def async_find_entry(
     else:
         query= get_slug_query(directory, effector_slug, effector_type_slug, facility_slug)
     results, cols = await adb.cypher_query(query)
-    return entry_dict(results, cols)
+    return await async_entry_dict(results, cols)
 
 def effector_types(directory: Directory) -> list[str]:
     query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:Effector)-[rel:LOCATION]->(f:Facility)
