@@ -120,7 +120,7 @@ class AsyncWebsiteSerializer(ModelSerializer):
             'url',
             'roles',
         )
-        depth = 2
+        depth = 1
 
 
 class ContactSerializer(serializers.ModelSerializer):
