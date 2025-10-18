@@ -1081,12 +1081,7 @@ async def async_entry_dict(results, cols):
         ef=effector_facility,
         f=facility
     )
-    websites = await async_get_websites_neomodel(
-        entry=entry,
-        e=effector,
-        ef=effector_facility,
-        f=facility
-    )
+    websites = await async_get_websites_neomodel(entry)
     socialnetworks = await async_get_socialnetworks_neomodel(
         entry=entry,
         e=effector,
