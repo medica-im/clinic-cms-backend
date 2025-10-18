@@ -28,7 +28,7 @@ from addressbook.api.serializers import (
     ProfileSerializer,
 )
 from api.serializers.appointment import AppointmentSerializer
-from access.utils import get_role
+from access.utils import get_role, async_get_role
 from rest_framework.serializers import ModelSerializer
 from rdflib.plugins.shared.jsonld.keys import NONE
 
@@ -41,6 +41,13 @@ def get_directory(request):
     except Directory.DoesNotExist:
         raise Directory.DoesNotExist
 
+async def async_get_directory(request):
+    site = get_current_site(request)
+    try:
+        return await Directory.objects.aget(site=site)
+    except Directory.DoesNotExist:
+        raise Directory.DoesNotExist
+
 def get_contact_related_elements(
         neo_entity,
         attribute,
@@ -48,6 +55,24 @@ def get_contact_related_elements(
     ):
     try:
         contact = Contact.objects.get(neomodel_uid=neo_entity.uid)
+    except (Contact.DoesNotExist, AttributeError):
+        return None
+    try:
+        related = getattr(contact, attribute)
+        if many:
+            return list(related.all()) or None
+        else:
+            return related
+    except AttributeError:
+        return None
+
+async def async_get_contact_related_elements(
+        neo_entity,
+        attribute,
+        many: bool
+    ):
+    try:
+        contact = await Contact.objects.aget(neomodel_uid=neo_entity.uid)
     except (Contact.DoesNotExist, AttributeError):
         return None
     try:
@@ -97,8 +122,57 @@ def get_contact_related_neomodel(
             return
         return serializer.data
 
+async def async_get_contact_related_neomodel(
+        entry: Entry|None = None,
+        e: Effector|None = None,
+        ef: EffectorFacility|None = None,
+        f: Facility|None = None,
+        attribute: str = "",
+        Serializer:  ModelSerializer|None = None,
+        many: bool = True,
+        first_hit = False,
+    ):
+    elements = set()
+    for neo_entity in [entry, e, ef, f]:
+        new_elements = await async_get_contact_related_elements(
+            neo_entity=neo_entity,
+            attribute=attribute,
+            many=many
+        )
+        if new_elements:
+            try:
+                elements.add(new_elements)
+            except TypeError:
+                elements.update(new_elements)
+        if len(elements) and first_hit:
+            break
+    try:
+        elements.remove(None)
+    except KeyError:
+        pass
+    if elements:
+        try:
+            serializer = Serializer(
+                elements,
+                many=many
+            )
+        except AttributeError:
+            return
+        return serializer.data
+
 def get_profile_neomodel(entry: Entry, e: Effector, ef: EffectorFacility, f: Facility):
     return get_contact_related_neomodel(
+        entry=entry,
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="profile",
+        Serializer=ProfileSerializer,
+        many=False
+    )
+
+async def async_get_profile_neomodel(entry: Entry, e: Effector, ef: EffectorFacility, f: Facility):
+    return await async_get_contact_related_neomodel(
         entry=entry,
         e=e,
         ef=ef,
@@ -117,9 +191,6 @@ def appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment)
             return 'office'
         else:
             return None
-    logger.debug(f"{nodes=}")
-    logger.debug(f"{type(nodes)=}")
-    logger.debug(f"{type(nodes) is Appointment=}")
     if not nodes:
         return None
     if type(nodes) in [Appointment, Office, HouseCall]:
@@ -154,6 +225,21 @@ def get_websites_neomodel(
         Serializer=WebsiteSerializer
     )
 
+async def async_get_websites_neomodel(
+        entry: Entry|None=None,
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None
+    ):
+    return await async_get_contact_related_neomodel(
+        entry=entry,
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="websites",
+        Serializer=WebsiteSerializer
+    )
+
 def get_socialnetworks_neomodel(
         entry: Entry|None=None,
         e: Effector | None = None,
@@ -161,6 +247,21 @@ def get_socialnetworks_neomodel(
         f: Facility | None = None,
     ):
     return get_contact_related_neomodel(
+        entry=entry,
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="socialnetworks",
+        Serializer=SocialNetworkSerializer
+    )
+
+async def async_get_socialnetworks_neomodel(
+        entry: Entry|None=None,
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None,
+    ):
+    return await async_get_contact_related_neomodel(
         entry=entry,
         e=e,
         ef=ef,
@@ -186,6 +287,23 @@ def get_phones_neomodel(
         many=True,
     )
 
+async def async_get_phones_neomodel(
+        entry: Entry|None = None,
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None,
+    ):
+    return await async_get_contact_related_neomodel(
+        entry=entry,
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="phonenumbers",
+        Serializer=PhoneNumberSerializer,
+        first_hit=True,
+        many=True,
+    )
+
 def get_emails_neomodel(
         entry: Entry|None=None,
         e: Effector | None = None,
@@ -193,6 +311,23 @@ def get_emails_neomodel(
         f: Facility | None = None
     ):
     return get_contact_related_neomodel(
+        entry=entry,
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="emails",
+        Serializer=EmailSerializer,
+        first_hit=False,
+        many=True,
+    )
+
+async def async_get_emails_neomodel(
+        entry: Entry|None=None,
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None
+    ):
+    return await async_get_contact_related_neomodel(
         entry=entry,
         e=e,
         ef=ef,
@@ -232,6 +367,43 @@ def get_phones(request, effector):
                 except Contact.DoesNotExist:
                     continue
             role = get_role(request)
+            _phones = contact.phonenumbers.filter(roles__in=[role]).distinct()
+            serializer = PhoneNumberSerializer(
+                _phones,
+                many=True
+            )
+            phones.extend(serializer.data)
+        return phones
+
+async def async_get_phones(request, effector):
+    directory = await async_get_directory(request)
+    results, cols = await adb.cypher_query(
+        f"""MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
+        WHERE rel.directories=["{directory.name}"]
+        AND e.uid="{effector.uid}"
+        RETURN f, rel"""
+    )
+    if results:
+        location_facility = []
+        for row in results:
+            _dct = {}
+            location_rel=EffectorFacility.inflate(row[cols.index('rel')])
+            _dct["location_rel"]=location_rel
+            facility=Facility.inflate(row[cols.index('f')])
+            _dct["facility"]=facility
+            location_facility.append(_dct)
+        phones = []
+        for lf in location_facility:
+            try:
+                contact = await Contact.objects.aget(neomodel_uid=lf["location_rel"].uid)
+            except Contact.DoesNotExist:
+                contact = None
+            if not (contact and contact.phonenumbers.all()):
+                try:
+                    contact = await Contact.objects.aget(neomodel_uid=lf["facility"].uid)
+                except Contact.DoesNotExist:
+                    continue
+            role = await async_get_role(request)
             _phones = contact.phonenumbers.filter(roles__in=[role]).distinct()
             serializer = PhoneNumberSerializer(
                 _phones,
@@ -290,7 +462,62 @@ def get_avatar_url(
         return get_avatar_dict(effector_avatar)
     if (f_avatar):
         return get_avatar_dict(f_avatar)
-    
+
+async def async_get_avatar_url(
+        entry: Entry|None=None,
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None
+    ):
+    def get_avatar_dict(profile_image):
+        if not profile_image:
+            return
+        try:
+            fb = profile_image["avatar_facebook"].url
+        except:
+            fb = None
+        try:
+            lt = profile_image["avatar_linkedin_twitter"].url
+        except:
+            lt = None
+        try:
+            raw = profile_image.url
+        except:
+            raw = None
+        return {
+            "fb": fb,
+            "lt": lt,
+            "raw": raw
+        }
+    try:
+        contact = await Contact.objects.aget(neomodel_uid=entry.uid)
+        entry_avatar = contact.profile_image
+    except (Contact.DoesNotExist, AttributeError):
+        entry_avatar = None
+    try:
+        contact = await Contact.objects.aget(neomodel_uid=e.uid)
+        effector_avatar = contact.profile_image
+    except (Contact.DoesNotExist, AttributeError):
+        effector_avatar = None
+    try:
+        contact = await Contact.objects.aget(neomodel_uid=ef.uid)
+        ef_avatar = contact.profile_image
+    except (Contact.DoesNotExist, AttributeError):
+        ef_avatar = None
+    try:
+        contact = await Contact.objects.aget(neomodel_uid=f.uid)
+        f_avatar = contact.profile_image
+    except (Contact.DoesNotExist, AttributeError):
+        f_avatar = None
+    if (entry_avatar):
+        return get_avatar_dict(entry_avatar)
+    if (ef_avatar):
+        return get_avatar_dict(ef_avatar)
+    if (effector_avatar):
+        return get_avatar_dict(effector_avatar)
+    if (f_avatar):
+        return get_avatar_dict(f_avatar)
+
 def _get_address(facility: Facility):
     try:
         contact = Contact.objects.get(neomodel_uid=facility.uid)
@@ -796,6 +1023,94 @@ def entry_dict(results, cols):
         convention = None
     health_worker=HealthWorker.inflate(row[cols.index('e')])
     avatar=get_avatar_url(entry, effector, effector_facility, facility)
+    return {
+        "entry": entry,
+        "effector": effector,
+        "location": effector_facility,
+        "address": address,
+        #"commune": commune,
+        "effector_type": effector_type,
+        "effector_type_labels": row[cols.index('typelabels')],
+        "facility": facility,
+        "phones": phones,
+        "emails": emails,
+        "websites": websites,
+        "socialnetworks": socialnetworks,
+        "appointments": appointments,
+        "profile": profile,
+        "third_party_payers": third_party_payers,
+        "payment_methods": payment_methods,
+        "health_worker": health_worker,
+        "avatar": avatar,
+        "convention": convention
+    }
+
+async def async_entry_dict(results, cols):
+    try:
+        row=results[0]
+    except Exception as e:
+        logger.error(e)
+        return
+    entry=Entry.inflate(row[cols.index('entry')])
+    effector=Effector.inflate(row[cols.index('e')])
+    try:
+        effector_facility=EffectorFacility.inflate(row[cols.index('rel')])
+    except Exception as e:
+        effector_facility=None
+    facility=Facility.inflate(row[cols.index('f')])
+    commune=Commune.inflate(row[cols.index('c')])
+    country=Country.inflate(row[cols.index('country')])
+    effector_type=EffectorType.inflate(row[cols.index('et')])
+    address = get_address(facility,commune,country)
+    appointment_nodes = [Appointment.inflate(node) for node in row[cols.index('a')]]
+    phones = await async_get_phones_neomodel(
+        entry=entry,
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
+    emails = await async_get_emails_neomodel(
+        entry=entry,
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
+    websites = await async_get_websites_neomodel(
+        entry=entry,
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
+    socialnetworks = await async_get_socialnetworks_neomodel(
+        entry=entry,
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
+    appointments = appointments_from_neomodel(
+        entry=entry.uid,
+        nodes=appointment_nodes
+    )
+    profile = await async_get_profile_neomodel(
+        entry=entry,
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
+    third_party_payers = [
+        ThirdPartyPayer.inflate(payer)
+        for payer in row[cols.index('tpp')]
+    ] or None
+    payment_methods = [
+        PaymentMethod.inflate(pm)
+        for pm in row[cols.index('pm')]
+    ] or None
+    try:
+        convention =  Convention.inflate(row[cols.index('convention')])
+    except:
+        convention = None
+    health_worker=HealthWorker.inflate(row[cols.index('e')])
+    avatar= await async_get_avatar_url(entry, effector, effector_facility, facility)
     return {
         "entry": entry,
         "effector": effector,

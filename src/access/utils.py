@@ -21,9 +21,33 @@ def get_role_objs():
             return
     return roles
 
+async def async_get_role_objs():
+    roles = dict()
+    for role in [
+        "superuser", "administrator", "staff", "registered", "anonymous"
+    ]:
+        try:
+            roles[role] = await Role.objects.aget(name=role)
+        except Role.DoesNotExist:
+            logger.error(f'You must create a Role named {role}.')
+            return
+    return roles
+
 def get_role(request: HttpRequest):
     user = request.user
     roles = get_role_objs()
+    if user.is_anonymous:
+        return roles["anonymous"]
+    elif user.is_superuser:
+        return roles["superuser"]
+    elif is_staff(request):
+        return roles["staff"]
+    elif user.is_authenticated:
+        return roles["registered"]
+
+async def async_get_role(request: HttpRequest):
+    user = request.user
+    roles = await async_get_role_objs()
     if user.is_anonymous:
         return roles["anonymous"]
     elif user.is_superuser:
