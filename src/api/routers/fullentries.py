@@ -19,4 +19,4 @@ def get(uid: str) -> FullEntry:
 @router.get("/slugfullentries/{type}/{commune}/{effector}")
 async def get_slug_fullentries(type: str, commune: str, effector: str) -> FullEntry|None:
     uid = await slug_find_entry(commune, effector, type)
-    return async_get_fullentry(uid)
+    return await async_get_fullentry(uid)
