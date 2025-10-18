@@ -13,6 +13,8 @@ class FacilityBase(BaseModel):
     street: str|None
     geographical_complement: str|None
     zip: str|None
+    ban_id: str|None
+    ban_banId: str|None
 
 
 class Facility(FacilityBase):
@@ -24,7 +26,10 @@ class Facility(FacilityBase):
 
 class FacilityPost(FacilityBase):
     commune: str
-    ban_id: str
-    ban_banId: str
+    latitude: Decimal|None = None
+    longitude: Decimal|None = None
+
+
+class FacilityPut(FacilityBase):
     latitude: Decimal|None = None
     longitude: Decimal|None = None

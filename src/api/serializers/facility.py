@@ -2,9 +2,9 @@ import logging
 import json
 from decimal import Decimal
 from fastapi import HTTPException
-from typing import Union, TypedDict
+from typing import Union, TypedDict, Any
 from pydantic import ValidationError, ConfigDict, TypeAdapter
-from api.types.facility import FacilityPost, Facility as FacilityPy
+from api.types.facility import FacilityPost, FacilityPut, Facility as FacilityPy
 from api.types.organization_types import OrganizationTypePy
 from api.types.organization import OrganizationPy
 from api.types.geography import Commune as CommunePy, DepartmentOfFrance as DepartmentOfFrancePy
@@ -120,6 +120,38 @@ def create_facility(f: FacilityPost)->FacilityPy:
         except Exception as e:
             raise Exception(e)
     facility = get_facility(uid=str(node.uid))
+    return facility
+
+def update_facility(uid: str, f: FacilityPut)->FacilityPy:
+    try:
+        longitude: Decimal|None = f.longitude
+        logger.debug(longitude)
+        latitude: Decimal|None = f.latitude
+        logger.debug(latitude)
+        lng_lat = (longitude,latitude)
+        location=NeomodelPoint(lng_lat, crs='wgs-84')
+        logger.debug(location)
+    except Exception as e:
+        logger.debug(e)
+        location=None
+    try:
+        node = Facility.nodes.get(uid=uid)
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=404, detail=f"Facility with uid={uid} not found.")
+    node.name=f.name,
+    node.label=f.label,
+    node.slug=f.slug,
+    node.zoom=f.zoom,
+    node.building=f.building,
+    node.street=f.street,
+    node.geographical_complement=f.geographical_complement,
+    node.zip=f.zip,
+    node.ban_id=f.ban_id,
+    node.ban_banId=f.ban_banId,
+    node.location=location
+    node.save()
+    facility = get_facility(uid=uid)
     return facility
 
 async def delete_facility(uid: str)->dict:
