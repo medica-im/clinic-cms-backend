@@ -79,7 +79,10 @@ async def async_get_contact_related_elements(
     try:
         related = getattr(contact, attribute)
         if many:
-            return list(related.all()) or None
+            elements=[]
+            async for element in related.all():
+                elements.append(element)
+            return elements or None
         else:
             return related
     except AttributeError:
