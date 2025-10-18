@@ -18,7 +18,7 @@ from directory.models import (
 from directory.models.graph import Appointment, Office, HouseCall
 from directory.models.graph import Convention
 from addressbook.models import Contact
-from neomodel import db
+from neomodel import db, adb
 from addressbook.api.serializers import (
     PhoneNumberSerializer,
     EmailSerializer,
@@ -681,17 +681,9 @@ def find_effector_uid(effector_type_slug, commune_slug, effector_slug):
             f"No Location relationship with {effector_type_slug=}, {commune_slug=}, "
             f"{effector_slug=} could be found. {e}"
         )
-        
-        
-def find_entry(
-        directory: Directory|None = None,
-        facility_slug: str|None = None,
-        effector_type_slug: str|None = None,
-        effector_slug: str|None = None,
-        uid: str|None = None,
-    ):
-    if uid:
-        query=f"""
+
+def get_uid_query(uid: str):
+    return f"""
         MATCH (entry:Entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country),
         (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
         (entry)-[:HAS_EFFECTOR]->(e:Effector)
@@ -710,10 +702,9 @@ def find_entry(
         UNWIND allLabels AS labelList
         UNWIND labelList AS label
         RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,COLLECT(DISTINCT a) AS a,collect(DISTINCT label) AS typelabels;"""
-    else:
-        query=(
-            f"""
-            MATCH (d:Directory) WHERE d.name="{directory.name}"
+
+def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
+    return f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
             WITH d
             MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
             WITH entry
@@ -738,8 +729,8 @@ def find_entry(
             UNWIND labelList AS label
             RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,COLLECT(DISTINCT a) AS a,collect(DISTINCT label) AS typelabels;
             """
-        )
-    results, cols = db.cypher_query(query)
+
+def entry_dict(results, cols):
     try:
         row=results[0]
     except Exception as e:
@@ -826,6 +817,34 @@ def find_entry(
         "avatar": avatar,
         "convention": convention
     }
+
+def find_entry(
+        directory: Directory|None = None,
+        facility_slug: str|None = None,
+        effector_type_slug: str|None = None,
+        effector_slug: str|None = None,
+        uid: str|None = None,
+    ):
+    if uid:
+        query = get_uid_query(uid)
+    else:
+        query= get_slug_query(directory, effector_slug, effector_type_slug, facility_slug)
+    results, cols = db.cypher_query(query)
+    return entry_dict(results, cols)
+
+async def async_find_entry(
+        directory: Directory|None = None,
+        facility_slug: str|None = None,
+        effector_type_slug: str|None = None,
+        effector_slug: str|None = None,
+        uid: str|None = None,
+    ):
+    if uid:
+        query = get_uid_query(uid)
+    else:
+        query= get_slug_query(directory, effector_slug, effector_type_slug, facility_slug)
+    results, cols = await adb.cypher_query(query)
+    return entry_dict(results, cols)
 
 def effector_types(directory: Directory) -> list[str]:
     query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:Effector)-[rel:LOCATION]->(f:Facility)

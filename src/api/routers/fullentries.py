@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated
 from fastapi import APIRouter, status, Request, Depends
-from api.serializers.fullentry import get_fullentry
+from api.serializers.fullentry import get_fullentry, async_get_fullentry
 from api.serializers.slug_fullentry import slug_find_entry
 from api.types.fullentry import FullEntry
 from api.utils import get_directory_from_hostname
@@ -19,4 +19,4 @@ def get(uid: str) -> FullEntry:
 @router.get("/slugfullentries/{type}/{commune}/{effector}")
 async def get_slug_fullentries(type: str, commune: str, effector: str) -> FullEntry|None:
     uid = await slug_find_entry(commune, effector, type)
-    return get_fullentry(uid)
+    return async_get_fullentry(uid)
