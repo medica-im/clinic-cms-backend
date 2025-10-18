@@ -139,16 +139,16 @@ def update_facility(uid: str, f: FacilityPut)->FacilityPy:
     except Exception as e:
         logger.error(e)
         raise HTTPException(status_code=404, detail=f"Facility with uid={uid} not found.")
-    node.name=f.name,
-    node.label=f.label,
-    node.slug=f.slug,
-    node.zoom=f.zoom,
-    node.building=f.building,
-    node.street=f.street,
-    node.geographical_complement=f.geographical_complement,
-    node.zip=f.zip,
-    node.ban_id=f.ban_id,
-    node.ban_banId=f.ban_banId,
+    node.name=f.name
+    node.label=f.label
+    node.slug=f.slug
+    node.zoom=f.zoom
+    node.building=f.building
+    node.street=f.street
+    node.geographical_complement=f.geographical_complement
+    node.zip=f.zip
+    node.ban_id=f.ban_id
+    node.ban_banId=f.ban_banId
     node.location=location
     node.save()
     facility = get_facility(uid=uid)
