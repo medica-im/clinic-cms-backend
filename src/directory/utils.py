@@ -21,6 +21,7 @@ from addressbook.models import Contact
 from neomodel import db, adb
 from addressbook.api.serializers import (
     PhoneNumberSerializer,
+    AsyncPhoneNumberSerializer,
     EmailSerializer,
     WebsiteSerializer,
     AsyncWebsiteSerializer,
@@ -293,22 +294,31 @@ def get_phones_neomodel(
         many=True,
     )
 
-async def async_get_phones_neomodel(
-        entry: Entry|None = None,
-        e: Effector | None = None,
-        ef: EffectorFacility | None = None,
-        f: Facility | None = None,
-    ):
-    return await async_get_contact_related_neomodel(
-        entry=entry,
-        e=e,
-        ef=ef,
-        f=f,
-        attribute="phonenumbers",
-        Serializer=PhoneNumberSerializer,
-        first_hit=True,
-        many=True,
-    )
+async def async_get_phones_neomodel(entry: Entry):
+    contact = await Contact.objects.prefetch_related('phonenumbers', 'phonenumbers__roles').aget(neomodel_uid=entry.uid)
+    #websites = []
+    #async for phone in contact.phones.all():
+    #    roles= []
+    #    async for role in phone.roles.all():
+    #        roles.append(role)
+    #    websites.append(
+    #        {
+    #            "id": website.id,
+    #            "url": websites.url,
+    #            "roles": roles
+    #        }
+    #    )
+    #logger.debug(f"{websites=}")
+    #return websites or None
+    phones=[]
+    async for phone in contact.phonenumbers.all():
+        phones.append(phone)
+    if phones:
+        serializer = AsyncPhoneNumberSerializer(
+            phones,
+            many=True
+        )
+    return serializer.data
 
 def get_emails_neomodel(
         entry: Entry|None=None,

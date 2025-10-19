@@ -89,6 +89,23 @@ class PhoneNumberSerializer(serializers.ModelSerializer):
         depth = 2
 
 
+class AsyncPhoneNumberSerializer(ModelSerializer):
+    type_display = serializers.CharField(
+        source='get_type_display'
+    )
+    class Meta:
+        model = PhoneNumber
+        fields = [
+            'id',
+            'phone',
+            'type',
+            'type_display',
+            'roles',
+            'contact',
+        ]
+        depth = 2
+
+
 class EmailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Email
