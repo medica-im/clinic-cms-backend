@@ -113,8 +113,8 @@ class AsyncPhoneNumberSerializer(Serializer):
     type_display = serializers.CharField(source='get_type_display')
     phone = serializers.CharField()
     type = serializers.CharField()
-    roles = serializers.RelatedField()
-    contact = serializers.RelatedField()
+    roles = serializers.RelatedField(read_only=True)
+    contact = serializers.RelatedField(read_only=True)
 
 
 class EmailSerializer(serializers.ModelSerializer):
