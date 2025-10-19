@@ -320,7 +320,7 @@ async def async_get_phones_neomodel(entry: Entry):
             phones,
             many=True
         )
-    return serializer.data
+        return serializer.data
 
 def get_emails_neomodel(
         entry: Entry|None=None,
