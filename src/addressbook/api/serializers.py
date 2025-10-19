@@ -11,9 +11,10 @@ from addressbook.models import (
     Website,
     Address,
 )
+from access.serializers import AsyncRoleSerializer
 from directory.models.graph import Appointment, Office, HouseCall, Entry
 from rest_framework import serializers
-from adrf.serializers import ModelSerializer
+from adrf.serializers import Serializer, ModelSerializer as AsyncModelSerializer
 
 logger=logging.getLogger(__name__)
 
@@ -89,10 +90,11 @@ class PhoneNumberSerializer(serializers.ModelSerializer):
         depth = 2
 
 
-class AsyncPhoneNumberSerializer(ModelSerializer):
+class AsyncPhoneNumberModelSerializer(AsyncModelSerializer):
     type_display = serializers.CharField(
         source='get_type_display'
     )
+    roles = AsyncRoleSerializer(read_only=True, many=True)
     class Meta:
         model = PhoneNumber
         fields = [
@@ -104,6 +106,15 @@ class AsyncPhoneNumberSerializer(ModelSerializer):
             'contact',
         ]
         depth = 2
+
+
+class AsyncPhoneNumberSerializer(Serializer):
+    id = serializers.IntegerField()
+    type_display = serializers.CharField(source='get_type_display')
+    phone = serializers.CharField()
+    type = serializers.CharField()
+    roles = serializers.RelatedField()
+    contact = serializers.RelatedField()
 
 
 class EmailSerializer(serializers.ModelSerializer):
@@ -129,15 +140,9 @@ class WebsiteSerializer(serializers.ModelSerializer):
         depth = 2
 
 
-class AsyncWebsiteSerializer(ModelSerializer):
-    class Meta:
-        model = Website
-        fields = (
-            'id',
-            'url',
-            'roles',
-        )
-        depth = 1
+class AsyncWebsiteSerializer(Serializer):
+    id=serializers.IntegerField()
+    url=serializers.CharField()
 
 
 class ContactSerializer(serializers.ModelSerializer):

@@ -22,6 +22,7 @@ from neomodel import db, adb
 from addressbook.api.serializers import (
     PhoneNumberSerializer,
     AsyncPhoneNumberSerializer,
+    AsyncPhoneNumberModelSerializer,
     EmailSerializer,
     WebsiteSerializer,
     AsyncWebsiteSerializer,
@@ -315,7 +316,7 @@ async def async_get_phones_neomodel(entry: Entry):
         phones.append(phone)
     logger.debug(f"{phones=}")
     if phones:
-        serializer = AsyncPhoneNumberSerializer(
+        serializer = AsyncPhoneNumberModelSerializer(
             phones,
             many=True
         )
