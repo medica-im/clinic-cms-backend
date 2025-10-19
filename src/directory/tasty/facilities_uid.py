@@ -47,6 +47,8 @@ class FacilityObj(object):
             socialnetworks,
             avatar,
             entries,
+            ban_id,
+            ban_banId,
         ):
         self.uid = uid
         self.name = name
@@ -61,6 +63,8 @@ class FacilityObj(object):
         self.socialnetworks = socialnetworks
         self.avatar = avatar
         self.entries = entries
+        self.ban_id = ban_id
+        self.ban_banId = ban_banId
 
 def createFacilityResources(request, nodes):
     data= []
@@ -98,6 +102,14 @@ def createFacilityResources(request, nodes):
             entries=[e.uid for e in facility.entries.all()]
         except Exception:
             entries=None
+        try:
+            ban_banId=facility.ban_banId
+        except Exception:
+            ban_banId=None
+        try:
+            ban_id=facility.ban_id
+        except Exception:
+            ban_id=None
         obj = FacilityObj(
             uid,
             name,
@@ -112,6 +124,8 @@ def createFacilityResources(request, nodes):
             socialnetworks,
             avatar,
             entries,
+            ban_id,
+            ban_banId,
         )
         data.append(obj)
     return data
@@ -133,7 +147,8 @@ class FacilityUidResource(Resource):
     socialnetworks = fields.ListField(attribute='socialnetworks', null=True)
     avatar = fields.DictField(attribute='avatar', null=True)
     entries = fields.ListField(attribute='entries', null=True)
-
+    ban_id = fields.CharField(attribute='ban_id', null=True)
+    ban_banId = fields.CharField(attribute='ban_banId', null=True)
 
     class Meta:
         resource_name = 'facilitiesuid'

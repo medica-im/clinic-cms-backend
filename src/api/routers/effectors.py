@@ -32,14 +32,6 @@ async def get_cookie(request: Request):
     logger.info(f"get cookie {request.cookies=}")
     return request.cookies.get('__Secure-authjs.session-token')
 
-@router.post('/debug')
-async def post_debug(request: Request):
-    logger.info(f"{request.client=}")
-    logger.info(f"post debug {request.headers=}")
-    logger.info(f"post debug \n{request.cookies=}")
-    logger.debug(request.cookies.get('__Secure-authjs.session-token'))
-    return request.cookies.get('__Secure-authjs.session-token')
-
 @router.post('/cookie')
 async def post_cookie(request: Request, jwt: Annotated[dict, Depends(JWT)]):
     logger.info(f"JWT cookie {request.client=}")
@@ -58,7 +50,6 @@ async def effector(uid: str)->Effector:
 
 @router.post("/effectors")
 async def post_effector(jwt: Annotated[dict, Depends(JWT)], effector: EffectorPost, request: Request) -> Effector:
-    logger.debug(f"hello post_effector {effector}")
     await authorize_api("effectors_v2", request, jwt)
     return await create_effector(effector.model_dump())
 

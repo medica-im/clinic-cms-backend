@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/appointments/", response_model=Appointment)
-async def create_item(item: AppointmentPost, request: Request):
-    #await authorize_api("appointments_v2", request, jwt)
+async def create_item(item: AppointmentPost, request: Request, jwt: Annotated[dict, Depends(JWT)]):
+    await authorize_api("appointments_v2", request, jwt)
     i = item.model_dump()
     serializer = AppointmentSerializer(data=i)
     serializer.is_valid(raise_exception=True)
@@ -29,8 +29,8 @@ async def create_item(item: AppointmentPost, request: Request):
     return appointment_dict[0] # type: ignore
 
 @router.put("/appointments/{item_uid}", response_model=Appointment)
-async def update_item(item_uid: str, item: AppointmentPut, request: Request):
-    #await authorize_api("appointments_v2", request, jwt)
+async def update_item(item_uid: str, item: AppointmentPut, request: Request, jwt: Annotated[dict, Depends(JWT)]):
+    await authorize_api("appointments_v2", request, jwt)
     i = item.model_dump()
     instance = GraphAppointment.nodes.get(uid=item_uid)
     serializer = AppointmentSerializer(instance, data=i)
@@ -40,7 +40,7 @@ async def update_item(item_uid: str, item: AppointmentPut, request: Request):
     return appointment_dict[0] # type: ignore
 
 @router.delete("/appointments/{item_uid}")
-async def delete_item(item_uid: str, request: Request):
-    #await authorize_api("appointments_v2", request, jwt)
+async def delete_item(item_uid: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
+    await authorize_api("appointments_v2", request, jwt)
     query = f"""MATCH(n:Appointment) WHERE n.uid="{item_uid}" DETACH DELETE n"""
     db.cypher_query(query)
