@@ -617,7 +617,7 @@ def get_facilities(
     _facilities=[]
     try:
         for row in results:
-            logger.debug(f"{results=}")
+            logger.debug(f"{row=}")
             _facilities.append(
                 {
                     "facility": Facility.inflate(row[cols.index('f')]),
