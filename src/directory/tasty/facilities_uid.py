@@ -27,7 +27,6 @@ from tastypie.utils import (
 )
 from directory.tasty.facilities import createFacilityResources
 from django.conf import settings
-from directory.utils import _get_address
 
 logger=logging.getLogger(__name__)
 
@@ -110,7 +109,7 @@ def createFacilityResources(request, nodes):
         except Exception:
             ban_id=None
         country: Country = node["country"]
-        address = get_address(facility, commune, node["country"])
+        address = get_address(facility, commune, country)
 
         obj = FacilityObj(
             uid,
@@ -196,7 +195,8 @@ class FacilityUidResource(Resource):
 
     def obj_get(self, bundle, **kwargs):
         directory=get_directory(bundle.request)
-        uid= kwargs['uid']
+        uid = kwargs['uid']
+        logger.debug(f"{uid=}")
         try :
             facilities = get_facilities(directory=directory, uid=uid)
             objects = createFacilityResources(bundle.request, facilities)
