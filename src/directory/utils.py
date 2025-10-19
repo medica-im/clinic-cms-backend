@@ -1076,12 +1076,7 @@ async def async_entry_dict(results, cols):
     effector_type=EffectorType.inflate(row[cols.index('et')])
     address = get_address(facility,commune,country)
     appointment_nodes = [Appointment.inflate(node) for node in row[cols.index('a')]]
-    phones = await async_get_phones_neomodel(
-        entry=entry,
-        e=effector,
-        ef=effector_facility,
-        f=facility
-    )
+    phones = await async_get_phones_neomodel(entry=entry)
     emails = await async_get_emails_neomodel(
         entry=entry,
         e=effector,
