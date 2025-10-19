@@ -64,7 +64,7 @@ class FacilityObj(object):
         self.entries = entries
         self.ban_id = ban_id
         self.ban_banId = ban_banId
-
+"""
 def createFacilityResources(request, nodes):
     data= []
     for node in nodes:
@@ -130,7 +130,7 @@ def createFacilityResources(request, nodes):
         )
         data.append(obj)
     return data
-
+"""
 
 class FacilityUidResource(Resource):
     # Just like a Django ``Form`` or ``Model``, we're defining all the
@@ -196,9 +196,11 @@ class FacilityUidResource(Resource):
     def obj_get(self, bundle, **kwargs):
         directory=get_directory(bundle.request)
         uid = kwargs['uid']
+        logger.debug(f"{directory=}")
         logger.debug(f"{uid=}")
-        try :
+        try:
             facilities = get_facilities(directory=directory, uid=uid)
+            logger.debug(f"{facilities}")
             objects = createFacilityResources(bundle.request, facilities)
             return objects[0]
         except Exception as e:
