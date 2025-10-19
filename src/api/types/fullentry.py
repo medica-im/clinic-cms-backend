@@ -98,7 +98,6 @@ class PhoneType(str, Enum):
 
 class Phone(BaseModel):
     id: int
-    contact: Contact
     phone: str
     type: PhoneType
     type_display: str
