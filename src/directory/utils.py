@@ -603,14 +603,14 @@ def get_facilities(
         (e)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
         WHERE f.slug="{slug}"
         AND d.name="{directory.name}"
-        AND e.active={str(active)}
+        AND e.active={str(active).lower()}
         RETURN f,commune,country;"""
     else:
         query=f"""MATCH (d:Directory)-[:HAS_ENTRY]->(e:Entry),
         (e)-[:HAS_EFFECTOR]->(:Effector),
         (e)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
         WHERE d.name="{directory.name}"
-        AND e.active={str(active)}
+        AND e.active={str(active).lower()}
         RETURN DISTINCT f,commune,country;"""
     logger.debug(f"{query=}")
     results, cols = db.cypher_query(query, resolve_objects = True)
