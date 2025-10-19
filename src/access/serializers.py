@@ -21,6 +21,7 @@ class AsyncRoleSerializer(AsyncModelSerializer):
     class Meta:
         model = Role
         fields = [
+            'id',
             'name',
             'label',
             'description',
