@@ -618,11 +618,12 @@ def get_facilities(
     try:
         for row in results:
             logger.debug(f"{row=}")
+            logger.debug(f"{row[0]=}")
             _facilities.append(
                 {
-                    "facility": row[cols.index('Facility')],
-                    "commune": row[cols.index('Commune')],
-                    "country": row[cols.index('Country')]
+                    "facility": row[0],
+                    "commune": row[1],
+                    "country": row[2]
                 }
             )
     except:
