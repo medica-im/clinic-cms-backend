@@ -15,7 +15,7 @@ from directory.utils import (
     get_websites_neomodel,
     get_avatar_url
 )
-from directory.models import Facility
+from directory.models import Facility, Commune, Country
 from django.urls import re_path
 from tastypie.authorization import Authorization
 from tastypie.resources import Resource
@@ -83,9 +83,8 @@ def createFacilityResources(request, nodes):
             slug = facility.slug
         except Exception:
             slug = None
-        address = _get_address(facility)
         try:
-            commune = node["commune"].uid
+            commune: Commune = node["commune"].uid
         except Exception as e:
             logger.error(e)
             commune = None
@@ -110,6 +109,9 @@ def createFacilityResources(request, nodes):
             ban_id=facility.ban_id
         except Exception:
             ban_id=None
+        country: Country = node["country"]
+        address = get_address(facility, commune, node["country"])
+
         obj = FacilityObj(
             uid,
             name,
