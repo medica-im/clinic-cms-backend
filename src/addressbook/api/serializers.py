@@ -103,7 +103,6 @@ class AsyncPhoneNumberModelSerializer(AsyncModelSerializer):
             'type',
             'type_display',
             'roles',
-            'contact',
         ]
         depth = 2
 
