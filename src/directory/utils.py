@@ -313,6 +313,7 @@ async def async_get_phones_neomodel(entry: Entry):
     phones=[]
     async for phone in contact.phonenumbers.all():
         phones.append(phone)
+    logger.debug(f"{phones=}")
     if phones:
         serializer = AsyncPhoneNumberSerializer(
             phones,
