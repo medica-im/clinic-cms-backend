@@ -26,8 +26,10 @@ from directory.models.agraph import (
     Facility as AsyncFacility,
     Organization as AsyncOrganization,
 )
+from api.serializers.fullentry import async_get_fullentry
 from directory.models.agraph import Entry as EntryAgraph
 from api.types.entry import EntryPatch, Entry
+from api.types.fullentry import FullEntry
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +98,7 @@ async def connect_orgs(entry:AsyncEntry, organizations: list[str]|None):
                 logger.error(e)
                 raise Exception(e)
 
-async def create_entry(dir_name, kwargs)-> str:
+async def create_entry(dir_name, kwargs)-> FullEntry:
     organizations = kwargs["organizations"]
     neo4j_directory = await AsyncDirectory.nodes.get(name=dir_name)
     effector = await AsyncEffector.nodes.get(uid=kwargs["effector"])
@@ -112,7 +114,7 @@ async def create_entry(dir_name, kwargs)-> str:
         entry = await EntryAgraph.nodes.get(uid=uid)
         ts = time.time()*1000
         if (ts-entry.createdAt)<5000:
-            return str(entry.uid)
+            return await async_get_fullentry(str(entry.uid))
     entry = entry_if_exists(effector,effector_type,facility)
     if not entry:
         entry=AsyncEntry()
@@ -132,7 +134,7 @@ async def create_entry(dir_name, kwargs)-> str:
         #logger.debug(result[0][0][0])
         if "HealthWorker" not in result[0][0][0]:
             raise HTTPException(status_code=500, detail=f"Label 'HealthWorker' not applied to Effector {effector.uid} of type {effector_type.name_fr}")
-    return str(entry.uid)
+    return await async_get_fullentry(str(entry.uid))
 
 async def get_entry(uid:str)->Entry:
     entry = await EntryAgraph.nodes.get(uid=uid)
