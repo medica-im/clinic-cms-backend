@@ -373,6 +373,7 @@ class Entry(AsyncStructuredNode):
     deactivation_datetime = DateTimeFormatProperty(format="%Y-%m-%dT%H:%M:%S.%fZ")
     deactivation_reason = StringProperty()
     updatedAt = IntegerProperty(default=0)
+    createdAt = IntegerProperty()
     contactUpdatedAt = IntegerProperty(default=0)
     effector = AsyncRelationshipTo('Effector', 'HAS_EFFECTOR')
     facility = AsyncRelationshipTo('Facility', 'HAS_FACILITY')
