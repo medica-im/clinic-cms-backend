@@ -1,4 +1,5 @@
 import logging
+import time
 from django.utils.text import slugify
 from neomodel import db
 from pydantic import ValidationError
@@ -85,6 +86,19 @@ def get_effectors(
 
 async def create_effector(kwargs)->Effector:
     logger.debug(kwargs)
+    try:
+        effector = await AsyncEffector.nodes.get(
+            name_fr=kwargs["name_fr"],
+            gender=kwargs["gender"],
+            slug_fr=kwargs["slug_fr"],
+        )
+        ts = time.time()*1000
+        if (ts - effector.createdAt < 5):
+            effector_dct=effector.__properties__
+            effector=Effector.model_validate(effector_dct)
+            return effector
+    except:
+        pass
     node = await AsyncEffector(
         name_fr=kwargs["name_fr"],
         label_fr=kwargs["label_fr"] or kwargs["name_fr"],
