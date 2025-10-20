@@ -93,7 +93,7 @@ async def create_effector(kwargs)->Effector:
             slug_fr=kwargs["slug_fr"],
         )
         ts = time.time()*1000
-        if (ts - effector.createdAt < 5):
+        if (ts - effector.createdAt < 5000):
             effector_dct=effector.__properties__
             effector=Effector.model_validate(effector_dct)
             return effector
