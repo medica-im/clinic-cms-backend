@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any
 from neomodel import db
 from fastapi import HTTPException
@@ -101,7 +102,17 @@ async def create_entry(dir_name, kwargs)-> str:
     effector = await AsyncEffector.nodes.get(uid=kwargs["effector"])
     effector_type = await AsyncEffectorType.nodes.get(uid=kwargs["effector_type"])
     facility= await AsyncFacility.nodes.get(uid=kwargs["facility"])
-    entry=entry_if_exists(effector,effector_type,facility)
+    entry_uids: list[str] = get_entries(
+        effector=effector.uid,
+        effector_type=effector_type.uid,
+        facility=facility.uid
+    )
+    for uid in entry_uids:
+        entry = await EntryAgraph.nodes.get(uid=uid)
+        ts = time.time()*1000
+        if (ts-entry.createdAt)<5000:
+            return str(entry.uid)
+    entry = entry_if_exists(effector,effector_type,facility)
     if not entry:
         entry=AsyncEntry()
         await entry.save()
