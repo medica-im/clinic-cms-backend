@@ -107,6 +107,7 @@ async def create_entry(dir_name, kwargs)-> str:
         effector_type=effector_type.uid,
         facility=facility.uid
     )
+    logger.debug(f"{entry_uids=}")
     for uid in entry_uids:
         entry = await EntryAgraph.nodes.get(uid=uid)
         ts = time.time()*1000
