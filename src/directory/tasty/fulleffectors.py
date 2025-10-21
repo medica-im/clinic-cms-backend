@@ -45,6 +45,7 @@ class EffectorObj(object):
             self,
             label,
             name,
+            gender,
             slug,
             uid,
             effector_uid,
@@ -71,6 +72,7 @@ class EffectorObj(object):
         ):
         self.label = label
         self.name = name
+        self.gender = gender
         self.slug = slug
         self.uid = uid
         self.effector_uid = effector_uid
@@ -121,6 +123,7 @@ def createEffectorRessource(node):
             None
         )
     )
+    gender=effector_node.gender
     slug = getattr(
         effector_node,
         f'slug_{settings.LANGUAGE_CODE}',
@@ -203,6 +206,7 @@ def createEffectorRessource(node):
     effector = EffectorObj(
         label,
         name,
+        gender,
         slug,
         uid,
         effector_uid,
@@ -245,6 +249,7 @@ class FullEffectorResource(Resource):
     effector_uid = fields.CharField(attribute='effector_uid')
     label = fields.CharField(attribute='label')
     name = fields.CharField(attribute='name')
+    gender = fields.CharField(attribute='name')
     slug = fields.CharField(attribute='slug')
     effector_type = fields.DictField(attribute='effector_type')
     address = fields.DictField(attribute='address', null=True)
