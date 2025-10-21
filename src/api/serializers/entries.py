@@ -122,7 +122,8 @@ async def create_entry(dir_name, kwargs)-> FullEntry:
         await entry.effector.connect(effector)
         await entry.effector_type.connect(effector_type)
         await entry.facility.connect(facility)
-    await connect_orgs(entry, organizations)
+    if organizations:
+        await connect_orgs(entry, organizations)
     await neo4j_directory.entries.connect(entry)
     try:
         await Contact.objects.acreate(neomodel_uid=entry.uid)
