@@ -140,7 +140,7 @@ class FullEntry(BaseModel):
     facility: Facility
     label: str
     name: str
-    gender: str
+    gender: str|None = None
     contactUpdatedAt: int = 0
     effector_type: EffectorType
     #organizations: Any = Field(exclude=True)
