@@ -142,9 +142,16 @@ class WebsiteSerializer(serializers.ModelSerializer):
         depth = 2
 
 
-class AsyncWebsiteSerializer(Serializer):
-    id=serializers.IntegerField()
-    url=serializers.CharField()
+class AsyncWebsiteSerializer(AsyncModelSerializer):
+    roles = AsyncRoleSerializer(read_only=True, many=True)
+    class Meta:
+        model = Website
+        fields = [
+            'id',
+            'url',
+            'roles',
+        ]
+        depth = 2
 
 
 class ContactSerializer(serializers.ModelSerializer):

@@ -231,22 +231,22 @@ def get_websites_neomodel(
         Serializer=WebsiteSerializer
     )
 
-async def async_get_websites_neomodel(entry: Entry):
-    contact = await Contact.objects.prefetch_related('websites', 'websites__roles').aget(neomodel_uid=entry.uid)
-    websites = []
-    async for website in contact.websites.all():
-        roles= []
-        async for role in website.roles.all():
-            roles.append(role)
-        websites.append(
-            {
-                "id": website.id,
-                "url": websites.url,
-                "roles": roles
-            }
-        )
-    logger.debug(f"{websites=}")
-    return websites or None
+async def async_get_websites_neomodel(
+    entry: Entry|None=None,
+    e: Effector | None = None,
+    ef: EffectorFacility | None = None,
+    f: Facility | None = None
+    ):
+    return await async_get_contact_related_neomodel(
+        entry=entry,
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="websites",
+        Serializer=AsyncWebsiteSerializer,
+        first_hit=False,
+        many=True,
+    )
 
 def get_socialnetworks_neomodel(
         entry: Entry|None=None,
