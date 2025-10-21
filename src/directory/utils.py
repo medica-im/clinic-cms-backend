@@ -21,8 +21,8 @@ from addressbook.models import Contact
 from neomodel import db, adb
 from addressbook.api.serializers import (
     PhoneNumberSerializer,
-    AsyncPhoneNumberSerializer,
     AsyncPhoneNumberModelSerializer,
+    AsyncEmailSerializer,
     EmailSerializer,
     WebsiteSerializer,
     AsyncWebsiteSerializer,
@@ -351,7 +351,7 @@ async def async_get_emails_neomodel(
         ef=ef,
         f=f,
         attribute="emails",
-        Serializer=EmailSerializer,
+        Serializer=AsyncEmailSerializer,
         first_hit=False,
         many=True,
     )

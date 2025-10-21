@@ -107,16 +107,19 @@ class AsyncPhoneNumberModelSerializer(AsyncModelSerializer):
         depth = 2
 
 
-class AsyncPhoneNumberSerializer(Serializer):
-    id = serializers.IntegerField()
-    type_display = serializers.CharField(source='get_type_display')
-    phone = serializers.CharField()
-    type = serializers.CharField()
-    roles = serializers.RelatedField(read_only=True)
-    contact = serializers.RelatedField(read_only=True)
-
-
 class EmailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Email
+        fields = [
+            'id',
+            'email',
+            'roles',
+        ]
+        depth = 2
+
+
+class AsyncEmailSerializer(AsyncModelSerializer):
+    roles = AsyncRoleSerializer(read_only=True, many=True)
     class Meta:
         model = Email
         fields = [
