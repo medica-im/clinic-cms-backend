@@ -36,3 +36,4 @@ class EffectorPatch(BaseModel):
     slug_fr: str|None = None
     rpps: RPPS|None = None
     spoken_languages: list[str]|None = None
+    gender: Literal['F', 'M', 'N']|None = None

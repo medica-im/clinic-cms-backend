@@ -137,7 +137,7 @@ class EffectorSerializer(Serializer):
 
 
 async def patch_effector(uid, kwargs)->Effector:
-    logger.debug(kwargs)
+    logger.debug(f"{kwargs=}")
     hw=["rpps", "spoken_languages"]
     if (any(x in kwargs.keys() for x in hw)):
         node = await AsyncHealthWorker.nodes.get(uid=uid)
