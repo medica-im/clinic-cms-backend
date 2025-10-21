@@ -128,7 +128,7 @@ class EffectorSerializer(Serializer):
         for attribute in validated_data.keys():
             logger.debug(f"{attribute=}")
             try:
-                value = validated_data.pop(attribute)
+                value = validated_data.get(attribute)
                 setattr(instance, attribute, value)
             except validated_data.DoesNotExist:
                 pass
