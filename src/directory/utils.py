@@ -75,7 +75,7 @@ async def async_get_contact_related_elements(
         many: bool
     ):
     try:
-        contact = await Contact.objects.prefetch_related('address', 'phonenumbers','emails','websites', 'socialnetworks', 'profile', 'appointments').aget(neomodel_uid=neo_entity.uid)
+        contact = await Contact.objects.prefetch_related('address', 'phonenumbers','emails', 'emails__roles', 'websites', 'socialnetworks', 'profile', 'appointments').aget(neomodel_uid=neo_entity.uid)
     except (Contact.DoesNotExist, AttributeError):
         return None
     try:
