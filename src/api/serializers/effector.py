@@ -119,14 +119,19 @@ class EffectorSerializer(Serializer):
         allow_null=True
     )
     rpps = serializers.IntegerField(required=False, allow_null=True)
+    name_fr = serializers.CharField(required=False, allow_null=False)
+    label_fr = serializers.CharField(required=False, allow_null=True)
+    slug_fr = serializers.CharField(required=False, allow_null=False)
+    gender = serializers.CharField(required=False, allow_null=False)
 
     async def update(self, instance, validated_data):
-        try:
-            spoken_languages_data = validated_data.pop('spoken_languages')
-            logger.debug(f"{spoken_languages_data=}")
-            instance.spoken_languages=spoken_languages_data
-        except validated_data.DoesNotExist:
-            pass
+        for attribute in validated_data.keys():
+            logger.debug(f"{attribute=}")
+            try:
+                value = validated_data.pop(attribute)
+                setattr(instance, attribute, value)
+            except validated_data.DoesNotExist:
+                pass
         await instance.save()
         return instance
 
@@ -134,13 +139,9 @@ class EffectorSerializer(Serializer):
 async def patch_effector(uid, kwargs)->Effector:
     logger.debug(kwargs)
     node = await AsyncHealthWorker.nodes.get(uid=uid)
-    if "rpps" in kwargs.keys():
-        node.rpps=kwargs["rpps"]
-        await node.save()
-    if "spoken_languages" in kwargs.keys():
-        serializer = EffectorSerializer(node, data=kwargs, partial=True)
-        if serializer.is_valid(raise_exception=True):
-            node = await serializer.save()
+    serializer = EffectorSerializer(node, data=kwargs, partial=True)
+    if serializer.is_valid(raise_exception=True):
+        node = await serializer.save()
     effector_dct=node.__properties__
     effector=Effector.model_validate(effector_dct)
     logger.debug(effector)
