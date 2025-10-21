@@ -122,7 +122,7 @@ class EffectorSerializer(Serializer):
     name_fr = serializers.CharField(required=False, allow_null=False)
     label_fr = serializers.CharField(required=False, allow_null=True)
     slug_fr = serializers.CharField(required=False, allow_null=False)
-    gender = serializers.CharField(required=False, allow_null=False)
+    gender = serializers.CharField(required=False, allow_null=True)
 
     async def update(self, instance, validated_data):
         for attribute in validated_data.keys():
@@ -138,7 +138,11 @@ class EffectorSerializer(Serializer):
 
 async def patch_effector(uid, kwargs)->Effector:
     logger.debug(kwargs)
-    node = await AsyncHealthWorker.nodes.get(uid=uid)
+    hw=["rpps", "spoken_languages"]
+    if (any(x in kwargs.keys() for x in hw)):
+        node = await AsyncHealthWorker.nodes.get(uid=uid)
+    else:
+        node = await AsyncEffector.nodes.get(uid=uid)
     serializer = EffectorSerializer(node, data=kwargs, partial=True)
     if serializer.is_valid(raise_exception=True):
         node = await serializer.save()
