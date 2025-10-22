@@ -295,32 +295,22 @@ def get_phones_neomodel(
         many=True,
     )
 
-async def async_get_phones_neomodel(entry: Entry):
-    contact = await Contact.objects.prefetch_related('phonenumbers', 'phonenumbers__roles').aget(neomodel_uid=entry.uid)
-    #websites = []
-    #async for phone in contact.phones.all():
-    #    roles= []
-    #    async for role in phone.roles.all():
-    #        roles.append(role)
-    #    websites.append(
-    #        {
-    #            "id": website.id,
-    #            "url": websites.url,
-    #            "roles": roles
-    #        }
-    #    )
-    #logger.debug(f"{websites=}")
-    #return websites or None
-    phones=[]
-    async for phone in contact.phonenumbers.all():
-        phones.append(phone)
-    logger.debug(f"{phones=}")
-    if phones:
-        serializer = AsyncPhoneNumberModelSerializer(
-            phones,
-            many=True
-        )
-        return serializer.data
+async def async_get_phones_neomodel(
+        entry: Entry|None=None,
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None
+    ):
+    return await async_get_contact_related_neomodel(
+        entry=entry,
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="phonenumbers",
+        Serializer=AsyncPhoneNumberModelSerializer,
+        first_hit=False,
+        many=True,
+    )
 
 def get_emails_neomodel(
         entry: Entry|None=None,
