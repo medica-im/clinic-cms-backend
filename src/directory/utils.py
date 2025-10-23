@@ -41,9 +41,12 @@ logger = logging.getLogger(__name__)
 def get_ttl(endpoint: str, request):
     site = get_current_site(request)
     try:
-        return TTL.objects.get(endpoint=endpoint,site=site).ttl
+        ttl_obj = TTL.objects.filter(endpoint=endpoint,site=site).first()
+        logger.debug(ttl_obj)
     except TTL.DoesNotExist:
         return
+    if ttl_obj:
+        return ttl_obj.ttl
 
 def get_directory(request):
     site = get_current_site(request)
