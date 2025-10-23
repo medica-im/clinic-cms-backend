@@ -241,7 +241,7 @@ class EntryResource(Resource):
         else:
             logger.warning(f"cache for key '{cache_key}' is *** EMPTY ***")
             value = self.get_object_list(bundle.request)
-            endpoint="v1_entries"
+            endpoint = "%s:%s" % (self._meta.api_name, self._meta.resource_name)
             timeout = get_ttl(endpoint,bundle.request) or TTL
             logger.debug(f"{timeout=}")
             cache.set(
