@@ -15,4 +15,14 @@ class Migration(migrations.Migration):
             name='formatted_name_short',
             field=models.CharField(blank=True, max_length=255),
         ),
+        migrations.AddField(
+            model_name='organization',
+            name='formatted_name_short_en',
+            field=models.CharField(blank=True, max_length=255, null=True),
+        ),
+        migrations.AddField(
+            model_name='organization',
+            name='formatted_name_short_fr',
+            field=models.CharField(blank=True, max_length=255, null=True),
+        ),
     ]
