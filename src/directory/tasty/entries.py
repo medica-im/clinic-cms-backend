@@ -30,6 +30,8 @@ from django.conf import settings
 
 logger=logging.getLogger(__name__)
 
+TTL: int = 40
+
 # We need a generic object to shove data in/get data from.
 # Riak generally just tosses around dictionaries, so we'll lightly
 # wrap that.
@@ -235,16 +237,17 @@ class EntryResource(Resource):
         sentinel = object()
         cache_is_empty = cache.get(cache_key, sentinel) is sentinel
         if cache_is_empty:
-            logger.warning("cache for key '{cache_key}' is empty")
+            logger.warning(f"cache for key '{cache_key}' is empty")
             value = self.get_object_list(bundle.request)
             #logger.debug(value)
             cache.set(
                 cache_key,
                 value,
-                timeout=30
+                timeout=TTL
             )
             return value
         else:
+            logger.warning(f"*** Using cache with key {cache_key} ***")
             return cache.get(cache_key, self.get_object_list(bundle.request))
 
     def obj_get(self, bundle, **kwargs):
