@@ -235,6 +235,7 @@ class EntryResource(Resource):
         sentinel = object()
         cache_is_empty = cache.get(cache_key, sentinel) is sentinel
         if cache_is_empty:
+            logger.warning("cache for key '{cache_key}' is empty")
             value = self.get_object_list(bundle.request)
             #logger.debug(value)
             cache.set(

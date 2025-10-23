@@ -608,13 +608,10 @@ def get_facilities(
         WHERE d.name="{directory.name}"
         AND e.active={str(active).lower()}
         RETURN DISTINCT f,commune,country;"""
-    logger.debug(f"{query=}")
     results, cols = db.cypher_query(query, resolve_objects = True)
     _facilities=[]
     try:
         for row in results:
-            logger.debug(f"{row=}")
-            logger.debug(f"{row[0]=}")
             _facilities.append(
                 {
                     "facility": row[0],
