@@ -1,6 +1,7 @@
 from tastypie import fields
 import logging
 import json
+from django.contrib.sites.shortcuts import get_current_site
 from common.utils import timeit
 from tastypie.authorization import Authorization
 from tastypie.resources import Resource
@@ -189,13 +190,8 @@ class EntryResource(Resource):
         authorization = Authorization()
         detail_uri_name = 'uid'
 
-
     def generate_cache_key(self, *args, **kwargs):
-        smooshed = []
-        for key, value in kwargs.items():
-            smooshed.append("%s=%s" % (key, value))
-        # Use a list plus a ``.join()`` because it's faster than concatenation.
-        cache_key = "%s:%s:%s:%s" % (self._meta.api_name, self._meta.resource_name, ':'.join(args), ':'.join(smooshed))
+        cache_key = "%s:%s:%s" % (self._meta.api_name, self._meta.resource_name, ':'.join(args))
         logger.debug(f"{cache_key=}")
         return cache_key
 
@@ -235,8 +231,9 @@ class EntryResource(Resource):
     @timeit
     def obj_get_list(self, bundle, **kwargs):
         directory=get_directory(bundle.request)
-        cache_key = self.generate_cache_key(directory.name)
-        logger.debug(f"{cache_key=}")
+        site=get_current_site(bundle.request)
+        domain=site.domain
+        cache_key = self.generate_cache_key(domain)
         cached = cache.get(cache_key)
         if cached:
             logger.warning(f"*** Using cache with key {cache_key} ***")
