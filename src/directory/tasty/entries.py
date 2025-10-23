@@ -1,6 +1,7 @@
 from tastypie import fields
 import logging
 import json
+from common.utils import timeit 
 from tastypie.authorization import Authorization
 from tastypie.resources import Resource
 from tastypie.bundle import Bundle
@@ -230,6 +231,7 @@ class EntryResource(Resource):
         contacts = createEntryResources(request, nodes)
         return contacts
 
+    @timeit
     def obj_get_list(self, bundle, **kwargs):
         directory=get_directory(bundle.request)
         cache_key = self.generate_cache_key(directory.name)
