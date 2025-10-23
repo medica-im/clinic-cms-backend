@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 def get_ttl(endpoint: str, request):
     site = get_current_site(request)
     try:
-        ttl_obj = TTL.objects.filter(endpoint=endpoint,site=site).first()
+        ttl_obj = TTL.objects.filter(endpoint__name=endpoint,site=site).first()
         logger.debug(ttl_obj)
     except TTL.DoesNotExist:
         return
