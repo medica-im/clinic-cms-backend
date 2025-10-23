@@ -13,7 +13,8 @@ from directory.models import (
     ThirdPartyPayer,
     PaymentMethod,
     HealthWorker,
-    Entry
+    Entry,
+    TTL,
 )
 from directory.models.graph import Appointment, Office, HouseCall
 from directory.models.graph import Convention
@@ -36,6 +37,13 @@ from rest_framework.serializers import ModelSerializer
 from rdflib.plugins.shared.jsonld.keys import NONE
 
 logger = logging.getLogger(__name__)
+
+def get_ttl(endpoint: str, request):
+    site = get_current_site(request)
+    try:
+        return TTL.objects.get(endpoint=endpoint,site=site).ttl
+    except TTL.DoesNotExist:
+        return
 
 def get_directory(request):
     site = get_current_site(request)

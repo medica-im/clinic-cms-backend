@@ -1,7 +1,7 @@
 from tastypie import fields
 import logging
 import json
-from common.utils import timeit 
+from common.utils import timeit
 from tastypie.authorization import Authorization
 from tastypie.resources import Resource
 from tastypie.bundle import Bundle
@@ -20,7 +20,8 @@ from tastypie.utils import (
 from directory.utils import (
     get_phones_neomodel,
     get_directory,
-    get_entries
+    get_entries,
+    get_ttl,
 )
 from directory.tasty.types import (
     createEffectorTypeResources,
@@ -31,7 +32,7 @@ from django.conf import settings
 
 logger=logging.getLogger(__name__)
 
-TTL: int = 40
+TTL: int = 60
 
 # We need a generic object to shove data in/get data from.
 # Riak generally just tosses around dictionaries, so we'll lightly
@@ -243,10 +244,13 @@ class EntryResource(Resource):
         else:
             logger.warning(f"cache for key '{cache_key}' is *** EMPTY ***")
             value = self.get_object_list(bundle.request)
+            endpoint="v1_entries"
+            timeout = get_ttl(endpoint,bundle.request) or TTL
+            logger.debug(f"{timeout=}")
             cache.set(
                 cache_key,
                 value,
-                timeout=TTL
+                timeout=timeout
             )
             return value        
 
