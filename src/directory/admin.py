@@ -12,6 +12,8 @@ from .models import (
     Setting,
     Label,
     EffectorType,
+    Endpoint,
+    TTL,
 )
 from modeltranslation.admin import TranslationAdmin
 from django.utils.translation import gettext_lazy as _
@@ -140,3 +142,21 @@ class LabelAdmin(admin.ModelAdmin):
             logger.warn(f'No node found for uid="{obj.uid}"')
             return
         return et.label_fr or et.name_fr or et.label_en or et.name_en
+
+
+@admin.register(Endpoint)
+class EndpointAdmin(admin.ModelAdmin):
+    list_display = (
+        'pk',
+        'name',
+    )
+
+
+@admin.register(TTL)
+class TTLAdmin(admin.ModelAdmin):
+    list_display = (
+        'pk',
+        'site',
+        'endpoint',
+        'ttl',
+    )

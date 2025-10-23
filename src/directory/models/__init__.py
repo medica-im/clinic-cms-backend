@@ -33,3 +33,7 @@ from directory.models.graph import (
     Country,
     Directory as Neo4jDirectory
 )
+from directory.models.api import (
+    Endpoint,
+    TTL,
+)
