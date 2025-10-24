@@ -197,6 +197,7 @@ class FacilityResource(Resource):
         objects = createFacilityResources(request, nodes)
         return objects
 
+    @timeit
     def obj_get_list(self, bundle, **kwargs):
         cache_key = generate_cache_key(self._meta.api_name, self._meta.resource_name, bundle.request)
         cached = cache.get(cache_key)
