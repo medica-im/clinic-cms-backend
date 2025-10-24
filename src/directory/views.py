@@ -1,5 +1,6 @@
 import logging
 import json
+from common.utils import timeit
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -99,6 +100,7 @@ class EffectorTypeLabel(APIView):
     """
     Return a dictionary of all labels.
     """
+    @timeit
     def get(self, request, format=None):
         """
         Return a dictionary of all labels.
