@@ -52,7 +52,7 @@ class Timestamp(models.Model):
         Site,
         on_delete=models.CASCADE,
     )
-    timestamp = models.PositiveIntegerField(default=0)
+    timestamp = models.PositiveBigIntegerField(default=0)
 
     def __str__(self):
         return "TTL %s %s %s %s milliseconds since epoch" % (self.pk, self.site.domain, self.endpoint, self.timestamp)
