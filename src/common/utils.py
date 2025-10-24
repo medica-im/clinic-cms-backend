@@ -6,6 +6,6 @@ def timeit(func):
         result = func(*args, **kwargs)
         end = time.perf_counter()
         elapsed = end - start
-        print(f'func.__name__ time taken: {elapsed:.6f} seconds')
+        print(f'{func.__name__} time taken: {elapsed:.6f} seconds')
         return result
     return wrapper
