@@ -8,17 +8,23 @@ from rest_framework.generics import RetrieveAPIView
 from rest_framework.exceptions import NotFound
 
 from backend.i18n import activate_locale
-from directory.utils import get_directory, effector_types
 from directory.models import Effector, Directory
 from directory import serializers
 from django.http import Http404
+from django.core.cache import cache
 
 from accounts.models import GrammaticalGender
 from directory.models.core import Label
 
+from directory.utils import (
+    get_directory,
+    get_ttl,
+    set_timestamp,
+)
 
 logger = logging.getLogger(__name__)
 
+TTL: int = 60
 
 from rest_framework.decorators import api_view
 
@@ -52,6 +58,43 @@ class DirectoryView(RetrieveAPIView):
             raise NotFound(detail="Directory not found.", code="not_found")
 
 
+def get_effector_type_labels(language: str):
+    dictionary = {}
+    node_label_set = set([uid.hex for uid in Label.objects.values_list("uid", flat=True)])
+    for uid in node_label_set:
+        dictionary[uid] = {
+            "S": {
+                "F": None,
+                "M": None,
+                "N": None,
+            },
+            "P": {
+                "F": None,
+                "M": None,
+                "N": None,
+            }
+        }
+        try:
+            F = GrammaticalGender.objects.get(name="feminine")
+            M = GrammaticalGender.objects.get(name="masculine")
+            N = GrammaticalGender.objects.get(name="neutral")
+        except GrammaticalGender.DoesNotExist as e:
+            logger.error(f"Missing GrammaticalGender object: {e}")
+        for Num in ["S", "P"]:
+            for G in [F, M, N]:
+                try:
+                    l = Label.objects.get(
+                        uid=uid,
+                        gender=G,
+                        grammatical_number=Num,
+                        language=language
+                    )
+                    dictionary[uid][Num][G.code]=l.label
+                except Label.DoesNotExist:
+                    continue
+    return dictionary
+
+
 class EffectorTypeLabel(APIView):
     """
     Return a dictionary of all labels.
@@ -60,48 +103,23 @@ class EffectorTypeLabel(APIView):
         """
         Return a dictionary of all labels.
         """
-        lang = self.request.query_params.get('lang')
-        activate_locale(lang,self.request)
         directory = get_directory(self.request)
-        language = lang or directory.site.organization.language
-        uids=effector_types(directory)
-        node_has_label=[
-            uid.hex for uid in Label.objects.values_list("uid", flat=True)
-        ]
-        node_label_set = set()
-        for uid in uids:
-            if uid in node_has_label:
-                node_label_set.add(uid)
-        dictionary = {}
-        for uid in node_label_set:
-            dictionary[uid] = {
-                "S": {
-                    "F": None,
-                    "M": None,
-                    "N": None,
-                },
-                "P": {
-                    "F": None,
-                    "M": None,
-                    "N": None,
-                }
-            }
-            try:
-                F = GrammaticalGender.objects.get(name="feminine")
-                M = GrammaticalGender.objects.get(name="masculine")
-                N = GrammaticalGender.objects.get(name="neutral")
-            except GrammaticalGender.DoesNotExist as e:
-                logger.error(f"Missing GrammaticalGender object: {e}")
-            for Num in ["S", "P"]:
-                for G in [F, M, N]:
-                    try:
-                        l = Label.objects.get(
-                            uid=uid,
-                            gender=G,
-                            grammatical_number=Num,
-                            language=language
-                        )
-                        dictionary[uid][Num][G.code]=l.label
-                    except Label.DoesNotExist:
-                        continue
-        return Response(dictionary)
+        language = directory.site.organization.language
+        endpoint = f"v1:effector_type_labels"
+        cache_key= f"{endpoint}:{language}"
+        cached = cache.get(cache_key)
+        if cached:
+            logger.warning(f"*** Using cache with key {cache_key} ***")
+            return Response(cached)
+        else:
+            logger.warning(f"cache for key '{cache_key}' is *** EMPTY ***")
+            value = get_effector_type_labels(language)
+            timeout = get_ttl(endpoint, request) or TTL
+            logger.debug(f"{timeout=}")
+            cache.set(
+                cache_key,
+                value,
+                timeout=timeout
+            )
+            set_timestamp(endpoint, request)
+            return Response(value)
