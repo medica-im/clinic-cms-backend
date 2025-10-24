@@ -1,4 +1,5 @@
 import logging
+import time
 from asgiref.sync import sync_to_async
 from django.contrib.sites.shortcuts import get_current_site
 from directory.models import (
@@ -15,6 +16,7 @@ from directory.models import (
     HealthWorker,
     Entry,
     TTL,
+    Timestamp,
 )
 from directory.models.graph import Appointment, Office, HouseCall
 from directory.models.graph import Convention
@@ -37,6 +39,13 @@ from rest_framework.serializers import ModelSerializer
 from rdflib.plugins.shared.jsonld.keys import NONE
 
 logger = logging.getLogger(__name__)
+
+def set_timestamp(endpoint: str, request):
+    timestamp = int(time.time_ns()/1000)
+    site = get_current_site(request)
+    ts, _ = Timestamp.objects.get_or_create(endpoint__name=endpoint,site=site)
+    ts.timestamp=timestamp
+    ts.save()
 
 def get_ttl(endpoint: str, request):
     site = get_current_site(request)

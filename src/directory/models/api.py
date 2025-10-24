@@ -41,3 +41,26 @@ class TTL(models.Model):
                 name='unique_endpoint_ttl_per_site'
             )
         ]
+
+
+class Timestamp(models.Model):
+    endpoint = models.ForeignKey(
+        Endpoint,
+        on_delete=models.CASCADE,
+    )
+    site = models.ForeignKey(
+        Site,
+        on_delete=models.CASCADE,
+    )
+    timestamp = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return "TTL %s %s %s %s milliseconds since epoch" % (self.pk, self.site.domain, self.endpoint, self.timestamp)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['endpoint', 'site'],
+                name='unique_endpoint_timestamp_per_site'
+            )
+        ]

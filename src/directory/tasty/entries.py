@@ -23,6 +23,7 @@ from directory.utils import (
     get_directory,
     get_entries,
     get_ttl,
+    set_timestamp,
 )
 from directory.tasty.types import (
     createEffectorTypeResources,
@@ -249,6 +250,7 @@ class EntryResource(Resource):
                 value,
                 timeout=timeout
             )
+            set_timestamp(endpoint, bundle.request)
             return value        
 
     def obj_get(self, bundle, **kwargs):

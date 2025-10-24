@@ -36,4 +36,5 @@ from directory.models.graph import (
 from directory.models.api import (
     Endpoint,
     TTL,
+    Timestamp,
 )

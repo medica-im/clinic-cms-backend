@@ -14,6 +14,7 @@ from .models import (
     EffectorType,
     Endpoint,
     TTL,
+    Timestamp,
 )
 from modeltranslation.admin import TranslationAdmin
 from django.utils.translation import gettext_lazy as _
@@ -159,4 +160,14 @@ class TTLAdmin(admin.ModelAdmin):
         'site',
         'endpoint',
         'ttl',
+    )
+
+
+@admin.register(Timestamp)
+class TimestampAdmin(admin.ModelAdmin):
+    list_display = (
+        'pk',
+        'site',
+        'endpoint',
+        'timestamp',
     )
