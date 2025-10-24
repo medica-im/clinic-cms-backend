@@ -8,7 +8,6 @@ from tastypie.resources import Resource
 from tastypie.bundle import Bundle
 from tastypie.fields import ForeignKey
 from directory.tasty.communes import createCommuneResources
-from tastypie.cache import SimpleCache
 
 from django.urls import re_path
 from django.core.cache import cache

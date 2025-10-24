@@ -5,6 +5,7 @@ Created on Nov 5, 2023
 '''
 from tastypie import fields
 import logging
+from common.utils import timeit
 from directory.utils import (
     get_facilities,
     get_directory,
@@ -13,10 +14,13 @@ from directory.utils import (
     get_emails_neomodel,
     get_socialnetworks_neomodel,
     get_websites_neomodel,
-    get_avatar_url
+    get_avatar_url,
+    get_ttl,
+    set_timestamp,
 )
 from directory.models import Facility
 from django.urls import re_path
+from django.core.cache import cache
 from tastypie.authorization import Authorization
 from tastypie.resources import Resource
 from tastypie.bundle import Bundle
@@ -28,6 +32,8 @@ from tastypie.utils import (
 from django.conf import settings
 
 logger=logging.getLogger(__name__)
+
+TTL: int = 60
 
 class FacilityObj(object):
     def __init__ (
@@ -191,7 +197,24 @@ class FacilityResource(Resource):
         return objects
 
     def obj_get_list(self, bundle, **kwargs):
-        return self.get_object_list(bundle.request)
+        cache_key = self.generate_cache_key(bundle.request)
+        cached = cache.get(cache_key)
+        if cached:
+            logger.warning(f"*** Using cache with key {cache_key} ***")
+            return cached
+        else:
+            logger.warning(f"cache for key '{cache_key}' is *** EMPTY ***")
+            value = self.get_object_list(bundle.request)
+            endpoint = "%s:%s" % (self._meta.api_name, self._meta.resource_name)
+            timeout = get_ttl(endpoint,bundle.request) or TTL
+            logger.debug(f"{timeout=}")
+            cache.set(
+                cache_key,
+                value,
+                timeout=timeout
+            )
+            set_timestamp(endpoint, bundle.request)
+            return value
 
     def obj_get(self, bundle, **kwargs):
         logger.debug(f"request: {bundle.request.META}")
