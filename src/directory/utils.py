@@ -17,6 +17,7 @@ from directory.models import (
     Entry,
     TTL,
     Timestamp,
+    Endpoint,
 )
 from directory.models.graph import Appointment, Office, HouseCall
 from directory.models.graph import Convention
@@ -40,10 +41,15 @@ from rdflib.plugins.shared.jsonld.keys import NONE
 
 logger = logging.getLogger(__name__)
 
-def set_timestamp(endpoint: str, request):
+def set_timestamp(endpoint_name: str, request):
     timestamp = int(time.time_ns()/1000)
     site = get_current_site(request)
-    ts, _ = Timestamp.objects.get_or_create(endpoint__name=endpoint,site=site)
+    try:
+        endpoint=Endpoint.objects.get(name=endpoint_name)
+    except Endpoint.DoesNotExist as e:
+        logger.error(e)
+        return
+    ts, _ = Timestamp.objects.get_or_create(endpoint=endpoint,site=site)
     ts.timestamp=timestamp
     ts.save()
 
