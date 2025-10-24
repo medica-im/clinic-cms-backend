@@ -41,6 +41,13 @@ from rdflib.plugins.shared.jsonld.keys import NONE
 
 logger = logging.getLogger(__name__)
 
+def generate_cache_key(api_name, resource_name, request):
+        site=get_current_site(request)
+        domain=site.domain
+        cache_key = "%s:%s:%s" % (api_name, resource_name, domain)
+        logger.debug(f"{cache_key=}")
+        return cache_key
+
 def set_timestamp(endpoint_name: str, request):
     timestamp = int(time.time_ns()/1000)
     site = get_current_site(request)

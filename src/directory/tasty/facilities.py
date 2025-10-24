@@ -17,6 +17,7 @@ from directory.utils import (
     get_avatar_url,
     get_ttl,
     set_timestamp,
+    generate_cache_key,
 )
 from directory.models import Facility
 from django.urls import re_path
@@ -197,7 +198,7 @@ class FacilityResource(Resource):
         return objects
 
     def obj_get_list(self, bundle, **kwargs):
-        cache_key = self.generate_cache_key(bundle.request)
+        cache_key = generate_cache_key(self._meta.api_name, self._meta.resource_name, bundle.request)
         cached = cache.get(cache_key)
         if cached:
             logger.warning(f"*** Using cache with key {cache_key} ***")
