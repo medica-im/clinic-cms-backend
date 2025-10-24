@@ -191,8 +191,10 @@ class EntryResource(Resource):
         authorization = Authorization()
         detail_uri_name = 'uid'
 
-    def generate_cache_key(self, *args, **kwargs):
-        cache_key = "%s:%s:%s" % (self._meta.api_name, self._meta.resource_name, ':'.join(args))
+    def generate_cache_key(self, request):
+        site=get_current_site(request)
+        domain=site.domain
+        cache_key = "%s:%s:%s" % (self._meta.api_name, self._meta.resource_name, domain)
         logger.debug(f"{cache_key=}")
         return cache_key
 
@@ -231,10 +233,7 @@ class EntryResource(Resource):
 
     @timeit
     def obj_get_list(self, bundle, **kwargs):
-        directory=get_directory(bundle.request)
-        site=get_current_site(bundle.request)
-        domain=site.domain
-        cache_key = self.generate_cache_key(domain)
+        cache_key = self.generate_cache_key(bundle.request)
         cached = cache.get(cache_key)
         if cached:
             logger.warning(f"*** Using cache with key {cache_key} ***")
