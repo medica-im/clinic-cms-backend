@@ -70,9 +70,9 @@ def authorize_api(endpoint: str, request: HttpRequest):
         permission = 8
     return authorize(endpoint, role, permission)
 
-def authorize(endpoint: str, role: Role, permissions: int):
+def authorize(endpoint_name: str, role: Role, permissions: int):
     try:
-        endpoint = Endpoint.objects.get(name=endpoint)
+        endpoint = Endpoint.objects.get(name=endpoint_name)
     except Endpoint.DoesNotExist:
         return False
     try:
