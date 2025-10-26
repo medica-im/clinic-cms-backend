@@ -136,10 +136,7 @@ def createEffectorRessource(node):
     effector_uid = effector_node.uid
     et = node["effector_type"]
     effector_type_obj = createEffectorTypeResources(et)
-    effector_type_obj=flex_effector_type_label(
-        effector_node,
-        effector_type_obj,
-    )
+    effector_type_obj.label = node[flex_effector_type_label] or effector_type_obj.label
     effector_type_dict=effector_type_obj.__dict__
     effector_type_dict["labels"]=node["effector_type_labels"]
     phones = node["phones"]

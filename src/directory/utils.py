@@ -18,6 +18,7 @@ from directory.models import (
     TTL,
     Timestamp,
     Endpoint,
+    Label,
 )
 from directory.models.graph import Appointment, Office, HouseCall
 from directory.models.graph import Convention
@@ -37,9 +38,46 @@ from addressbook.api.serializers import (
 from api.serializers.appointment import AppointmentSerializer
 from access.utils import get_role, async_get_role
 from rest_framework.serializers import ModelSerializer
-from rdflib.plugins.shared.jsonld.keys import NONE
+from django.conf import settings
+
+
 
 logger = logging.getLogger(__name__)
+
+
+def flex_effector_type_label(
+        effector,
+        effector_type,
+    ):
+    try:
+        effector_type_label=Label.get_label(
+            effector_type.uid,
+            effector.gender,
+            "S",
+            settings.LANGUAGE_CODE
+        )
+        logger.debug(f"{effector_type_label=}")
+    except Label.DoesNotExist as e:
+        logger.error(e)
+        effector_type_label=None
+    return effector_type_label
+
+async def async_flex_effector_type_label(
+        effector,
+        effector_type,
+    ):
+    try:
+        effector_type_label= await Label.async_get_label(
+            effector_type.uid,
+            effector.gender,
+            "S",
+            settings.LANGUAGE_CODE
+        )
+        logger.debug(f"{effector_type_label=}")
+    except Label.DoesNotExist as e:
+        logger.error(e)
+        effector_type_label=None
+    return effector_type_label
 
 def generate_cache_key(api_name, resource_name, request):
         site=get_current_site(request)
@@ -1058,6 +1096,7 @@ def entry_dict(results, cols):
         convention = None
     health_worker=HealthWorker.inflate(row[cols.index('e')])
     avatar=get_avatar_url(entry, effector, effector_facility, facility)
+    fetl=flex_effector_type_label(effector, effector_type)
     return {
         "entry": entry,
         "effector": effector,
@@ -1065,6 +1104,7 @@ def entry_dict(results, cols):
         "address": address,
         #"commune": commune,
         "effector_type": effector_type,
+        "flex_effector_type_label": fetl,
         "effector_type_labels": row[cols.index('typelabels')],
         "facility": facility,
         "phones": phones,
@@ -1136,6 +1176,7 @@ async def async_entry_dict(results, cols):
         convention = None
     health_worker=HealthWorker.inflate(row[cols.index('e')])
     avatar= await async_get_avatar_url(entry, effector, effector_facility, facility)
+    fetl= await async_flex_effector_type_label(effector, effector_type)
     return {
         "entry": entry,
         "effector": effector,
@@ -1143,6 +1184,7 @@ async def async_entry_dict(results, cols):
         "address": address,
         #"commune": commune,
         "effector_type": effector_type,
+        "flex_effector_type_label": fetl,
         "effector_type_labels": row[cols.index('typelabels')],
         "facility": facility,
         "phones": phones,

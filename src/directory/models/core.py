@@ -233,13 +233,31 @@ class Label(models.Model):
         )
 
     @staticmethod
-    def get_label(uid: str, gender_code: str, number: str, language: str) -> str:
+    def get_label(uid: str, gender_code: str, number: str, language: str) -> str|None:
         try:
             gender = GrammaticalGender.objects.get(code=gender_code)
         except GrammaticalGender.DoesNotExist:
             return
         try:
             label = Label.objects.get(
+                uid=uid,
+                gender=gender,
+                grammatical_number=number,
+                language=language
+            )
+            return label.label
+        except Label.DoesNotExist as e:
+            logger.debug(f'{e} for {uid=}, {gender=}, {number=}, {language=}')
+            return
+
+    @staticmethod
+    async def async_get_label(uid: str, gender_code: str, number: str, language: str) -> str|None:
+        try:
+            gender = await GrammaticalGender.objects.aget(code=gender_code)
+        except GrammaticalGender.DoesNotExist:
+            return
+        try:
+            label = await Label.objects.aget(
                 uid=uid,
                 gender=gender,
                 grammatical_number=number,
