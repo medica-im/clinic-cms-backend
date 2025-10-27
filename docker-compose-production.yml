@@ -49,6 +49,7 @@ services:
     depends_on:
       - database_production
       - redis_production
+      - neo4j
     working_dir: /backend/src
     ports:
       - "${EXTERNAL_PORT_PRODUCTION}:80"
@@ -65,6 +66,8 @@ services:
     depends_on:
       - database_production
       - neo4j
+      - redis_production
+      - django_production
     working_dir: /app
     ports:
       - "${FASTAPI_PORT}:80"

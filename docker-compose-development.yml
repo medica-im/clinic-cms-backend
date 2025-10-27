@@ -65,6 +65,8 @@ services:
     depends_on:
       - database
       - neo4j
+      - redis
+      - django
     working_dir: /app
     ports:
       - "${FASTAPI_PORT}:80"
