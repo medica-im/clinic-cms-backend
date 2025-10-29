@@ -115,3 +115,22 @@ class GrammaticalGender(models.Model):
 
     def __str__(self) -> str:
         return self.label
+
+
+class Role(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+    )
+    site = models.ForeignKey(
+        Site,
+        on_delete=models.PROTECT,
+    )
+    role = models.ForeignKey(
+        "access.Role",
+        on_delete=models.PROTECT,
+        help_text="Access Role of the user in the context of the Site",
+    )
+    active = models.BooleanField(default=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
