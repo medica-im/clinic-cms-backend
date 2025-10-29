@@ -19,7 +19,7 @@ if auth_secret:
 async def get_user(jwt: dict) -> User|None:
     email = jwt['email']
     try:
-        return await User.objects.select_related('roles').aget(email=email)
+        return await User.objects.aget(email=email)
     except User.DoesNotExist as e:
         return None
 
