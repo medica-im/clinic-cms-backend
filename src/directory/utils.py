@@ -36,15 +36,10 @@ from addressbook.api.serializers import (
     ProfileSerializer,
 )
 from api.serializers.appointment import AppointmentSerializer
-from access.utils import get_role
-from api.auth import get_role as async_get_role
 from rest_framework.serializers import ModelSerializer
 from django.conf import settings
 
-
-
 logger = logging.getLogger(__name__)
-
 
 def flex_effector_type_label(
         effector,
