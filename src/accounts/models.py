@@ -119,17 +119,23 @@ class GrammaticalGender(models.Model):
 
 class Role(models.Model):
     user = models.ForeignKey(
-        User,
+        "accounts.User",
         on_delete=models.PROTECT,
-        related_name="roles"
+        related_name="roles",
+        null=True,
+        blank=True,
     )
     site = models.ForeignKey(
         Site,
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
     )
     role = models.ForeignKey(
         "access.Role",
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         help_text="Access Role of the user in the context of the Site",
     )
     active = models.BooleanField(default=True)

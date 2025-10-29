@@ -10,6 +10,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('accounts', '0011_role'),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
@@ -27,7 +28,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='role',
             name='user',
-            field=models.ForeignKey(default=django.utils.timezone.now, on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL),
-            preserve_default=False,
+            field=models.ForeignKey(null=True, blank=True, on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)
         ),
     ]
