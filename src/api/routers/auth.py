@@ -103,13 +103,10 @@ async def auth_google(jwt: Annotated[dict, Depends(JWT)], request: Request, redi
             detail="Unauthorized client"
         )
     try:
-        user = await User.objects.aget(email=user_infos['email'], site=site)
+        user = await User.objects.aget(email=user_infos['email'])
         logger.debug(user)
     except User.DoesNotExist:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Unknown user"
-        )
+        RedirectResponse(url=f"/{redirect}")
     # 2. Create a new user if they don't exist
     # 3. Generate your application's JWT token
     subject={"sub": user_infos['email']}
