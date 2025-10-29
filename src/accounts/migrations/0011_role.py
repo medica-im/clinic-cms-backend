@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('active', models.BooleanField(default=True)),
                 ('role', models.ForeignKey(help_text='Access Role of the user in the context of the Site', on_delete=django.db.models.deletion.PROTECT, to='access.role')),
                 ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),
+                ('user', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='roles', to=settings.AUTH_USER_MODEL)),
             ],
         ),
     ]
