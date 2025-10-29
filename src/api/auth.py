@@ -43,7 +43,7 @@ async def get_role(user: User|None, site: Site) -> Role:
     if user.is_superuser:
         return roles_dct["superuser"]
     try:
-        account_role = await AccountRole.objects.aget(user=user, site=site, active=True)
+        account_role = await AccountRole.objects.prefetch_related('role').aget(user=user, site=site, active=True)
         return account_role.role
     except AccountRole.DoesNotExist:
         return roles_dct["anonymous"]
