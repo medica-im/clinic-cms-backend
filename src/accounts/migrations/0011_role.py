@@ -2,6 +2,7 @@
 
 from django.db import migrations, models
 import django.db.models.deletion
+from django.conf import settings
 
 
 class Migration(migrations.Migration):
@@ -10,6 +11,7 @@ class Migration(migrations.Migration):
         ('access', '0003_role_description_en_role_description_fr_and_more'),
         ('sites', '0002_alter_domain_unique'),
         ('accounts', '0010_user_role_user_site'),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
@@ -20,6 +22,7 @@ class Migration(migrations.Migration):
                 ('active', models.BooleanField(default=True)),
                 ('role', models.ForeignKey(help_text='Access Role of the user in the context of the Site', on_delete=django.db.models.deletion.PROTECT, to='access.role')),
                 ('site', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='sites.site')),
+                ('user', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),
             ],
         ),
     ]

@@ -25,9 +25,4 @@ class Migration(migrations.Migration):
             name='updated',
             field=models.DateTimeField(auto_now=True),
         ),
-        migrations.AddField(
-            model_name='role',
-            name='user',
-            field=models.ForeignKey(null=True, blank=True, on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)
-        ),
     ]
