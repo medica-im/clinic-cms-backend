@@ -36,7 +36,8 @@ from addressbook.api.serializers import (
     ProfileSerializer,
 )
 from api.serializers.appointment import AppointmentSerializer
-from access.utils import get_role, async_get_role
+from access.utils import get_role
+from api.auth import get_role as async_get_role
 from rest_framework.serializers import ModelSerializer
 from django.conf import settings
 
@@ -416,80 +417,6 @@ async def async_get_emails_neomodel(
         first_hit=False,
         many=True,
     )
-
-def get_phones(request, effector):
-    directory=get_directory(request)
-    results, cols = db.cypher_query(
-        f"""MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
-        WHERE rel.directories=["{directory.name}"]
-        AND e.uid="{effector.uid}"
-        RETURN f, rel"""
-    )
-    if results:
-        location_facility = []
-        for row in results:
-            _dct = {}
-            location_rel=EffectorFacility.inflate(row[cols.index('rel')])
-            _dct["location_rel"]=location_rel
-            facility=Facility.inflate(row[cols.index('f')])
-            _dct["facility"]=facility
-            location_facility.append(_dct)
-        phones = []
-        for lf in location_facility:
-            try:
-                contact = Contact.objects.get(neomodel_uid=lf["location_rel"].uid)
-            except Contact.DoesNotExist:
-                contact = None
-            if not (contact and contact.phonenumbers.all()):
-                try:
-                    contact = Contact.objects.get(neomodel_uid=lf["facility"].uid)
-                except Contact.DoesNotExist:
-                    continue
-            role = get_role(request)
-            _phones = contact.phonenumbers.filter(roles__in=[role]).distinct()
-            serializer = PhoneNumberSerializer(
-                _phones,
-                many=True
-            )
-            phones.extend(serializer.data)
-        return phones
-
-async def async_get_phones(request, effector):
-    directory = await async_get_directory(request)
-    results, cols = await adb.cypher_query(
-        f"""MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
-        WHERE rel.directories=["{directory.name}"]
-        AND e.uid="{effector.uid}"
-        RETURN f, rel"""
-    )
-    if results:
-        location_facility = []
-        for row in results:
-            _dct = {}
-            location_rel=EffectorFacility.inflate(row[cols.index('rel')])
-            _dct["location_rel"]=location_rel
-            facility=Facility.inflate(row[cols.index('f')])
-            _dct["facility"]=facility
-            location_facility.append(_dct)
-        phones = []
-        for lf in location_facility:
-            try:
-                contact = await Contact.objects.aget(neomodel_uid=lf["location_rel"].uid)
-            except Contact.DoesNotExist:
-                contact = None
-            if not (contact and contact.phonenumbers.all()):
-                try:
-                    contact = await Contact.objects.aget(neomodel_uid=lf["facility"].uid)
-                except Contact.DoesNotExist:
-                    continue
-            role = await async_get_role(request)
-            _phones = contact.phonenumbers.filter(roles__in=[role]).distinct()
-            serializer = PhoneNumberSerializer(
-                _phones,
-                many=True
-            )
-            phones.extend(serializer.data)
-        return phones
 
 def get_avatar_url(
         entry: Entry|None=None,

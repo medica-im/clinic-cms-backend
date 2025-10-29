@@ -1,7 +1,7 @@
 import logging
 import os
 from access.models import AccessControl, Endpoint, Role
-from accounts.models import User
+from accounts.models import User, Role as AccountRole
 from django.contrib.sites.models import Site
 from fastapi import Request, HTTPException, status
 from api.utils import get_site_from_request
@@ -19,11 +19,11 @@ if auth_secret:
 async def get_user(jwt: dict) -> User|None:
     email = jwt['email']
     try:
-        return await User.objects.select_related('role', 'site').aget(email=email)
+        return await User.objects.select_related('roles').aget(email=email)
     except User.DoesNotExist as e:
         return None
 
-async def get_role_objs():
+async def get_role_objs() -> dict[str, Role]:
     roles = dict()
     for role in [
         "superuser", "administrator", "staff", "registered", "anonymous"
@@ -37,17 +37,22 @@ async def get_role_objs():
     return roles
 
 async def get_role(user: User|None, site: Site) -> Role:
-    roles = await get_role_objs()
+    roles_dct = await get_role_objs()
     if not user:
-        return roles["anonymous"]
-    elif user.is_superuser:
-        return roles["superuser"]
-    elif user.role and user.site==site:
-        return user.role
-    elif user.site==site:
-        return roles["registered"]
-    else:
-        return roles["anonymous"]
+        return roles_dct["anonymous"]
+    if user.is_superuser:
+        return roles_dct["superuser"]
+    try:
+        account_role = await AccountRole.objects.aget(user=user, site=site, active=True)
+        return account_role.role
+    except AccountRole.DoesNotExist:
+        return roles_dct["anonymous"]
+    except AccountRole.MultipleObjectsReturned as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Insufficient permissions"
+        )
 
 async def authorize_api(endpoint: str, request: Request, jwt: dict):
     # get post put patch delete
@@ -57,6 +62,7 @@ async def authorize_api(endpoint: str, request: Request, jwt: dict):
     user = await get_user(jwt)
     logger.debug(user)
     role = await get_role(user, site)
+    logger.debug(f"{site=} {user=} {role=}")
     permission = 0
     if request.method == "GET":
         permission = 1 
