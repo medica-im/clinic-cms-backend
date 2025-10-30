@@ -154,6 +154,7 @@ def refresh(
 async def read_current_user(
         jwt: Annotated[dict, Depends(JWT)], request: Request
 ):  
+    logger.debug(f"{jwt=}")
     site = await get_site_from_request(request)
     try:
         django_user = await User.objects.select_related('grammatical_gender').aget(email=jwt["email"])
