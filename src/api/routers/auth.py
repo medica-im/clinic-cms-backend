@@ -70,7 +70,7 @@ async def return_jwt(jwt: Annotated[dict, Depends(JWT)], request: Request):
     logger.info(request.cookies)
     logger.debug(request.cookies.get('__Secure-authjs.session-token'))
     try:
-        return {"message": f"Hi {jwt['name']}. Greetings from fastapi!"}
+        return {"message": f"Hi {jwt['name']}. Greetings from fastapi!\n{jwt=}"}
     except Exception as e:
         logger.debug(e)
 
