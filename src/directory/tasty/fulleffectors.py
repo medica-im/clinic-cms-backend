@@ -246,7 +246,7 @@ class FullEffectorResource(Resource):
     effector_uid = fields.CharField(attribute='effector_uid')
     label = fields.CharField(attribute='label')
     name = fields.CharField(attribute='name')
-    gender = fields.CharField(attribute='name')
+    gender = fields.CharField(attribute='gender')
     slug = fields.CharField(attribute='slug')
     effector_type = fields.DictField(attribute='effector_type')
     address = fields.DictField(attribute='address', null=True)
