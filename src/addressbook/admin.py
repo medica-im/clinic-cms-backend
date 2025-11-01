@@ -148,7 +148,7 @@ class ContactAdmin(admin.ModelAdmin):
         'profile_image',
         'neomodel_uid',
     )
-    search_fields = ['neomodel_uid']
+    search_fields = ['id', 'neomodel_uid']
     readonly_fields = (
         'name_tag',
         'profile_image_tag',
