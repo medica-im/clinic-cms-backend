@@ -27,6 +27,7 @@ class OrganizationAdmin(TranslationAdmin):
         'language',
         'city',
     )
+    raw_id_fields = ["contact"]
     search_fields = [
         'name', 'formatted_name', 'city', 'company_name', 'neomodel_uid'
     ]
