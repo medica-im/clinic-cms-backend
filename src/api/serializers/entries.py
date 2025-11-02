@@ -88,15 +88,21 @@ def entry_if_exists(effector: Effector, effector_type: EffectorType, facility: F
         entry.save()
         return entry
 
-async def connect_orgs(entry:AsyncEntry, organizations: list[str]|None):
+async def connect_member_of(entry:AsyncEntry, organizations: list[str]|None):
     if organizations:
-        for org_uid in organizations:
+        for uid in organizations:
             try:
-                org = await AsyncOrganization.nodes.get(uid=org_uid)
+                org = await AsyncOrganization.nodes.get(uid=uid)
                 await entry.organizations.connect(org)
             except Exception as e:
-                logger.error(e)
-                raise Exception(e)
+                logger.debug(e)
+                try:
+                    entry = AsyncEntry.nodes.get(uid=uid)
+                    await entry.memberships.connect(entry)
+                except Exception as e:
+                    logger.debug(e)
+                    logger.error(f"No node (Organization or Entry) found for {uid=}")
+                    raise Exception(e)
 
 async def create_entry(dir_name, kwargs)-> FullEntry:
     organizations = kwargs["organizations"]
@@ -123,7 +129,7 @@ async def create_entry(dir_name, kwargs)-> FullEntry:
         await entry.effector_type.connect(effector_type)
         await entry.facility.connect(facility)
     if organizations:
-        await connect_orgs(entry, organizations)
+        await connect_member_of(entry, organizations)
     await neo4j_directory.entries.connect(entry)
     try:
         await Contact.objects.acreate(neomodel_uid=entry.uid)

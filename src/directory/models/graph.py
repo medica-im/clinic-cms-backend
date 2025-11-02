@@ -340,6 +340,7 @@ class MunicipalArrondissement(AdministrativeTerritorialEntityOfFrance):
 class Facility(StructuredNode):
     uid = UniqueIdProperty()
     organization = RelationshipTo('Organization', 'PART_OF')
+    organizations = RelationshipTo('Entry', 'PART_OF')
     commune = RelationshipTo(
         'Commune',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'

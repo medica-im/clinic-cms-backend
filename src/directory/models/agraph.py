@@ -337,6 +337,7 @@ class MunicipalArrondissement(AdministrativeTerritorialEntityOfFrance):
 class Facility(AsyncStructuredNode):
     uid = UniqueIdProperty()
     organization = AsyncRelationshipTo('Organization', 'PART_OF')
+    organizations = AsyncRelationshipTo('Entry', 'PART_OF')
     commune = AsyncRelationshipTo(
         'Commune',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'

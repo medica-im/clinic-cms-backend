@@ -551,7 +551,7 @@ def get_address(facility: Facility, commune: Commune, country: Country):
     }
     return _dct
 
-def org_uids(orgs):
+def node_uids(orgs):
     if orgs and not isinstance(orgs, list):
         orgs=[orgs]
     try:
@@ -754,8 +754,10 @@ def get_entries(
     if uid:
         query=f"""MATCH (entry:Entry) WHERE entry.uid="{uid}" WITH entry MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector) WITH * OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
+        OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(memberships:Entry)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
-        RETURN entry,e,et,f,rel,o,employer,commune,country;"""
+        OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer_entry:Entry)
+        RETURN entry,e,et,f,rel,o,memberships,employer,commune,country;"""
     else:
         query=f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
         WITH d
@@ -766,8 +768,10 @@ def get_entries(
         WITH *
         OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
+        OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(memberships:Entry)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
-        RETURN entry,e,et,f,rel,o,employer,commune,country;"""
+        OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer_entry:Entry)
+        RETURN entry,e,et,f,rel,o,memberships,employer,commune,country;"""
     q = db.cypher_query(query,resolve_objects = True)
     #logger.debug(f'{display(q[0][0])}')
     #logger.debug(f'****************************\nq:\n{len(q[0][0])}')
@@ -782,12 +786,18 @@ def get_entries(
                 facility,
                 location,
                 organizations,
+                memberships,
                 employers,
+                employer_entries,
                 commune,
                 country,
             ) = row
             address = get_address(facility,commune,country)
             avatar=get_avatar_url(entry, effector, location, facility)
+            org_uids = node_uids(organizations) if organizations else []
+            org_uids.extend(node_uids(memberships) if memberships else [])
+            employer_uids = node_uids(employers) if employers else []
+            employer_uids.extend(node_uids(employer_entries) if employer_entries else [])
             entries.append(
                 {
                     "effector": effector,
@@ -798,8 +808,8 @@ def get_entries(
                     "facility": facility,
                     "avatar": avatar,
                     "location": location,
-                    "organizations": org_uids(organizations) if organizations else [],
-                    "employers": org_uids(employers) if employers else [],
+                    "organizations": org_uids,
+                    "employers": employer_uids,
                 }
             )
         return entries

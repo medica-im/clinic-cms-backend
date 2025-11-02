@@ -105,6 +105,8 @@ def createFacilityResources(request, nodes):
             commune_uid = None
         address = get_address(facility,commune,country)
         organizations = [org.uid for org in facility.organization.all()]
+        # add entries as organizations
+        organizations.extend([entry.uid for entry in facility.organizations.all()])
         phones = get_phones_neomodel(f=facility)
         emails = get_emails_neomodel(f=facility)
         websites = get_websites_neomodel(f=facility)
