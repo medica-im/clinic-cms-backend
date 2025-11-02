@@ -90,7 +90,7 @@ async def entry_if_exists(effector: Effector, effector_type: EffectorType, facil
     if len(inactive_entries) == 1:
         entry = inactive_entries[0]
         entry.active = True
-        entry.save()
+        entry = await entry.save()
         logger.debug(f"Existing Entry found: {entry}")
         return entry
 
@@ -103,7 +103,7 @@ async def connect_member_of(new_entry, entry: EntryPost):
             except Exception as e:
                 logger.debug(e)
                 try:
-                    _entry = AsyncEntry.nodes.get(uid=uid)
+                    _entry = await AsyncEntry.nodes.get(uid=uid)
                     await new_entry.memberships.connect(_entry)
                 except Exception as e:
                     logger.debug(e)
