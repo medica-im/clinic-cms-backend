@@ -76,11 +76,17 @@ async def entry_if_exists(effector: Effector, effector_type: EffectorType, facil
         else:
             inactive_entries.append(entry)
     if len(active_entries) > 1:
-        raise HTTPException(status_code=452, detail=f"{len(active_entries)} active Entry objects with same effector, effector_type and facility already exist.")
+        detail=f"{len(active_entries)} active Entry objects with same effector, effector_type and facility already exist."
+        logger.debug(detail)
+        raise HTTPException(status_code=452, detail=detail)
     if len(active_entries) == 1:
-        raise HTTPException(status_code=452, detail="One active Entry object with same effector, effector_type and facility already exists.")
+        detail="One active Entry object with same effector, effector_type and facility already exists."
+        logger.debug(detail)
+        raise HTTPException(status_code=452, detail=detail)
     if len(inactive_entries) > 1:
-        raise HTTPException(status_code=452, detail=f"{len(inactive_entries)} inactive Entry objects with same effector, effector_type and facility already exist.")
+        detail=f"{len(inactive_entries)} inactive Entry objects with same effector, effector_type and facility already exist."
+        logger.debug(detail)
+        raise HTTPException(status_code=452, detail=detail)
     if len(inactive_entries) == 1:
         entry = inactive_entries[0]
         entry.active = True
