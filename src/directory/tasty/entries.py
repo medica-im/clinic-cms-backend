@@ -50,6 +50,7 @@ class EntryObj(object):
             effector_uid,
             effector_type,
             commune,
+            department,
             address,
             phones,
             updatedAt,
@@ -66,6 +67,7 @@ class EntryObj(object):
         self.effector_uid = effector_uid
         self.effector_type = effector_type
         self.commune = commune
+        self.department = department
         self.address = address
         self.phones = phones
         self.updatedAt = updatedAt
@@ -82,6 +84,9 @@ def createEntryResource(request, node):
     commune_node: Commune = node["commune"]
     commune_obj = createCommuneResources([commune_node])[0]
     commune = commune_obj.__dict__
+    department = {
+        "code": node["department"].code
+    }
     label = getattr(
         effector_node,
         f'label_{settings.LANGUAGE_CODE}',
@@ -145,6 +150,7 @@ def createEntryResource(request, node):
         effector_uid,
         effector_type,
         commune,
+        department,
         address,
         phones,
         updatedAt,
@@ -175,6 +181,7 @@ class EntryResource(Resource):
     slug = fields.CharField(attribute='slug')
     effector_type = fields.DictField(attribute='effector_type')
     commune = fields.DictField(attribute='commune')
+    department = fields.DictField(attribute='department')
     address = fields.DictField(attribute='address', null=True)
     phones = fields.ListField(attribute='phones', null=True)
     facility = fields.DictField(attribute='facility')
