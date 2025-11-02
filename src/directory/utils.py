@@ -757,7 +757,7 @@ def get_entries(
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(memberships:Entry)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer_entry:Entry)
-        RETURN entry,e,et,f,rel,o,memberships,employer,commune,country;"""
+        RETURN entry,e,et,f,rel,o,memberships,employer,employer_entry,commune,country;"""
     else:
         query=f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
         WITH d
@@ -771,7 +771,7 @@ def get_entries(
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(memberships:Entry)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer_entry:Entry)
-        RETURN entry,e,et,f,rel,o,memberships,employer,commune,country;"""
+        RETURN entry,e,et,f,rel,o,memberships,employer,employer_entry,commune,country;"""
     q = db.cypher_query(query,resolve_objects = True)
     #logger.debug(f'{display(q[0][0])}')
     #logger.debug(f'****************************\nq:\n{len(q[0][0])}')
