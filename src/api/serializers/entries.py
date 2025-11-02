@@ -59,7 +59,7 @@ def get_entries(
         ]
     return uids
 
-def entry_if_exists(effector: Effector, effector_type: EffectorType, facility: Facility):
+async def entry_if_exists(effector: Effector, effector_type: EffectorType, facility: Facility):
     entry_uids: list[str] = get_entries(
         effector=effector.uid,
         effector_type=effector_type.uid,
@@ -70,11 +70,11 @@ def entry_if_exists(effector: Effector, effector_type: EffectorType, facility: F
     active_entries = []
     inactive_entries = []
     for uid in entry_uids:
-        entry: EntryGraph = EntryGraph.nodes.get(uid=uid)
+        entry: AsyncEntry = await AsyncEntry.nodes.get(uid=uid)
         if entry.active:
             active_entries.append(entry)
         else:
-             inactive_entries.append(entry)
+            inactive_entries.append(entry)
     if len(active_entries) > 1:
         raise HTTPException(status_code=452, detail=f"{len(active_entries)} active Entry objects with same effector, effector_type and facility already exist.")
     if len(active_entries) == 1:
@@ -85,6 +85,7 @@ def entry_if_exists(effector: Effector, effector_type: EffectorType, facility: F
         entry = inactive_entries[0]
         entry.active = True
         entry.save()
+        logger.debug(f"Existing Entry found: {entry}")
         return entry
 
 async def connect_member_of(new_entry, entry: EntryPost):
@@ -119,9 +120,9 @@ async def create_entry(dir_name, entry: EntryPost)-> FullEntry:
         ts = time.time()*1000
         if (ts - _entry.createdAt)<5000:
             return await async_get_fullentry(str(_entry.uid))
-    new_entry = entry_if_exists(effector, effector_type, facility)
+    new_entry = await entry_if_exists(effector, effector_type, facility)
     if not new_entry:
-        new_entryentry=AsyncEntry()
+        new_entry=AsyncEntry()
         await new_entry.save()
         await new_entry.effector.connect(effector)
         await new_entry.effector_type.connect(effector_type)
