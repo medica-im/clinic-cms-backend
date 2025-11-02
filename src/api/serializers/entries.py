@@ -7,14 +7,11 @@ from django.db import IntegrityError
 from addressbook.models import Contact
 from directory.models import (
     Directory,
-    Facility,
     Organization,
     OrganizationType,
     Commune,
     Website,
     DepartmentOfFrance,
-    Effector,
-    EffectorType,
     Entry as EntryGraph,
     Neo4jDirectory,
 )
@@ -28,8 +25,10 @@ from directory.models.agraph import (
 )
 from api.serializers.fullentry import async_get_fullentry
 from directory.models.agraph import Entry as EntryAgraph
-from api.types.entry import EntryPatch, Entry
-from api.types.fullentry import FullEntry
+from api.types.entry import EntryPatch, Entry, EntryPost
+from api.types.effector import Effector
+from api.types.fullentry import FullEntry, EffectorType
+from api.types.facility import Facility
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +70,7 @@ def entry_if_exists(effector: Effector, effector_type: EffectorType, facility: F
     active_entries = []
     inactive_entries = []
     for uid in entry_uids:
-        entry=EntryGraph.nodes.get(uid=uid)
+        entry: EntryGraph = EntryGraph.nodes.get(uid=uid)
         if entry.active:
             active_entries.append(entry)
         else:
@@ -88,28 +87,27 @@ def entry_if_exists(effector: Effector, effector_type: EffectorType, facility: F
         entry.save()
         return entry
 
-async def connect_member_of(entry:AsyncEntry, organizations: list[str]|None):
-    if organizations:
-        for uid in organizations:
+async def connect_member_of(new_entry, entry: EntryPost):
+    if entry.organizations:
+        for uid in entry.organizations:
             try:
                 org = await AsyncOrganization.nodes.get(uid=uid)
-                await entry.organizations.connect(org)
+                await new_entry.organizations.connect(org)
             except Exception as e:
                 logger.debug(e)
                 try:
-                    entry = AsyncEntry.nodes.get(uid=uid)
-                    await entry.memberships.connect(entry)
+                    _entry = AsyncEntry.nodes.get(uid=uid)
+                    await new_entry.memberships.connect(_entry)
                 except Exception as e:
                     logger.debug(e)
                     logger.error(f"No node (Organization or Entry) found for {uid=}")
                     raise Exception(e)
 
-async def create_entry(dir_name, kwargs)-> FullEntry:
-    organizations = kwargs["organizations"]
+async def create_entry(dir_name, entry: EntryPost)-> FullEntry:
     neo4j_directory = await AsyncDirectory.nodes.get(name=dir_name)
-    effector = await AsyncEffector.nodes.get(uid=kwargs["effector"])
-    effector_type = await AsyncEffectorType.nodes.get(uid=kwargs["effector_type"])
-    facility= await AsyncFacility.nodes.get(uid=kwargs["facility"])
+    effector: Effector = await AsyncEffector.nodes.get(uid=entry.effector)
+    effector_type: EffectorType = await AsyncEffectorType.nodes.get(uid=entry.effector_type)
+    facility: Facility = await AsyncFacility.nodes.get(uid=entry.facility)
     entry_uids: list[str] = get_entries(
         effector=effector.uid,
         effector_type=effector_type.uid,
@@ -117,22 +115,22 @@ async def create_entry(dir_name, kwargs)-> FullEntry:
     )
     logger.debug(f"{entry_uids=}")
     for uid in entry_uids:
-        entry = await EntryAgraph.nodes.get(uid=uid)
+        _entry: Entry = await EntryAgraph.nodes.get(uid=uid)
         ts = time.time()*1000
-        if (ts-entry.createdAt)<5000:
-            return await async_get_fullentry(str(entry.uid))
-    entry = entry_if_exists(effector,effector_type,facility)
-    if not entry:
-        entry=AsyncEntry()
-        await entry.save()
-        await entry.effector.connect(effector)
-        await entry.effector_type.connect(effector_type)
-        await entry.facility.connect(facility)
-    if organizations:
-        await connect_member_of(entry, organizations)
-    await neo4j_directory.entries.connect(entry)
+        if (ts - _entry.createdAt)<5000:
+            return await async_get_fullentry(str(_entry.uid))
+    new_entry = entry_if_exists(effector, effector_type, facility)
+    if not new_entry:
+        new_entryentry=AsyncEntry()
+        await new_entry.save()
+        await new_entry.effector.connect(effector)
+        await new_entry.effector_type.connect(effector_type)
+        await new_entry.facility.connect(facility)
+    if entry.organizations:
+        await connect_member_of(new_entry, entry)
+    await neo4j_directory.entries.connect(new_entry)
     try:
-        await Contact.objects.acreate(neomodel_uid=entry.uid)
+        await Contact.objects.acreate(neomodel_uid=new_entry.uid)
     except IntegrityError:
         pass
     if "HCW" in await effector_type.labels():
@@ -141,7 +139,7 @@ async def create_entry(dir_name, kwargs)-> FullEntry:
         #logger.debug(result[0][0][0])
         if "HealthWorker" not in result[0][0][0]:
             raise HTTPException(status_code=500, detail=f"Label 'HealthWorker' not applied to Effector {effector.uid} of type {effector_type.name_fr}")
-    return await async_get_fullentry(str(entry.uid))
+    return await async_get_fullentry(str(new_entry.uid))
 
 async def get_entry(uid:str)->Entry:
     entry = await EntryAgraph.nodes.get(uid=uid)

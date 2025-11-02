@@ -23,6 +23,7 @@ class Entry(BaseModel):
     deactivation_reason: str|None
     updatedAt: int = 0
     contactUpdatedAt: int = 0
+    createdAt: int = 0
     #effector: Any = Field(exclude=True)
     #facility: Any = Field(exclude=True)
     #effector_type: Any = Field(exclude=True)

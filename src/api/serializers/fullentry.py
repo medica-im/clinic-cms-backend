@@ -8,7 +8,7 @@ def get_fullentry(uid):
     entry_pydantic = FullEntry.model_validate(entry_object.__dict__)
     return entry_pydantic
 
-async def async_get_fullentry(uid):
+async def async_get_fullentry(uid)->FullEntry:
     entry_node = await async_find_entry(uid=uid)
     entry_object = createEffectorRessource(entry_node)
     entry_pydantic = FullEntry.model_validate(entry_object.__dict__)

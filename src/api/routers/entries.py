@@ -24,7 +24,7 @@ async def entry(uid: str) -> Entry:
 async def post_entry(entry: EntryPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> FullEntry:
     await authorize_api("entries_v2", request, jwt)
     directory = await get_directory_from_hostname(request.url.hostname)
-    return await create_entry(directory.name, entry.model_dump())
+    return await create_entry(directory.name, entry)
 
 @router.patch("/entries/{uid}", status_code=status.HTTP_201_CREATED)
 async def patch_entry(uid: str, entry: EntryPatch, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> Entry:
