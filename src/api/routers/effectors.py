@@ -2,7 +2,7 @@ import logging, os, sys
 from typing import Annotated
 from fastapi import APIRouter, status, Depends, Request
 from api.serializers.effector import get_effector, get_effectors, create_effector, patch_effector
-from api.utils import get_directory_from_hostname
+from api.routers.utils import get_directory_from_hostname
 from api.types.effector import Effector, EffectorPost, EffectorPatch
 from pydantic import ValidationError
 #from api.auth import JWT

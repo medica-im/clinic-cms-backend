@@ -4,7 +4,6 @@ from fastapi import APIRouter, status, Request, Depends
 from api.serializers.fullentry import get_fullentry, async_get_fullentry
 from api.serializers.slug_fullentry import slug_find_entry
 from api.types.fullentry import FullEntry
-from api.utils import get_directory_from_hostname
 from api.auth import authorize_api
 from api.auth import JWT
 
