@@ -1,4 +1,4 @@
-from directory.models import Directory, InputField, Setting
+from directory.models import Directory, InputField, Setting, Timestamp
 from rest_framework import serializers
 import langcodes
 from langcodes import Language
@@ -91,6 +91,16 @@ class ConventionSerializer(serializers.Serializer):
         )
         instance.save()
         return instance
+
+
+class TimestampSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = Timestamp
+        fields = [
+            'endpoint',
+            'timestamp',
+        ]
 
 
 class InputFieldSerializer(serializers.ModelSerializer):

@@ -1,15 +1,16 @@
 import logging
 import json
 from common.utils import timeit
+from django.contrib.sites.shortcuts import get_current_site
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import authentication, permissions
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import RetrieveAPIView, ListAPIView
 from rest_framework.exceptions import NotFound
 
 from backend.i18n import activate_locale
-from directory.models import Effector, Directory
+from directory.models import Effector, Directory, Timestamp
 from directory import serializers
 from django.http import Http404
 from django.core.cache import cache
@@ -46,6 +47,14 @@ class EffectorViewSet(viewsets.ViewSet):
 
     def retrieve(self, request, pk=None):
         return Response()
+
+
+class TimestampView(ListAPIView):
+    serializer_class = serializers.TimestampSerializer
+
+    def get_queryset(self):
+        site = get_current_site(self.request)
+        return Timestamp.objects.filter(site=site)
 
 
 class DirectoryView(RetrieveAPIView):
