@@ -12,17 +12,13 @@ from api.types.geography import Commune as CommunePy, DepartmentOfFrance as Depa
 from neomodel import db
 from neomodel import adb
 from neomodel.contrib.spatial_properties import NeomodelPoint, PointProperty
-from directory.models import (
-    Directory,
-    Facility,
-    Commune,
-)
-from api.utils import sync_get_site_from_request
+from directory.models.agraph import Commune, Facility
+from api.utils import get_site_from_request
 
 logger = logging.getLogger(__name__)
 
 def get_facility(
-        directory: Directory|None = None,
+        directory: str|None = None,
         uid: str|None = None,
         active: bool = True,
     ) -> FacilityPy:
@@ -37,7 +33,7 @@ def get_facility(
         raise HTTPException(status_code=404, detail=f"Facility {uid} not found")
 
 def get_facilities(
-        directory: Directory|None = None,
+        directory: str|None = None,
         uid: str|None = None,
         active: bool = True,
     ) -> list[FacilityPy]:
@@ -48,7 +44,7 @@ def get_facilities(
         if directory:
             query=(
                 f"""
-                MATCH (d:Directory) WHERE d.name="{directory.name}"
+                MATCH (d:Directory) WHERE d.name="{directory}"
                 WITH d
                 MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
                 WITH entry
@@ -90,7 +86,77 @@ def get_facilities(
                 raise ValidationError(e)
     return facilities
 
-def create_facility(f: FacilityPost, request: Request)->FacilityPy:
+async def async_get_facility(
+        directory: str|None = None,
+        uid: str|None = None,
+        active: bool = True,
+    ) -> FacilityPy:
+    try:
+        facilities = await async_get_facilities(
+            directory=directory,
+            uid=uid,
+            active=active
+        )
+        return facilities[0]
+    except IndexError as e:
+        logger.debug(e)
+        raise HTTPException(status_code=404, detail=f"Facility {uid} not found")
+
+async def async_get_facilities(
+        directory: str|None = None,
+        uid: str|None = None,
+        active: bool = True,
+    ) -> list[FacilityPy]:
+    if uid:
+            query=(
+                f"""MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance) WHERE f.uid="{uid}" WITH f,c,dpt OPTIONAL MATCH (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType) RETURN f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");""")
+    else:
+        if directory:
+            query=(
+                f"""
+                MATCH (d:Directory) WHERE d.name="{directory}"
+                WITH d
+                MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
+                WITH entry
+                MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance), (e:Effector)-[]-(entry)-[]-(et:EffectorType)
+                RETURN DISTINCT f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");
+                """)
+        else:
+            query=(
+                f"""
+                MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance) OPTIONAL MATCH (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType)
+                RETURN DISTINCT f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");
+                """)
+    q = await adb.cypher_query(query, resolve_objects = True)
+    facilities: list[FacilityPy]=[]
+    if q:
+        for row in q[0]:
+            (
+                facility,
+                commune,
+                department,
+                effectors,
+            ) = row
+            commune_dct = commune.__properties__
+            commune_dct["department"]=department.__properties__
+            facility_dct=facility.__properties__
+            point=facility.location
+            try:
+                location_dct={"longitude": point.longitude, "latitude": point.latitude}
+            except:
+                location_dct=None
+            facility_dct["commune"]=commune_dct
+            facility_dct["effectors"]=effectors[0]
+            facility_dct["location"]=location_dct
+            try:
+                f=FacilityPy.model_validate(facility_dct)
+                facilities.append(f)
+            except ValidationError as e:
+                logger.debug(e)
+                raise ValidationError(e)
+    return facilities
+
+async def create_facility(f: FacilityPost, request: Request)->FacilityPy:
     try:
         longitude: Decimal|None = f.longitude
         logger.debug(longitude)
@@ -102,7 +168,7 @@ def create_facility(f: FacilityPost, request: Request)->FacilityPy:
     except Exception as e:
         logger.debug(e)
         location=None
-    node = Facility(
+    node = await Facility(
         name=f.name,
         label=f.label,
         slug=f.slug,
@@ -118,18 +184,18 @@ def create_facility(f: FacilityPost, request: Request)->FacilityPy:
     commune=f.commune
     if commune:
         try:
-            commune_node = Commune.nodes.get(uid=commune)
-            node.commune.connect(commune_node)
+            commune_node = await Commune.nodes.get(uid=commune)
+            await node.commune.connect(commune_node)
         except Exception as e:
             raise Exception(e)
-    facility = get_facility(uid=str(node.uid))
-    site = sync_get_site_from_request(request)
+    facility = await async_get_facility(uid=str(node.uid))
+    site = await get_site_from_request(request)
     cache_key = f"v1:facilities:{site.domain}"
     deleted = cache.delete(cache_key)
     logger.debug(f"cache {cache_key} {deleted=}")
     return facility
 
-def update_facility(uid: str, f: FacilityPut)->FacilityPy:
+async def update_facility(uid: str, f: FacilityPut, request: Request)->FacilityPy:
     try:
         longitude: Decimal|None = f.longitude
         logger.debug(longitude)
@@ -142,7 +208,7 @@ def update_facility(uid: str, f: FacilityPut)->FacilityPy:
         logger.debug(e)
         location=None
     try:
-        node = Facility.nodes.get(uid=uid)
+        node = await Facility.nodes.get(uid=uid)
     except Exception as e:
         logger.error(e)
         raise HTTPException(status_code=404, detail=f"Facility with uid={uid} not found.")
@@ -158,7 +224,11 @@ def update_facility(uid: str, f: FacilityPut)->FacilityPy:
     node.ban_banId=f.ban_banId
     node.location=location
     node.save()
-    facility = get_facility(uid=uid)
+    facility = await async_get_facility(uid=uid)
+    site = await get_site_from_request(request)
+    cache_key = f"v1:facilities:{site.domain}"
+    deleted = cache.delete(cache_key)
+    logger.debug(f"cache {cache_key} {deleted=}")
     return facility
 
 async def delete_facility(uid: str)->dict:
