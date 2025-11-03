@@ -1,4 +1,5 @@
 from django.db import models
+import time
 from django.contrib.sites.models import Site
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
@@ -6,10 +7,44 @@ from the_big_username_blacklist import validate
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from accounts.models import GrammaticalGender
-from directory.utils import sync_clear_cache
+from facility.models import Organization
+from directory.models import Timestamp, Endpoint
+from django.contrib.sites.shortcuts import get_current_site
+from django.core.cache import cache
 import logging
 
 logger=logging.getLogger(__name__)
+
+def sync_set_timestamp(endpoint_name: str, request):
+    # timestamp unit: millisecond
+    timestamp = int(time.time_ns()/1000000)
+    site = get_current_site(request)
+    try:
+        endpoint=Endpoint.objects.get(name=endpoint_name)
+    except Endpoint.DoesNotExist as e:
+        logger.error(e)
+        return
+    ts, _ = Timestamp.objects.get_or_create(endpoint=endpoint,site=site)
+    ts.timestamp=timestamp
+    ts.save()
+
+def sync_clear_cache(endpoint: str, request=None):
+    sites: list[Site] = []
+    if request:
+        site = get_current_site(request)
+        sites.append(site)
+    else:
+        for org in Organization.objects.select_related('site').filter(active=True).exclude(site__is_null=True).all():
+            site = org.site
+            if site:
+                sites.append(site)
+    if not sites:
+        return
+    for site in sites:
+        cache_key = f"{endpoint}:{site.domain}"
+        deleted = cache.delete(cache_key)
+        logger.debug(f"cache {cache_key} {deleted=}")
+        sync_set_timestamp(endpoint, request)
 
 def validate_slug(value):
     if not validate(value):
