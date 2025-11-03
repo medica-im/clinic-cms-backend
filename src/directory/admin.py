@@ -135,12 +135,11 @@ class LabelAdmin(admin.ModelAdmin):
 
     @admin.display(description='EffectorType')
     def effector_type_tag(self, obj):
-        logger.debug(f'{obj.uid}')
         #uid = str(obj.uid).replace("-", "")
         try:
             et=EffectorType.nodes.get(uid=obj.uid.hex)
         except:
-            logger.warn(f'No node found for uid="{obj.uid}"')
+            logger.warning(f'No node found for uid="{obj.uid}"')
             return
         return et.label_fr or et.name_fr or et.label_en or et.name_en
 
