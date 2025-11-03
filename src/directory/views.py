@@ -49,12 +49,14 @@ class EffectorViewSet(viewsets.ViewSet):
         return Response()
 
 
-class TimestampView(ListAPIView):
-    serializer_class = serializers.TimestampSerializer
+class TimestampView(RetrieveAPIView):
 
-    def get_queryset(self):
+    def get_object(self):
         site = get_current_site(self.request)
-        return Timestamp.objects.filter(site=site)
+        dct = {}
+        for ts in Timestamp.objects.filter(site=site).all():
+            dct[ts.endpoint.name]=ts.timestamp
+        return dct
 
 
 class DirectoryView(RetrieveAPIView):
