@@ -116,16 +116,17 @@ class EffectorTypeLabel(APIView):
         """
         Return a dictionary of all labels.
         """
+        logger.debug(f"EffectorTypeLabel get {self.request=}")
         directory = get_directory(self.request)
         language = directory.site.organization.language
         endpoint = f"v1:effector_type_labels"
         cache_key= f"{endpoint}:{language}"
         cached = cache.get(cache_key)
         if cached:
-            logger.warning(f"*** Using cache with key {cache_key} ***")
+            logger.debug(f"*** Using cache with key {cache_key} ***")
             return Response(cached)
         else:
-            logger.warning(f"cache for key '{cache_key}' is *** EMPTY ***")
+            logger.debug(f"cache for key '{cache_key}' is *** EMPTY ***")
             value = get_effector_type_labels(language)
             timeout = get_ttl(endpoint, request) or TTL
             logger.debug(f"{timeout=}")
