@@ -51,8 +51,8 @@ class EffectorViewSet(viewsets.ViewSet):
 
 class TimestampView(APIView):
 
-    def get(self):
-        site = get_current_site(self.request)
+    def get(self, request):
+        site = get_current_site(request)
         dct = {}
         for ts in Timestamp.objects.filter(site=site).all():
             dct[ts.endpoint.name]=ts.timestamp
