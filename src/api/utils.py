@@ -17,6 +17,17 @@ async def get_site_from_request(request: Request) -> Site:
             status_code=status.HTTP_403_FORBIDDEN
         )
 
+def sync_get_site_from_request(request: Request) -> Site:
+    try:
+        return Site.objects.get(domain=request.url.hostname)
+    except Site.DoesNotExist as e:
+        logger.error(
+            f'Site with domain {request.url.hostname} does not exist.'
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN
+        )
+
 async def get_directory_from_hostname(hostname):
     try:
         site = await Site.objects.aget(domain=hostname)

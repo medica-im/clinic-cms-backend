@@ -2,8 +2,9 @@ import logging
 import time
 from typing import Any
 from neomodel import db
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from django.db import IntegrityError
+from django.core.cache import cache
 from addressbook.models import Contact
 from directory.models import (
     Directory,
@@ -29,6 +30,7 @@ from api.types.entry import EntryPatch, Entry, EntryPost
 from api.types.effector import Effector
 from api.types.fullentry import FullEntry, EffectorType
 from api.types.facility import Facility
+from api.utils import get_site_from_request
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +112,7 @@ async def connect_member_of(new_entry, entry: EntryPost):
                     logger.error(f"No node (Organization or Entry) found for {uid=}")
                     raise Exception(e)
 
-async def create_entry(dir_name, entry: EntryPost)-> FullEntry:
+async def create_entry(dir_name, entry: EntryPost, request: Request)-> FullEntry:
     neo4j_directory = await AsyncDirectory.nodes.get(name=dir_name)
     effector: Effector = await AsyncEffector.nodes.get(uid=entry.effector)
     effector_type: EffectorType = await AsyncEffectorType.nodes.get(uid=entry.effector_type)
@@ -146,6 +148,10 @@ async def create_entry(dir_name, entry: EntryPost)-> FullEntry:
         #logger.debug(result[0][0][0])
         if "HealthWorker" not in result[0][0][0]:
             raise HTTPException(status_code=500, detail=f"Label 'HealthWorker' not applied to Effector {effector.uid} of type {effector_type.name_fr}")
+    site = await get_site_from_request(request)
+    cache_key = f"v1:entries:{site.domain}"
+    deleted = cache.delete(cache_key)
+    logger.debug(f"cache {cache_key} {deleted=}")
     return await async_get_fullentry(str(new_entry.uid))
 
 async def get_entry(uid:str)->Entry:

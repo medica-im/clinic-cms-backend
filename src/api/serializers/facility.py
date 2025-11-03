@@ -1,7 +1,8 @@
 import logging
 import json
+from django.core.cache import cache
 from decimal import Decimal
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from typing import Union, TypedDict, Any
 from pydantic import ValidationError, ConfigDict, TypeAdapter
 from api.types.facility import FacilityPost, FacilityPut, Facility as FacilityPy
@@ -16,6 +17,8 @@ from directory.models import (
     Facility,
     Commune,
 )
+from api.utils import sync_get_site_from_request
+
 logger = logging.getLogger(__name__)
 
 def get_facility(
@@ -87,7 +90,7 @@ def get_facilities(
                 raise ValidationError(e)
     return facilities
 
-def create_facility(f: FacilityPost)->FacilityPy:
+def create_facility(f: FacilityPost, request: Request)->FacilityPy:
     try:
         longitude: Decimal|None = f.longitude
         logger.debug(longitude)
@@ -120,6 +123,10 @@ def create_facility(f: FacilityPost)->FacilityPy:
         except Exception as e:
             raise Exception(e)
     facility = get_facility(uid=str(node.uid))
+    site = sync_get_site_from_request(request)
+    cache_key = f"v1:facilities:{site.domain}"
+    deleted = cache.delete(cache_key)
+    logger.debug(f"cache {cache_key} {deleted=}")
     return facility
 
 def update_facility(uid: str, f: FacilityPut)->FacilityPy:
