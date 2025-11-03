@@ -16,7 +16,7 @@ from directory.utils import (
     get_websites_neomodel,
     get_avatar_url,
     get_ttl,
-    set_timestamp,
+    sync_set_timestamp,
     generate_cache_key,
 )
 from directory.models import Facility
@@ -217,7 +217,7 @@ class FacilityResource(Resource):
                 value,
                 timeout=timeout
             )
-            set_timestamp(endpoint, bundle.request)
+            sync_set_timestamp(endpoint, bundle.request)
             return value
 
     def obj_get(self, bundle, **kwargs):

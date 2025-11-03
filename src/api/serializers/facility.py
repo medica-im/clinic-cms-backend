@@ -13,7 +13,7 @@ from neomodel import db
 from neomodel import adb
 from neomodel.contrib.spatial_properties import NeomodelPoint, PointProperty
 from directory.models.agraph import Commune, Facility
-from api.utils import get_site_from_request
+from api.utils import get_site_from_request, clear_cache
 
 logger = logging.getLogger(__name__)
 
@@ -189,10 +189,7 @@ async def create_facility(f: FacilityPost, request: Request)->FacilityPy:
         except Exception as e:
             raise Exception(e)
     facility = await async_get_facility(uid=str(node.uid))
-    site = await get_site_from_request(request)
-    cache_key = f"v1:facilities:{site.domain}"
-    deleted = cache.delete(cache_key)
-    logger.debug(f"cache {cache_key} {deleted=}")
+    await clear_cache("v1:facilities", request)
     return facility
 
 async def update_facility(uid: str, f: FacilityPut, request: Request)->FacilityPy:
@@ -225,10 +222,7 @@ async def update_facility(uid: str, f: FacilityPut, request: Request)->FacilityP
     node.location=location
     node.save()
     facility = await async_get_facility(uid=uid)
-    site = await get_site_from_request(request)
-    cache_key = f"v1:facilities:{site.domain}"
-    deleted = cache.delete(cache_key)
-    logger.debug(f"cache {cache_key} {deleted=}")
+    await clear_cache("v1:facilities", request)
     return facility
 
 async def delete_facility(uid: str)->dict:

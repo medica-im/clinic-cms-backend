@@ -21,7 +21,7 @@ from directory.models.core import Label
 from directory.utils import (
     get_directory,
     get_ttl,
-    set_timestamp,
+    sync_set_timestamp,
 )
 
 logger = logging.getLogger(__name__)
@@ -134,5 +134,5 @@ class EffectorTypeLabel(APIView):
                 value,
                 timeout=timeout
             )
-            set_timestamp(endpoint, request)
+            sync_set_timestamp(endpoint, request)
             return Response(value)

@@ -6,6 +6,7 @@ from the_big_username_blacklist import validate
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from accounts.models import GrammaticalGender
+from api.utils import sync_clear_cache
 import logging
 
 logger=logging.getLogger(__name__)
@@ -221,6 +222,10 @@ class Label(models.Model):
 
     def natural_key(self):
         return (self.label, self.language)
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        sync_clear_cache("v1:effector_type_labels")
 
     class Meta:
         models.UniqueConstraint(

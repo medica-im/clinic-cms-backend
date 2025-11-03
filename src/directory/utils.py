@@ -20,6 +20,7 @@ from directory.models import (
     Endpoint,
     Label,
 )
+from django.contrib.sites.models import Site
 from directory.models.graph import Appointment, Office, HouseCall
 from directory.models.graph import Convention
 from addressbook.models import Contact
@@ -38,6 +39,7 @@ from addressbook.api.serializers import (
 from api.serializers.appointment import AppointmentSerializer
 from rest_framework.serializers import ModelSerializer
 from django.conf import settings
+from api.utils import get_site_from_request
 
 logger = logging.getLogger(__name__)
 
@@ -82,10 +84,22 @@ def generate_cache_key(api_name, resource_name, request):
         logger.debug(f"{cache_key=}")
         return cache_key
 
-def set_timestamp(endpoint_name: str, request):
+def sync_set_timestamp(endpoint_name: str, request):
     # timestamp unit: millisecond
     timestamp = int(time.time_ns()/1000000)
     site = get_current_site(request)
+    try:
+        endpoint=Endpoint.objects.get(name=endpoint_name)
+    except Endpoint.DoesNotExist as e:
+        logger.error(e)
+        return
+    ts, _ = Timestamp.objects.get_or_create(endpoint=endpoint,site=site)
+    ts.timestamp=timestamp
+    ts.save()
+
+async def set_timestamp(endpoint_name: str, site: Site):
+    # timestamp unit: millisecond
+    timestamp = int(time.time_ns()/1000000)
     try:
         endpoint=Endpoint.objects.get(name=endpoint_name)
     except Endpoint.DoesNotExist as e:

@@ -4,7 +4,6 @@ from typing import Any
 from neomodel import db
 from fastapi import HTTPException, Request
 from django.db import IntegrityError
-from django.core.cache import cache
 from addressbook.models import Contact
 from directory.models import (
     Directory,
@@ -30,7 +29,7 @@ from api.types.entry import EntryPatch, Entry, EntryPost
 from api.types.effector import Effector
 from api.types.fullentry import FullEntry, EffectorType
 from api.types.facility import Facility
-from api.utils import get_site_from_request
+from api.utils import get_site_from_request, clear_cache
 
 logger = logging.getLogger(__name__)
 
@@ -148,10 +147,7 @@ async def create_entry(dir_name, entry: EntryPost, request: Request)-> FullEntry
         #logger.debug(result[0][0][0])
         if "HealthWorker" not in result[0][0][0]:
             raise HTTPException(status_code=500, detail=f"Label 'HealthWorker' not applied to Effector {effector.uid} of type {effector_type.name_fr}")
-    site = await get_site_from_request(request)
-    cache_key = f"v1:entries:{site.domain}"
-    deleted = cache.delete(cache_key)
-    logger.debug(f"cache {cache_key} {deleted=}")
+    await clear_cache("v1:entries", request)
     return await async_get_fullentry(str(new_entry.uid))
 
 async def get_entry(uid:str)->Entry:
