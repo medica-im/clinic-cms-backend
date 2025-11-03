@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from accounts.models import GrammaticalGender
 from facility.models import Organization
-from directory.models import Timestamp, Endpoint
+from directory.models.api import Timestamp, Endpoint
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.cache import cache
 import logging

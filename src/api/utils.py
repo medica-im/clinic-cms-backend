@@ -3,7 +3,7 @@ import time
 from django.contrib.sites.models import Site
 from access.models import Role
 from fastapi import Request, HTTPException, status
-from directory.models import Timestamp, Endpoint
+from directory.models.api import Timestamp, Endpoint
 from django.core.cache import cache
 from facility.models import Organization
 from django.contrib.sites.shortcuts import get_current_site
