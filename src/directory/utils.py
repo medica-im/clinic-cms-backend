@@ -83,7 +83,8 @@ def generate_cache_key(api_name, resource_name, request):
         return cache_key
 
 def set_timestamp(endpoint_name: str, request):
-    timestamp = int(time.time_ns()/1000)
+    # timestamp unit: millisecond
+    timestamp = int(time.time_ns()/1000000)
     site = get_current_site(request)
     try:
         endpoint=Endpoint.objects.get(name=endpoint_name)
