@@ -84,31 +84,6 @@ def generate_cache_key(api_name, resource_name, request):
         logger.debug(f"{cache_key=}")
         return cache_key
 
-def sync_set_timestamp(endpoint_name: str, request):
-    # timestamp unit: millisecond
-    timestamp = int(time.time_ns()/1000000)
-    site = get_current_site(request)
-    try:
-        endpoint=Endpoint.objects.get(name=endpoint_name)
-    except Endpoint.DoesNotExist as e:
-        logger.error(e)
-        return
-    ts, _ = Timestamp.objects.get_or_create(endpoint=endpoint,site=site)
-    ts.timestamp=timestamp
-    ts.save()
-
-async def set_timestamp(endpoint_name: str, site: Site):
-    # timestamp unit: millisecond
-    timestamp = int(time.time_ns()/1000000)
-    try:
-        endpoint=Endpoint.objects.get(name=endpoint_name)
-    except Endpoint.DoesNotExist as e:
-        logger.error(e)
-        return
-    ts, _ = Timestamp.objects.get_or_create(endpoint=endpoint,site=site)
-    ts.timestamp=timestamp
-    ts.save()
-
 def get_ttl(endpoint: str, request):
     site = get_current_site(request)
     try:

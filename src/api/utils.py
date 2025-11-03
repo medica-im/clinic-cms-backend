@@ -1,11 +1,12 @@
 import logging
+import time
 from django.contrib.sites.models import Site
 from access.models import Role
 from fastapi import Request, HTTPException, status
-from directory.models import Directory
+from directory.models import Directory, Timestamp, Endpoint
 from django.core.cache import cache
-from directory.utils import sync_set_timestamp, set_timestamp
 from facility.models import Organization
+from django.contrib.sites.shortcuts import get_current_site
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,31 @@ async def set_roles(object, roles):
         roles.append(id)
     if roles:
         await object.roles.aset(roles)
+
+def sync_set_timestamp(endpoint_name: str, request):
+    # timestamp unit: millisecond
+    timestamp = int(time.time_ns()/1000000)
+    site = get_current_site(request)
+    try:
+        endpoint=Endpoint.objects.get(name=endpoint_name)
+    except Endpoint.DoesNotExist as e:
+        logger.error(e)
+        return
+    ts, _ = Timestamp.objects.get_or_create(endpoint=endpoint,site=site)
+    ts.timestamp=timestamp
+    ts.save()
+
+async def set_timestamp(endpoint_name: str, site: Site):
+    # timestamp unit: millisecond
+    timestamp = int(time.time_ns()/1000000)
+    try:
+        endpoint=Endpoint.objects.get(name=endpoint_name)
+    except Endpoint.DoesNotExist as e:
+        logger.error(e)
+        return
+    ts, _ = Timestamp.objects.get_or_create(endpoint=endpoint,site=site)
+    ts.timestamp=timestamp
+    ts.save()
 
 async def clear_cache(endpoint: str, request: Request|None=None):
     sites: list[Site] = []
