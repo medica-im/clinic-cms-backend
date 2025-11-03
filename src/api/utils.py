@@ -6,7 +6,7 @@ from fastapi import Request, HTTPException, status
 from directory.models.api import Timestamp, Endpoint
 from django.core.cache import cache
 from facility.models import Organization
-from django.contrib.sites.shortcuts import get_current_site
+from django.db import DatabaseError
 
 logger = logging.getLogger(__name__)
 
@@ -45,13 +45,20 @@ async def set_timestamp(endpoint_name: str, site: Site):
     # timestamp unit: millisecond
     timestamp = int(time.time_ns()/1000000)
     try:
-        endpoint=Endpoint.objects.get(name=endpoint_name)
+        endpoint = await Endpoint.objects.aget(name=endpoint_name)
     except Endpoint.DoesNotExist as e:
         logger.error(e)
         return
-    ts, _ = Timestamp.objects.get_or_create(endpoint=endpoint,site=site)
+    try:
+        ts = await Timestamp.objects.aget(endpoint=endpoint,site=site)
+    except Timestamp.DoesNotExist:
+        try:
+            ts = await Timestamp.objects.acreate(endpoint=endpoint,site=site)
+        except DatabaseError as e:
+            logger.error(e)
+            return
     ts.timestamp=timestamp
-    ts.save()
+    await ts.asave()
 
 async def clear_cache(endpoint: str, request: Request|None=None):
     sites: list[Site] = []
