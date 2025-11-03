@@ -16,9 +16,9 @@ from directory.utils import (
     get_websites_neomodel,
     get_avatar_url,
     get_ttl,
-    sync_set_timestamp,
     generate_cache_key,
 )
+from directory.models.core import sync_set_timestamp
 from directory.models import Facility
 from django.urls import re_path
 from django.core.cache import cache

@@ -22,8 +22,8 @@ from directory.utils import (
     get_directory,
     get_entries,
     get_ttl,
-    sync_set_timestamp,
 )
+from directory.models.core import sync_set_timestamp
 from directory.tasty.types import (
     createEffectorTypeResources,
     flex_effector_type_label

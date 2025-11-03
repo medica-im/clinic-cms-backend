@@ -21,8 +21,8 @@ from directory.models.core import Label
 from directory.utils import (
     get_directory,
     get_ttl,
-    sync_set_timestamp,
 )
+from directory.models.core import sync_set_timestamp
 
 logger = logging.getLogger(__name__)
 
