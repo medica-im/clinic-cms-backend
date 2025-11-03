@@ -49,14 +49,14 @@ class EffectorViewSet(viewsets.ViewSet):
         return Response()
 
 
-class TimestampView(RetrieveAPIView):
+class TimestampView(APIView):
 
-    def get_object(self):
+    def get(self):
         site = get_current_site(self.request)
         dct = {}
         for ts in Timestamp.objects.filter(site=site).all():
             dct[ts.endpoint.name]=ts.timestamp
-        return dct
+        return Response(dct)
 
 
 class DirectoryView(RetrieveAPIView):
