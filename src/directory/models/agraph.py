@@ -204,6 +204,7 @@ class Effector(AsyncStructuredNode):
     gender = StringProperty(
         choices=(("F","Feminine"), ("M","Masculine"),("N", "Neutral"))
     )
+    creator_directory = StringProperty()
 
     @property
     def serialize(self):

@@ -2,6 +2,7 @@ import logging, os, sys
 from typing import Annotated
 from fastapi import APIRouter, status, Depends, Request
 from api.serializers.effector import get_effector, get_effectors, create_effector, patch_effector
+from api.utils import get_directory_from_hostname
 from api.types.effector import Effector, EffectorPost, EffectorPatch
 from pydantic import ValidationError
 #from api.auth import JWT
@@ -41,8 +42,8 @@ async def post_cookie(request: Request, jwt: Annotated[dict, Depends(JWT)]):
     return request.cookies.get('__Secure-authjs.session-token')
 
 @router.get("/effectors")
-async def effectors(effector_type: str|None = None, department_of_france: str|None = None, commune: str|None = None, facility: str|None = None ) -> list[Effector]:
-    return get_effectors(effector_type=effector_type, department_of_france=department_of_france, commune=commune, facility=facility)
+async def effectors(effector_type: str|None = None, department_of_france: str|None = None, commune: str|None = None, facility: str|None = None, directory: str|None = None) -> list[Effector]:
+    return get_effectors(effector_type=effector_type, department_of_france=department_of_france, commune=commune, facility=facility, directory=directory)
 
 @router.get("/effectors/{uid}")
 async def effector(uid: str)->Effector:
@@ -51,7 +52,8 @@ async def effector(uid: str)->Effector:
 @router.post("/effectors")
 async def post_effector(jwt: Annotated[dict, Depends(JWT)], effector: EffectorPost, request: Request) -> Effector:
     await authorize_api("effectors_v2", request, jwt)
-    return await create_effector(effector.model_dump())
+    directory = await get_directory_from_hostname(request.url.hostname)
+    return await create_effector(effector, directory.name)
 
 @router.patch("/effectors/{uid}")
 async def patch_entry(uid: str, effector: EffectorPatch, request: Request, jwt: Annotated[dict, Depends(JWT)]):

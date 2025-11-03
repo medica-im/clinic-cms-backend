@@ -12,9 +12,12 @@ from directory.models import (
     Website,
     DepartmentOfFrance
 )
-from directory.models.agraph import HealthWorker as AsyncHealthWorker
-from directory.models.agraph import Effector as AsyncEffector
-from api.types.effector import Effector
+from directory.models.agraph import (
+    HealthWorker as AsyncHealthWorker,
+    Effector as AsyncEffector,
+    Directory as AsyncDirectory,
+)
+from api.types.effector import Effector, EffectorPost, EffectorPatch
 from rest_framework import serializers
 from adrf.serializers import Serializer
 from langcodes import standardize_tag
@@ -24,7 +27,7 @@ logger = logging.getLogger(__name__)
 def get_effector(
         effector_type: str|None = None,
         facility: str|None = None,
-        directory: Directory|None = None,
+        directory: str|None = None,
         uid: str|None = None,
         active: bool = True,
     ) -> Effector:
@@ -45,9 +48,9 @@ def get_effectors(
         department_of_france: str|None = None,
         commune: str|None = None,
         facility: str|None = None,
-        directory: Directory|None = None,
+        directory: str|None = None,
         uid: str|None = None,
-        active: bool = True
+        active: bool = True,
     )->list[Effector]:
     filter: list = []
     if effector_type:
@@ -58,6 +61,8 @@ def get_effectors(
         filter.append(f'commune.uid="{commune}"')
     elif department_of_france:
         filter.append(f'dof.code="{department_of_france}"')
+    if directory:
+        filter.append(f'effector.creator_directory="{directory}"')
     if uid:
         query = (f"""MATCH (effector:Effector) WHERE effector.uid="{uid}" RETURN effector;""")
     elif not filter:
@@ -84,32 +89,33 @@ def get_effectors(
                 raise ValidationError(e)
     return effectors
 
-async def create_effector(kwargs)->Effector:
-    logger.debug(kwargs)
+async def create_effector(effector: EffectorPost, directory_name: str)->Effector:
     try:
-        effector = await AsyncEffector.nodes.get(
-            name_fr=kwargs["name_fr"],
-            gender=kwargs["gender"],
-            slug_fr=kwargs["slug_fr"],
+        existing_effector = await AsyncEffector.nodes.get(
+            name_fr=effector.name_fr,
+            gender=effector.gender,
+            slug_fr=effector.slug_fr,
         )
         ts = time.time()*1000
-        if (ts - effector.createdAt < 5000):
-            effector_dct=effector.__properties__
-            effector=Effector.model_validate(effector_dct)
-            return effector
+        if (ts - existing_effector.createdAt < 5000):
+            effector_dct=existing_effector.__properties__
+            _effector=Effector.model_validate(effector_dct)
+            return _effector
     except:
         pass
+    neo4j_directory = await AsyncDirectory.nodes.get(name=directory_name)
     node = await AsyncEffector(
-        name_fr=kwargs["name_fr"],
-        label_fr=kwargs["label_fr"] or kwargs["name_fr"],
-        slug_fr=kwargs["slug_fr"] or slugify(kwargs["name_fr"]),
-        gender=kwargs["gender"],
+        name_fr=effector.name_fr,
+        label_fr=effector.label_fr or effector.name_fr,
+        slug_fr=effector.slug_fr or slugify(effector.name_fr),
+        gender=effector.gender,
+        creator_directory=neo4j_directory.name,
     ).save()
-    effector= await AsyncEffector.nodes.get(uid=node.uid)
-    effector_dct=effector.__properties__
-    effector=Effector.model_validate(effector_dct)
-    logger.debug(effector)
-    return effector
+    _effector = await AsyncEffector.nodes.get(uid=node.uid)
+    effector_dct=_effector.__properties__
+    new_effector=Effector.model_validate(effector_dct)
+    logger.debug(new_effector)
+    return new_effector
 
 
 class EffectorSerializer(Serializer):

@@ -25,6 +25,7 @@ class Effector(EffectorPost):
     slug_en: str|None = Field(exclude=True)
     updatedAt: int = 0
     createdAt: int = 0
+    creator_directory: str|None
 
 
 class EffectorPatch(BaseModel):
