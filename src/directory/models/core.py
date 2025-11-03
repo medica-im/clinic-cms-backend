@@ -34,7 +34,7 @@ def sync_clear_cache(endpoint: str, request=None):
         site = get_current_site(request)
         sites.append(site)
     else:
-        for org in Organization.objects.select_related('site').filter(active=True).exclude(site__is_null=True).all():
+        for org in Organization.objects.select_related('site').filter(active=True).exclude(site__isnull=True).all():
             site = org.site
             if site:
                 sites.append(site)
