@@ -29,7 +29,7 @@ def sync_set_timestamp(endpoint_name: str, request=None, site=None):
     ts.timestamp=timestamp
     ts.save()
 
-def sync_clear_cache(endpoint: str, request=None):
+def sync_clear_cache(endpoint: str, key: str|None=None, request=None):
     sites: list[Site] = []
     if request:
         site = get_current_site(request)
@@ -42,7 +42,7 @@ def sync_clear_cache(endpoint: str, request=None):
     if not sites:
         return
     for site in sites:
-        cache_key = f"{endpoint}:{site.domain}"
+        cache_key = key or f"{endpoint}:{site.domain}"
         deleted = cache.delete(cache_key)
         logger.debug(f"cache {cache_key} {deleted=}")
         sync_set_timestamp(endpoint, site=site)
@@ -261,7 +261,7 @@ class Label(models.Model):
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        sync_clear_cache("v1:effector_type_labels")
+        sync_clear_cache("v1:effector_type_labels", key="v1:effector_type_labels:fr")
 
     class Meta:
         models.UniqueConstraint(
