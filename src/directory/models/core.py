@@ -6,7 +6,7 @@ from the_big_username_blacklist import validate
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from accounts.models import GrammaticalGender
-from api.utils import sync_clear_cache
+from directory.utils import sync_clear_cache
 import logging
 
 logger=logging.getLogger(__name__)

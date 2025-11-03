@@ -39,7 +39,8 @@ from addressbook.api.serializers import (
 from api.serializers.appointment import AppointmentSerializer
 from rest_framework.serializers import ModelSerializer
 from django.conf import settings
-from api.utils import get_site_from_request
+from django.core.cache import cache
+from facility.models import Organization
 
 logger = logging.getLogger(__name__)
 
@@ -1168,3 +1169,34 @@ def effector_types(directory: Directory) -> list[str]:
     uids2=results[0][cols.index('uids')]
     uids = list(set(uids1 + uids2))
     return uids
+
+def sync_clear_cache(endpoint: str, request=None):
+    sites: list[Site] = []
+    if request:
+        site = get_current_site(request)
+        sites.append(site)
+    else:
+        for org in Organization.objects.select_related('site').filter(active=True).exclude(site__is_null=True).all():
+            site = org.site
+            if site:
+                sites.append(site)
+    if not sites:
+        return
+    for site in sites:
+        cache_key = f"{endpoint}:{site.domain}"
+        deleted = cache.delete(cache_key)
+        logger.debug(f"cache {cache_key} {deleted=}")
+        sync_set_timestamp(endpoint, request)
+
+def sync_set_timestamp(endpoint_name: str, request):
+    # timestamp unit: millisecond
+    timestamp = int(time.time_ns()/1000000)
+    site = get_current_site(request)
+    try:
+        endpoint=Endpoint.objects.get(name=endpoint_name)
+    except Endpoint.DoesNotExist as e:
+        logger.error(e)
+        return
+    ts, _ = Timestamp.objects.get_or_create(endpoint=endpoint,site=site)
+    ts.timestamp=timestamp
+    ts.save()
