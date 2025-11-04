@@ -6,6 +6,7 @@ class EntryPost(BaseModel):
     effector_type: str
     facility: str
     organizations: list[str]|None
+    directory: str|None
 
 
 class EntryPatch(BaseModel):

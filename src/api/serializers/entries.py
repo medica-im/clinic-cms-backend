@@ -30,6 +30,8 @@ from api.types.effector import Effector
 from api.types.fullentry import FullEntry, EffectorType
 from api.types.facility import Facility
 from api.utils import get_site_from_request, clear_cache
+from api.auth import role_from_request_jwt
+from api.routers.utils import get_directory_from_hostname
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +113,14 @@ async def connect_member_of(new_entry, entry: EntryPost):
                     logger.error(f"No node (Organization or Entry) found for {uid=}")
                     raise Exception(e)
 
-async def create_entry(dir_name, entry: EntryPost, request: Request)-> FullEntry:
+async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
+    role = await role_from_request_jwt(request, jwt)
+    if entry.directory and role.name=='superuser':
+        dir_name=entry.directory
+    else:
+        directory = await get_directory_from_hostname(request.url.hostname)
+        dir_name=directory.name
+    logger.debug(f"{dir_name}")  
     neo4j_directory = await AsyncDirectory.nodes.get(name=dir_name)
     effector: Effector = await AsyncEffector.nodes.get(uid=entry.effector)
     effector_type: EffectorType = await AsyncEffectorType.nodes.get(uid=entry.effector_type)

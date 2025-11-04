@@ -54,6 +54,13 @@ async def get_role(user: User|None, site: Site) -> Role:
             detail="Insufficient permissions"
         )
 
+async def role_from_request_jwt(request: Request, jwt: dict)->Role:
+    site = await get_site_from_request(request)
+    user = await get_user(jwt)
+    role = await get_role(user, site)
+    logger.debug(f"{role=}")
+    return role
+
 async def authorize_api(endpoint: str, request: Request, jwt: dict):
     # get post put patch delete
     logger.debug(f"{request.method=}")
