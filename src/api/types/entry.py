@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, Field
 from typing import Any
 
@@ -14,6 +13,7 @@ class EntryPatch(BaseModel):
     payment: list[str]|None = None
     third_party_payer: list[str]|None = None
     convention: str|None = None
+    active: bool|None = None
 
 
 class Entry(BaseModel):

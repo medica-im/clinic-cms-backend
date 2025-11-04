@@ -29,5 +29,4 @@ async def post_entry(entry: EntryPost, request: Request, jwt: Annotated[dict, De
 @router.patch("/entries/{uid}", status_code=status.HTTP_201_CREATED)
 async def patch_entry(uid: str, entry: EntryPatch, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> Entry:
     await authorize_api("entries_v2", request, jwt)
-    return await update_entry(uid, entry.model_dump(exclude_unset=True))
-
+    return await update_entry(uid, entry.model_dump(exclude_unset=True), request)

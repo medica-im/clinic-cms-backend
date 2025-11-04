@@ -155,7 +155,7 @@ async def get_entry(uid:str)->Entry:
     #logger.debug(entry.__properties__)
     return Entry.model_validate(entry.__properties__)
 
-async def update_entry(uid:str, update_data: dict[str, Any]):
+async def update_entry(uid:str, update_data: dict[str, Any], request: Request):
     #logger.debug(update_data)
     entry = await EntryAgraph.nodes.get(uid=uid)
     if 'carte_vitale' in update_data.keys():
@@ -166,5 +166,8 @@ async def update_entry(uid:str, update_data: dict[str, Any]):
         entry.third_party_payer=update_data['third_party_payer']
     if 'convention' in update_data.keys():
         entry.convention=update_data['convention']
+    if 'active' in update_data.keys():
+        entry.active=update_data['active']
+        await clear_cache("v1:entries", request)
     await entry.save()
     return Entry.model_validate(entry.__properties__)
