@@ -84,6 +84,7 @@ def createEntryResource(request, node):
     commune_node: Commune = node["commune"]
     commune_obj = createCommuneResources([commune_node])[0]
     commune = commune_obj.__dict__
+    logger.debug(f'{node["department"]=}')
     department = {
         "code": node["department"].code
     }
