@@ -181,7 +181,7 @@ class EntryResource(Resource):
     slug = fields.CharField(attribute='slug')
     effector_type = fields.DictField(attribute='effector_type')
     commune = fields.DictField(attribute='commune')
-    department = fields.DictField(attribute='department')
+    department = fields.DictField(attribute='department', null=True)
     address = fields.DictField(attribute='address', null=True)
     phones = fields.ListField(attribute='phones', null=True)
     facility = fields.DictField(attribute='facility')
