@@ -71,7 +71,6 @@ def get_effectors(
         query=(f"""MATCH (entry:Entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY
 ]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY
 ]->(dof:DepartmentOfFrance), (effector:Effector)<-[:HAS_EFFECTOR]-(entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) WHERE {" AND ".join(filter)} RETURN DISTINCT effector;""")
-    logger.debug(f"{query=}")
     q = db.cypher_query(query,resolve_objects = True)
     effectors: list[Effector]=[]
     if q:

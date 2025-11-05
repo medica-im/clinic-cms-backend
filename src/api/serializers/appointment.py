@@ -22,7 +22,6 @@ def update_labels(instance: Appointment|Office|HouseCall, location: str):
         set = ""
     query = f"""MATCH (n:Appointment) WHERE n.uid="{instance.uid}" REMOVE n:Office:HouseCall SET n:Appointment{set} RETURN n;
 """
-    logger.debug(query)
     q = db.cypher_query(query, resolve_objects = True)
     logger.debug(q[0][0])
     return q[0][0]

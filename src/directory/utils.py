@@ -55,7 +55,6 @@ def flex_effector_type_label(
             "S",
             settings.LANGUAGE_CODE
         )
-        logger.debug(f"{effector_type_label=}")
     except Label.DoesNotExist as e:
         logger.error(e)
         effector_type_label=None
@@ -72,7 +71,6 @@ async def async_flex_effector_type_label(
             "S",
             settings.LANGUAGE_CODE
         )
-        logger.debug(f"{effector_type_label=}")
     except Label.DoesNotExist as e:
         logger.error(e)
         effector_type_label=None
@@ -82,14 +80,12 @@ def generate_cache_key(api_name, resource_name, request):
         site=get_current_site(request)
         domain=site.domain
         cache_key = "%s:%s:%s" % (api_name, resource_name, domain)
-        logger.debug(f"{cache_key=}")
         return cache_key
 
 def get_ttl(endpoint: str, request):
     site = get_current_site(request)
     try:
         ttl_obj = TTL.objects.filter(endpoint__name=endpoint,site=site).first()
-        logger.debug(ttl_obj)
     except TTL.DoesNotExist:
         return
     if ttl_obj:
@@ -548,11 +544,9 @@ def node_uids(orgs):
     try:
         return [org.uid for org in orgs]
     except Exception as e:
-        logger.debug(e)
         try:
             return [orgs.uid]
         except Exception as e:
-            logger.debug(e)
             return []
 
 def get_effector_nodes(
@@ -871,21 +865,13 @@ def entries_of_situation(request, situation):
     return entries_uids
 
 def add_label(uid: str, label: str):
-    results, cols = db.cypher_query(
+    db.cypher_query(
         f"""MATCH (e)
         WHERE e.uid="{uid}"
         SET e :{label}
         RETURN e;"""
     )
-    node=None
-    if results:
-        for row in results:
-            node=row[cols.index('e')]
-    if node:
-        logger.debug(f"Label {label} added to node {node}")
-    else:
-        logger.error(f"No node with uid={uid} could be found.")
-        
+
 def find_effector_uid(effector_type_slug, commune_slug, effector_slug):
     results, cols = db.cypher_query(
         f"""MATCH (et:EffectorType)<-[:IS_A]-(e:Effector)-[rel:LOCATION]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)
