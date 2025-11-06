@@ -25,22 +25,8 @@ class LegalEntitySerializer(serializers.ModelSerializer):
         ]
 
 
-class FacilitySerializer(serializers.ModelSerializer):
-    contact = ContactSerializer(many=False, read_only=True)
-    
-    class Meta:
-        model = Facility
-        fields = [
-            'id',
-            'name',
-            'contact',
-        ]
-        depth = 3
-
-
 class OrganizationSerializer(serializers.ModelSerializer):
     contact = ContactSerializer(many=False, read_only=True)
-    facility = FacilitySerializer(many=True, read_only=True)
     legal_entity = LegalEntitySerializer(many=False, read_only=True)
     uid = serializers.UUIDField(format='hex', source='neomodel_uid')
     department = serializers.SerializerMethodField()
@@ -93,7 +79,6 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'website_description',
             'category',
             'contact',
-            'facility',
             'registration',
             'google_site_verification',
             'city',
