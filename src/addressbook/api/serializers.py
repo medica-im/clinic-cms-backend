@@ -27,6 +27,7 @@ class SocialNetworkSerializer(serializers.ModelSerializer):
     class Meta:
         model = SocialNetwork
         fields = [
+            'id',
             'type',
             'type_display',
             'handle',

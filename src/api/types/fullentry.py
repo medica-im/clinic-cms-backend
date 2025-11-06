@@ -109,10 +109,11 @@ class Phone(BaseModel):
 
 class SocialNetwork(BaseModel):
     id: int
-    handle: str
+    handle: str|None = None
     url: str
     type: str
-    type_display: str
+    type_display: str|None = None
+    roles: list[Role]|None = None
 
 
 class Website(BaseModel):

@@ -84,8 +84,7 @@ def get_effectors(
                 e=Effector.model_validate(effector_dct)
                 effectors.append(e)
             except ValidationError as e:
-                logger.debug(e)
-                raise ValidationError(e)
+                logger.error(e)
     return effectors
 
 async def create_effector(effector: EffectorPost, directory_name: str)->Effector:
