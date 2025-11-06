@@ -220,7 +220,7 @@ async def update_facility(uid: str, f: FacilityPut, request: Request)->FacilityP
     node.ban_id=f.ban_id
     node.ban_banId=f.ban_banId
     node.location=location
-    node.save()
+    await node.save()
     facility = await async_get_facility(uid=uid)
     await clear_cache("v1:facilities", request)
     return facility
