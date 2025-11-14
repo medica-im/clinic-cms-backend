@@ -129,7 +129,7 @@ async def async_get_contact_related_elements(
         many: bool
     ):
     try:
-        contact = await Contact.objects.prefetch_related('address', 'phonenumbers', 'phonenumbers__roles', 'emails', 'emails__roles', 'websites', 'websites__roles', 'socialnetworks', 'socialnetworks__roles', 'profile', 'profile__roles', 'appointments', 'appointments__roles').aget(neomodel_uid=neo_entity.uid)
+        contact = await Contact.objects.select_related('phonenumbers', 'phonenumbers__roles', 'emails', 'emails__roles', 'websites', 'websites__roles', 'socialnetworks', 'socialnetworks__roles', 'profile', 'profile__roles', 'appointments', 'appointments__roles').aget(neomodel_uid=neo_entity.uid)
     except (Contact.DoesNotExist, AttributeError):
         return None
     try:
@@ -505,14 +505,6 @@ async def async_get_avatar_url(
         return get_avatar_dict(effector_avatar)
     if (f_avatar):
         return get_avatar_dict(f_avatar)
-
-def _get_address(facility: Facility):
-    try:
-        contact = Contact.objects.get(neomodel_uid=facility.uid)
-    except Contact.DoesNotExist:
-        return
-    serializer = AddressSerializer(contact.address)
-    return serializer.data
 
 def get_address(facility: Facility, commune: Commune, country: Country):
     if facility.location:
