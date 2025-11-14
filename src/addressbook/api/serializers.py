@@ -37,6 +37,16 @@ class SocialNetworkSerializer(serializers.ModelSerializer):
         depth = 2
 
 
+class AsyncProfileSerializer(AsyncModelSerializer):
+    class Meta:
+        model = Profile
+        fields = [
+            'id', 'contact', 'roles', 'organization', 'text', 'changed_by',
+            'created', 'updated',
+        ]
+        extra_kwargs = {'changed_by': {'required': False}}
+
+
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile

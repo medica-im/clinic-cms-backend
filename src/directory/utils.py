@@ -35,6 +35,7 @@ from addressbook.api.serializers import (
     SocialNetworkSerializer,
     AddressSerializer,
     ProfileSerializer,
+    AsyncProfileSerializer,
 )
 from api.serializers.appointment import AppointmentSerializer
 from rest_framework.serializers import ModelSerializer
@@ -238,7 +239,7 @@ async def async_get_profile_neomodel(entry: Entry, e: Effector, ef: EffectorFaci
         ef=ef,
         f=f,
         attribute="profile",
-        Serializer=ProfileSerializer,
+        Serializer=AsyncProfileSerializer,
         many=False
     )
 
