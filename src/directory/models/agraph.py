@@ -1,4 +1,5 @@
 import logging
+from common.utils import timestamp
 from uuid import uuid4
 from neomodel.contrib import spatial_properties as neomodel_spatial
 from neomodel import (
@@ -200,7 +201,7 @@ class Effector(AsyncStructuredNode):
     #    'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
     #)
     updatedAt = IntegerProperty(default=0)
-    createdAt = IntegerProperty(default=0)
+    createdAt = IntegerProperty(default=timestamp)
     gender = StringProperty(
         choices=(("F","Feminine"), ("M","Masculine"),("N", "Neutral"))
     )
@@ -375,7 +376,7 @@ class Entry(AsyncStructuredNode):
     deactivation_datetime = DateTimeFormatProperty(format="%Y-%m-%dT%H:%M:%S.%fZ")
     deactivation_reason = StringProperty()
     updatedAt = IntegerProperty(default=0)
-    createdAt = IntegerProperty()
+    createdAt = IntegerProperty(default=timestamp)
     contactUpdatedAt = IntegerProperty(default=0)
     effector = AsyncRelationshipTo('Effector', 'HAS_EFFECTOR')
     facility = AsyncRelationshipTo('Facility', 'HAS_FACILITY')

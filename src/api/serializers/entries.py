@@ -131,10 +131,11 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         facility=facility.uid
     )
     logger.debug(f"{entry_uids=}")
+    ms = time.time_ns() // 1_000_000
     for uid in entry_uids:
         _entry: Entry = await EntryAgraph.nodes.get(uid=uid)
-        ts = time.time()*1000
-        if (ts - _entry.createdAt)<5000:
+        createdAt = _entry.createdAt
+        if createdAt and (ms - createdAt)<5000:
             return await async_get_fullentry(str(_entry.uid))
     new_entry = await entry_if_exists(effector, effector_type, facility)
     if not new_entry:
