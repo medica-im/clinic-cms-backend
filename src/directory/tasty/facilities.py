@@ -224,7 +224,8 @@ class FacilityResource(Resource):
         logger.debug(f"request: {bundle.request.META}")
         logger.debug(f"{kwargs=}")
         directory=get_directory(bundle.request)
-        slug= kwargs['slug']
+        slug = kwargs["slug"]
+        logger.debug(f"{slug=}")
         facilities = get_facilities(directory=directory, slug=slug)
         objects = createFacilityResources(bundle.request, facilities)
         try:
