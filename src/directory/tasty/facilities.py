@@ -222,6 +222,7 @@ class FacilityResource(Resource):
 
     def obj_get(self, bundle, **kwargs):
         logger.debug(f"request: {bundle.request.META}")
+        logger.debug(f"{kwargs=}")
         directory=get_directory(bundle.request)
         slug= kwargs['slug']
         facilities = get_facilities(directory=directory, slug=slug)

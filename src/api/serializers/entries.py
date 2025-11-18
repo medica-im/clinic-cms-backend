@@ -1,5 +1,6 @@
 import logging
 import time
+from common.utils import timestamp
 from typing import Any
 from neomodel import db
 from fastapi import HTTPException, Request
@@ -131,7 +132,7 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         facility=facility.uid
     )
     logger.debug(f"{entry_uids=}")
-    ms = time.time_ns() // 1_000_000
+    ms = timestamp()
     for uid in entry_uids:
         _entry: Entry = await EntryAgraph.nodes.get(uid=uid)
         createdAt = _entry.createdAt
