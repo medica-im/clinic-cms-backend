@@ -141,8 +141,7 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
             return await async_get_fullentry(str(_entry.uid))
     new_entry = await entry_if_exists(effector, effector_type, facility)
     if not new_entry:
-        new_entry=AsyncEntry()
-        await new_entry.save()
+        new_entry = await AsyncEntry().save()
         await new_entry.effector.connect(effector)
         await new_entry.effector_type.connect(effector_type)
         await new_entry.facility.connect(facility)
