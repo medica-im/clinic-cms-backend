@@ -201,7 +201,10 @@ def createEffectorRessource(node):
         active=None
     deactivation_datetime=node["entry"].deactivation_datetime
     deactivation_reason=node["entry"].deactivation_reason
-    memberships = [entry.uid for entry in node["memberships"]] if node["memberships"] else None
+    try:
+        memberships = [entry.uid for entry in node["memberships"]]
+    except TypeError:    
+        memberships = [node["memberships"]] if node["memberships"] else None
 
     effector = EffectorObj(
         label,
