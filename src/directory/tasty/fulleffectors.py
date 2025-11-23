@@ -69,6 +69,7 @@ class EffectorObj(object):
             active,
             deactivation_datetime,
             deactivation_reason,
+            memberships
         ):
         self.label = label
         self.name = name
@@ -96,6 +97,7 @@ class EffectorObj(object):
         self.active = active
         self.deactivation_datetime = deactivation_datetime
         self.deactivation_reason = deactivation_reason
+        self.memberships = memberships
 
 def createEffectorRessource(node):
     try:
@@ -199,6 +201,7 @@ def createEffectorRessource(node):
         active=None
     deactivation_datetime=node["entry"].deactivation_datetime
     deactivation_reason=node["entry"].deactivation_reason
+    memberships = [entry.uid for entry in node["memberships"]] if node["memberships"] else None
 
     effector = EffectorObj(
         label,
@@ -227,6 +230,7 @@ def createEffectorRessource(node):
         active,
         deactivation_datetime,
         deactivation_reason,
+        memberships
     )
     return effector
 

@@ -70,7 +70,7 @@ async def entry_if_exists(effector: Effector, effector_type: EffectorType, facil
         facility=facility.uid
     )
     if not entry_uids:
-        logger.debug(f"No entry exists with:\n{effector=}\n{effector_type}\n{facility=}")
+        logger.debug(f"No entry exists with:\n{effector=}\n{effector_type=}\n{facility=}")
         return
     active_entries = []
     inactive_entries = []

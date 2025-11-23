@@ -892,6 +892,7 @@ def get_uid_query(uid: str):
         (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
         (entry)-[:HAS_EFFECTOR]->(e:Effector)
         WHERE entry.uid="{uid}"
+        OPTIONAL MATCH (entry)-[:MEMBER_OF]->(memberships:Entry)
         WITH *
         OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
         WITH *
@@ -905,7 +906,7 @@ def get_uid_query(uid: str):
         WITH *, bLabels + labels(et) AS allLabels
         UNWIND allLabels AS labelList
         UNWIND labelList AS label
-        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,COLLECT(DISTINCT a) AS a,collect(DISTINCT label) AS typelabels;"""
+        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,COLLECT(DISTINCT a) AS a,collect(DISTINCT label) AS typelabels,memberships;"""
 
 def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
     return f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
@@ -918,6 +919,7 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
             WHERE e.slug_fr="{effector_slug}"
             AND f.slug="{facility_slug}"
             AND et.slug_fr="{effector_type_slug}"
+            OPTIONAL MATCH (entry)-[:MEMBER_OF]->(memberships:Entry)
             WITH *
             OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
             WITH *
@@ -931,7 +933,7 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
             WITH *, bLabels + labels(et) AS allLabels
             UNWIND allLabels AS labelList
             UNWIND labelList AS label
-            RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,COLLECT(DISTINCT a) AS a,collect(DISTINCT label) AS typelabels;
+            RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,COLLECT(DISTINCT a) AS a,collect(DISTINCT label) AS typelabels,memberships;
             """
 
 def entry_dict(results, cols):
@@ -1078,6 +1080,10 @@ async def async_entry_dict(results, cols):
         convention =  Convention.inflate(row[cols.index('convention')])
     except:
         convention = None
+    try:
+        memberships =  Entry.inflate(row[cols.index('memberships')])
+    except:
+        memberships = None
     health_worker=HealthWorker.inflate(row[cols.index('e')])
     avatar= await async_get_avatar_url(entry, effector, effector_facility, facility)
     fetl= await async_flex_effector_type_label(effector, effector_type)
@@ -1101,7 +1107,8 @@ async def async_entry_dict(results, cols):
         "payment_methods": payment_methods,
         "health_worker": health_worker,
         "avatar": avatar,
-        "convention": convention
+        "convention": convention,
+        "memberships": memberships
     }
 
 def find_entry(
