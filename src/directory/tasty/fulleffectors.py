@@ -204,7 +204,7 @@ def createEffectorRessource(node):
     try:
         memberships = [entry.uid for entry in node["memberships"]]
     except TypeError:    
-        memberships = [node["memberships"]] if node["memberships"] else None
+        memberships = [node["memberships"].uid] if node["memberships"] else None
 
     effector = EffectorObj(
         label,
