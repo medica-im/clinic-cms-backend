@@ -35,7 +35,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         try:
             node = Neo4jOrganization.nodes.get(uid=obj.neomodel_uid.hex)
         except Exception as e:
-            logger.error(f"{e}\n Cannot find an Organization neo4j node with uid {obj.neomodel_uid.hex} for Organization {obj.name}")
+            logger.warning(f"{e}\n Cannot find an Organization neo4j node with uid {obj.neomodel_uid.hex} for Organization {obj.name}")
             try:
                 node = Entry.nodes.get(uid=obj.neomodel_uid.hex)
             except Exception as e:
