@@ -1080,10 +1080,10 @@ async def async_entry_dict(results, cols):
         convention =  Convention.inflate(row[cols.index('convention')])
     except:
         convention = None
-    try:
-        memberships =  Entry.inflate(row[cols.index('memberships')])
-    except:
-        memberships = None
+    memberships = [
+        Entry.inflate(e)
+        for e in row[cols.index('memberships')]
+    ] or None
     health_worker=HealthWorker.inflate(row[cols.index('e')])
     avatar= await async_get_avatar_url(entry, effector, effector_facility, facility)
     fetl= await async_flex_effector_type_label(effector, effector_type)
