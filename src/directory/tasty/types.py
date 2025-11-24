@@ -26,7 +26,6 @@ def flex_effector_type_label(
             "S",
             settings.LANGUAGE_CODE
         )
-        logger.debug(f"{effector_type_label=}")
     except Label.DoesNotExist as e:
         logger.error(e)
         effector_type_label=None
