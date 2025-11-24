@@ -172,7 +172,7 @@ async def update_entry_memberships(entry, memberships: list[str]):
     if not memberships:
         await entry.memberships.disconnect_all()
         return True
-    connected_uids = [entry.uid for entry in entry.memberships]
+    connected_uids = [entry.uid for entry in await entry.memberships.all()]
     logger.debug(f"{connected_uids=}")
     if set(connected_uids) == set(memberships):
         return False
