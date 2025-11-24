@@ -100,8 +100,8 @@ async def entry_if_exists(effector: Effector, effector_type: EffectorType, facil
         return entry
 
 async def connect_member_of(new_entry, entry: EntryPost):
-    if entry.organizations:
-        for uid in entry.organizations:
+    if entry.memberships:
+        for uid in entry.memberships:
             try:
                 org = await AsyncOrganization.nodes.get(uid=uid)
                 await new_entry.organizations.connect(org)
@@ -145,7 +145,7 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         await new_entry.effector.connect(effector)
         await new_entry.effector_type.connect(effector_type)
         await new_entry.facility.connect(facility)
-    if entry.organizations:
+    if entry.memberships:
         await connect_member_of(new_entry, entry)
     await neo4j_directory.entries.connect(new_entry)
     try:
@@ -166,6 +166,32 @@ async def get_entry(uid:str)->Entry:
     #logger.debug(entry.__properties__)
     return Entry.model_validate(entry.__properties__)
 
+async def update_entry_memberships(entry, memberships: list[str]):
+    if memberships is None:
+        return False
+    if not memberships:
+        await entry.memberships.disconnect_all()
+        return True
+    connected_uids = [entry.uid for entry in entry.memberships]
+    logger.debug(f"{connected_uids=}")
+    if set(connected_uids) == set(memberships):
+        return False
+    for uid in memberships:
+        if uid not in connected_uids:
+            try:
+                _entry = await AsyncEntry.nodes.get(uid=uid)
+                await entry.memberships.connect(_entry)
+            except:
+                pass
+    for uid in connected_uids:
+        if uid not in memberships:
+            try:
+                _entry = await AsyncEntry.nodes.get(uid=uid)
+                await entry.memberships.disconnect(_entry)
+            except:
+                pass
+    return True
+
 async def update_entry(uid:str, update_data: dict[str, Any], request: Request):
     #logger.debug(update_data)
     entry = await EntryAgraph.nodes.get(uid=uid)
@@ -180,5 +206,9 @@ async def update_entry(uid:str, update_data: dict[str, Any], request: Request):
     if 'active' in update_data.keys():
         entry.active=update_data['active']
         await clear_cache("v1:entries", request)
+    if 'memberships' in update_data.keys():
+        do_cache_clear = await update_entry_memberships(entry, update_data['memberships'])
+        if do_cache_clear:
+            await clear_cache("v1:entries", request)
     await entry.save()
     return Entry.model_validate(entry.__properties__)

@@ -5,7 +5,7 @@ class EntryPost(BaseModel):
     effector: str
     effector_type: str
     facility: str
-    organizations: list[str]|None
+    memberships: list[str]|None
     directory: str|None
 
 
@@ -15,6 +15,7 @@ class EntryPatch(BaseModel):
     third_party_payer: list[str]|None = None
     convention: str|None = None
     active: bool|None = None
+    memberships: list[str]|None = None
 
 
 class Entry(BaseModel):
@@ -33,3 +34,4 @@ class Entry(BaseModel):
     carte_vitale: bool|None = None
     payment: list[str]|None =None
     third_party_payer: list[str]|None = None
+    memberships: list[str]|None = None
