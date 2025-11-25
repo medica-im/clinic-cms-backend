@@ -959,7 +959,7 @@ def entry_dict(results, cols):
         payment_methods,
         convention,
         [appointment_nodes],
-        effector_type_labels,
+        [effector_type_labels],
         memberships
     ) = row
     logger.debug(f"{entry=}")
