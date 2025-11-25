@@ -173,18 +173,24 @@ def createEffectorRessource(node):
     except Exception as e:
         carte_vitale = None
     #third party payer
-    logger.debug(f"{node["third_party_payers"]=}")
+    logger.debug(f'{node["third_party_payers"]=}')
     serializer = ThirdPartyPayerSerializer(
         node["third_party_payers"],
         many=True
     )
-    third_party_payers = serializer.data or None
+    try:
+        third_party_payers = serializer.data
+    except:
+        third_party_payers = None
     # payment_methods (reuse ThirdPartyPayerSerialize)
     serializer = ThirdPartyPayerSerializer(
         node["payment_methods"],
         many=True
     )
-    payment_methods = serializer.data or None
+    try:
+        payment_methods = serializer.data
+    except:
+        payment_methods = None
     rpps=health_worker.rpps
     try:
         spoken_languages=[
