@@ -254,6 +254,7 @@ def appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment)
             return None
     if not nodes:
         return None
+    logger.debug(f"appointment {nodes=}")
     #if type(nodes) in [Appointment, Office, HouseCall]:
     #    nodes = [nodes]
     data = [
