@@ -907,7 +907,7 @@ def get_uid_query(uid: str):
         WITH *, bLabels + labels(et) AS allLabels
         UNWIND allLabels AS labelList
         UNWIND labelList AS label
-        RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,COLLECT(DISTINCT a) AS a,label,COLLECT(DISTINCT memberships) as memberships;"""
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,COLLECT(DISTINCT a) AS a,label,COLLECT(DISTINCT memberships) as memberships;"""
 
 def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
     return f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
@@ -938,6 +938,7 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
             """
 
 def entry_dict(results, cols):
+    logger.debug(f"{results=}")
     try:
         row=results[0]
     except Exception as e:
