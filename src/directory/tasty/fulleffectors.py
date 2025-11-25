@@ -202,7 +202,7 @@ def createEffectorRessource(node):
                 "name": display_tag_name(t, LANGUAGE)
             } for t in health_worker.spoken_languages
         ]
-    except TypeError:
+    except:
         spoken_languages = None
     avatar=node["avatar"]
     try:
