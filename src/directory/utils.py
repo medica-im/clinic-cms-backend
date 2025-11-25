@@ -906,7 +906,7 @@ def get_uid_query(uid: str):
         WITH *, et, collect(DISTINCT labels(b)) AS bLabels
         WITH *, bLabels + labels(et) AS allLabels
         UNWIND allLabels AS labelList
-        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,labelList,memberships;"""
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,labelList,COLLECT(DISTINCT memberships) as memberships;"""
 
 def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
     return f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
