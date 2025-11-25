@@ -938,13 +938,13 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
             """
 
 def entry_dict(results, cols):
-    logger.debug(f"{results=}")
+    logger.debug(f"{results=} {results.len=}")
     try:
         row=results[0]
     except Exception as e:
         logger.error(e)
         return
-    logger.debug(f"{row=}")
+    logger.debug(f"{row=} {row.len=}")
     (
         entry,
         effector_type,
