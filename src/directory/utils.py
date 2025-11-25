@@ -903,6 +903,7 @@ def get_uid_query(uid: str):
         WITH *, COLLECT(pm) AS pm
         OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
         OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
+        WITH *, COLLECT(a) AS a
         MATCH (et)-[:IS_A*0..]->(b:EffectorType)
         WITH *, et, collect(DISTINCT labels(b)) AS bLabels
         WITH *, bLabels + labels(et) AS allLabels
