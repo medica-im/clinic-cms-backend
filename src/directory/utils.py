@@ -939,7 +939,7 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
 
 def entry_dict(results, cols):
     try:
-        row=results[0][0]
+        row=results[0]
     except Exception as e:
         logger.error(e)
         return
