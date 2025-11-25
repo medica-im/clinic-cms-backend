@@ -898,7 +898,7 @@ def get_uid_query(uid: str):
         OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
         WITH *
         OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN entry.third_party_payer
-        WITH *, COLLECT(DISTINCT tpp) AS tpp
+        WITH *
         OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN entry.payment
         OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
         OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
