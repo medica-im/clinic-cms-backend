@@ -909,7 +909,7 @@ def get_uid_query(uid: str):
         WITH *, bLabels + labels(et) AS allLabels
         UNWIND allLabels AS labelList
         UNWIND labelList AS label
-        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,COLLECT(DISTINCT label) AS effectro_type_labels,memberships;"""
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,COLLECT(DISTINCT label) AS effector_type_labels,memberships;"""
 
 def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
     return f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
@@ -936,7 +936,7 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
             WITH *, bLabels + labels(et) AS allLabels
             UNWIND allLabels AS labelList
             UNWIND labelList AS label
-            RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,a, label,COLLECT(DISTINCT memberships) as memberships;
+            RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,a, COLLECT(DISTINCT label) AS effector_type_labels,COLLECT(DISTINCT memberships) as memberships;
             """
 
 def entry_dict(results, cols):
@@ -1099,7 +1099,7 @@ async def async_entry_dict(results, cols):
         #"commune": commune,
         "effector_type": effector_type,
         "flex_effector_type_label": fetl,
-        "effector_type_labels": row[cols.index('typelabels')],
+        "effector_type_labels": row[cols.index('effctor_type_labels')],
         "facility": facility,
         "phones": phones,
         "emails": emails,
