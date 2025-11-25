@@ -191,7 +191,10 @@ def createEffectorRessource(node):
         payment_methods = serializer.data
     except:
         payment_methods = None
-    rpps=health_worker.rpps
+    try:
+        rpps=health_worker.rpps
+    except:
+        rpps = None
     try:
         spoken_languages=[
             {
