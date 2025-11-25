@@ -188,7 +188,7 @@ def createEffectorRessource(node):
         many=True
     )
     try:
-        payment_methods = serializer.data
+        payment_methods = serializer.data or None
     except:
         payment_methods = None
     try:
