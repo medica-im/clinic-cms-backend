@@ -957,6 +957,7 @@ def entry_dict(results, cols):
         effector_type_labels,
         memberships
     ) = row
+    logger.debug(f"{entry=}")
     address = get_address(facility,commune,country)
     phones = get_phones_neomodel(
         entry=entry,
@@ -1015,7 +1016,8 @@ def entry_dict(results, cols):
         "payment_methods": payment_methods,
         "health_worker": health_worker,
         "avatar": avatar,
-        "convention": convention
+        "convention": convention,
+        "memberships": memberships
     }
 
 async def async_entry_dict(results, cols):
