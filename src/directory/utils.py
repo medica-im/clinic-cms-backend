@@ -958,7 +958,7 @@ def entry_dict(results, cols):
         third_party_payers,
         payment_methods,
         convention,
-        appointment_nodes,
+        [appointment_nodes],
         effector_type_labels,
         memberships
     ) = row
