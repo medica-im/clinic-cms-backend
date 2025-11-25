@@ -931,6 +931,7 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
             OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN entry.payment
             OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
             OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
+            WITH *, COLLECT(DISTINCT a) AS a
             MATCH (et)-[:IS_A*0..]->(b:EffectorType)
             WITH *, et, collect(DISTINCT labels(b)) AS bLabels
             WITH *, bLabels + labels(et) AS allLabels
