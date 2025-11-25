@@ -955,7 +955,7 @@ def entry_dict(results, cols):
         facility,
         commune,
         country,
-        third_party_payers,
+        [third_party_payers],
         payment_methods,
         convention,
         [appointment_nodes],
