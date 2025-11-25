@@ -943,6 +943,7 @@ def entry_dict(results, cols):
     except Exception as e:
         logger.error(e)
         return
+    logger.debug(f"{row=}")
     (
         entry,
         effector_type,
@@ -959,6 +960,7 @@ def entry_dict(results, cols):
         memberships
     ) = row
     logger.debug(f"{entry=}")
+    logger.debug(f"{appointment_nodes=}")
     address = get_address(facility,commune,country)
     phones = get_phones_neomodel(
         entry=entry,
