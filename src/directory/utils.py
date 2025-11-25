@@ -999,7 +999,11 @@ def entry_dict(results, cols):
         ef=effector_facility,
         f=facility
     )
-    health_worker=HealthWorker.inflate(row[cols.index('e')])
+    try:
+        health_worker = HealthWorker.nodes.get(uid=effector.uid)
+    except Exception as e:
+        logger.warning(e)
+        health_worker = None
     avatar=get_avatar_url(entry, effector, effector_facility, facility)
     fetl=flex_effector_type_label(effector, effector_type)
     return {
