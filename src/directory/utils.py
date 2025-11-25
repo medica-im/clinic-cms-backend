@@ -1099,7 +1099,7 @@ async def async_entry_dict(results, cols):
         #"commune": commune,
         "effector_type": effector_type,
         "flex_effector_type_label": fetl,
-        "effector_type_labels": row[cols.index('effctor_type_labels')],
+        "effector_type_labels": row[cols.index('effector_type_labels')],
         "facility": facility,
         "phones": phones,
         "emails": emails,
