@@ -933,7 +933,7 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
             WITH *, bLabels + labels(et) AS allLabels
             UNWIND allLabels AS labelList
             UNWIND labelList AS label
-            RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,COLLECT(DISTINCT a) AS a,collect(DISTINCT label) AS typelabels,memberships;
+            RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,COLLECT(DISTINCT a) AS a,collect(DISTINCT label) AS typelabels,COLLECT(DISTINCT memberships) as memberships;
             """
 
 def entry_dict(results, cols):
