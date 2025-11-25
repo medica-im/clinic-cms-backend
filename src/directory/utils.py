@@ -942,18 +942,22 @@ def entry_dict(results, cols):
     except Exception as e:
         logger.error(e)
         return
-    entry=Entry.inflate(row[cols.index('entry')])
-    effector=Effector.inflate(row[cols.index('e')])
-    try:
-        effector_facility=EffectorFacility.inflate(row[cols.index('rel')])
-    except Exception as e:
-        effector_facility=None
-    facility=Facility.inflate(row[cols.index('f')])
-    commune=Commune.inflate(row[cols.index('c')])
-    country=Country.inflate(row[cols.index('country')])
-    effector_type=EffectorType.inflate(row[cols.index('et')])
+    (
+        entry,
+        effector_type,
+        effector,
+        effector_facility,
+        facility,
+        commune,
+        country,
+        third_party_payers,
+        payment_methods,
+        convention,
+        appointment_nodes,
+        effector_type_labels,
+        memberships
+    ) = row
     address = get_address(facility,commune,country)
-    appointment_nodes = [Appointment.inflate(node) for node in row[cols.index('a')]]
     phones = get_phones_neomodel(
         entry=entry,
         e=effector,
@@ -988,18 +992,6 @@ def entry_dict(results, cols):
         ef=effector_facility,
         f=facility
     )
-    third_party_payers = [
-        ThirdPartyPayer.inflate(payer)
-        for payer in row[cols.index('tpp')]
-    ] or None
-    payment_methods = [
-        PaymentMethod.inflate(pm)
-        for pm in row[cols.index('pm')]
-    ] or None
-    try:
-        convention =  Convention.inflate(row[cols.index('convention')])
-    except:
-        convention = None
     health_worker=HealthWorker.inflate(row[cols.index('e')])
     avatar=get_avatar_url(entry, effector, effector_facility, facility)
     fetl=flex_effector_type_label(effector, effector_type)
@@ -1011,7 +1003,7 @@ def entry_dict(results, cols):
         #"commune": commune,
         "effector_type": effector_type,
         "flex_effector_type_label": fetl,
-        "effector_type_labels": row[cols.index('typelabels')],
+        "effector_type_labels": effector_type_labels,
         "facility": facility,
         "phones": phones,
         "emails": emails,
@@ -1122,7 +1114,7 @@ def find_entry(
         query = get_uid_query(uid)
     else:
         query= get_slug_query(directory, effector_slug, effector_type_slug, facility_slug)
-    results, cols = db.cypher_query(query)
+    results, cols = db.cypher_query(query, resolve_objects=True)
     return entry_dict(results, cols)
 
 async def async_find_entry(
