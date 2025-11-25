@@ -898,7 +898,7 @@ def get_uid_query(uid: str):
         OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
         WITH *
         OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN entry.third_party_payer
-        WITH *, COLLECT(tpp) AS tpp
+        WITH *, COLLECT(DISTINCT tpp) AS tpp
         OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN entry.payment
         OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
         OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
@@ -906,8 +906,7 @@ def get_uid_query(uid: str):
         WITH *, et, collect(DISTINCT labels(b)) AS bLabels
         WITH *, bLabels + labels(et) AS allLabels
         UNWIND allLabels AS labelList
-        UNWIND labelList AS label
-        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,COLLECT(DISTINCT a) AS a,label,COLLECT(DISTINCT memberships) as memberships;"""
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,COLLECT(DISTINCT a) AS a,labelList,COLLECT(DISTINCT memberships) as memberships;"""
 
 def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
     return f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
