@@ -213,7 +213,7 @@ def createEffectorRessource(node):
     deactivation_reason=node["entry"].deactivation_reason
     try:
         memberships = [entry.uid for entry in node["memberships"]]
-    except TypeError:    
+    except:    
         try:
             memberships = [node["memberships"].uid] if node["memberships"] else None
         except:
