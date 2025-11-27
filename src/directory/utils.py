@@ -246,13 +246,14 @@ async def async_get_profile_neomodel(entry: Entry, e: Effector, ef: EffectorFaci
 def appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment):
     def get_location(node: Appointment):
         labels = node.labels()
+        logger.debug(f"{labels=}")
         if 'HouseCall' in labels:
             return 'house_call'
         elif 'Office' in labels:
             return 'office'
         else:
             return None
-    if not nodes:
+    if not nodes or not sum(nodes,[]):
         return None
     logger.debug(f"appointment {nodes=}")
     if type(nodes) in [Appointment, Office, HouseCall]:
@@ -923,7 +924,7 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
             AND f.slug="{facility_slug}"
             AND et.slug_fr="{effector_type_slug}"
             OPTIONAL MATCH (entry)-[:MEMBER_OF]->(memberships:Entry)
-            WITH *
+            WITH *, COLLECT(memberships) AS memberships
             OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
             WITH *
             OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN entry.third_party_payer
@@ -937,7 +938,7 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
             WITH *, bLabels + labels(et) AS allLabels
             UNWIND allLabels AS labelList
             UNWIND labelList AS label
-            RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,a, COLLECT(DISTINCT label) AS effector_type_labels,COLLECT(DISTINCT memberships) as memberships;
+            RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,a, COLLECT(DISTINCT label) AS effector_type_labels, memberships;
             """
 
 def entry_dict(results, cols):
