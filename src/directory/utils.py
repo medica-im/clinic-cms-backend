@@ -773,6 +773,7 @@ def get_entries(
                 department,
                 country,
             ) = row
+            logger.debug(f"{memberships=}")
             address = get_address(facility,commune,country)
             avatar=get_avatar_url(entry, effector, location, facility)
             org_uids = node_uids(organizations) if organizations else []
