@@ -189,6 +189,30 @@ class ContactSerializer(serializers.ModelSerializer):
     def get_address(self, obj):
         entry_node_uid = obj.neomodel_uid.hex
         logger.debug(f"{entry_node_uid=}")
+        try:
+            entry = Entry.nodes.get(uid=entry_node_uid)
+        except Exception as e:
+            logger.error(e)
+            return
+        try:
+            facility = Entry.facility.all()[O]
+        except Exception as e:
+            logger.error(e)
+        return {
+            "building": facility.building,
+            "city": None,
+            "country": None,
+            "facility_uid": facility.uid,
+            "geographical_complement": facility.geographical_complement,
+            "latitude": facility.location.latitude,
+            "longitude": facility.location.longitude,
+            "street": facility.street,
+            "zip": facility.zip,
+            "zoom": facility.zoom,
+            "tooltip_direction": facility.tooltip_direction,
+            "tooltip_permanent": facility.tooltip_permanent,
+            "tooltip_text": facility.tooltip_text
+        }
 
 
 class AddressSerializer(serializers.ModelSerializer):
