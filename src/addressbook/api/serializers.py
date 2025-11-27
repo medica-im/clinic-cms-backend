@@ -195,7 +195,7 @@ class ContactSerializer(serializers.ModelSerializer):
             logger.error(e)
             return
         try:
-            facility = Entry.facility.all()[O]
+            facility = entry.facility.all()[0]
         except Exception as e:
             logger.error(e)
         return {
