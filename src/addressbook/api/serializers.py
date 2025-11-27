@@ -187,7 +187,7 @@ class ContactSerializer(serializers.ModelSerializer):
         depth = 3
 
     def get_address(self, obj):
-        entry_node_uid = obj.neomodel_uid
+        entry_node_uid = obj.neomodel_uid.hex
         logger.debug(f"{entry_node_uid=}")
 
 
