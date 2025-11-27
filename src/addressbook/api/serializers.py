@@ -168,6 +168,8 @@ class AsyncWebsiteSerializer(AsyncModelSerializer):
 class ContactSerializer(serializers.ModelSerializer):
     socialnetworks = SocialNetworkSerializer(read_only=True, many=True)
     emails = EmailSerializer(read_only=True, many=True)
+    address = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Contact
@@ -183,6 +185,10 @@ class ContactSerializer(serializers.ModelSerializer):
             'emails',
         ]
         depth = 3
+
+    def get_address(self, obj):
+        entry_node_uid = obj.neomodel_uid
+        logger.debug(f"{entry_node_uid=}")
 
 
 class AddressSerializer(serializers.ModelSerializer):
