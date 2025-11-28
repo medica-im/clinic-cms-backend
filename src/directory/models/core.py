@@ -33,7 +33,7 @@ def sync_set_timestamp(endpoint_name: str, request=None, site=None):
 def sync_clear_all_cache():
     endpoints = set()
     for ts in Timestamp.objects.all():
-        endpoints.add(ts.endpoint)
+        endpoints.add(ts.endpoint.name)
     logger.debug(endpoints)
     for endpoint in endpoints:
         sync_clear_cache(endpoint)
