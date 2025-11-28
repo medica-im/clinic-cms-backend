@@ -753,35 +753,30 @@ def get_entries(
         WITH *, COLLECT(DISTINCT employer) as employers
         RETURN entry,e,et,f,rel,memberships,employers,commune,dpt,country;"""
     results, _meta = db.cypher_query(query, resolve_objects = True)
-    logger.debug(f"{results=} {len(results)=}")
-    try:
-        row=results[0]
-    except Exception as e:
-        logger.error(e)
-        return
-    logger.debug(f"{row=} number or rows:{len(row)=}")
+    logger.debug(f"{results(2)=} {len(results)=}")
     entries=[]
     for row in results:
-            (
-                entry,
-                effector,
-                effector_type,
-                facility,
-                location,
-                memberships,
-                employers,
-                commune,
-                department,
-                country,
-            ) = row
-            logger.debug(f"> {memberships=}")
-            address = get_address(facility,commune,country)
-            avatar=get_avatar_url(entry, effector, location, facility)
-            memberships = node_uids(memberships) if memberships else []
-            if memberships:
-                logger.debug(f"********\n-------> {effector.name_fr=} {memberships=}\n********")
-            employers = node_uids(employers) if employers else []
-            entries.append(
+        logger.debug(f"{row=} number or rows:{len(row)=}")
+        (
+            entry,
+            effector,
+            effector_type,
+            facility,
+            location,
+            memberships,
+            employers,
+            commune,
+            department,
+            country,
+        ) = row
+        logger.debug(f"> {memberships=}")
+        address = get_address(facility,commune,country)
+        avatar=get_avatar_url(entry, effector, location, facility)
+        memberships = node_uids(memberships) if memberships else []
+        if memberships:
+            logger.debug(f"********\n-------> {effector.name_fr=} {memberships=}\n********")
+        employers = node_uids(employers) if employers else []
+        entries.append(
                 {
                     "effector": effector,
                     "entry": entry,
@@ -795,7 +790,7 @@ def get_entries(
                     "memberships": memberships,
                     "employers": employers,
                 }
-            )
+        )
     return entries
 
 def get_location_uids(effector_uids):
