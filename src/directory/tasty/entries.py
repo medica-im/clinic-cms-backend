@@ -229,7 +229,7 @@ class EntryResource(Resource):
         logger.debug(f"{directory=}")
         nodes = get_entries(directory)
         logger.debug(f"{nodes[:1] if nodes else []}")
-        contacts = createEntryResources(request, nodes)
+        contacts = createEntryResources(nodes, request)
         return contacts
 
     @timeit
