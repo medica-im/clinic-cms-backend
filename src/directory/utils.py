@@ -533,16 +533,15 @@ def get_address(facility: Facility, commune: Commune, country: Country):
     }
     return _dct
 
-def node_uids(orgs):
-    if orgs and not isinstance(orgs, list):
-        orgs=[orgs]
+def node_uids(entries):
+    if entries and not isinstance(entries, list):
+        logger.debug("entries is not a list")
+        entries=[entries]
     try:
-        return [org.uid for org in orgs]
+        return [entry.uid for entry in entries]
     except Exception as e:
-        try:
-            return [orgs.uid]
-        except Exception as e:
-            return []
+        logger.error(e)
+        return []
 
 def get_effector_nodes(
         directory: Directory,
@@ -756,15 +755,15 @@ def get_entries(
     logger.debug(f"{results[:2]=} {len(results)=}")
     entries=[]
     for row in results:
-        logger.debug(f"{row=} number or rows:{len(row)=}")
+        logger.debug(f"number of columns:{len(row)=}")
         (
             entry,
             effector,
             effector_type,
             facility,
             location,
-            memberships,
-            employers,
+            [memberships],
+            [employers],
             commune,
             department,
             country,
@@ -772,24 +771,24 @@ def get_entries(
         logger.debug(f"> {memberships=}")
         address = get_address(facility,commune,country)
         avatar=get_avatar_url(entry, effector, location, facility)
-        memberships = node_uids(memberships) if memberships else []
+        memberships_uids = node_uids(memberships) if memberships else []
         if memberships:
             logger.debug(f"********\n-------> {effector.name_fr=} {memberships=}\n********")
         employers = node_uids(employers) if employers else []
         entries.append(
-                {
-                    "effector": effector,
-                    "entry": entry,
-                    "address": address,
-                    "commune": commune,
-                    "department": department,
-                    "effector_type": effector_type,
-                    "facility": facility,
-                    "avatar": avatar,
-                    "location": location,
-                    "memberships": memberships,
-                    "employers": employers,
-                }
+            {
+                "effector": effector,
+                "entry": entry,
+                "address": address,
+                "commune": commune,
+                "department": department,
+                "effector_type": effector_type,
+                "facility": facility,
+                "avatar": avatar,
+                "location": location,
+                "memberships": memberships_uids,
+                "employers": employers,
+            }
         )
     return entries
 
