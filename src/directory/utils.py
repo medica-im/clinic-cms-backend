@@ -753,7 +753,7 @@ def get_entries(
         WITH *, COLLECT(DISTINCT employer) as employers
         RETURN entry,e,et,f,rel,memberships,employers,commune,dpt,country;"""
     results, _meta = db.cypher_query(query, resolve_objects = True)
-    logger.debug(f"{results(2)=} {len(results)=}")
+    logger.debug(f"{results[:2]=} {len(results)=}")
     entries=[]
     for row in results:
         logger.debug(f"{row=} number or rows:{len(row)=}")
