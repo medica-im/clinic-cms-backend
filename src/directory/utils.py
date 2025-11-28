@@ -772,8 +772,7 @@ def get_entries(
             memberships = node_uids(memberships) if memberships else []
             if memberships:
                 logger.debug(f"********\n-------> {effector.name_fr=} {memberships=}\n********")
-            employer_uids = node_uids(employers) if employers else []
-            employer_uids.extend(node_uids(employer_entries) if employer_entries else [])
+            employers = node_uids(employers) if employers else []
             entries.append(
                 {
                     "effector": effector,
@@ -786,7 +785,7 @@ def get_entries(
                     "avatar": avatar,
                     "location": location,
                     "memberships": memberships,
-                    "employers": employer_uids,
+                    "employers": employers,
                 }
             )
         return entries
