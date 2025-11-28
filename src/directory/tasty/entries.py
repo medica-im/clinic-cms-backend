@@ -77,7 +77,7 @@ class EntryObj(object):
         self.memberships = memberships
         self.employers = employers
 
-def createEntryResource(request, node):
+def createEntryResource(node):
     entry=node["entry"]
     uid = entry.uid
     effector_node=node["effector"]
@@ -162,12 +162,12 @@ def createEntryResource(request, node):
     )
     return entry
 
-def createEntryResources(request, nodes):
+def createEntryResources(nodes, request):
     data= []
     # TODO manage Exception Value: 'NoneType' object is not iterable
     try:
         for node in nodes:
-            data.append(createEntryResource(request, node))
+            data.append(createEntryResource(node))
     except (TypeError, ValueError) as e:
         logger.error(e)
         pass
