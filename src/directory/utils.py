@@ -743,8 +743,7 @@ def get_entries(
         WITH d
         MATCH (d)-[:HAS_ENTRY]->(entry:Entry) WHERE entry.active={str(active)}
         WITH entry
-        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
-        MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country), (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType), (entry)-[:HAS_EFFECTOR]->(e:Effector)
         WITH *
         OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         WITH *
@@ -755,7 +754,7 @@ def get_entries(
         RETURN entry,e,et,f,rel,memberships,employers,commune,dpt,country;"""
     q = db.cypher_query(query, resolve_objects = True)
     logger.debug(f'{display(q[0][0])=}')
-    logger.debug(f'number or rows: {len(q[0][0])=}')
+    logger.debug(f'number or rows: {len(q[0])=}')
     logger.debug(f'****************************\nnumber of columns: {len(q[0][0])=}')
     logger.debug(f'****************************\n1st row: {q[0][0][0].__properties__=}')
     if q:
