@@ -745,17 +745,12 @@ def get_entries(
         WITH entry
         MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
         MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
-        WITH *
-        OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
-        OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
-        OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(memberships:Entry)
-        OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
-        OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer_entry:Entry)
+        WITH * OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility) OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization) OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(memberships:Entry) OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization) OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer_entry:Entry)
         RETURN entry,e,et,f,rel,COLLECT(DISTINCT o) as o,COLLECT(DISTINCT memberships) as memberships,employer,employer_entry,commune,dpt,country;"""
-    q = db.cypher_query(query,resolve_objects = True)
-    #logger.debug(f'{display(q[0][0])}')
-    #logger.debug(f'****************************\nq:\n{len(q[0][0])}')
-    #logger.debug(f'****************************\nq:\n{q[0][0][0].__properties__}')
+    q = db.cypher_query(query, resolve_objects = True)
+    logger.debug(f'{display(q[0][0])}')
+    logger.debug(f'****************************\nq:\n{len(q[0][0])}')
+    logger.debug(f'****************************\nq:\n{q[0][0][0].__properties__}')
     if q:
         entries=[]
         for row in q[0]:
@@ -773,11 +768,13 @@ def get_entries(
                 department,
                 country,
             ) = row
-            logger.debug(f"{memberships=}")
+            logger.debug(f"> {memberships=}")
             address = get_address(facility,commune,country)
             avatar=get_avatar_url(entry, effector, location, facility)
             org_uids = node_uids(organizations) if organizations else []
             org_uids.extend(node_uids(memberships) if memberships else [])
+            if org_uids:
+                logger.debug(f"********\n-------> {effector.name_fr=} {org_uids=}\n********")
             employer_uids = node_uids(employers) if employers else []
             employer_uids.extend(node_uids(employer_entries) if employer_entries else [])
             entries.append(
