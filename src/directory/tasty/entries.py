@@ -162,7 +162,7 @@ def createEntryResource(node):
     )
     return entry
 
-def createEntryResources(nodes, request):
+def createEntryResources(nodes: list, request):
     data= []
     # TODO manage Exception Value: 'NoneType' object is not iterable
     try:
@@ -258,7 +258,7 @@ class EntryResource(Resource):
         directory=get_directory(bundle.request)
         try :
             nodes = get_entries(directory, uid=uid)
-            entry = createEntryResources(bundle.request, nodes)
+            entry = createEntryResources(nodes, bundle.request)
             return entry[0]
         except Exception as e : 
             raise Exception(f"Can't find Entry {uid} {e}")
