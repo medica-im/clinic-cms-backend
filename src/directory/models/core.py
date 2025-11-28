@@ -1,6 +1,7 @@
 from django.db import models
 import time
 from django.contrib.sites.models import Site
+from django.contrib.sites.requests import RequestSite
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from the_big_username_blacklist import validate
@@ -37,7 +38,7 @@ def sync_clear_all_cache():
         sync_clear_cache(endpoint)
 
 def sync_clear_cache(endpoint: str, key: str|None=None, request=None):
-    sites: list[Site] = []
+    sites: list[Site|RequestSite] = []
     if request:
         site = get_current_site(request)
         sites.append(site)
