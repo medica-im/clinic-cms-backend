@@ -790,6 +790,7 @@ def get_entries(
                 "employers": employers,
             }
         )
+    logger.debug(f"{len(entries)=}\n{entries[:2]=}")
     return entries
 
 def get_location_uids(effector_uids):
