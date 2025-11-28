@@ -752,14 +752,16 @@ def get_entries(
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Entry)
         WITH *, COLLECT(DISTINCT employer) as employers
         RETURN entry,e,et,f,rel,memberships,employers,commune,dpt,country;"""
-    q = db.cypher_query(query, resolve_objects = True)
-    logger.debug(f'{display(q[0][0])=}')
-    logger.debug(f'number or rows: {len(q[0])=}')
-    logger.debug(f'****************************\nnumber of columns: {len(q[0][0])=}')
-    logger.debug(f'****************************\n1st row: {q[0][0][0].__properties__=}')
-    if q:
-        entries=[]
-        for row in q[0]:
+    results, _meta = db.cypher_query(query, resolve_objects = True)
+    logger.debug(f"{results=} {len(results)=}")
+    try:
+        row=results[0]
+    except Exception as e:
+        logger.error(e)
+        return
+    logger.debug(f"{row=} number or rows:{len(row)=}")
+    entries=[]
+    for row in results:
             (
                 entry,
                 effector,
@@ -794,7 +796,7 @@ def get_entries(
                     "employers": employers,
                 }
             )
-        return entries
+    return entries
 
 def get_location_uids(effector_uids):
     results, cols = db.cypher_query(
