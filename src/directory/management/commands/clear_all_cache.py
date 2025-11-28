@@ -12,5 +12,5 @@ class Command(BaseCommand):
             self.style.WARNING(message)
         )
 
-    def handle(self):
+    def handle(self, *args, **options):
         sync_clear_all_cache()
