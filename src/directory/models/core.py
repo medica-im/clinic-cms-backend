@@ -29,6 +29,13 @@ def sync_set_timestamp(endpoint_name: str, request=None, site=None):
     ts.timestamp=timestamp
     ts.save()
 
+def sync_clear_all_cache():
+    endpoints = set()
+    for ts in Timestamp.objects.all():
+        endpoints.add(ts.endpoint)
+    for endpoint in endpoints:
+        sync_clear_cache(endpoint)
+
 def sync_clear_cache(endpoint: str, key: str|None=None, request=None):
     sites: list[Site] = []
     if request:
