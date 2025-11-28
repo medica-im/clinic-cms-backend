@@ -22,6 +22,7 @@ from directory.utils import (
     get_directory,
     get_entries,
     get_ttl,
+    generate_cache_key,
 )
 from directory.models.core import sync_set_timestamp
 from directory.tasty.types import (
@@ -197,12 +198,6 @@ class EntryResource(Resource):
         authorization = Authorization()
         detail_uri_name = 'uid'
 
-    def generate_cache_key(self, request):
-        site=get_current_site(request)
-        domain=site.domain
-        cache_key = "%s:%s:%s" % (self._meta.api_name, self._meta.resource_name, domain)
-        logger.debug(f"{cache_key=}")
-        return cache_key
 
     def detail_uri_kwargs(self, bundle_or_obj):
         kwargs = {}
@@ -239,7 +234,7 @@ class EntryResource(Resource):
 
     @timeit
     def obj_get_list(self, bundle, **kwargs):
-        cache_key = self.generate_cache_key(bundle.request)
+        cache_key = generate_cache_key(self._meta.api_name, self._meta.resource_name, bundle.request)
         cached = cache.get(cache_key)
         if cached:
             logger.warning(f"*** Using cache with key {cache_key} ***")
