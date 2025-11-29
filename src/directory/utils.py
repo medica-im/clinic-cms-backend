@@ -253,7 +253,7 @@ def appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment)
             return 'office'
         else:
             return None
-    if not nodes or not sum(nodes,[]):
+    if not nodes:# or not sum(nodes,[]):
         return None
     logger.debug(f"appointment {nodes=}")
     if type(nodes) in [Appointment, Office, HouseCall]:
