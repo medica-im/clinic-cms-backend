@@ -31,7 +31,7 @@ class Address(BaseModel):
     geographical_complement: str|None = None
     latitude: Decimal|None = None
     longitude: Decimal|None = None
-    street: str
+    street: str|None = None
     tooltip_direction: str|None = None
     tooltip_text: str|None = None
     tooltip_permanent: bool|None = None
