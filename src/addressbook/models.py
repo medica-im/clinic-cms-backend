@@ -320,7 +320,6 @@ class PhoneNumber(models.Model):
 
 
 class Email(models.Model):
-
     contact = models.ForeignKey(
         Contact,
         on_delete=models.CASCADE,
@@ -339,6 +338,12 @@ class Email(models.Model):
     public_visible = models.BooleanField(default=False)
     contact_visible = models.BooleanField(default=False)
 
+    class Meta:
+        UniqueConstraint(
+            fields=['contact', 'email'],
+            name='unique_email_contact'
+        )
+
     def __str__(self):
         return "%s %s: %s" % (
             self.contact.first_name,
@@ -351,7 +356,7 @@ class Email(models.Model):
         try:
             update_contact_timestamp(self.contact.neomodel_uid)
         except TypeError as e:
-            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
+            logger.warning(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class Website(models.Model):
