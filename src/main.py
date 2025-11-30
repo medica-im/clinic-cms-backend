@@ -2,7 +2,6 @@
 import os, sys
 import logging
 from logging.config import dictConfig
-from fastapi_log_conf import 
 from django.db.utils import IntegrityError
 
 logging.basicConfig(
