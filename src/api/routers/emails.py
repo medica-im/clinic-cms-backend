@@ -2,13 +2,15 @@ import logging
 from typing import Annotated
 from fastapi import APIRouter, status, HTTPException, Depends, Request
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from addressbook.models import Email as DjangoEmail, Contact
-from django.db.utils import DatabaseError
+from django.db.utils import DatabaseError, IntegrityError
 from access.models import Role
 from api.types.email import Email, EmailPost
 from api.auth import JWT
 from api.auth import authorize_api
 from api.utils import set_roles
+from main import app
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +49,14 @@ async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(
     except DjangoEmail.DoesNotExist:
         raise HTTPException(status_code=404, detail=f"Email not found")
     return email
+
+@app.exception_handler(IntegrityError)
+async def unicorn_exception_handler(request: Request, exc: IntegrityError):
+    logger.debug(f"{exc.args=}")
+    return JSONResponse(
+        status_code=409,
+        content={"message": f"Oops! {exc.args[1]}"},
+    )
 
 @router.post("/emails/", response_model=Email)
 async def create_item(item: EmailPost, request: Request, jwt: Annotated[dict, Depends(JWT)]):
