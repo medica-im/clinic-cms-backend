@@ -53,17 +53,18 @@ async def create_item(item: EmailPost, request: Request, jwt: Annotated[dict, De
     await authorize_api("emails_v2", request, jwt)
     i = item.model_dump()
     try:
-        contact = await Contact.objects.aget(neomodel_uid=i['entry'])
+        contact = await Contact.objects.aget(neomodel_uid=item.entry)
     except Contact.DoesNotExist:
-        raise HTTPException(status_code=404, detail=f"Contact {i['entry']} not found")
+        raise HTTPException(status_code=404, detail=f"Contact {item.entry} not found")
     try:
         email = await DjangoEmail.objects.acreate(
             contact = contact,
-            email = i['email'],
+            email = item.email,
         )
     except DatabaseError as e:
+        logger.debug(f"{e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
     await email.asave()
-    await set_roles(email,i['roles'] )
+    await set_roles(email, item.roles)
     i['id']=email.pk
     return i
