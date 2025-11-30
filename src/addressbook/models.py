@@ -339,10 +339,7 @@ class Email(models.Model):
     contact_visible = models.BooleanField(default=False)
 
     class Meta:
-        UniqueConstraint(
-            fields=['contact', 'email'],
-            name='unique_email_contact'
-        )
+        unique_together = [["contact", "email"]]
 
     def __str__(self):
         return "%s %s: %s" % (
