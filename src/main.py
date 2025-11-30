@@ -10,6 +10,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
     stream=sys.stdout
 )
+logging.getLogger("django.db.backends").setLevel(logging.WARNING)
 #dictConfig(log_config)
 logger = logging.getLogger(__name__)
 
