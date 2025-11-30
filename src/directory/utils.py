@@ -253,7 +253,7 @@ def appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment)
             return 'office'
         else:
             return None
-    if not nodes:# or not sum(nodes,[]):
+    if not nodes or nodes==[[]]:
         return None
     logger.debug(f"appointment {nodes=}")
     if type(nodes) in [Appointment, Office, HouseCall]:
@@ -901,7 +901,7 @@ def get_uid_query(uid: str):
         WITH *, COLLECT(pm) AS pm
         OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
         OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
-        WITH *, COLLECT(a) AS a
+        WITH *, COLLECT(DISTINCT a) AS a
         MATCH (et)-[:IS_A*0..]->(b:EffectorType)
         WITH *, et, collect(DISTINCT labels(b)) AS bLabels
         WITH *, bLabels + labels(et) AS allLabels
@@ -1046,7 +1046,18 @@ async def async_entry_dict(results, cols):
     country=Country.inflate(row[cols.index('country')])
     effector_type=EffectorType.inflate(row[cols.index('et')])
     address = get_address(facility,commune,country)
-    appointment_nodes = [Appointment.inflate(node) for node in row[cols.index('a')]]
+    a=row[cols.index('a')]
+    if a and isinstance(a, list) and len(a) and a[0]:
+        appointment_nodes = [Appointment.inflate(node) for node in a]
+    elif a and not isinstance(a,list):
+        try:
+            appointment_nodes = [Appointment.inflate(a)]
+        except Exception as e:
+            logger.debug(e)
+            appointment_nodes = None
+    else:
+        appointment_nodes = None
+    logger.debug(f"{appointment_nodes=}")
     phones = await async_get_phones_neomodel(entry=entry)
     emails = await async_get_emails_neomodel(
         entry=entry,
