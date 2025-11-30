@@ -65,8 +65,8 @@ async def create_item(item: EmailPost, request: Request, jwt: Annotated[dict, De
         )
     except IntegrityError as e:
         logger.debug(f"{e}")
-        #raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
-        raise e
+        raise HTTPException(status_code=409, detail=f"L'adresse {item.email} existe déjà pour cette entrée.")
+
     await email.asave()
     await set_roles(email, item.roles)
     i['id']=email.pk
