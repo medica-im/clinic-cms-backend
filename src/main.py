@@ -2,7 +2,8 @@
 import os, sys
 import logging
 from logging.config import dictConfig
-from fastapi_log_conf import log_config
+from fastapi_log_conf import 
+from django.db.utils import IntegrityError
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -81,4 +82,12 @@ async def unicorn_exception_handler(request: Request, exc: MissingTokenError):
     return JSONResponse(
         status_code=401,
         content={"message": "Oops! We couldn't find a cookie with a proper JWT token. Authenticate first."},
+    )
+
+@app.exception_handler(IntegrityError)
+async def postgres_integrity_exception_handler(request: Request, exc: IntegrityError):
+    logger.debug(f"{exc.args=}")
+    return JSONResponse(
+        status_code=409,
+        content={"message": f"Oops! {exc.args[1]}"},
     )

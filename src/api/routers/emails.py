@@ -10,7 +10,6 @@ from api.types.email import Email, EmailPost
 from api.auth import JWT
 from api.auth import authorize_api
 from api.utils import set_roles
-from main import app
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +49,6 @@ async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(
         raise HTTPException(status_code=404, detail=f"Email not found")
     return email
 
-@app.exception_handler(IntegrityError)
-async def unicorn_exception_handler(request: Request, exc: IntegrityError):
-    logger.debug(f"{exc.args=}")
-    return JSONResponse(
-        status_code=409,
-        content={"message": f"Oops! {exc.args[1]}"},
-    )
 
 @router.post("/emails/", response_model=Email)
 async def create_item(item: EmailPost, request: Request, jwt: Annotated[dict, Depends(JWT)]):
