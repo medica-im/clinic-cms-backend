@@ -45,11 +45,6 @@ social_net_prefixes = dict(
 )
 
 
-class ContactManager(models.Manager):
-    def get_by_natural_key(self, neomodel_uid):
-        return self.get(neomodel_uid=neomodel_uid)
-
-
 class Contact(models.Model):
     formfield_overrides = {
         ThumbnailerField: {'widget': ImageClearableFileInput},
@@ -96,8 +91,6 @@ class Contact(models.Model):
         blank=True,
         unique=True,
     )
-
-    #objects = ContactManager()
 
     def natural_key(self):
         return (self.neomodel_uid,)
@@ -249,15 +242,7 @@ class Address(models.Model):
         try:
             update_contact_timestamp(self.contact.neomodel_uid)
         except TypeError as e:
-            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
-
-
-#class PhoneNumberManager(models.Manager):
-#    def get_by_natural_key(self, phone, contact):
-#        return self.get(
-#            phone=phone,
-#            contact=Contact.objects.get_by_natural_key(contact)
-#        )
+            logger.warning(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class PhoneNumber(models.Model):
@@ -287,14 +272,9 @@ class PhoneNumber(models.Model):
     type = models.CharField(max_length=255, choices=TelephoneType.choices)
     public_visible = models.BooleanField(default=False)
     contact_visible = models.BooleanField(default=False)
-#    objects = PhoneNumberManager()
 
     class Meta:
-        managed = True
-        UniqueConstraint(
-            fields=['contact', 'phone'],
-            name='unique_contact_phone'
-        )
+        unique_together = [["contact", "phone", "type"]]
 
     def __str__(self):
         return "%s %s: %s" % (
