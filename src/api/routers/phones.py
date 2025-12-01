@@ -33,7 +33,11 @@ async def update_item(item_id: str, item: Phone, request: Request, jwt: Annotate
         raise HTTPException(status_code=404, detail=f"PhoneNumber not found")
     phone_number.type=i['type']
     phone_number.phone=i['phone']
-    await phone_number.asave()
+    try:
+        await phone_number.asave()
+    except IntegrityError as e:
+        logger.debug(f"{e}")
+        raise HTTPException(status_code=409, detail=f"Le numéro de téléphone {i['phone']} associé au type {i['type']} existe déjà pour cette entrée.")
     roles_qs=Role.objects.filter(name__in=i['roles'])
     roles = []
     async for id in roles_qs.values_list('id', flat=True):
