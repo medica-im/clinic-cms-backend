@@ -2,6 +2,7 @@ import logging
 from typing import Annotated
 from fastapi import APIRouter, status, HTTPException, Depends, Request
 from fastapi.encoders import jsonable_encoder
+from django.db.utils import DatabaseError, IntegrityError
 from addressbook.models import PhoneNumber, Contact
 from access.models import Role
 from api.types.phones import Phone, PhonePost
@@ -75,8 +76,9 @@ async def create_item(item: PhonePost, request: Request, jwt: Annotated[dict, De
             type = i['type']
         )
         logger.debug(phone_number)
-    except PhoneNumber.DoesNotExist:
-        raise HTTPException(status_code=404, detail=f"PhoneNumber not found")
+    except IntegrityError as e:
+        logger.debug(f"{e}")
+        raise HTTPException(status_code=409, detail=f"Le numéro de téléphone {i['phone']} associé au type {i['type']} existe déjà pour cette entrée.")
     await phone_number.asave()
     if roles:
         await phone_number.roles.aset(roles)
