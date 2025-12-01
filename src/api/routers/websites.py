@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, status, HTTPException, Depends, Request
 from fastapi.encoders import jsonable_encoder
 from addressbook.models import Website as DjangoWebsite, Contact
-from django.db.utils import DatabaseError
+from django.db.utils import DatabaseError, IntegrityError
 from access.models import Role
 from api.types.website import Website, WebsitePost
 from api.auth import JWT
@@ -57,8 +57,9 @@ async def create_item(item: WebsitePost, request: Request, jwt: Annotated[dict, 
             contact = contact,
             url = i['url'],
         )
-    except DatabaseError as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+    except IntegrityError as e:
+        logger.debug(f"{e}")
+        raise HTTPException(status_code=409, detail=f"Le site {i['url']} existe déjà pour cette entrée.")
     await obj.asave()
     await set_roles(obj,i['roles'] )
     i['id']=obj.pk

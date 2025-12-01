@@ -376,6 +376,9 @@ class Website(models.Model):
     public_visible = models.BooleanField(default=False)
     contact_visible = models.BooleanField(default=False)
 
+    class Meta:
+        unique_together = [["contact", "url"]]
+
     def __str__(self):
         return "%s: %s" % (self.contact.neomodel_uid, self.url)
 
