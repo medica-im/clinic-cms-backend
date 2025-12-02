@@ -31,24 +31,22 @@ class OrganizationSerializer(serializers.ModelSerializer):
     uid = serializers.UUIDField(format='hex', source='neomodel_uid')
     department = serializers.SerializerMethodField()
 
-    def get_department(self, obj):  # type: ignore
+    def get_department(self, obj):
         try:
-            node = Neo4jOrganization.nodes.get(uid=obj.neomodel_uid.hex)
+            entry = Entry.nodes.get(uid=obj.neomodel_uid.hex)
         except Exception as e:
-            logger.warning(f"{e}\n Cannot find an Organization neo4j node with uid {obj.neomodel_uid.hex} for Organization {obj.name}")
-            try:
-                node = Entry.nodes.get(uid=obj.neomodel_uid.hex)
-            except Exception as e:
-                logger.error(f"{e}\n Cannot find an Entry neo4j node with uid {obj.neomodel_uid.hex} for Organization {obj.name}")
-                return
+            logger.error(f"{e}\n Cannot find an Entry neo4j node with uid {obj.neomodel_uid.hex} for Organization {obj.name}")
+            return
         try:
-            commune = node.commune.all()[0]
+            facility = entry.facility.all()[0]
+            logger.debug(f"{facility=}")
         except Exception as e:
             logger.error(f"{e}")
-            try:
-                commune = node.facility.all()[0].commune.all()[0]
-            except Exception as e:
-                logger.error(e)
+        try:
+            commune = facility.all()[0].commune.all()[0]
+            logger.debug(f"{commune=}")
+        except Exception as e:
+            logger.error(e)
         try:
             department = commune.department.all()[0]
         except Exception as e:
