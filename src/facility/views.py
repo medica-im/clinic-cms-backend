@@ -8,7 +8,6 @@ from facility.serializers import (
     CategorySerializer,
     ContactSerializer,
 )
-from backend.i18n import activate_locale
 from rest_framework.exceptions import NotFound
 
 logger=logging.getLogger(__name__)
@@ -19,8 +18,6 @@ class OrganizationView(RetrieveAPIView):
     serializer_class = OrganizationSerializer
 
     def get_object(self):
-        language = self.kwargs.get('language', None)
-        activate_locale(language, self.request)
         try:
             return Organization.objects.get(site=self.request.site)
         except Organization.DoesNotExist:
@@ -34,4 +31,4 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ContactViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Contact.objects.all()
-    serializer_class = ContactSerializer  
+    serializer_class = ContactSerializer
