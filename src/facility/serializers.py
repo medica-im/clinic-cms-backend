@@ -43,7 +43,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         except Exception as e:
             logger.error(f"{e}")
         try:
-            commune = facility.all()[0].commune.all()[0]
+            commune = facility.commune.all()[0]
             logger.debug(f"{commune=}")
         except Exception as e:
             logger.error(e)
