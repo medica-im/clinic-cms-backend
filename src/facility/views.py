@@ -18,6 +18,7 @@ class OrganizationView(RetrieveAPIView):
     serializer_class = OrganizationSerializer
 
     def get_object(self):
+        logger.debug(f"{self.request=}")
         try:
             return Organization.objects.get(site=self.request.site)
         except Organization.DoesNotExist:
