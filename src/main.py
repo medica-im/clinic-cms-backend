@@ -54,6 +54,7 @@ app.add_middleware(
 )
 
 app.include_router(organizations.router)
+app.include_router(organization.router)
 app.include_router(organization_types.router)
 app.include_router(effector_types.router)
 app.include_router(facilities.router)
