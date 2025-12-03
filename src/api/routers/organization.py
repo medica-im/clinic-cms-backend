@@ -2,16 +2,19 @@ from fastapi import APIRouter, Request, HTTPException
 from api.serializers.organization import get_organizations, get_organization, create_organization
 from api.types.organization import Organization as OrganizationPy
 from facility.models import Organization
-from api.utils import get_site_from_request
+from facility.serializers import OrganizationSerializer
+from api.utils import sync_get_site_from_request
 
 router = APIRouter()
 
 @router.get("/organization")
-async def organization(request: Request) -> OrganizationPy:
-    site = await get_site_from_request(request)
+def organization(request: Request) -> OrganizationPy:
+    site = sync_get_site_from_request(request)
     try:
-        org = await Organization.objects.aget(site=site)
+        org = Organization.objects.get(site=site)
     except Organization.DoesNotExist:
         raise HTTPException(status_code=404, detail="Organization not found")
-    return OrganizationPy.model_validate(org.__dict__)
+    serializer = OrganizationSerializer(org)
+    org_dct = serializer.data
+    return OrganizationPy.model_validate(org_dct)
 
