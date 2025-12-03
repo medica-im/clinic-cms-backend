@@ -19,6 +19,8 @@ class OrganizationView(RetrieveAPIView):
 
     def get_object(self):
         logger.debug(f"{self.request=}")
+        host = self.request.get_host()
+        logger.debug(f"{host=}")
         try:
             return Organization.objects.get(site=self.request.site)
         except Organization.DoesNotExist:
