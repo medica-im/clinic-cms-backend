@@ -97,7 +97,7 @@ class Organization(BaseModel):
     registration: bool
     google_site_verification: str
     city: City
-    gender: Gender|None      
+    gender: Gender|None=None
     legal_entity: LegalEntity
     department: Department
     logo: str|None
