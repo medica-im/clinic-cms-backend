@@ -11,7 +11,8 @@ router = APIRouter()
 
 @router.get("/organization")
 def organization(request: Request) -> OrganizationPy:
-    logger.debug(request)
+    logger.debug(f"{request.headers=}")
+    logger.debug(f"{request.client=}")
     site = sync_get_site_from_request(request)
     try:
         org = Organization.objects.get(site=site)
