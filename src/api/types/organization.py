@@ -63,14 +63,14 @@ class City(BaseModel):
     id: int
     name: str
     label: str
-    label_fr: str|None
-    label_en: str|None
-    to_label: str|None
-    to_label_fr: str|None
-    to_label_en: str|None
-    from_label: str|None
-    from_label_fr: str|None
-    from_label_en: str|None
+    label_fr: str|None = None
+    label_en: str|None=None
+    to_label: str|None=None
+    to_label_fr: str|None=None
+    to_label_en: str|None=None
+    from_label: str|None=None
+    from_label_fr: str|None=None
+    from_label_en: str|None=None
     grammatical_number: str|None
 
 
@@ -97,7 +97,7 @@ class Organization(BaseModel):
     registration: bool
     google_site_verification: str
     city: City
-    gender: Gender            
+    gender: Gender|None      
     legal_entity: LegalEntity
     department: Department
     logo: str|None

@@ -25,8 +25,8 @@ class EntryPatch(BaseModel):
 
 class Address(BaseModel):
     building: str|None = None
-    city: str
-    country: str
+    city: str|None = None
+    country: str|None = None
     facility_uid: str
     geographical_complement: str|None = None
     latitude: Decimal|None = None
