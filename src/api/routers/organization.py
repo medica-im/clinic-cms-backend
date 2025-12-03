@@ -16,5 +16,6 @@ def organization(request: Request) -> OrganizationPy:
         raise HTTPException(status_code=404, detail="Organization not found")
     serializer = OrganizationSerializer(org)
     org_dct = serializer.data
-    return OrganizationPy.model_validate(org_dct)
+    org_validated = OrganizationPy.model_validate(org_dct)
+    return org_validated
 
