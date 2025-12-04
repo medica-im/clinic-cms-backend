@@ -24,3 +24,8 @@ async def get_slug_fullentries(type: str, commune: str, effector: str) -> FullEn
 async def get_query_fullentries(effector: str, facility: str, type: str) -> FullEntry|None:
     uid = await query_find_entry(effector, facility, type)
     return await async_get_fullentry(uid)
+
+@router.get("/ftefullentries/{facility}/{type}/{effector}")
+async def get_fte_fullentries(effector: str, facility: str, type: str) -> FullEntry|None:
+    uid = await query_find_entry(effector, facility, type)
+    return await async_get_fullentry(uid)
