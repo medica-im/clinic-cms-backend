@@ -762,7 +762,7 @@ def get_entries(
             effector_type,
             facility,
             location,
-            [memberships],
+            memberships,
             employers,
             commune,
             department,
