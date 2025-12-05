@@ -187,7 +187,11 @@ class ContactSerializer(serializers.ModelSerializer):
         depth = 3
 
     def get_address(self, obj):
-        entry_node_uid = obj.neomodel_uid.hex
+        try:
+            entry_node_uid = obj.neomodel_uid.hex
+        except AttributeError as e:
+            logger.error(f"AttributeError {obj}: {e}")
+            return
         logger.debug(f"{entry_node_uid=}")
         try:
             entry = Entry.nodes.get(uid=entry_node_uid)
