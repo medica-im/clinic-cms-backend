@@ -540,7 +540,7 @@ def node_uids(entries):
     try:
         return [entry.uid for entry in entries]
     except Exception as e:
-        logger.error(e)
+        logger.debug(f"nodes_uids Exception: {e}")
         return []
 
 def get_effector_nodes(
@@ -763,7 +763,7 @@ def get_entries(
             facility,
             location,
             [memberships],
-            [employers],
+            employers,
             commune,
             department,
             country,
