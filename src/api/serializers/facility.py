@@ -146,7 +146,9 @@ async def async_get_facilities(
             except:
                 location_dct=None
             facility_dct["commune"]=commune_dct
-            facility_dct["effectors"]=effectors[0]
+            if effectors and not isinstance(effectors, list):
+                effectors=[effectors]
+            facility_dct["effectors"]=effectors
             facility_dct["location"]=location_dct
             try:
                 f=FacilityPy.model_validate(facility_dct)
