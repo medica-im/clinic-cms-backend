@@ -12,7 +12,10 @@ RUN apt-get clean && apt-get update && apt-get install --no-install-recommends -
     locales \
     build-essential \
     python3-yaml \
-    binutils
+    binutils \
+    libcairo2-dev \
+    pkg-config \
+    python3-dev
  
 RUN echo "Europe/Paris" > /etc/timezone && \
     dpkg-reconfigure -f noninteractive tzdata && \
