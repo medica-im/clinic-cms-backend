@@ -963,6 +963,7 @@ def entry_dict(results, cols):
     ) = row
     logger.debug(f"{entry=}")
     logger.debug(f"{appointment_nodes=}")
+    logger.debug(f"{third_party_payers=}")
     address = get_address(facility,commune,country)
     phones = get_phones_neomodel(
         entry=entry,
