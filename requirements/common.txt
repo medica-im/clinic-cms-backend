@@ -6,7 +6,7 @@ psycopg2-binary
 django-modeltranslation
 django-postgresql-dag[transforms]
 the-big-username-blacklist
-easy-thumbnails
+easy-thumbnails[svg]
 django-taggit
 django-taggit-labels
 django-crispy-forms
