@@ -1,4 +1,3 @@
-wheel
 Django>=4.2,<5
 python-decouple
 djangorestframework
@@ -7,7 +6,7 @@ psycopg2-binary
 django-modeltranslation
 django-postgresql-dag[transforms]
 the-big-username-blacklist
-easy-thumbnails[svg]
+easy-thumbnails
 django-taggit
 django-taggit-labels
 django-crispy-forms

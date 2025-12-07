@@ -1,4 +1,4 @@
-FROM python:3.12-bullseye AS prod
+FROM python:3.12-trixie AS prod
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -8,14 +8,19 @@ WORKDIR /app
 #ENV DOCKER_CONTAINER=1
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get clean && apt-get update && apt-get install --no-install-recommends -y \
-    locales \
-    build-essential \
-    python3-yaml \
-    binutils \
-    libcairo2-dev \
-    pkg-config \
-    python3-dev
+RUN apt-get clean && apt-get update && apt-get install -y \
+locales \
+build-essential \
+python3-yaml \
+binutils \
+libcairo2-dev \
+pkg-config \
+python3-dev \
+python3-pip \
+gcc \
+libglib2.0-dev \
+libgirepository1.0-dev \
+python3-cairo
  
 RUN echo "Europe/Paris" > /etc/timezone && \
     dpkg-reconfigure -f noninteractive tzdata && \
@@ -31,7 +36,7 @@ ENV LANGUAGE=fr_FR
 ENV LC_ALL=fr_FR.UTF-8
 
 ADD ./requirements /app/requirements
-RUN pip install pip --upgrade
+RUN pip install pip --upgrade && pip --version
 RUN pip install -r /app/requirements/common.txt
 
 RUN mkdir /var/log/celery && touch /var/log/celery/celery.log
