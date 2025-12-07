@@ -32,6 +32,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     department = serializers.SerializerMethodField()
 
     def get_department(self, obj):
+        logger.debug(f"{obj.neomodel_uid=}")
         try:
             entry = Entry.nodes.get(uid=obj.neomodel_uid.hex)
         except Exception as e:
