@@ -114,7 +114,7 @@ services:
       - NEO4JLABS_PLUGINS=["apoc"]
       - NEO4J_dbms_logs_debug_level=${NEO4J_dbms_logs_debug_level:-INFO}
     healthcheck:
-      test: wget http://localhost:${NEO4J_7474_EXTERNAL_PORT} || exit 1
+      test: wget http://neo4j:7474 || exit 1
       interval: 1s
       timeout: 10s
       retries: 20
