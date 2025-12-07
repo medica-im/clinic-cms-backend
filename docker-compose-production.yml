@@ -67,10 +67,14 @@ services:
     volumes:
       - ./src:/app
     depends_on:
-      - database_production
-      - neo4j
-      - redis_production
-      - django_production
+      database_production:
+        condition: service_started
+      redis_production:
+        condition: service_started
+      neo4j:
+        condition: service_healthy
+      django_production:
+        condition: service_started
     working_dir: /app
     ports:
       - "${FASTAPI_PORT}:80"
