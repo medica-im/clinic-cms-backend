@@ -743,7 +743,7 @@ def get_entries(
         MATCH (d)-[:HAS_ENTRY]->(entry:Entry) WHERE entry.active={str(active)}
         WITH entry
         MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country), (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType), (entry)-[:HAS_EFFECTOR]->(e:Effector)
-        WITH *
+        WITH DISTINCT entry as entry, e, et, f, commune, dpt, country
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(membership:Entry)
         WITH entry, e, et, f, commune, dpt, country, COLLECT(DISTINCT membership) as memberships
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Entry)
