@@ -122,7 +122,6 @@ def createEntryResource(node):
     effector_type=type_object.__dict__
     phones = get_phones_neomodel(
         e=effector_node,
-        ef=node["location"],
         f=node["facility"],
     )
     updatedAt = max(

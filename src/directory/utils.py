@@ -743,14 +743,12 @@ def get_entries(
         MATCH (d)-[:HAS_ENTRY]->(entry:Entry) WHERE entry.active={str(active)}
         WITH entry
         MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country), (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType), (entry)-[:HAS_EFFECTOR]->(e:Effector)
-        WITH *
-        OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
-        WITH *
+        WITH *, COLLECT(DISTINCT entry) as entry
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(membership:Entry)
         WITH *, COLLECT(DISTINCT membership) as memberships
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Entry)
         WITH *, COLLECT(DISTINCT employer) as employers
-        RETURN DISTINCT entry,e,et,f,rel,memberships,employers,commune,dpt,country;"""
+        RETURN DISTINCT entry,e,et,f,memberships,employers,commune,dpt,country;"""
     results, _meta = db.cypher_query(query, resolve_objects = True)
     logger.debug(f"{results[:2]=} {len(results)=}")
     entries=[]
@@ -761,7 +759,6 @@ def get_entries(
             effector,
             effector_type,
             facility,
-            location,
             memberships,
             employers,
             commune,
@@ -770,7 +767,7 @@ def get_entries(
         ) = row
         logger.debug(f"> {memberships=}")
         address = get_address(facility,commune,country)
-        avatar=get_avatar_url(entry, effector, location, facility)
+        avatar=get_avatar_url(entry=entry)
         memberships_uids = node_uids(memberships) if memberships else []
         if memberships:
             logger.debug(f"********\n-------> {effector.name_fr=} {memberships=}\n********")
@@ -785,7 +782,6 @@ def get_entries(
                 "effector_type": effector_type,
                 "facility": facility,
                 "avatar": avatar,
-                "location": location,
                 "memberships": memberships_uids,
                 "employers": employers,
             }
