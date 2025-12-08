@@ -748,13 +748,14 @@ def get_entries(
         WITH entry, e, et, f, commune, dpt, country, COLLECT(DISTINCT membership) as memberships
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Entry)
         WITH entry, e, et, f, commune, dpt, country, memberships, COLLECT(DISTINCT employer) as employers
-        RETURN entry, e, et, f, memberships, employers, commune, dpt, country, DISTINCT entry.uid;"""
+        RETURN DISTINCT entry.uid as uid, entry, e, et, f, memberships, employers, commune, dpt, country;"""
     results, _meta = db.cypher_query(query, resolve_objects = True)
     logger.debug(f"{results[:2]=} {len(results)=}")
     entries=[]
     for row in results:
         logger.debug(f"number of columns:{len(row)=}")
         (
+            _,
             entry,
             effector,
             effector_type,
@@ -764,7 +765,6 @@ def get_entries(
             commune,
             department,
             country,
-            _
         ) = row
         logger.debug(f"> {memberships=}")
         address = get_address(facility,commune,country)
