@@ -745,9 +745,9 @@ def get_entries(
         MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country), (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType), (entry)-[:HAS_EFFECTOR]->(e:Effector)
         WITH *
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(membership:Entry)
-        WITH entry, e, et, f, commune, dpt, country, entry, COLLECT(DISTINCT membership) as memberships
+        WITH entry, e, et, f, commune, dpt, country, COLLECT(DISTINCT membership) as memberships
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Entry)
-        WITH entry, e, et, f, commune, dpt, country, memberships, entry, COLLECT(DISTINCT employer) as employers
+        WITH entry, e, et, f, commune, dpt, country, memberships, COLLECT(DISTINCT employer) as employers
         RETURN DISTINCT entry, e, et, f, memberships, employers, commune, dpt, country;"""
     results, _meta = db.cypher_query(query, resolve_objects = True)
     logger.debug(f"{results[:2]=} {len(results)=}")
