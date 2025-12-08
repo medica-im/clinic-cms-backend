@@ -750,7 +750,7 @@ def get_entries(
         WITH *, COLLECT(DISTINCT membership) as memberships
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Entry)
         WITH *, COLLECT(DISTINCT employer) as employers
-        RETURN entry,e,et,f,rel,memberships,employers,commune,dpt,country;"""
+        RETURN COLLECT(DISTINCT entry) as entry,e,et,f,rel,memberships,employers,commune,dpt,country;"""
     results, _meta = db.cypher_query(query, resolve_objects = True)
     logger.debug(f"{results[:2]=} {len(results)=}")
     entries=[]
