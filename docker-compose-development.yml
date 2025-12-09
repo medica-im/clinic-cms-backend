@@ -123,4 +123,4 @@ services:
       interval: 1s
       timeout: 10s
       retries: 20
-      start_period: 3s
+      start_period: 5s
