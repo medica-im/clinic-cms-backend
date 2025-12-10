@@ -3,7 +3,6 @@ from common.utils import timestamp
 from uuid import uuid4
 from neomodel.contrib import spatial_properties as neomodel_spatial
 from neomodel import (
-    config,
     AsyncStructuredNode,
     BooleanProperty,
     StringProperty,
