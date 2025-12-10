@@ -132,8 +132,8 @@ class Website(StructuredNode):
 
 class Organization(StructuredNode):
     uid = UniqueIdProperty()
-    label_en = StringProperty(unique_index=True)
-    label_fr = StringProperty(unique_index=True)
+    label_en = StringProperty()
+    label_fr = StringProperty()
     name_en = StringProperty(unique_index=True)
     name_fr = StringProperty(unique_index=True)
     type = RelationshipTo(

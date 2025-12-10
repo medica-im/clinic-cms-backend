@@ -7,8 +7,6 @@ from pydantic import ValidationError
 from directory.models import (
     Directory,
     Facility,
-    Organization,
-    OrganizationType,
     Commune,
     Website,
     DepartmentOfFrance

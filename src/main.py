@@ -38,7 +38,7 @@ apps.check_models_ready()
 from fastapi import FastAPI, Request, Cookie
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers import organization, organizations, organization_types, effector_types, facilities, communes, departments, entries, effectors, auth, phones, monkeys, emails, websites, payment_methods, third_party_payers, conventions, appointment, fullentries
+from api.routers import organization, organization_types, effector_types, facilities, communes, departments, entries, effectors, auth, phones, monkeys, emails, websites, payment_methods, third_party_payers, conventions, appointment, fullentries
 from django.conf import settings
 from fastapi_nextauth_jwt.exceptions import MissingTokenError
 
@@ -54,7 +54,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(organizations.router)
 app.include_router(organization.router)
 app.include_router(organization_types.router)
 app.include_router(effector_types.router)

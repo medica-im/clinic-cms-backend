@@ -1,7 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 from accounts.models import User
 from workforce.models import NetworkNode, NodeSet
-from facility.models import Organization, Facility
 from django.db import DatabaseError, IntegrityError
 from django.contrib.sites.models import Site
 from directory.models import Slug

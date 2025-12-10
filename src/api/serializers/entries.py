@@ -8,8 +8,6 @@ from django.db import IntegrityError
 from addressbook.models import Contact
 from directory.models import (
     Directory,
-    Organization,
-    OrganizationType,
     Commune,
     Website,
     DepartmentOfFrance,
