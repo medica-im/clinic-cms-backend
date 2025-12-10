@@ -30,4 +30,4 @@ class Command(BaseCommand):
                 print(f"{module_name!r} has been imported")
             else:
                 print(f"can't find the {module_name!r} module")
-            os.popen("neomodel_install_labels module_name")
+            os.popen(f"neomodel_install_labels {module_name}")
