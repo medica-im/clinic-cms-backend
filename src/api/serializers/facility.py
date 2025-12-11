@@ -131,12 +131,13 @@ async def async_get_facilities(
     facilities: list[FacilityPy]=[]
     if q:
         for row in q[0]:
-            (
+            [
                 facility,
                 commune,
                 department,
                 effectors,
-            ) = row
+            ] = row
+            logger.debug(f"{effectors=}")
             commune_dct = commune.__properties__
             commune_dct["department"]=department.__properties__
             facility_dct=facility.__properties__
@@ -150,6 +151,7 @@ async def async_get_facilities(
             facility_dct["location"]=location_dct
             try:
                 f=FacilityPy.model_validate(facility_dct)
+                logger.debug(f"{f=}")
                 facilities.append(f)
             except ValidationError as e:
                 logger.debug(e)
