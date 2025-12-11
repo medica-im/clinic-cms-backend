@@ -135,7 +135,7 @@ async def async_get_facilities(
                 facility,
                 commune,
                 department,
-                effectors,
+                [effectors],
             ] = row
             logger.debug(f"{effectors=}")
             commune_dct = commune.__properties__
