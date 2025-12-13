@@ -951,12 +951,12 @@ def entry_dict(results, cols):
         facility,
         commune,
         country,
-        third_party_payers,
-        payment_methods,
+        [third_party_payers],
+        [payment_methods],
         convention,
-        appointment_nodes,
-        effector_type_labels,
-        memberships
+        [appointment_nodes],
+        [effector_type_labels],
+        [memberships]
     ) = row
     logger.debug(f"{entry=}")
     logger.debug(f"{appointment_nodes=}")
