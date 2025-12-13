@@ -943,7 +943,7 @@ def entry_dict(results, cols):
         logger.error(e)
         return
     logger.debug(f"{row=} {len(row)=}")
-    (
+    [
         entry,
         effector_type,
         effector,
@@ -957,10 +957,11 @@ def entry_dict(results, cols):
         [appointment_nodes],
         [effector_type_labels],
         [memberships]
-    ) = row
+    ] = row
     logger.debug(f"{entry=}")
     logger.debug(f"{appointment_nodes=}")
     logger.debug(f"{third_party_payers=}")
+    logger.debug(f"{effector_type_labels=}")
     address = get_address(facility,commune,country)
     phones = get_phones_neomodel(
         entry=entry,
