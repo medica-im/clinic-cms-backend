@@ -74,6 +74,10 @@ class EffectorType(StructuredNode):
         'EffectorType',
         'IS_A'
     )
+    tag_category = RelationshipTo(
+        'TagCategory',
+        'HAS_TAG_CATEGORY'
+    )
 
 
 class HCW(EffectorType):
@@ -392,7 +396,11 @@ class Entry(StructuredNode):
     payment = ArrayProperty(base_property=StringProperty())
     third_party_payer = ArrayProperty(base_property=StringProperty())
     convention = StringProperty()
-    appointments = RelationshipTo('Appointment', 'HAS_APPOINTMENT') 
+    appointments = RelationshipTo('Appointment', 'HAS_APPOINTMENT')
+    tags = RelationshipFrom(
+        'Tag',
+        'TAGS'
+    )
 
 class Directory(StructuredNode):
     uid = UniqueIdProperty()
@@ -414,3 +422,34 @@ class Office(Appointment):
 
 class HouseCall(Appointment):
     pass
+
+
+class TagCategory(StructuredNode):
+    uid = UniqueIdProperty()
+    label = StringProperty(unique_index=True)
+    name = StringProperty(unique_index=True)
+    definition = StringProperty()
+    synonyms = ArrayProperty(base_property=StringProperty())
+    effector_type = RelationshipFrom(
+        'EffectorType',
+        'HAS_TAG_CATEGORY'
+    )
+    tags = RelationshipFrom(
+        'Tag',
+        'IS_A'
+    )
+
+class Tag(StructuredNode):
+    uid = UniqueIdProperty()
+    label = StringProperty()
+    name = StringProperty(unique_index=True)
+    definition = StringProperty()
+    synonyms = ArrayProperty(base_property=StringProperty())
+    tag_category = RelationshipTo(
+        'TagCategory',
+        'IS_A'
+    )
+    entry = RelationshipTo(
+        'Entry',
+        'TAGS'
+    )

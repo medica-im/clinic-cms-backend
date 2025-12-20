@@ -74,6 +74,10 @@ class EffectorType(AsyncStructuredNode):
         'EffectorType',
         'IS_A'
     )
+    tag_category = AsyncRelationshipTo(
+        'TagCategory',
+        'HAS_TAG_CATEGORY'
+    )
 
 
 class HCW(EffectorType):
@@ -389,7 +393,11 @@ class Entry(AsyncStructuredNode):
     payment = ArrayProperty(base_property=StringProperty())
     third_party_payer = ArrayProperty(base_property=StringProperty())
     convention = StringProperty()
-    appointments = AsyncRelationshipTo('Appointment', 'HAS_APPOINTMENT') 
+    appointments = AsyncRelationshipTo('Appointment', 'HAS_APPOINTMENT')
+    tags = AsyncRelationshipFrom(
+        'Tag',
+        'TAGS'
+    )
 
 
 class Directory(AsyncStructuredNode):
@@ -417,3 +425,35 @@ class Office(Appointment):
 
 class HouseCall(Appointment):
     pass
+
+
+class TagCategory(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    label = StringProperty(unique_index=True)
+    name = StringProperty(unique_index=True)
+    definition = StringProperty()
+    synonyms = ArrayProperty(base_property=StringProperty())
+    effector_type = AsyncRelationshipFrom(
+        'EffectorType',
+        'HAS_TAG_CATEGORY'
+    )
+    tags = AsyncRelationshipFrom(
+        'Tag',
+        'IS_A'
+    )
+
+class Tag(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    label = StringProperty()
+    name = StringProperty(unique_index=True)
+    definition = StringProperty()
+    synonyms = ArrayProperty(base_property=StringProperty())
+    tag_category = AsyncRelationshipTo(
+        'TagCategory',
+        'IS_A'
+    )
+    entry = AsyncRelationshipTo(
+        'Entry',
+        'TAGS'
+    )
+
