@@ -914,7 +914,7 @@ def get_uid_query(uid: str):
         WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a,COLLECT(DISTINCT label) AS effector_type_labels,memberships
         OPTIONAL MATCH (entry:Entry)<-[:TAGS]-(tag:Tag)-[IS_A]->(tagcat:TagCategory)<-[:HAS_TAG_CATEGORY]-(et)
         WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
-        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships;"""
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats;"""
 
 def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
     return f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
