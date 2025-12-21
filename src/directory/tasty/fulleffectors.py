@@ -30,6 +30,7 @@ from directory.tasty.types import (
     flex_effector_type_label
 )
 from directory.models import Label
+from directory.serializers import TagSerializer
 
 logger=logging.getLogger(__name__)
 
@@ -69,7 +70,8 @@ class EffectorObj(object):
             active,
             deactivation_datetime,
             deactivation_reason,
-            memberships
+            memberships,
+            tags,
         ):
         self.label = label
         self.name = name
@@ -98,6 +100,7 @@ class EffectorObj(object):
         self.deactivation_datetime = deactivation_datetime
         self.deactivation_reason = deactivation_reason
         self.memberships = memberships
+        self.tags = tags
 
 def createEffectorRessource(node):
     try:
@@ -218,6 +221,12 @@ def createEffectorRessource(node):
             memberships = [node["memberships"].uid] if node["memberships"] else None
         except:
             memberships = None
+    try:
+        serializer = TagSerializer(node["tags"], many=True)
+        tags = serializer.data
+    except Exception as e:
+        logger.error(e)
+        tags = None
 
     effector = EffectorObj(
         label,
@@ -246,7 +255,8 @@ def createEffectorRessource(node):
         active,
         deactivation_datetime,
         deactivation_reason,
-        memberships
+        memberships,
+        tags,
     )
     return effector
 
@@ -293,6 +303,8 @@ class FullEffectorResource(Resource):
     avatar = fields.DictField(attribute='avatar', null=True)
     deactivation_datetime = fields.CharField(attribute="deactivation_datetime", null=True)
     deactivation_reason = fields.CharField(attribute="deactivation_reason", null=True)
+    tags = fields.ListField(attribute='tags', null=True)
+
 
     class Meta:
         resource_name = 'fulleffector'

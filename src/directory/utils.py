@@ -21,8 +21,7 @@ from directory.models import (
     Label,
 )
 from django.contrib.sites.models import Site
-from directory.models.graph import Appointment, Office, HouseCall
-from directory.models.graph import Convention
+from directory.models.graph import Appointment, Office, HouseCall, Convention, Tag
 from addressbook.models import Contact
 from neomodel import db, adb
 from addressbook.api.serializers import (
@@ -912,7 +911,10 @@ def get_uid_query(uid: str):
         WITH *, bLabels + labels(et) AS allLabels
         UNWIND allLabels AS labelList
         UNWIND labelList AS label
-        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,COLLECT(DISTINCT label) AS effector_type_labels,memberships;"""
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a,COLLECT(DISTINCT label) AS effector_type_labels,memberships
+        OPTIONAL MATCH (entry:Entry)<-[:TAGS]-(tag:Tag)-[IS_A]->(tagcat:TagCategory)<-[:HAS_TAG_CATEGORY]-(et)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a,COLLECT(DISTINCT label) AS effector_type_labels,memberships, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships;"""
 
 def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
     return f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
@@ -1111,6 +1113,13 @@ async def async_entry_dict(results, cols):
     health_worker=HealthWorker.inflate(row[cols.index('e')])
     avatar= await async_get_avatar_url(entry, effector, effector_facility, facility)
     fetl= await async_flex_effector_type_label(effector, effector_type)
+    try:
+        tags = [
+            Tag.inflate(tag)
+            for tag in row[cols.index('tags')]
+        ]
+    except:    
+        tags = None
     return {
         "entry": entry,
         "effector": effector,
@@ -1132,7 +1141,8 @@ async def async_entry_dict(results, cols):
         "health_worker": health_worker,
         "avatar": avatar,
         "convention": convention,
-        "memberships": memberships
+        "memberships": memberships,
+        "tags": tags,
     }
 
 def find_entry(
