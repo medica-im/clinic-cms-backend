@@ -103,7 +103,8 @@ class Command(BaseCommand):
             else:
                 self.notice(f"TagCategory {cat} already exists.")
             for tag in TAGS:
-                if tag[0] is not cat.name:
+                logger.debug(f"{cat.name=} {tag[0]}")
+                if not (tag[0] == cat.name):
                     continue
                 created=False
                 try:
