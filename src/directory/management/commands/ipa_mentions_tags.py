@@ -44,13 +44,13 @@ CATEGORIES = [{
     "synonyms": ["mention infirmier en pratique avancée", "mention infirmière en pratique avancée"],
     "definition": None
 }]
-# category, name, label, labelShort, synonyms, definition 
+# category 0, name 1, label 2, labelShort 3, synonyms 4, definition 5 
 TAGS = [
-    ("ipa_mentions", "pcs", "pathologies chroniques stabilisées; prévention et polypathologies courantes en soins primaires", "PCS", None, None,),
-    ("ipa_mentions", "ooh", "oncologie et hémato-oncologie", "OOH", None, None,),
-    ("ipa_mentions", "mrctdr", "maladie rénale chronique, dialyse et transplantation rénale","MRCTDR", None, None,),
-    ("ipa_mentions", "psm", "psychiatrie et santé mentale", "PSM", None, None,),
-    ("ipa_mentions", "urgences", "urgences", "urgences", None, None,),
+    ["ipa_mentions", "pcs", "pathologies chroniques stabilisées; prévention et polypathologies courantes en soins primaires", "PCS", None, None],
+    ["ipa_mentions", "ooh", "oncologie et hémato-oncologie", "OOH", None, None],
+    ["ipa_mentions", "mrctdr", "maladie rénale chronique, dialyse et transplantation rénale","MRCTDR", None, None],
+    ["ipa_mentions", "psm", "psychiatrie et santé mentale", "PSM", None, None],
+    ["ipa_mentions", "urgences", "urgences", "urgences", None, None]
 ]
 
 def is_valid_uuid(val):
@@ -78,6 +78,8 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        cat_count=0
+        tag_count=0
         for category in CATEGORIES:
             effector_type_name_fr = category["effector_type_name_fr"]
             try:
@@ -87,7 +89,6 @@ class Command(BaseCommand):
                 return
             del(category["effector_type_name_fr"])
             cat_name = category["name"]
-            count=0
             created=False
             try:
                 cat = TagCategory.nodes.get(name=cat_name)
@@ -98,7 +99,30 @@ class Command(BaseCommand):
                 cat.effector_type.connect(et)
             if created:
                 self.warn(f"New TagCategory: {cat}")
-                count+=1
+                cat_count+=1
             else:
                 self.notice(f"TagCategory {cat} already exists.")
-        self.notice(f"{count} new TagCategory created.")
+            for tag in TAGS:
+                if tag[0] is not cat.name:
+                    continue
+                created=False
+                try:
+                    tag_node = Tag.nodes.get(name=tag[1])
+                except:
+                    tag_node = Tag(
+                        name=tag[1],
+                        label=tag[2],
+                        labelShort=tag[3],
+                        synonyms=tag[4],
+                        definition=tag[5]
+                    )
+                    tag_node.save()
+                    created=True
+                    tag_count+=1
+                if created:
+                    self.warn(f"New Tag: {tag_node}")
+                    count+=1
+                else:
+                    self.notice(f"Tag {tag_node} already exists.")
+        self.notice(f"{cat_count} new TagCategory created.")
+        self.notice(f"{tag_count} new Tag created.")
