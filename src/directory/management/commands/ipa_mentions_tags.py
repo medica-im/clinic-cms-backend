@@ -1,39 +1,19 @@
 from django.utils.text import slugify
-import neomodel
-import uuid
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
 from workforce.models import NetworkEdge, NodeSet, NetworkNode
 from facility.models import Organization
 from django.db import DatabaseError, IntegrityError
 from directory.models.graph import (
-    Entry,
-    Effector,
-    HCW,
     EffectorType,
-    Commune,
-    Organization,
-    Facility,
-    Directory,
-    EffectorFacility,
     TagCategory,
     Tag,
 )
-from neomodel import Q, db
 import uuid
-from directory.utils import add_label
-import argparse
-
-from django.conf import settings
 
 import logging
 
 logger = logging.getLogger(__name__)
-
-def removekey(d, key):
-    r = dict(d)
-    del r[key]
-    return r
 
 IPA = "infirmier en pratique avancée"
 CATEGORIES = [{
@@ -52,13 +32,6 @@ TAGS = [
     ["ipa_mentions", "psm", "psychiatrie et santé mentale", "PSM", None, None],
     ["ipa_mentions", "urgences", "urgences", "urgences", None, None]
 ]
-
-def is_valid_uuid(val):
-    try:
-        uuid.UUID(str(val))
-        return True
-    except ValueError:
-        return False
 
 class Command(BaseCommand):
     help = 'Create IPA mentions tags.'

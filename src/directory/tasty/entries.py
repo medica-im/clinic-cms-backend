@@ -59,6 +59,7 @@ class EntryObj(object):
             avatar,
             memberships,
             employers,
+            tags
         ):
         self.label = label
         self.name = name
@@ -76,6 +77,7 @@ class EntryObj(object):
         self.avatar = avatar
         self.memberships = memberships
         self.employers = employers
+        self.tags = tags
 
 def createEntryResource(node):
     entry=node["entry"]
@@ -140,6 +142,33 @@ def createEntryResource(node):
     avatar=node["avatar"]
     memberships=node["memberships"]
     employers=node["employers"]
+    tags=node["tags"]
+    tag_lst=[]
+    if tags:
+        for tag in tags:
+            effector_types=None
+            category=None
+            try:
+                category = tag.tag_category.all()[0]
+                try:
+                    effector_types=[_type.uid for _type in category.effector_type.all()]
+                except Exception as e:
+                    logger.error(e)
+            except Exception as e:
+                logger.error(e)
+            tag_dct = {
+                "uid": tag.uid,
+                "name": tag.name,
+                "label": tag.label,
+                "labelShort": tag.labelShort,
+                "category": {
+                    "name": category.name,
+                    "label": category.label
+                },
+                "effector_types": effector_types
+            }
+            tag_lst.append(tag_dct)
+    tags = tag_lst or None
 
     entry = EntryObj(
         label,
@@ -158,6 +187,7 @@ def createEntryResource(node):
         avatar,
         memberships,
         employers,
+        tags
     )
     return entry
 
@@ -189,6 +219,7 @@ class EntryResource(Resource):
     avatar = fields.DictField(attribute='avatar', null=True)
     memberships = fields.ListField(attribute='memberships', null=True)
     employers = fields.ListField(attribute='employers', null=True)
+    tags = fields.ListField(attribute='tags', null=True)
 
     class Meta:
         resource_name = 'entries'

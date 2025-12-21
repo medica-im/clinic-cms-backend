@@ -748,7 +748,9 @@ def get_entries(
         WITH entry, e, et, f, commune, dpt, country, COLLECT(DISTINCT membership) as memberships
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Entry)
         WITH entry, e, et, f, commune, dpt, country, memberships, COLLECT(DISTINCT employer) as employers
-        RETURN DISTINCT entry.uid as uid, entry, e, et, f, memberships, employers, commune, dpt, country;"""
+        OPTIONAL MATCH (entry:Entry)<-[:TAGS]-(tag:Tag)-[IS_A]->(tagcat:TagCategory)<-[:HAS_TAG_CATEGORY]-(et)
+        WITH entry, e, et, f, commune, dpt, country, memberships, employers, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
+        RETURN DISTINCT entry.uid as uid, entry, e, et, f, memberships, employers, commune, dpt, country, tags, tagcats;"""
     results, _meta = db.cypher_query(query, resolve_objects = True)
     logger.debug(f"{results[:2]=} {len(results)=}")
     entries=[]
@@ -765,8 +767,12 @@ def get_entries(
             commune,
             department,
             country,
+            [tags],
+            [tagcats],
         ) = row
         logger.debug(f"> {memberships=}")
+        logger.debug(f">> {tags=}")
+        logger.debug(f">>> {tagcats=}")
         address = get_address(facility,commune,country)
         avatar=get_avatar_url(entry=entry)
         memberships_uids = node_uids(memberships) if memberships else []
@@ -785,6 +791,8 @@ def get_entries(
                 "avatar": avatar,
                 "memberships": memberships_uids,
                 "employers": employers,
+                "tags": tags,
+                "tagcats": tagcats
             }
         )
     logger.debug(f"{len(entries)=}\n{entries[:2]=}")
