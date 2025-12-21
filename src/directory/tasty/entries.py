@@ -143,13 +143,12 @@ def createEntryResource(node):
     avatar=node["avatar"]
     memberships=node["memberships"]
     employers=node["employers"]
-    tags=node["tags"]
-    tag_lst=[]
-    if tags:
-        for tag in tags:
-            serializer = TagSerializer(tag)
-            tag_lst.append(serializer.data)
-    tags = tag_lst or None
+    try:
+        serializer = TagSerializer(node["tags"], many=True)
+        tags = serializer.data
+    except Exception as e:
+        logger.error(e)
+        tags = None
 
     entry = EntryObj(
         label,
