@@ -120,9 +120,11 @@ class Command(BaseCommand):
                     tag_node.save()
                     created=True
                     tag_count+=1
+                if not tag_node.tag_category.all():
+                    tag_node.tag_category.connect(cat)
                 if created:
                     self.warn(f"New Tag: {tag_node}")
-                    count+=1
+                    tag_count+=1
                 else:
                     self.notice(f"Tag {tag_node} already exists.")
         self.notice(f"{cat_count} new TagCategory created.")
