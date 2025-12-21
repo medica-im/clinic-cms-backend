@@ -8,6 +8,7 @@ from tastypie.resources import Resource
 from tastypie.bundle import Bundle
 from tastypie.fields import ForeignKey
 from directory.tasty.communes import createCommuneResources
+from directory.serializers import TagSerializer
 
 from django.urls import re_path
 from django.core.cache import cache
@@ -146,29 +147,8 @@ def createEntryResource(node):
     tag_lst=[]
     if tags:
         for tag in tags:
-            effector_types=None
-            category=None
-            try:
-                category = tag.tag_category.all()[0]
-                try:
-                    effector_types=[_type.uid for _type in category.effector_type.all()]
-                except Exception as e:
-                    logger.error(e)
-            except Exception as e:
-                logger.error(e)
-            tag_dct = {
-                "uid": tag.uid,
-                "name": tag.name,
-                "label": tag.label,
-                "labelShort": tag.labelShort,
-                "category": {
-                    "name": category.name,
-                    "label": category.label,
-                    "labelShort": category.labelShort,
-                },
-                "effector_types": effector_types
-            }
-            tag_lst.append(tag_dct)
+            serializer = TagSerializer(tag)
+            tag_lst.append(serializer.data)
     tags = tag_lst or None
 
     entry = EntryObj(

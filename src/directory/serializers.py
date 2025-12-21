@@ -20,6 +20,32 @@ def display_tag_name(tag: str, language: str = settings.LANGUAGE_CODE)->str|None
             return
 
 
+class TagSerializer(serializers.BaseSerializer):
+    def to_representation(self, instance):
+        effector_types=None
+        category=None
+        try:
+            category = instance.tag_category.all()[0]
+            try:
+                effector_types=[_type.uid for _type in category.effector_type.all()]
+            except Exception as e:
+                    logger.error(e)
+        except Exception as e:
+            logger.error(e)
+        return {
+            "uid": instance.uid,
+            "name": instance.name,
+            "label": instance.label,
+            "labelShort": instance.labelShort,
+            "category": {
+                "name": category.name,
+                "label": category.label,
+                "labelShort": category.labelShort,
+            },
+            "effector_types": effector_types
+        }
+
+
 class ThirdPartyPayerSerializer(serializers.Serializer):
     uid = serializers.UUIDField(read_only=True)
     name = serializers.CharField(
