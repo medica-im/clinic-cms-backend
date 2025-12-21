@@ -426,8 +426,9 @@ class HouseCall(Appointment):
 
 class TagCategory(StructuredNode):
     uid = UniqueIdProperty()
-    label = StringProperty(unique_index=True)
     name = StringProperty(unique_index=True)
+    label = StringProperty(unique_index=True)
+    labelShort = StringProperty()
     definition = StringProperty()
     synonyms = ArrayProperty(base_property=StringProperty())
     effector_type = RelationshipFrom(
@@ -439,10 +440,12 @@ class TagCategory(StructuredNode):
         'IS_A'
     )
 
+
 class Tag(StructuredNode):
     uid = UniqueIdProperty()
-    label = StringProperty()
     name = StringProperty(unique_index=True)
+    label = StringProperty()
+    labelShort = StringProperty()
     definition = StringProperty()
     synonyms = ArrayProperty(base_property=StringProperty())
     tag_category = RelationshipTo(

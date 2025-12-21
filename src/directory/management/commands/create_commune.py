@@ -21,7 +21,6 @@ import uuid
 from addressbook.wikidata import WikiDataQueryResults
 from django.core.cache import cache
 from django.conf import settings
-from rdflib.plugins.shared.jsonld.keys import NONE
 
 WIKIDATA_TTL = 60 * 60           
 

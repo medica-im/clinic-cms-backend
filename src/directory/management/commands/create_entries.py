@@ -1,7 +1,6 @@
 from django.utils.text import slugify
 import neomodel
 import uuid
-import argparse
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
 from workforce.models import NetworkEdge, NodeSet, NetworkNode
