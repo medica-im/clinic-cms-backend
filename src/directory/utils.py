@@ -1113,13 +1113,10 @@ async def async_entry_dict(results, cols):
     health_worker=HealthWorker.inflate(row[cols.index('e')])
     avatar= await async_get_avatar_url(entry, effector, effector_facility, facility)
     fetl= await async_flex_effector_type_label(effector, effector_type)
-    try:
-        tags = [
+    tags = [
             Tag.inflate(tag)
             for tag in row[cols.index('tags')]
-        ]
-    except:    
-        tags = None
+        ] or None
     return {
         "entry": entry,
         "effector": effector,

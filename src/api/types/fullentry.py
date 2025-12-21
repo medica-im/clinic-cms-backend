@@ -127,6 +127,21 @@ class SpokenLanguage(BaseModel):
     name: str
 
 
+class TagCategory(BaseModel):
+    name: str
+    label: str
+    labelShort: str
+
+
+class Tag(BaseModel):
+    uid: str
+    name: str
+    label: str
+    labelShort: str
+    category: TagCategory
+    effector_types: list[str]|None
+
+
 class FullEntry(BaseModel):
     active: bool
     address: Address
@@ -159,3 +174,4 @@ class FullEntry(BaseModel):
     websites: list[Website]|None = None
     organizations: list[str]|None = None
     memberships: list[str]|None = None
+    tags: list[Tag]|None = None
