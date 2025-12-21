@@ -76,9 +76,6 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.NOTICE(message)
         )
-    
-    def add_arguments(self, parser):
-        parser.add_argument()
 
     def handle(self, *args, **options):
         for category in CATEGORIES:
