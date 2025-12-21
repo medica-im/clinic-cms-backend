@@ -85,7 +85,7 @@ class Command(BaseCommand):
             except Exception as e:
                 logger.error(e)
                 return
-            del(category["effectory_type_name_fr"])
+            del(category["effector_type_name_fr"])
             cat_name = category["name"]
             count=0
             created=False
