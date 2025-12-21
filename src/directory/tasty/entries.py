@@ -163,7 +163,8 @@ def createEntryResource(node):
                 "labelShort": tag.labelShort,
                 "category": {
                     "name": category.name,
-                    "label": category.label
+                    "label": category.label,
+                    "labelShort": category.labelShort,
                 },
                 "effector_types": effector_types
             }
