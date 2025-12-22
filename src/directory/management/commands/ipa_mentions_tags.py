@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 IPA = "infirmier en pratique avancée"
 CATEGORIES = [{
     "effector_type_name_fr": "infirmier en pratique avancée",
-    "name": "ipa_mentions",
+    "name": "mention_ipa",
     "label": "mention IPA",
     "labelShort": "mention",
     "synonyms": ["mention infirmier en pratique avancée", "mention infirmière en pratique avancée"],
@@ -26,11 +26,11 @@ CATEGORIES = [{
 }]
 # category 0, name 1, label 2, labelShort 3, synonyms 4, definition 5 
 TAGS = [
-    ["ipa_mentions", "pcs", "pathologies chroniques stabilisées; prévention et polypathologies courantes en soins primaires", "PCS", None, None],
-    ["ipa_mentions", "ooh", "oncologie et hémato-oncologie", "OOH", None, None],
-    ["ipa_mentions", "mrctdr", "maladie rénale chronique, dialyse et transplantation rénale","MRCTDR", None, None],
-    ["ipa_mentions", "psm", "psychiatrie et santé mentale", "PSM", None, None],
-    ["ipa_mentions", "urgences", "urgences", "urgences", None, None]
+    ["mention_ipa", "pcs", "pathologies chroniques stabilisées; prévention et polypathologies courantes en soins primaires", "PCS", None, None],
+    ["mention_ipa", "ooh", "oncologie et hémato-oncologie", "OOH", None, None],
+    ["mention_ipa", "mrctdr", "maladie rénale chronique, dialyse et transplantation rénale","MRCTDR", None, None],
+    ["mention_ipa", "psm", "psychiatrie et santé mentale", "PSM", None, None],
+    ["mention_ipa", "urgences", "urgences", "urgences", None, None]
 ]
 
 class Command(BaseCommand):
