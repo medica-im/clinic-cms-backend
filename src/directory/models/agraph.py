@@ -430,6 +430,7 @@ class HouseCall(Appointment):
 class TagCategory(AsyncStructuredNode):
     uid = UniqueIdProperty()
     label = StringProperty(unique_index=True)
+    labelShort = StringProperty()
     name = StringProperty(unique_index=True)
     definition = StringProperty()
     synonyms = ArrayProperty(base_property=StringProperty())
@@ -442,9 +443,11 @@ class TagCategory(AsyncStructuredNode):
         'IS_A'
     )
 
+
 class Tag(AsyncStructuredNode):
     uid = UniqueIdProperty()
     label = StringProperty()
+    labelShort = StringProperty()
     name = StringProperty(unique_index=True)
     definition = StringProperty()
     synonyms = ArrayProperty(base_property=StringProperty())
@@ -456,4 +459,3 @@ class Tag(AsyncStructuredNode):
         'Entry',
         'TAGS'
     )
-
