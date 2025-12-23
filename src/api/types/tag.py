@@ -17,3 +17,9 @@ class TagCategory(BaseModel):
     definition: str|None
     synonyms: list[str]|None
     effector_types: list[str]|None
+
+
+class TagEntry(BaseModel):
+    entry: str
+    addTags: list[str]
+    removeTags: list[str]

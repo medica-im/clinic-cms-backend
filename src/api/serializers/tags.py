@@ -1,5 +1,5 @@
-from directory.models.agraph import Tag, TagCategory
-from api.types.tag import TagCategory as TagCategoryPy, Tag as TagPy
+from directory.models.agraph import Tag, TagCategory, Entry
+from api.types.tag import TagCategory as TagCategoryPy, Tag as TagPy, TagEntry
 from rest_framework import serializers
 from fastapi import HTTPException
 from pydantic import TypeAdapter
@@ -60,3 +60,39 @@ async def tags(category: str|None)->list[TagPy]:
     serializer=TagSerializer(tags, many=True)
     ta = TypeAdapter(list[TagPy])
     return ta.validate_python(serializer.data)
+
+async def update_tags(item: TagEntry):
+    try:
+        entry = await Entry.nodes.get(uid=item.entry)
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=404, detail=f"Entry {item.entry} not found")
+    addTags = []
+    try:
+        for t in item.addTags:
+            try:
+                tag = await Tag.nodes.get(uid=t)
+                addTags.append(tag)
+            except Exception as e:
+                logger.error(e)
+                raise HTTPException(status_code=404, detail=f"Tag {t} not found")
+    except TypeError:
+        pass
+    for tag in addTags:
+        await entry.tags.connect(tag)
+    removeTags = []
+    try:
+        for t in item.removeTags:
+            try:
+                tag = await Tag.nodes.get(uid=t)
+                removeTags.append(tag)
+            except Exception as e:
+                logger.error(e)
+                raise HTTPException(status_code=404, detail=f"Tag {t} not found")
+    except TypeError:
+        pass
+    for tag in removeTags:
+        await entry.tags.disconnect(tag)
+
+
+
