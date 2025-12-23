@@ -23,5 +23,5 @@ async def get_tag_category(uid: str) -> TagCategory:
     return await tag_category(uid)
 
 @router.get("/tags", response_model=list[Tag])
-async def get_tags(category: str|None):
+async def get_tags(category: str|None=None):
     return await tags(category)
