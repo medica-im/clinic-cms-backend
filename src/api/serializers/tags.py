@@ -27,7 +27,7 @@ class TagCategorySerializer(serializers.BaseSerializer):
             "labelShort": instance.labelShort,
             "synonyms": instance.synonyms,
             "definition": instance.definition,
-            "effector_types": instance.effector_types
+            "effector_types": instance.effector_type
         }
 
 async def tag_categories()->list[TagCategoryPy]:
@@ -54,7 +54,7 @@ async def tags(category: str|None)->list[TagPy]:
     _tags = []
     for t in tags:
         effector_types=[_type.uid for _type in await t.effector_type.all()]
-        t.effector_types=effector_types
+        t.effector_type=effector_types
         _tags.append(t)
     serializer=TagSerializer(_tags, many=True)
     ta = TypeAdapter(list[TagPy])
