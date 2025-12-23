@@ -32,6 +32,12 @@ class TagCategorySerializer(serializers.BaseSerializer):
 
 async def tag_categories()->list[TagCategoryPy]:
     tag_categories = await TagCategory.nodes.all()
+    _tagcats = []
+    for t in tag_categories:
+        ets = await t.effector_type.all()
+        uids=[et.uid for et in ets]
+        t.effector_type=uids
+        _tagcats.append(t)
     serializer=TagCategorySerializer(tag_categories, many=True)
     ta = TypeAdapter(list[TagCategoryPy])
     return ta.validate_python(serializer.data)
@@ -51,12 +57,6 @@ async def tags(category: str|None)->list[TagPy]:
             logger.error(e)
             raise Exception(e)
         tags = await category.tags.all()
-    _tags = []
-    for t in tags:
-        ets = await t.effector_type.all()
-        uids=[et.uid for et in ets]
-        t.effector_type=uids
-        _tags.append(t)
-    serializer=TagSerializer(_tags, many=True)
+    serializer=TagSerializer(tags, many=True)
     ta = TypeAdapter(list[TagPy])
     return ta.validate_python(serializer.data)
