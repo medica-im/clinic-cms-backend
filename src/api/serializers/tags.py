@@ -9,18 +9,13 @@ logger=logging.getLogger(__name__)
 
 class TagSerializer(serializers.BaseSerializer):
     def to_representation(self, instance):
-        category=None
-        try:
-            category = instance.tag_category.all()[0]
-        except Exception as e:
-            logger.error(e)
-            raise Exception(e)
         return {
             "uid": instance.uid,
             "name": instance.name,
             "label": instance.label,
             "labelShort": instance.labelShort,
-            "category": category.name,
+            "synonyms": instance.synonyms,
+            "definition": instance.definition,
         }
 
 class TagCategorySerializer(serializers.BaseSerializer):
