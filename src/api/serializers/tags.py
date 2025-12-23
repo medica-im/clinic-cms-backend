@@ -52,7 +52,7 @@ async def tags(category: str|None)->list[TagPy]:
         tags = await Tag.nodes.all()
     else:
         try:
-            category = await TagCategory.nodes(name=category)
+            category = await TagCategory.nodes.get(name=category)
         except Exception as e:
             logger.error(e)
             raise Exception(e)
