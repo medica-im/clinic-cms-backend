@@ -17,4 +17,4 @@ class TagCategory(BaseModel):
     name: str
     definition: str|None
     synonyms: list[str]|None
-    effector_type: list[str]|None
+    effector_types: list[str]|None

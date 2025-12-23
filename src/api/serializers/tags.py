@@ -36,6 +36,8 @@ class TagCategorySerializer(serializers.BaseSerializer):
             "name": instance.name,
             "label": instance.label,
             "labelShort": instance.labelShort,
+            "synonyms": instance.synonyms,
+            "definition": instance.definition,
             "effector_types": effector_types
         }
 
