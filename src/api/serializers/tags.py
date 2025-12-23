@@ -53,8 +53,9 @@ async def tags(category: str|None)->list[TagPy]:
         tags = await category.tags.all()
     _tags = []
     for t in tags:
-        effector_types=[_type.uid for _type in await t.effector_type.all()]
-        t.effector_type=effector_types
+        ets = await t.effector_type.all()
+        uids=[et.uid for et in ets]
+        t.effector_type=uids
         _tags.append(t)
     serializer=TagSerializer(_tags, many=True)
     ta = TypeAdapter(list[TagPy])
