@@ -6,8 +6,8 @@ class Tag(BaseModel):
     labelShort: str|None
     name: str
     definition: str|None
-    synonyms = list[str]|None
-    tag_category = str
+    synonyms: list[str]|None
+    tag_category: str
 
 
 class TagCategory(BaseModel):
@@ -16,5 +16,5 @@ class TagCategory(BaseModel):
     labelShort: str|None
     name: str
     definition: str|None
-    synonyms = list[str]|None
-    effector_type = list[str]|None
+    synonyms: list[str]|None
+    effector_type: list[str]|None
