@@ -47,8 +47,16 @@ async def tag_category(uid: str)->TagCategoryPy:
     serializer=TagCategorySerializer(tag_categories)
     return TagCategoryPy.model_validate(serializer.data)
 
-async def tags()->list[TagPy]:
-    tags = await Tag.nodes.all()
+async def tags(category: str|None)->list[TagPy]:
+    if not category:
+        tags = await Tag.nodes.all()
+    else:
+        try:
+            category = await TagCategory.nodes(name=category)
+        except Exception as e:
+            logger.error(e)
+            raise Exception(e)
+        tags = await category.tags.all()
     serializer=TagSerializer(tags, many=True)
     ta = TypeAdapter(list[TagPy])
     return ta.validate_python(serializer.data)
