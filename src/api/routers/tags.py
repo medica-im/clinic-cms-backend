@@ -14,10 +14,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/tag_categories", response_model=TagCategory)
+@router.get("/tag_categories", response_model=list[TagCategory])
 async def get_tags():
     return await tag_categories()
 
 @router.get("/tag_categories/{uid}")
-async def get_tag(uid: str) -> Tag:
+async def get_tag(uid: str) -> TagCategory:
     return await tag_category(uid)
