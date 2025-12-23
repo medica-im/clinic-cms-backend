@@ -1,5 +1,5 @@
 from directory.models.agraph import Tag, TagCategory
-from api.types.tag import TagCategory as TagCategoryPy
+from api.types.tag import TagCategory as TagCategoryPy, Tag as TagPy
 from rest_framework import serializers
 from fastapi import HTTPException
 from pydantic import TypeAdapter
@@ -51,3 +51,9 @@ async def tag_category(uid: str)->TagCategoryPy:
     tag_categories = await TagCategory.nodes.get(uid=uid)
     serializer=TagCategorySerializer(tag_categories)
     return TagCategoryPy.model_validate(serializer.data)
+
+async def tags()->list[TagPy]:
+    tags = await Tag.nodes.all()
+    serializer=TagSerializer(tags, many=True)
+    ta = TypeAdapter(list[TagPy])
+    return ta.validate_python(serializer.data)
