@@ -1,6 +1,8 @@
 from directory.models.agraph import Tag, TagCategory
+from api.types.tag import TagCategory as TagCategoryPy
 from rest_framework import serializers
 from fastapi import HTTPException
+from pydantic import TypeAdapter
 import logging
 
 logger=logging.getLogger(__name__)
@@ -37,12 +39,13 @@ class TagCategorySerializer(serializers.BaseSerializer):
             "effector_types": effector_types
         }
 
-async def tag_categories()->list[TagCategory]:
+async def tag_categories()->list[TagCategoryPy]:
     tag_categories = await TagCategory.nodes.all()
     serializer=TagCategorySerializer(tag_categories, many=True)
-    return TagCategory.model_validate(serializer.data)
+    ta = TypeAdapter(list[TagCategoryPy])
+    return ta.validate_python(serializer.data)
 
-async def tag_category(uid: str)->TagCategory:
+async def tag_category(uid: str)->TagCategoryPy:
     tag_categories = await TagCategory.nodes.get(uid=uid)
     serializer=TagCategorySerializer(tag_categories)
-    return TagCategory.model_validate(serializer.data)
+    return TagCategoryPy.model_validate(serializer.data)
