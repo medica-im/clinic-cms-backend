@@ -3,6 +3,7 @@ from api.types.tag import TagCategory as TagCategoryPy, Tag as TagPy
 from rest_framework import serializers
 from fastapi import HTTPException
 from pydantic import TypeAdapter
+from adrf.serializers import Serializer
 import logging
 
 logger=logging.getLogger(__name__)
@@ -18,11 +19,11 @@ class TagSerializer(serializers.BaseSerializer):
             "definition": instance.definition,
         }
 
-class TagCategorySerializer(serializers.BaseSerializer):
-    def to_representation(self, instance):
+class TagCategorySerializer(Serializer):
+    async def ato_representation(self, instance):
         effector_types=None
         try:
-            effector_types=[_type.uid for _type in instance.effector_type.all()]
+            effector_types=[_type.uid for _type in await instance.effector_type.all()]
         except Exception as e:
             logger.error(e)
             effector_types=None
