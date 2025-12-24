@@ -223,7 +223,7 @@ def createEffectorRessource(node):
             memberships = None
     try:
         serializer = TagSerializer(node["tags"], many=True)
-        tags = serializer.data
+        tags = serializer.data or None
     except Exception as e:
         logger.error(e)
         tags = None
