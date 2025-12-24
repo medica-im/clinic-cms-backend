@@ -16,6 +16,7 @@ class TagSerializer(serializers.BaseSerializer):
             "labelShort": instance.labelShort,
             "synonyms": instance.synonyms,
             "definition": instance.definition,
+            "category": instance.tag_category,
         }
 
 class TagCategorySerializer(serializers.BaseSerializer):
@@ -50,13 +51,21 @@ async def tag_category(uid: str)->TagCategoryPy:
 async def tags(category: str|None)->list[TagPy]:
     if not category:
         tags = await Tag.nodes.all()
+        for idx, item in enumerate(tags):
+            category_node = await item.tag_category.all()[0]
+            uid = category_node.uid
+            item.tag_category = uid
+            tags[idx] = item
     else:
         try:
-            category = await TagCategory.nodes.get(name=category)
+            category_node = await TagCategory.nodes.get(name=category)
         except Exception as e:
             logger.error(e)
             raise Exception(e)
-        tags = await category.tags.all()
+        tags = await category_node.tags.all()
+        for idx, item in enumerate(tags):
+            item.tag_category = category_node.uid
+            tags[idx] = item
     serializer=TagSerializer(tags, many=True)
     ta = TypeAdapter(list[TagPy] or None)
     return ta.validate_python(serializer.data or None)

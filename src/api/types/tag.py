@@ -7,6 +7,7 @@ class Tag(BaseModel):
     name: str
     definition: str|None
     synonyms: list[str]|None
+    category: str
 
 
 class TagCategory(BaseModel):
