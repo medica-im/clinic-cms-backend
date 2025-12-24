@@ -52,7 +52,7 @@ async def tags(category: str|None)->list[TagPy]:
     if not category:
         tags = await Tag.nodes.all()
         for idx, item in enumerate(tags):
-            category_node = await item.tag_category.all()[0]
+            category_node = item.tag_category.all()[0]
             uid = category_node.uid
             item.tag_category = uid
             tags[idx] = item
