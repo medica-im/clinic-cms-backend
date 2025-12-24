@@ -58,8 +58,8 @@ async def tags(category: str|None)->list[TagPy]:
             raise Exception(e)
         tags = await category.tags.all()
     serializer=TagSerializer(tags, many=True)
-    ta = TypeAdapter(list[TagPy])
-    return ta.validate_python(serializer.data)
+    ta = TypeAdapter(list[TagPy] or None)
+    return ta.validate_python(serializer.data or None)
 
 async def update_tags(item: TagEntry):
     try:
