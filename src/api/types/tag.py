@@ -21,5 +21,5 @@ class TagCategory(BaseModel):
 
 class TagEntry(BaseModel):
     entry: str
-    addTags: list[str]
-    removeTags: list[str]
+    addTags: list[str]|None
+    removeTags: list[str]|None
