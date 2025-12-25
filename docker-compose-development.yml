@@ -122,5 +122,5 @@ services:
       test: wget -q --spider http://neo4j:7474 || exit 1
       interval: 1s
       timeout: 10s
-      retries: 20
+      retries: 30
       start_period: 5s
