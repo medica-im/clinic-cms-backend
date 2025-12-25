@@ -135,12 +135,14 @@ class InputFieldSerializer(serializers.ModelSerializer):
     class Meta:
         model = InputField
         fields = [
-            'geocoder',
-            'situation',
-            'commune',
             'category',
+            'commune',
+            'department'
             'facility',
+            'geocoder',
+            'organization',
             'search',
+            'situation',
         ]
 
 
