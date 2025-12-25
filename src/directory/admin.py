@@ -82,11 +82,13 @@ class DirectoryAdmin(admin.ModelAdmin):
 class InputFieldAdmin(admin.ModelAdmin):
     list_display = (
         'directory',
-        'geocoder',
-        'situation',
-        'commune',
         'category',
+        'commune',
+        'department',
         'facility',
+        'geocoder',
+        'organization',
+        'situation',
         'search',
     )
 

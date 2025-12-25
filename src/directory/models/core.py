@@ -196,12 +196,14 @@ class InputField(models.Model):
         "directory.Directory",
         on_delete=models.CASCADE,
     )
-    geocoder = models.BooleanField(default=True)
-    situation = models.BooleanField(default=True)
-    commune = models.BooleanField(default=True)
-    category = models.BooleanField(default=True)
-    facility = models.BooleanField(default=True)
-    search = models.BooleanField(default=True)
+    category = models.BooleanField(null=True)
+    commune = models.BooleanField(null=True)
+    department = models.BooleanField(null=True)
+    facility = models.BooleanField(null=True)
+    geocoder = models.BooleanField(null=True)
+    organization = models.BooleanField(null=True)
+    search = models.BooleanField(null=True)
+    situation = models.BooleanField(null=True)
 
     def __str__(self):
         return (
