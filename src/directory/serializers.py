@@ -137,7 +137,7 @@ class InputFieldSerializer(serializers.ModelSerializer):
         fields = [
             'category',
             'commune',
-            'department'
+            'department',
             'facility',
             'geocoder',
             'organization',
