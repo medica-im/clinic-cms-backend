@@ -918,32 +918,34 @@ def get_uid_query(uid: str):
 
 def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
     return f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
-            WITH d
-            MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
-            WITH entry
-            MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country),
-            (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
-            (entry)-[:HAS_EFFECTOR]->(e:Effector)
-            WHERE e.slug_fr="{effector_slug}"
-            AND f.slug="{facility_slug}"
-            AND et.slug_fr="{effector_type_slug}"
-            OPTIONAL MATCH (entry)-[:MEMBER_OF]->(memberships:Entry)
-            WITH *, COLLECT(memberships) AS memberships
-            OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
-            WITH *
-            OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN entry.third_party_payer
-            WITH *, COLLECT(tpp) AS tpp
-            OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN entry.payment
-            OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
-            OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
-            WITH *, COLLECT(DISTINCT a) AS a
-            MATCH (et)-[:IS_A*0..]->(b:EffectorType)
-            WITH *, et, collect(DISTINCT labels(b)) AS bLabels
-            WITH *, bLabels + labels(et) AS allLabels
-            UNWIND allLabels AS labelList
-            UNWIND labelList AS label
-            RETURN entry,et,e,rel,f,c,country,tpp,COLLECT(DISTINCT pm) AS pm,convention,a, COLLECT(DISTINCT label) AS effector_type_labels, memberships;
-            """
+        WITH d
+        MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
+        WITH entry
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country),
+        (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
+        (entry)-[:HAS_EFFECTOR]->(e:Effector)
+        WHERE e.slug_fr="{effector_slug}"
+        AND f.slug="{facility_slug}"
+        AND et.slug_fr="{effector_type_slug}"
+        OPTIONAL MATCH (entry)-[:MEMBER_OF]->(memberships:Entry)
+        WITH *, COLLECT(memberships) AS memberships
+        OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
+        WITH *
+        OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN entry.third_party_payer
+        WITH *, COLLECT(tpp) AS tpp
+        OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN entry.payment
+        OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
+        OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
+        WITH *, COLLECT(DISTINCT a) AS a
+        MATCH (et)-[:IS_A*0..]->(b:EffectorType)
+        WITH *, et, collect(DISTINCT labels(b)) AS bLabels
+        WITH *, bLabels + labels(et) AS allLabels
+        UNWIND allLabels AS labelList
+        UNWIND labelList AS label
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a,COLLECT(DISTINCT label) AS effector_type_labels,memberships
+        OPTIONAL MATCH (entry:Entry)<-[:TAGS]-(tag:Tag)-[IS_A]->(tagcat:TagCategory)<-[:HAS_TAG_CATEGORY]-(et)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats;"""
 
 def entry_dict(results, cols):
     logger.debug(f"{results=} {len(results)=}")
@@ -966,7 +968,9 @@ def entry_dict(results, cols):
         convention,
         [appointment_nodes],
         [effector_type_labels],
-        [memberships]
+        [memberships],
+        [tags],
+        [tagcats]
     ] = row
     logger.debug(f"{entry=}")
     logger.debug(f"{appointment_nodes=}")
@@ -1035,7 +1039,9 @@ def entry_dict(results, cols):
         "health_worker": health_worker,
         "avatar": avatar,
         "convention": convention,
-        "memberships": memberships
+        "memberships": memberships,
+        "tags": tags,
+        "tagcats": tagcats
     }
 
 async def async_entry_dict(results, cols):
