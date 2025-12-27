@@ -90,6 +90,7 @@ class InputFieldAdmin(admin.ModelAdmin):
         'organization',
         'situation',
         'search',
+        'tag',
     )
 
 

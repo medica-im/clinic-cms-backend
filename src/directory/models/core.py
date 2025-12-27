@@ -204,6 +204,7 @@ class InputField(models.Model):
     organization = models.BooleanField(null=True)
     search = models.BooleanField(null=True)
     situation = models.BooleanField(null=True)
+    tag = models.BooleanField(null=True)
 
     def __str__(self):
         return (
