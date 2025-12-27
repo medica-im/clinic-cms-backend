@@ -143,6 +143,7 @@ class InputFieldSerializer(serializers.ModelSerializer):
             'organization',
             'search',
             'situation',
+            'tag',
         ]
 
 
