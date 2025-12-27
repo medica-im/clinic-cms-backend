@@ -29,7 +29,7 @@ def get_effector_types(
     if uid:
         query=f"""MATCH (et:EffectorType) WHERE et.uid="{uid}" OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType)  RETURN DISTINCT et,collect(s),collect(n),et2;"""
     else:
-        query=f"""MATCH (et:EffectorType) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType) RETURN DISTINCT et,collect(s),collect(n),et2;"""
+        query=f"""MATCH (et:EffectorType) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType) OPTIONAL MATCH (et)-[:HAS_TAG_CATEGORY]->(tc:TagCategory) RETURN DISTINCT et,collect(s),collect(n),et2,collect(tc);"""
     q = db.cypher_query(query, resolve_objects = True)
     nodes: list[EffectorTypePy]=[]
     for row in q[0]:
@@ -39,10 +39,12 @@ def get_effector_types(
             situations,
             needs,
             related_effector_type,
+            tag_category
         ) = row
         logger.debug(f"{effector_type=}")
         logger.debug(f"{situations[:1]=}")
         logger.debug(f"{needs[:1]=}")
+        logger.debug(f"{tag_category=}")
         ret_dct=None
         if related_effector_type:
             ret_dct=related_effector_type.__dict__
