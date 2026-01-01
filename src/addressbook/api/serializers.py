@@ -202,9 +202,14 @@ class ContactSerializer(serializers.ModelSerializer):
             facility = entry.facility.all()[0]
         except Exception as e:
             logger.error(e)
+        try:
+            city = facility.commune.all()[0].name_fr
+        except Exception as e:
+            logger.error(e)
+            city = None
         return {
             "building": facility.building,
-            "city": None,
+            "city": city,
             "country": None,
             "facility_uid": facility.uid,
             "geographical_complement": facility.geographical_complement,
