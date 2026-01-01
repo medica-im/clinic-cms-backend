@@ -2,8 +2,7 @@ from django.db import models
 from django_postgresql_dag.models import node_factory, edge_factory
 from django.utils.translation import gettext_lazy as _
 from accounts.models import GrammaticalGender
-
-
+from django.core.exceptions import MultipleObjectsReturned
 
 import logging
 
@@ -219,13 +218,13 @@ class Label(models.Model):
         )
 
     @staticmethod
-    def get_label(node: str, gender: str, number: str, language: str) -> str:
+    def get_label(node_name: str, gender_name: str, number: str, language: str) -> str|None:
         try:
-            node = NetworkNode.objects.get(name=node)
+            node = NetworkNode.objects.get(name=node_name)
         except NetworkNode.DoesNotExist:
             return
         try:
-            gender = GrammaticalGender.objects.get(name=gender)
+            gender = GrammaticalGender.objects.get(name=gender_name)
         except GrammaticalGender.DoesNotExist:
             return
         try:
@@ -239,6 +238,16 @@ class Label(models.Model):
         except Label.DoesNotExist as e:
             logger.debug(f'{e} for {node=}, {gender=}, {number=}, {language=}')
             return
+        except MultipleObjectsReturned as e:
+            label = Label.objects.filter(
+                node=node,
+                gender=gender,
+                grammatical_number=number,
+                language=language
+            ).first()
+            if label:
+                return label.label
+
 
 
 

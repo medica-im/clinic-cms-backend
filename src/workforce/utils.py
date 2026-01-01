@@ -69,7 +69,7 @@ def occupation(node: NetworkNode, organization: Organization):
             if (edge.parent.node_set == medical_specialty):
                 dct["specialty"] = {
                     "name":edge.parent.name,
-                    "label":Label.get_label(
+                    "label": Label.get_label(
                         edge.parent.name,
                         gender,
                         'S',
