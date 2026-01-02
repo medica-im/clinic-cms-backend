@@ -21,7 +21,6 @@ class OrganizationPy(BaseModel):
 class Contact(BaseModel):
     id: int
     formatted_name: str
-    formatted_name_short: str
     formatted_name_definite_article: str
     url: str
     address: Address
@@ -90,6 +89,7 @@ class Organization(BaseModel):
     company_name: str
     language: str
     formatted_name: str
+    formatted_name_short: str
     formatted_name_definite_article: str
     website_title: str
     website_description: str
