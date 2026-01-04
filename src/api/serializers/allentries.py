@@ -156,7 +156,7 @@ async def createEntryResource(node):
     employers=node["employers"]
     tags = None
     try:
-        serializer = AsyncTagsSerializer(data=node["tags"], many=True)
+        serializer = AsyncTagsSerializer(node["tags"], many=True)
         if serializer.is_valid():
             tags = await serializer.adata
     except Exception as e:
