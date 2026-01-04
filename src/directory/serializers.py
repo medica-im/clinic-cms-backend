@@ -1,8 +1,6 @@
 from directory.models import Directory, InputField, Setting, Timestamp
 from rest_framework import serializers
-import langcodes
 from langcodes import Language
-from django.utils.translation import get_language
 from django.conf import settings
 import logging
 
