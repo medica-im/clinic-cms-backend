@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, status, Request, Depends, Cookie
+from fastapi import Request
 from django.core.cache import cache
 from api.utils import (
     generate_cache_key,
@@ -12,7 +12,8 @@ from directory.utils import (
 )
 from directory.models.core import sync_set_timestamp
 from directory.tasty.entries import createEntryResources
-from main import API_VERSION
+
+API_VERSION="v2"
 
 logger=logging.getLogger(__name__)
 
