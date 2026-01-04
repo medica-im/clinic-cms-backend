@@ -205,13 +205,13 @@ def process(entries):
     for r in ["staff", "anonymous"]:
         scrubbed_entries = []
         for entry in entries:
-            phones = entry["phones"]
+            phones = entry.phones
             phones = [
                 phone
                 for phone in phones
                 if (r in [role["name"] for role in phone["roles"]])
             ]
-            entry["phones"]=phones
+            entry.phones=phones
             scrubbed_entries.append(entry)
         scrubbed_entries_dct[r]=scrubbed_entries
     return scrubbed_entries_dct
