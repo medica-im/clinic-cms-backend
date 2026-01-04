@@ -1,6 +1,7 @@
 import logging
 from fastapi import Request
 from django.core.cache import cache
+from django.conf import settings
 from api.utils import (
     generate_cache_key,
     get_directory,
@@ -9,15 +10,166 @@ from api.utils import (
 )
 from directory.utils import (
     get_entries,
+    async_get_phones_neomodel,
+    async_flex_effector_type_label
 )
 from directory.models.core import sync_set_timestamp
-from directory.tasty.entries import createEntryResources
+from directory.tasty.communes import createCommuneResources
+from directory.tasty.types import (
+    createEffectorTypeResources
+)
+from directory.serializers import TagSerializer
 
 API_VERSION="v2"
 
 logger=logging.getLogger(__name__)
 
 TTL: int = 60
+
+class EntryObj(object):
+    def __init__ (
+            self,
+            label,
+            name,
+            gender,
+            slug,
+            uid,
+            effector_uid,
+            effector_type,
+            commune,
+            department,
+            address,
+            phones,
+            updatedAt,
+            facility,
+            avatar,
+            memberships,
+            employers,
+            tags,
+            active
+        ):
+        self.label = label
+        self.name = name
+        self.gender = gender
+        self.slug = slug
+        self.uid = uid
+        self.effector_uid = effector_uid
+        self.effector_type = effector_type
+        self.commune = commune
+        self.department = department
+        self.address = address
+        self.phones = phones
+        self.updatedAt = updatedAt
+        self.facility = facility
+        self.avatar = avatar
+        self.memberships = memberships
+        self.employers = employers
+        self.tags = tags
+        self.active = active
+
+async def createEntryResource(node):
+    entry=node["entry"]
+    uid = entry.uid
+    effector_node=node["effector"]
+    address=node["address"]
+    commune_node = node["commune"]
+    commune_obj = createCommuneResources([commune_node])[0]
+    commune = commune_obj.__dict__
+    department = {
+        "code": node["department"].code
+    }
+    label = getattr(
+        effector_node,
+        f'label_{settings.LANGUAGE_CODE}',
+        getattr(
+            effector_node,
+            'label_en',
+            None
+        )
+    )
+    name = getattr(
+        effector_node,
+        f'name_{settings.LANGUAGE_CODE}',
+        getattr(
+            effector_node,
+            'name_en',
+            None
+        )
+    )
+    gender = effector_node.gender
+    slug = getattr(
+        effector_node,
+        f'slug_{settings.LANGUAGE_CODE}',
+        getattr(
+            effector_node,
+            'slug_en',
+            None
+        )
+    )
+    effector_uid = effector_node.uid
+    type_object = createEffectorTypeResources(node["effector_type"])
+    type_object = await async_flex_effector_type_label(effector_node, type_object)
+    effector_type=type_object.__dict__
+    phones = await async_get_phones_neomodel(
+        e=effector_node,
+        f=node["facility"],
+    )
+    updatedAt = max(
+        [
+            effector_node.updatedAt,
+            node["facility"].contactUpdatedAt,
+            entry.contactUpdatedAt,
+        ]
+    )
+    facility = {
+        "uid": node["facility"].uid,
+        "name": node["facility"].name,
+        "slug": node["facility"].slug,
+        "label": node["facility"].label or node["facility"].name
+    }
+    avatar=node["avatar"]
+    memberships=node["memberships"]
+    employers=node["employers"]
+    try:
+        serializer = TagSerializer(node["tags"], many=True)
+        tags = serializer.data
+    except Exception as e:
+        logger.error(e)
+        tags = None
+    active=entry.active
+
+    entry = EntryObj(
+        label,
+        name,
+        gender,
+        slug,
+        uid,
+        effector_uid,
+        effector_type,
+        commune,
+        department,
+        address,
+        phones,
+        updatedAt,
+        facility,
+        avatar,
+        memberships,
+        employers,
+        tags,
+        active
+    )
+    return entry
+
+async def createEntryResources(nodes: list, request):
+    data= []
+    # TODO manage Exception Value: 'NoneType' object is not iterable
+    try:
+        for node in nodes:
+            data.append(await createEntryResource(node))
+    except (TypeError, ValueError) as e:
+        logger.error(e)
+        pass
+    return data
 
 async def get_object_list(request):
         directory= await get_directory(request)
