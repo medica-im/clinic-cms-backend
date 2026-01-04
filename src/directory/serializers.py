@@ -1,7 +1,7 @@
 from directory.models import Directory, InputField, Setting, Timestamp
 from rest_framework import serializers
 import langcodes
-from adrf.serializers import ListSerializer
+from adrf.serializers import Serializer
 from langcodes import Language
 from django.utils.translation import get_language
 from django.conf import settings
@@ -22,7 +22,7 @@ def display_tag_name(tag: str, language: str = settings.LANGUAGE_CODE)->str|None
             return
 
 
-class AsyncTagSerializer(ListSerializer):
+class AsyncTagSerializer(Serializer):
     async def ato_representation(self, instance):
         effector_types=None
         category=None

@@ -154,12 +154,13 @@ async def createEntryResource(node):
     avatar=node["avatar"]
     memberships=node["memberships"]
     employers=node["employers"]
+    tags = None
     try:
         serializer = AsyncTagSerializer(data=node["tags"], many=True)
-        tags = serializer.data
+        if serializer.is_valid():
+            tags = await serializer.adata
     except Exception as e:
         logger.error(e)
-        tags = None
     active=entry.active
 
     entry = EntryObj(
