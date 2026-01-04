@@ -27,7 +27,8 @@ def get_object_list(request):
         contacts = createEntryResources(nodes, request)
         return contacts
 
-def get_all_entries(request: Request, jwt):
+
+def get_all_entries(request: Request, jwt, role: str):
     cache_key = generate_cache_key(
         API_VERSION,
         request

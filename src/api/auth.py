@@ -61,6 +61,13 @@ async def role_from_request_jwt(request: Request, jwt: dict)->Role:
     logger.debug(f"{role=}")
     return role
 
+async def get_role_from_request_jwt(request: Request, jwt: dict)->str:
+    if not jwt:
+        return "anonymous"
+    else:
+        role = await role_from_request_jwt(request,jwt)
+        return role.name
+
 async def authorize_api(endpoint: str, request: Request, jwt: dict):
     # get post put patch delete
     logger.debug(f"{request.method=}")
