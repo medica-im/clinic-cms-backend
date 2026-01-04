@@ -1,11 +1,10 @@
 from directory.models import Directory, InputField, Setting, Timestamp
 from rest_framework import serializers
 import langcodes
-from adrf.serializers import Serializer
+from adrf.serializers import ListSerializer
 from langcodes import Language
 from django.utils.translation import get_language
 from django.conf import settings
-from adrf.serializers import Serializer
 from fastapi import HTTPException, status
 import logging
 
@@ -23,8 +22,8 @@ def display_tag_name(tag: str, language: str = settings.LANGUAGE_CODE)->str|None
             return
 
 
-class AsyncTagSerializer(Serializer):
-    async def to_representation(self, instance):
+class AsyncTagSerializer(ListSerializer):
+    async def ato_representation(self, instance):
         effector_types=None
         category=None
         try:

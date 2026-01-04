@@ -155,7 +155,7 @@ async def createEntryResource(node):
     memberships=node["memberships"]
     employers=node["employers"]
     try:
-        serializer = AsyncTagSerializer(node["tags"], many=True)
+        serializer = AsyncTagSerializer(data=node["tags"])
         tags = serializer.data
     except Exception as e:
         logger.error(e)
