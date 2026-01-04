@@ -21,7 +21,7 @@ from tastypie.utils import (
 from directory.utils import (
     get_phones_neomodel,
     get_directory,
-    get_entries,
+    sync_get_entries,
     get_ttl,
     generate_cache_key,
 )
@@ -242,7 +242,7 @@ class EntryResource(Resource):
     def get_object_list(self, request):
         directory=get_directory(request)
         logger.debug(f"{directory=}")
-        nodes = get_entries(directory)
+        nodes = sync_get_entries(directory)
         logger.debug(f"{nodes[:1] if nodes else []}")
         contacts = createEntryResources(nodes, request)
         return contacts
@@ -273,7 +273,7 @@ class EntryResource(Resource):
         uid= kwargs['uid']
         directory=get_directory(bundle.request)
         try :
-            nodes = get_entries(directory, uid=uid)
+            nodes = sync_get_entries(directory, uid=uid)
             entry = createEntryResources(nodes, bundle.request)
             return entry[0]
         except Exception as e : 

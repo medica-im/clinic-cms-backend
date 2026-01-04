@@ -724,11 +724,11 @@ def display(_list):
     for idx,e in enumerate(_list):
         logger.debug(f'{idx}: {e}\n')
 
-def get_entries(
-        directory: Directory,
-        uid = None,
-        active: bool = True,
-    ):
+def get_entries_query(
+    directory: Directory,
+    uid = None,
+    active: bool = True,
+)->str:
     if uid:
         query=f"""MATCH (entry:Entry) WHERE entry.uid="{uid}" WITH entry MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector) WITH * OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
@@ -750,6 +750,14 @@ def get_entries(
         OPTIONAL MATCH (entry:Entry)<-[:TAGS]-(tag:Tag)-[IS_A]->(tagcat:TagCategory)<-[:HAS_TAG_CATEGORY]-(et)
         WITH entry, e, et, f, commune, dpt, country, memberships, employers, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
         RETURN DISTINCT entry.uid as uid, entry, e, et, f, memberships, employers, commune, dpt, country, tags, tagcats;"""
+    return query
+
+def sync_get_entries(
+        directory: Directory,
+        uid = None,
+        active: bool = True,
+    ):
+    query = get_entries_query(directory, uid=uid, active=active)
     results, _meta = db.cypher_query(query, resolve_objects = True)
     logger.debug(f"{results[:2]=} {len(results)=}")
     entries=[]
@@ -774,6 +782,59 @@ def get_entries(
         logger.debug(f">>> {tagcats=}")
         address = get_address(facility,commune,country)
         avatar=get_avatar_url(entry=entry)
+        memberships_uids = node_uids(memberships) if memberships else []
+        if memberships:
+            logger.debug(f"********\n-------> {effector.name_fr=} {memberships=}\n********")
+        employers = node_uids(employers) if employers else []
+        entries.append(
+            {
+                "effector": effector,
+                "entry": entry,
+                "address": address,
+                "commune": commune,
+                "department": department,
+                "effector_type": effector_type,
+                "facility": facility,
+                "avatar": avatar,
+                "memberships": memberships_uids,
+                "employers": employers,
+                "tags": tags,
+                "tagcats": tagcats
+            }
+        )
+    logger.debug(f"{len(entries)=}\n{entries[:2]=}")
+    return entries
+
+async def get_entries(
+        directory: Directory,
+        uid = None,
+        active: bool = True,
+    ):
+    query = get_entries_query(directory, uid=uid, active=active)
+    results, _meta = await adb.cypher_query(query, resolve_objects = True)
+    logger.debug(f"{results[:2]=} {len(results)=}")
+    entries=[]
+    for row in results:
+        logger.debug(f"number of columns:{len(row)=}")
+        (
+            _,
+            entry,
+            effector,
+            effector_type,
+            facility,
+            [memberships],
+            [employers],
+            commune,
+            department,
+            country,
+            [tags],
+            [tagcats],
+        ) = row
+        logger.debug(f"> {memberships=}")
+        logger.debug(f">> {tags=}")
+        logger.debug(f">>> {tagcats=}")
+        address = get_address(facility,commune,country)
+        avatar = await async_get_avatar_url(entry=entry)
         memberships_uids = node_uids(memberships) if memberships else []
         if memberships:
             logger.debug(f"********\n-------> {effector.name_fr=} {memberships=}\n********")

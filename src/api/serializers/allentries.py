@@ -22,7 +22,7 @@ TTL: int = 60
 async def get_object_list(request):
         directory= await get_directory(request)
         logger.debug(f"{directory=}")
-        nodes = get_entries(directory)
+        nodes = await get_entries(directory)
         logger.debug(f"{nodes[:1] if nodes else []}")
         contacts = createEntryResources(nodes, request)
         return contacts
