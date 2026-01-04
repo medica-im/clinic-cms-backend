@@ -60,7 +60,8 @@ class EntryObj(object):
             avatar,
             memberships,
             employers,
-            tags
+            tags,
+            active
         ):
         self.label = label
         self.name = name
@@ -79,6 +80,7 @@ class EntryObj(object):
         self.memberships = memberships
         self.employers = employers
         self.tags = tags
+        self.active = active
 
 def createEntryResource(node):
     entry=node["entry"]
@@ -149,6 +151,7 @@ def createEntryResource(node):
     except Exception as e:
         logger.error(e)
         tags = None
+    active=entry.active
 
     entry = EntryObj(
         label,
@@ -167,7 +170,8 @@ def createEntryResource(node):
         avatar,
         memberships,
         employers,
-        tags
+        tags,
+        active
     )
     return entry
 
@@ -184,6 +188,7 @@ def createEntryResources(nodes: list, request):
 
 class EntryResource(Resource):
     uid = fields.CharField(attribute='uid')
+    active = fields.BooleanField(attribute='active', null=True)
     effector_uid = fields.CharField(attribute='effector_uid')
     label = fields.CharField(attribute='label')
     name = fields.CharField(attribute='name')
