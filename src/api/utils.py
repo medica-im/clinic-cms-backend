@@ -83,8 +83,8 @@ def strip_slash(path):
     if path[-1] == '/':
         path = path[:-1]
 
-def generate_cache_key(api_version, request):
-        site=sync_get_site_from_request(request)
+async def generate_cache_key(api_version, request):
+        site= await get_site_from_request(request)
         domain=site.domain
         path = request.scope['root_path'] + request.scope['route'].path
         path = strip_slash(path)
