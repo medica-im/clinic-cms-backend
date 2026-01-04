@@ -6,7 +6,7 @@ class Commune(BaseModel):
     uid: str
     name: str
     slug: str
-    wikidata: str
+    wikidata: str|None=None
 
 
 class Department(BaseModel):
