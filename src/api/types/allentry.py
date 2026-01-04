@@ -6,7 +6,6 @@ from api.types.phones import Phone
 class Commune(BaseModel):
     uid: str
     name: str
-    code: str
     slug: str
     wikidata: str
 
@@ -62,7 +61,7 @@ class Entry(BaseModel):
     effector_type: EffectorType
     employers: list[str]|None
     memberships: list[str]|None = None
-    gender: str
+    gender: str|None = None
     label: str
     name: str
     slug: str
