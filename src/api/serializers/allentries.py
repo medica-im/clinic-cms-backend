@@ -206,6 +206,8 @@ def process(entries):
         scrubbed_entries = []
         for entry in entries:
             phones = entry.phones
+            if not phones:
+                continue
             phones = [
                 phone
                 for phone in phones
