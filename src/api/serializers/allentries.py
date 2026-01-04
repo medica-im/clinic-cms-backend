@@ -205,7 +205,7 @@ def process(entries):
     for r in ["staff", "anonymous"]:
         scrubbed_entries = []
         for entry in entries:
-            phones = entry[phones]
+            phones = entry["phones"]
             phones = [
                 phone
                 for phone in phones
