@@ -1,11 +1,9 @@
 from directory.models import Directory, InputField, Setting, Timestamp
 from rest_framework import serializers
 import langcodes
-from adrf.serializers import Serializer, ListSerializer
 from langcodes import Language
 from django.utils.translation import get_language
 from django.conf import settings
-from fastapi import HTTPException, status
 import logging
 
 logger=logging.getLogger(__name__)
@@ -20,47 +18,6 @@ def display_tag_name(tag: str, language: str = settings.LANGUAGE_CODE)->str|None
             return display_name
         except:
             return
-
-
-
-class AsyncTagSerializer(Serializer):
-    uid = serializers.CharField()
-    name = serializers.CharField()
-    label = serializers.CharField()
-    labelShort = serializers.CharField()
-    category = serializers.DictField()
-    effector_types = serializers.ListField()
-
-    async def ato_representation(self, instance):
-        effector_types=None
-        category=None
-        try:
-            categories = await instance.tag_category.all()
-            try:
-                category = categories[0]
-            except:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-                    detail=f"Tag {instance} not linked to any category"
-                )
-            try:
-                effector_types=[_type.uid for _type in await category.effector_type.all()]
-            except Exception as e:
-                    logger.error(e)
-        except Exception as e:
-            logger.error(e)
-        return {
-            "uid": instance.uid,
-            "name": instance.name,
-            "label": instance.label,
-            "labelShort": instance.labelShort,
-            "category": {
-                "name": category.name,
-                "label": category.label,
-                "labelShort": category.labelShort,
-            },
-            "effector_types": effector_types
-        }
 
 
 class TagSerializer(serializers.BaseSerializer):

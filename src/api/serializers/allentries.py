@@ -1,5 +1,6 @@
 import logging
-from fastapi import Request
+from fastapi import Request, HTTPException, status
+
 from django.core.cache import cache
 from django.conf import settings
 from api.utils import (
@@ -13,19 +14,59 @@ from directory.utils import (
     get_entries,
     async_get_phones_neomodel,
 )
-
+from adrf.serializers import Serializer
+from rest_framework import serializers
 from directory.models.core import sync_set_timestamp, Label
 from directory.tasty.communes import createCommuneResources
 from directory.tasty.types import (
     createEffectorTypeResources
 )
-from directory.serializers import AsyncTagSerializer
 
 API_VERSION="v2"
 
 logger=logging.getLogger(__name__)
 
 TTL: int = 60
+
+class AsyncTagSerializer(Serializer):
+    uid = serializers.CharField()
+    name = serializers.CharField()
+    label = serializers.CharField()
+    labelShort = serializers.CharField()
+    category = serializers.DictField()
+    effector_types = serializers.ListField()
+
+    async def ato_representation(self, instance):
+        effector_types=None
+        category=None
+        try:
+            categories = await instance.tag_category.all()
+            try:
+                category = categories[0]
+            except:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                    detail=f"Tag {instance} not linked to any category"
+                )
+            try:
+                effector_types=[_type.uid for _type in await category.effector_type.all()]
+            except Exception as e:
+                    logger.error(e)
+        except Exception as e:
+            logger.error(e)
+        return {
+            "uid": instance.uid,
+            "name": instance.name,
+            "label": instance.label,
+            "labelShort": instance.labelShort,
+            "category": {
+                "name": category.name,
+                "label": category.label,
+                "labelShort": category.labelShort,
+            },
+            "effector_types": effector_types
+        }
+
 
 async def flex_effector_type_label(
         effector,
