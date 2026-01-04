@@ -91,10 +91,17 @@ async def generate_cache_key(api_version, request):
         cache_key = "%s:%s:%s" % (api_version, path, domain)
         return cache_key
 
-def get_directory(request):
+def sync_get_directory(request):
     site = sync_get_site_from_request(request)
     try:
         return Directory.objects.get(site=site)
+    except Directory.DoesNotExist:
+        raise Directory.DoesNotExist
+
+async def get_directory(request):
+    site = await get_site_from_request(request)
+    try:
+        return await Directory.objects.aget(site=site)
     except Directory.DoesNotExist:
         raise Directory.DoesNotExist
 

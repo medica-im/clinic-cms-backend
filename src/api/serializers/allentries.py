@@ -19,14 +19,13 @@ logger=logging.getLogger(__name__)
 
 TTL: int = 60
 
-def get_object_list(request):
-        directory=get_directory(request)
+async def get_object_list(request):
+        directory= await get_directory(request)
         logger.debug(f"{directory=}")
         nodes = get_entries(directory)
         logger.debug(f"{nodes[:1] if nodes else []}")
         contacts = createEntryResources(nodes, request)
         return contacts
-
 
 async def get_all_entries(request: Request, jwt, role: str):
     cache_key = await generate_cache_key(
@@ -39,7 +38,7 @@ async def get_all_entries(request: Request, jwt, role: str):
         return cached
     else:
         logger.warning(f"cache for key '{cache_key}' is *** EMPTY ***")
-        value = get_object_list(request)
+        value = await get_object_list(request)
         timeout = get_ttl(API_VERSION, request) or TTL
         logger.debug(f"{timeout=}")
         cache.set(
