@@ -18,5 +18,5 @@ def check_cookie_jwt(request: Request):
 
 
 @router.get("/entries")
-async def entries(req: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> list[Entry]:
+def entries(req: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> list[Entry]:
     return get_all_entries(req)
