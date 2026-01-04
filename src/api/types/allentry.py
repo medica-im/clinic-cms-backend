@@ -25,9 +25,9 @@ class EffectorType(BaseModel):
 
 class Facility(BaseModel):
     uid: str
-    label: str
-    name: str
-    slug: str
+    label: str|None = None
+    name: str|None = None
+    slug: str|None = None
 
 
 class TagCategory(BaseModel):
