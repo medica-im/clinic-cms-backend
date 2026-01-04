@@ -198,10 +198,38 @@ async def get_object_list(request):
         contacts = await createEntryResources(nodes, request)
         return contacts
 
+def process(entries):
+    scrubbed_entries_dct = {
+        "administrator": entries
+    }
+    for r in ["staff", "anonymous"]:
+        scrubbed_entries = []
+        for entry in entries:
+            phones = entry[phones]
+            phones = [
+                phone
+                for phone in phones
+                if (r in [role["name"] for role in phone["roles"]])
+            ]
+            entry["phones"]=phones
+            scrubbed_entries.append(entry)
+        scrubbed_entries_dct[r]=scrubbed_entries
+    return scrubbed_entries_dct
+
+def normalize_role(role):
+    if role == "registered":
+        return "anonymous"
+    elif role == "superuser":
+        return "administrator"
+    else:
+        return role
+
 async def get_all_entries(request: Request, jwt, role: str):
+    role = normalize_role(role)
     cache_key = await generate_cache_key(
         API_VERSION,
-        request
+        request,
+        role
     )
     cached = cache.get(cache_key)
     if cached:
@@ -209,16 +237,23 @@ async def get_all_entries(request: Request, jwt, role: str):
         return cached
     else:
         logger.warning(f"cache for key '{cache_key}' is *** EMPTY ***")
-        value = await get_object_list(request)
+        raw = await get_object_list(request)
         timeout = await get_ttl(API_VERSION, request) or TTL
         logger.debug(f"{timeout=}")
-        cache.set(
-            cache_key,
-            value,
-            timeout=timeout
-        )
+        scrubbed_entries_dct = process(raw)
+        for r in scrubbed_entries_dct.keys():
+            cache_key = await generate_cache_key(
+                API_VERSION,
+                request,
+                r
+            )       
+            cache.set(
+                cache_key,
+                scrubbed_entries_dct[r],
+                timeout=timeout
+            )
         path = request.scope['root_path'] + request.scope['route'].path
         endpoint = "%s:%s" % (API_VERSION, path)
         site = await get_site_from_request(request)
         await set_timestamp(endpoint, site)
-        return value
+        return scrubbed_entries_dct[role]
