@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Any
 from api.types.fullentry import Address, Avatar
-from api.types.phones import Phone
 
 class Commune(BaseModel):
     uid: str
@@ -43,6 +42,20 @@ class Tag(BaseModel):
     labelShort: str
     name: str
     uid: str
+
+
+class Role(BaseModel):
+	id: int
+	name: str
+	label: str
+	description: str
+
+
+class Phone(BaseModel):
+    id: int
+    type: str
+    phone: str
+    roles: list[Role]
 
 
 class Entry(BaseModel):
