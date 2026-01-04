@@ -41,7 +41,12 @@ async def flex_effector_type_label(
     except Label.DoesNotExist as e:
         logger.error(e)
         effector_type_label=None
-    effector_type.label = effector_type_label or effector_type.name
+    try:
+        name = effector_type.name
+    except Exception as e:
+        logger.error(e)
+        name=None
+    effector_type.label = effector_type_label or name
     return effector_type
 
 
@@ -127,7 +132,8 @@ async def createEntryResource(node):
     )
     effector_uid = effector_node.uid
     type_object = createEffectorTypeResources(node["effector_type"])
-    type_object = await flex_effector_type_label(effector_node, type_object)
+    effector_type_label = await flex_effector_type_label(effector_node, type_object)
+    type_object.label = effector_type_label or type_object.label or type_object.name
     effector_type=type_object.__dict__
     phones = await async_get_phones_neomodel(
         e=effector_node,
