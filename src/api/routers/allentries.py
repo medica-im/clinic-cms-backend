@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 def check_cookie_jwt(request: Request):
-    if not request.cookies.get('__Secure-authjs.session-token') or not request.cookies.get('authjs.session-token'):
+    if not request.cookies.get('__Secure-authjs.session-token') and not request.cookies.get('authjs.session-token'):
         return "anonymous"
     else:
         return JWT(req=request)
