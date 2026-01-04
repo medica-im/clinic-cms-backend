@@ -176,7 +176,7 @@ async def get_object_list(request):
         logger.debug(f"{directory=}")
         nodes = await get_entries(directory)
         logger.debug(f"{nodes[:1] if nodes else []}")
-        contacts = createEntryResources(nodes, request)
+        contacts = await createEntryResources(nodes, request)
         return contacts
 
 async def get_all_entries(request: Request, jwt, role: str):
