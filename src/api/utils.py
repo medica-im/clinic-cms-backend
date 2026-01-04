@@ -82,6 +82,7 @@ def strip_slash(path):
         path = path[1:]
     if path[-1] == '/':
         path = path[:-1]
+    return path
 
 async def generate_cache_key(api_version: str, request: Request, role:str|None=None):
         site = await get_site_from_request(request)
