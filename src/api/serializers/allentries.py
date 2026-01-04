@@ -191,7 +191,7 @@ async def get_all_entries(request: Request, jwt, role: str):
     else:
         logger.warning(f"cache for key '{cache_key}' is *** EMPTY ***")
         value = await get_object_list(request)
-        timeout = get_ttl(API_VERSION, request) or TTL
+        timeout = await get_ttl(API_VERSION, request) or TTL
         logger.debug(f"{timeout=}")
         cache.set(
             cache_key,
