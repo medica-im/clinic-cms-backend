@@ -79,4 +79,4 @@ class Entry(BaseModel):
     name: str
     slug: str
     phones: list[Phone]|None
-    tags: list[Tag]
+    tags: list[Tag]|None = None
