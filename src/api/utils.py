@@ -105,12 +105,12 @@ async def get_directory(request):
     except Directory.DoesNotExist:
         raise Directory.DoesNotExist
 
-def get_ttl(api_version: str, request):
+async def get_ttl(api_version: str, request):
     path = request.scope['root_path'] + request.scope['route'].path
     endpoint = "%s:%s" % (api_version, path)
-    site = sync_get_site_from_request(request)
+    site = await get_site_from_request(request)
     try:
-        ttl_obj = TTL.objects.filter(endpoint__name=endpoint,site=site).first()
+        ttl_obj = await TTL.objects.filter(endpoint__name=endpoint,site=site).afirst()
     except TTL.DoesNotExist:
         return
     if ttl_obj:
