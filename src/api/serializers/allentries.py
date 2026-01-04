@@ -11,9 +11,9 @@ from api.utils import (
 from directory.utils import (
     get_entries,
     async_get_phones_neomodel,
-    async_flex_effector_type_label
 )
-from directory.models.core import sync_set_timestamp
+
+from directory.models.core import sync_set_timestamp, Label
 from directory.tasty.communes import createCommuneResources
 from directory.tasty.types import (
     createEffectorTypeResources
@@ -25,6 +25,24 @@ API_VERSION="v2"
 logger=logging.getLogger(__name__)
 
 TTL: int = 60
+
+async def flex_effector_type_label(
+        effector,
+        effector_type,
+    ):
+    try:
+        effector_type_label= await Label.async_get_label(
+            effector_type.uid,
+            effector.gender,
+            "S",
+            settings.LANGUAGE_CODE
+        )
+    except Label.DoesNotExist as e:
+        logger.error(e)
+        effector_type_label=None
+    effector_type.label = effector_type_label or effector_type.name
+    return effector_type
+
 
 class EntryObj(object):
     def __init__ (
@@ -108,7 +126,7 @@ async def createEntryResource(node):
     )
     effector_uid = effector_node.uid
     type_object = createEffectorTypeResources(node["effector_type"])
-    type_object = await async_flex_effector_type_label(effector_node, type_object)
+    type_object = await flex_effector_type_label(effector_node, type_object)
     effector_type=type_object.__dict__
     phones = await async_get_phones_neomodel(
         e=effector_node,
