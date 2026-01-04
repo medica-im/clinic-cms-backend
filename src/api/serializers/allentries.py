@@ -6,7 +6,8 @@ from api.utils import (
     generate_cache_key,
     get_directory,
     get_ttl,
-    sync_get_site_from_request,
+    get_site_from_request,
+    set_timestamp,
 )
 from directory.utils import (
     get_entries,
@@ -218,6 +219,6 @@ async def get_all_entries(request: Request, jwt, role: str):
         )
         path = request.scope['root_path'] + request.scope['route'].path
         endpoint = "%s:%s" % (API_VERSION, path)
-        site = sync_get_site_from_request(request)
-        sync_set_timestamp(endpoint, site)
+        site = await get_site_from_request(request)
+        await set_timestamp(endpoint, site)
         return value
