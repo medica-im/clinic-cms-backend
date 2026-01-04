@@ -3,7 +3,8 @@ import time
 from django.contrib.sites.models import Site
 from access.models import Role
 from fastapi import Request, HTTPException, status
-from directory.models.api import Timestamp, Endpoint
+from directory.models.api import Timestamp, Endpoint, TTL
+from directory.models.core import Directory
 from django.core.cache import cache
 from facility.models import Organization
 from django.db import DatabaseError
@@ -75,3 +76,35 @@ async def clear_cache(endpoint: str, request: Request|None=None):
         deleted = cache.delete(cache_key)
         logger.debug(f"cache {cache_key} {deleted=}")
         await set_timestamp(endpoint, site)
+
+def strip_slash(path):
+    if path[0] == '/':
+        path = path[1:]
+    if path[-1] == '/':
+        path = path[:-1]
+
+def generate_cache_key(api_version, request):
+        site=sync_get_site_from_request(request)
+        domain=site.domain
+        path = request.scope['root_path'] + request.scope['route'].path
+        path = strip_slash(path)
+        cache_key = "%s:%s:%s" % (api_version, path, domain)
+        return cache_key
+
+def get_directory(request):
+    site = sync_get_site_from_request(request)
+    try:
+        return Directory.objects.get(site=site)
+    except Directory.DoesNotExist:
+        raise Directory.DoesNotExist
+
+def get_ttl(api_version: int, request):
+    path = request.scope['root_path'] + request.scope['route'].path
+    endpoint = "%s:%s" % (api_version, path)
+    site = sync_get_site_from_request(request)
+    try:
+        ttl_obj = TTL.objects.filter(endpoint__name=endpoint,site=site).first()
+    except TTL.DoesNotExist:
+        return
+    if ttl_obj:
+        return ttl_obj.ttl

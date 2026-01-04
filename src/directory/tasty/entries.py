@@ -260,7 +260,8 @@ class EntryResource(Resource):
                 value,
                 timeout=timeout
             )
-            sync_set_timestamp(endpoint, bundle.request)
+            site=get_current_site(bundle.request)
+            sync_set_timestamp(endpoint, site)
             return value        
 
     def obj_get(self, bundle, **kwargs):

@@ -5,6 +5,7 @@ Created on Nov 5, 2023
 '''
 from tastypie import fields
 import logging
+from django.contrib.sites.shortcuts import get_current_site
 from common.utils import timeit
 from directory.utils import (
     get_facilities,
@@ -217,7 +218,8 @@ class FacilityResource(Resource):
                 value,
                 timeout=timeout
             )
-            sync_set_timestamp(endpoint, bundle.request)
+            site=get_current_site(bundle.request)
+            sync_set_timestamp(endpoint, site)
             return value
 
     def obj_get(self, bundle, **kwargs):

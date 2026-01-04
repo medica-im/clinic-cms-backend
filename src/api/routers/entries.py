@@ -11,10 +11,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/entries")
-async def entries(effector_type: str|None = None, effector: str|None = None, facility: str|None = None ) -> list[str]:
-    return get_entries(effector_type=effector_type, effector=effector, facility=facility)
-
 @router.get("/entries/{uid}")
 async def entry(uid: str) -> Entry:
     return await get_entry(uid)

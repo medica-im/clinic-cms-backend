@@ -18,6 +18,15 @@ class EntryPatch(BaseModel):
     memberships: list[str]|None = None
 
 
+class EffectorType(BaseModel):
+    uid: str
+    label: str
+    name: str
+    slug: str
+    definition: str|None = None
+    synonyms: list[str]|None = None
+
+
 class Entry(BaseModel):
     uid: str
     active: bool
@@ -26,7 +35,6 @@ class Entry(BaseModel):
     updatedAt: int = 0
     contactUpdatedAt: int = 0
     createdAt: int|None = 0
-    #effector: Any = Field(exclude=True)
     #facility: Any = Field(exclude=True)
     #effector_type: Any = Field(exclude=True)
     #organizations: Any = Field(exclude=True)

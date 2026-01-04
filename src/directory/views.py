@@ -135,5 +135,6 @@ class EffectorTypeLabel(APIView):
                 value,
                 timeout=timeout
             )
-            sync_set_timestamp(endpoint, request)
+            site=get_current_site(request)
+            sync_set_timestamp(endpoint, site)
             return Response(value)

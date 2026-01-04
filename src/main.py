@@ -74,6 +74,8 @@ app.include_router(appointment.router)
 app.include_router(fullentries.router)
 app.include_router(tags.router)
 
+API_VERSION=2
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}

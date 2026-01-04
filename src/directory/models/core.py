@@ -16,11 +16,9 @@ import logging
 
 logger=logging.getLogger(__name__)
 
-def sync_set_timestamp(endpoint_name: str, request=None, site=None):
+def sync_set_timestamp(endpoint_name: str, site):
     # timestamp unit: millisecond
     timestamp = int(time.time_ns()/1000000)
-    if request:
-        site = get_current_site(request)
     try:
         endpoint=Endpoint.objects.get(name=endpoint_name)
     except Endpoint.DoesNotExist as e:
@@ -38,10 +36,9 @@ def sync_clear_all_cache():
     for endpoint in endpoints:
         sync_clear_cache(endpoint)
 
-def sync_clear_cache(endpoint: str, key: str|None=None, request=None):
+def sync_clear_cache(endpoint: str, key: str|None=None, site=None):
     sites: list[Site|RequestSite] = []
-    if request:
-        site = get_current_site(request)
+    if site:
         sites.append(site)
     else:
         for org in Organization.objects.select_related('site').filter(active=True).exclude(site__isnull=True).all():
@@ -54,7 +51,7 @@ def sync_clear_cache(endpoint: str, key: str|None=None, request=None):
         cache_key = key or f"{endpoint}:{site.domain}"
         deleted = cache.delete(cache_key)
         logger.debug(f"cache {cache_key} {deleted=}")
-        sync_set_timestamp(endpoint, site=site)
+        sync_set_timestamp(endpoint, site)
 
 def validate_slug(value):
     if not validate(value):
