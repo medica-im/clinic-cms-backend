@@ -19,7 +19,7 @@ from directory.tasty.communes import createCommuneResources
 from directory.tasty.types import (
     createEffectorTypeResources
 )
-from directory.serializers import AsyncTagsSerializer
+from directory.serializers import AsyncTagSerializer
 
 API_VERSION="v2"
 
@@ -156,7 +156,7 @@ async def createEntryResource(node):
     employers=node["employers"]
     tags = None
     try:
-        serializer = AsyncTagsSerializer(node["tags"], many=True)
+        serializer = AsyncTagSerializer(node["tags"], many=True)
         tags = await serializer.adata
     except Exception as e:
         logger.error(e)

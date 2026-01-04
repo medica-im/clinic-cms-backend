@@ -63,10 +63,6 @@ class AsyncTagSerializer(Serializer):
         }
 
 
-class AsyncTagsSerializer(ListSerializer):
-    child = AsyncTagSerializer()
-
-
 class TagSerializer(serializers.BaseSerializer):
     def to_representation(self, instance):
         effector_types=None
