@@ -33,7 +33,6 @@ def sync_clear_all_cache():
     endpoints = set()
     for ts in Timestamp.objects.all():
         endpoints.add(ts.endpoint.name)
-    logger.debug(endpoints)
     for endpoint in endpoints:
         sync_clear_cache(endpoint)
 
@@ -52,7 +51,6 @@ def sync_clear_cache(endpoint: str, key: str|None=None, site=None):
         cache_keys = [key or f"{endpoint}:{site.domain}"]
         for r in Role.objects.all():
             cache_keys.append(f"{endpoint}:{site.domain}:{r.name}")
-        logger.debug(cache_keys)
         for cache_key in cache_keys:
             if cache.get(cache_key):
                 deleted = cache.delete(cache_key)
