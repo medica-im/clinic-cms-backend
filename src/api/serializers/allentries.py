@@ -271,6 +271,7 @@ def normalize_role(role):
 
 async def get_all_entries(request: Request, jwt, role: str):
     role = normalize_role(role)
+    logger.debug(f"role: {role}")
     cache_key = await generate_cache_key(
         API_VERSION,
         request,
