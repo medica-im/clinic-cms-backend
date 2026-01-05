@@ -183,7 +183,6 @@ class ContactSerializer(serializers.ModelSerializer):
             'socialnetworks',
             'websites',
             'emails',
-            'public_holidays_zone',
         ]
         depth = 3
 
@@ -221,7 +220,8 @@ class ContactSerializer(serializers.ModelSerializer):
             "zoom": facility.zoom,
             "tooltip_direction": facility.tooltip_direction,
             "tooltip_permanent": facility.tooltip_permanent,
-            "tooltip_text": facility.tooltip_text
+            "tooltip_text": facility.tooltip_text,
+            "public_holidays_zone": obj.address.public_holidays_zone,
         }
 
 
