@@ -321,14 +321,10 @@ def get_socialnetworks_neomodel(
 
 async def async_get_socialnetworks_neomodel(
         entry: Entry|None=None,
-        e: Effector | None = None,
-        ef: EffectorFacility | None = None,
         f: Facility | None = None,
     ):
     return await async_get_contact_related_neomodel(
         entry=entry,
-        e=e,
-        ef=ef,
         f=f,
         attribute="socialnetworks",
         Serializer=SocialNetworkSerializer
@@ -336,15 +332,11 @@ async def async_get_socialnetworks_neomodel(
 
 def get_phones_neomodel(
         entry: Entry|None = None,
-        e: Effector | None = None,
-        ef: EffectorFacility | None = None,
-        f: Facility | None = None,
+        #f: Facility | None = None,
     ):
     return get_contact_related_neomodel(
         entry=entry,
-        e=e,
-        ef=ef,
-        f=f,
+        #f=f,
         attribute="phonenumbers",
         Serializer=PhoneNumberSerializer,
         first_hit=True,
