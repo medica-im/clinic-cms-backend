@@ -33,9 +33,6 @@ def sync_clear_all_cache():
     endpoints = set()
     for ts in Timestamp.objects.all():
         endpoints.add(ts.endpoint.name)
-        for r in Role.objects.all():
-            endpoint = ts.endpoint.name + r.name
-            endpoints.add(endpoint)
     logger.debug(endpoints)
     for endpoint in endpoints:
         sync_clear_cache(endpoint)
@@ -52,9 +49,13 @@ def sync_clear_cache(endpoint: str, key: str|None=None, site=None):
     if not sites:
         return
     for site in sites:
-        cache_key = key or f"{endpoint}:{site.domain}"
-        deleted = cache.delete(cache_key)
-        logger.debug(f"cache {cache_key} {deleted=}")
+        cache_keys = [key or f"{endpoint}:{site.domain}"]
+        for r in Role.objects.all():
+            cache_keys.append(f"{endpoint}:{site.domain}:{r.name}")
+        for cache_key in cache_keys:
+            if cache.get(cache_key):
+                deleted = cache.delete(cache_key)
+                logger.debug(f"cache {cache_key} {deleted=}")
         sync_set_timestamp(endpoint, site)
 
 def validate_slug(value):
