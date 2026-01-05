@@ -12,10 +12,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 def check_cookie_jwt(request: Request):
-    if not request.cookies.get('__Secure-authjs.session-token') and not request.cookies.get('authjs.session-token'):
-        return
+    http_cookie = request.cookies.get('__Secure-authjs.session-token')
+    logger.debug(f"{http_cookie=}")
+    https_cookie = request.cookies.get('authjs.session-token')
+    logger.debug(f"{https_cookie=}")
+    if  http_cookie or https_cookie:
+        return JWT(request)
     else:
-        return JWT(req=request)
+        return 
 
 
 @router.get("/entries")
