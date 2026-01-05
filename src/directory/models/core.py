@@ -56,7 +56,9 @@ def sync_clear_cache(endpoint: str, key: str|None=None, site=None):
         for cache_key in cache_keys:
             if cache.get(cache_key):
                 deleted = cache.delete(cache_key)
-                logger.debug(f"cache {cache_key} {deleted=}")
+                logger.warning(
+                    f"\n*** cache {cache_key} {deleted=} ***\n"
+                )
         sync_set_timestamp(endpoint, site)
 
 def validate_slug(value):

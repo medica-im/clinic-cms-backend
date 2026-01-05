@@ -297,7 +297,7 @@ async def get_all_entries(request: Request, jwt, role: str):
                 scrubbed_entries_dct[r],
                 timeout=timeout
             )
-        path = request.scope['root_path'] + request.scope['route'].path
+        path = request.scope['route'].path
         endpoint = "%s:%s" % (API_VERSION, path)
         site = await get_site_from_request(request)
         await set_timestamp(endpoint, site)

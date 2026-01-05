@@ -87,7 +87,7 @@ def strip_slash(path):
 async def generate_cache_key(api_version: str, request: Request, role:str|None=None):
         site = await get_site_from_request(request)
         domain = site.domain
-        path = request.scope['root_path'] + request.scope['route'].path
+        path = request.scope['route'].path
         logger.debug(f"{path=}")
         path = strip_slash(path)
         logger.debug(f"{path=}")
@@ -111,7 +111,8 @@ async def get_directory(request):
         raise Directory.DoesNotExist
 
 async def get_ttl(api_version: str, request):
-    path = request.scope['root_path'] + request.scope['route'].path
+    #path = request.scope['root_path'] + request.scope['route'].path
+    path = request.scope['route'].path
     endpoint = "%s:%s" % (api_version, path)
     site = await get_site_from_request(request)
     try:
