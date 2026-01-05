@@ -6,6 +6,11 @@ from api.types.organization_types import OrganizationTypePy
 from api.types.geography import Commune
 from api.types.fullentry import Address
 
+
+class OrganizationAddress(Address):
+    public_holidays_zone: str
+
+
 class OrganizationPy(BaseModel):
     element_id_property: str = Field(exclude=True)
     uid: str
@@ -23,7 +28,7 @@ class Contact(BaseModel):
     formatted_name: str
     formatted_name_definite_article: str
     url: str
-    address: Address
+    address: OrganizationAddress
     phonenumbers: list[Any]
     socialnetworks: list[Any]
     websites: list[Any]
