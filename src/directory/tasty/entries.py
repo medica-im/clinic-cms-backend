@@ -125,10 +125,7 @@ def createEntryResource(node):
     type_object = createEffectorTypeResources(node["effector_type"])
     type_object = flex_effector_type_label(effector_node, type_object)
     effector_type=type_object.__dict__
-    phones = get_phones_neomodel(
-        e=effector_node,
-        f=node["facility"],
-    )
+    phones = get_phones_neomodel(entry=entry)
     updatedAt = max(
         [
             effector_node.updatedAt,

@@ -175,10 +175,7 @@ async def createEntryResource(node):
     type_object = createEffectorTypeResources(node["effector_type"])
     type_object = await flex_effector_type_label(effector_node, type_object)
     effector_type = type_object.__dict__
-    phones = await async_get_phones_neomodel(
-        e=effector_node,
-        f=node["facility"],
-    )
+    phones = await async_get_phones_neomodel(entry=entry)
     updatedAt = max(
         [
             effector_node.updatedAt,

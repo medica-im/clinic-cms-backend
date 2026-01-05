@@ -108,7 +108,7 @@ def createFacilityResources(request, nodes):
         organizations = [org.uid for org in facility.organization.all()]
         # add entries as organizations
         organizations.extend([entry.uid for entry in facility.organizations.all()])
-        phones = get_phones_neomodel(f=facility)
+        phones = get_phones_neomodel(facility=facility)
         emails = get_emails_neomodel(f=facility)
         websites = get_websites_neomodel(f=facility)
         socialnetworks=get_socialnetworks_neomodel(f=facility)

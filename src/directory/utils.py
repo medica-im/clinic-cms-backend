@@ -332,11 +332,11 @@ async def async_get_socialnetworks_neomodel(
 
 def get_phones_neomodel(
         entry: Entry|None = None,
-        #f: Facility | None = None,
+        facility: Facility|None = None,
     ):
     return get_contact_related_neomodel(
         entry=entry,
-        #f=f,
+        f=facility,
         attribute="phonenumbers",
         Serializer=PhoneNumberSerializer,
         first_hit=True,
@@ -345,15 +345,11 @@ def get_phones_neomodel(
 
 async def async_get_phones_neomodel(
         entry: Entry|None=None,
-        e: Effector | None = None,
-        ef: EffectorFacility | None = None,
-        f: Facility | None = None
+        facility: Facility|None=None,
     ):
     return await async_get_contact_related_neomodel(
         entry=entry,
-        e=e,
-        ef=ef,
-        f=f,
+        f=facility,
         attribute="phonenumbers",
         Serializer=AsyncPhoneNumberModelSerializer,
         first_hit=False,
@@ -1030,12 +1026,7 @@ def entry_dict(results, cols):
     logger.debug(f"{third_party_payers=}")
     logger.debug(f"{effector_type_labels=}")
     address = get_address(facility,commune,country)
-    phones = get_phones_neomodel(
-        entry=entry,
-        e=effector,
-        ef=effector_facility,
-        f=facility
-    )
+    phones = get_phones_neomodel(entry=entry)
     emails = get_emails_neomodel(
         entry=entry,
         e=effector,
