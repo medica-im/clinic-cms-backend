@@ -183,6 +183,7 @@ class ContactSerializer(serializers.ModelSerializer):
             'socialnetworks',
             'websites',
             'emails',
+            'public_holidays_zone',
         ]
         depth = 3
 
