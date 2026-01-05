@@ -321,11 +321,11 @@ def get_socialnetworks_neomodel(
 
 async def async_get_socialnetworks_neomodel(
         entry: Entry|None=None,
-        f: Facility | None = None,
+        facility: Facility | None = None,
     ):
     return await async_get_contact_related_neomodel(
         entry=entry,
-        f=f,
+        f=facility,
         attribute="socialnetworks",
         Serializer=SocialNetworkSerializer
     )
@@ -1127,9 +1127,7 @@ async def async_entry_dict(results, cols):
     websites = await async_get_websites_neomodel(entry)
     socialnetworks = await async_get_socialnetworks_neomodel(
         entry=entry,
-        e=effector,
-        ef=effector_facility,
-        f=facility
+        facility=facility
     )
     appointments = appointments_from_neomodel(
         entry=entry.uid,
