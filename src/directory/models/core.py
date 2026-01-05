@@ -12,6 +12,7 @@ from facility.models import Organization
 from directory.models.api import Timestamp, Endpoint
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.cache import cache
+from access.models import Role
 import logging
 
 logger=logging.getLogger(__name__)
@@ -32,6 +33,9 @@ def sync_clear_all_cache():
     endpoints = set()
     for ts in Timestamp.objects.all():
         endpoints.add(ts.endpoint.name)
+        for r in Role.objects.all():
+            endpoint = ts.endpoint.name + r.name
+            endpoints.add(endpoint)
     logger.debug(endpoints)
     for endpoint in endpoints:
         sync_clear_cache(endpoint)
