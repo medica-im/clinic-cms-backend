@@ -8,6 +8,7 @@ from access.models import Role
 from api.types.phones import Phone, PhonePost
 from api.auth import JWT
 from api.auth import authorize_api
+from api.utils import clear_cache
 
 logger = logging.getLogger(__name__)
 
@@ -87,4 +88,5 @@ async def create_item(item: PhonePost, request: Request, jwt: Annotated[dict, De
     if roles:
         await phone_number.roles.aset(roles)
     i['id']=phone_number.pk
+    await clear_cache('v2:entries', request)
     return i
