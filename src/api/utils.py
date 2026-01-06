@@ -114,6 +114,7 @@ async def get_ttl(api_version: str, request):
     #path = request.scope['root_path'] + request.scope['route'].path
     path = request.scope['route'].path
     endpoint = "%s:%s" % (api_version, path)
+    logger.debug(f"{endpoint=}")
     site = await get_site_from_request(request)
     try:
         ttl_obj = await TTL.objects.filter(endpoint__name=endpoint,site=site).afirst()
