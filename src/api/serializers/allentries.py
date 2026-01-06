@@ -292,7 +292,8 @@ async def get_all_entries(request: Request, jwt, role: str):
                 API_VERSION,
                 request,
                 r
-            )       
+            )
+            logger.debug(f"setting cache: role {r}, {cache_key}")
             cache.set(
                 cache_key,
                 scrubbed_entries_dct[r],

@@ -170,7 +170,6 @@ class ContactSerializer(serializers.ModelSerializer):
     emails = EmailSerializer(read_only=True, many=True)
     address = serializers.SerializerMethodField()
 
-
     class Meta:
         model = Contact
         fields = [
