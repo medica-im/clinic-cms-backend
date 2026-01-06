@@ -32,7 +32,6 @@ class OrganizationSerializer(serializers.ModelSerializer):
     department = serializers.SerializerMethodField()
 
     def get_department(self, obj):
-        logger.debug(f"{obj.neomodel_uid=}")
         try:
             entry = Entry.nodes.get(uid=obj.neomodel_uid.hex)
         except Exception as e:
@@ -40,12 +39,10 @@ class OrganizationSerializer(serializers.ModelSerializer):
             return
         try:
             facility = entry.facility.all()[0]
-            logger.debug(f"{facility=}")
         except Exception as e:
             logger.error(f"{e}")
         try:
             commune = facility.commune.all()[0]
-            logger.debug(f"{commune=}")
         except Exception as e:
             logger.error(e)
         try:
