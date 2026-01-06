@@ -76,7 +76,7 @@ async def clear_cache(endpoint: str, request: Request|None=None):
         cache_key = f"{endpoint}:{site.domain}"
         cache_keys.append(cache_key)
         async for r in Role.objects.all():
-            cache_keys.append(f"{cache_key}:r.name")
+            cache_keys.append(f"{cache_key}:{r.name}")
         for cache_key in cache_keys:
             deleted = cache.delete(cache_key)
             if deleted:
