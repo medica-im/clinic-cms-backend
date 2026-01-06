@@ -246,15 +246,18 @@ def process(entries):
         "administrator": entries
     }
     for r in ["staff", "anonymous"]:
+        logger.debug(r)
         scrubbed_entries = []
         for entry in entries:
             phones = entry.phones
+            logger.debug(phones)
             if phones:
                 new_phones = [
                     phone
                     for phone in phones
                     if (r in [role["name"] for role in phone["roles"]])
                 ]
+                logger.debug(new_phones)
                 entry.phones=new_phones
             scrubbed_entries.append(entry)
         scrubbed_entries_dct[r]=scrubbed_entries
