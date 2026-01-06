@@ -249,9 +249,9 @@ def process(entries):
         logger.debug(r)
         scrubbed_entries = []
         for entry in entries:
-            phones = entry.phones
-            logger.debug([(phone["phone"], [r["name"] for r in phone["roles"]]) for phone in phones])
+            phones = entry.phones            
             if phones:
+                logger.debug([(phone["phone"], [r["name"] for r in phone["roles"]]) for phone in phones])
                 phones_count=len(phones)
                 new_phones = [
                     phone
