@@ -249,14 +249,13 @@ def process(entries):
         scrubbed_entries = []
         for entry in entries:
             phones = entry.phones
-            if not phones:
-                continue
-            phones = [
-                phone
-                for phone in phones
-                if (r in [role["name"] for role in phone["roles"]])
-            ]
-            entry.phones=phones
+            if phones:
+                phones = [
+                    phone
+                    for phone in phones
+                    if (r in [role["name"] for role in phone["roles"]])
+                ]
+                entry.phones=phones
             scrubbed_entries.append(entry)
         scrubbed_entries_dct[r]=scrubbed_entries
     return scrubbed_entries_dct
