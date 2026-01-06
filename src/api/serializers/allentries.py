@@ -250,12 +250,12 @@ def process(entries):
         for entry in entries:
             phones = entry.phones
             if phones:
-                phones = [
+                new_phones = [
                     phone
                     for phone in phones
                     if (r in [role["name"] for role in phone["roles"]])
                 ]
-                entry.phones=phones
+                entry.phones=new_phones
             scrubbed_entries.append(entry)
         scrubbed_entries_dct[r]=scrubbed_entries
     return scrubbed_entries_dct
