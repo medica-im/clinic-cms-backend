@@ -245,7 +245,6 @@ async def async_get_profile_neomodel(entry: Entry, e: Effector, ef: EffectorFaci
 def appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment):
     def get_location(node: Appointment):
         labels = node.labels()
-        logger.debug(f"{labels=}")
         if 'HouseCall' in labels:
             return 'house_call'
         elif 'Office' in labels:
@@ -254,7 +253,6 @@ def appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment)
             return None
     if not nodes or nodes==[[]]:
         return None
-    logger.debug(f"appointment {nodes=}")
     if type(nodes) in [Appointment, Office, HouseCall]:
         nodes = [nodes]
     data = [
@@ -522,12 +520,10 @@ def get_address(facility: Facility, commune: Commune, country: Country):
 
 def node_uids(entries):
     if entries and not isinstance(entries, list):
-        logger.debug("entries is not a list")
         entries=[entries]
     try:
         return [entry.uid for entry in entries]
     except Exception as e:
-        logger.debug(f"nodes_uids Exception: {e}")
         return []
 
 def get_effector_nodes(
@@ -747,10 +743,9 @@ def sync_get_entries(
     ):
     query = get_entries_query(directory, uid=uid, active=active)
     results, _meta = db.cypher_query(query, resolve_objects = True)
-    logger.debug(f"{results[:2]=} {len(results)=}")
+    logger.debug(f"{results[:1]=} {len(results)=}")
     entries=[]
     for row in results:
-        logger.debug(f"number of columns:{len(row)=}")
         (
             _,
             entry,
@@ -765,14 +760,14 @@ def sync_get_entries(
             [tags],
             [tagcats],
         ) = row
-        logger.debug(f"> {memberships=}")
-        logger.debug(f">> {tags=}")
-        logger.debug(f">>> {tagcats=}")
+        #logger.debug(f"> {memberships=}")
+        #logger.debug(f">> {tags=}")
+        #logger.debug(f">>> {tagcats=}")
         address = get_address(facility,commune,country)
         avatar=get_avatar_url(entry=entry)
         memberships_uids = node_uids(memberships) if memberships else []
-        if memberships:
-            logger.debug(f"********\n-------> {effector.name_fr=} {memberships=}\n********")
+        #if memberships:
+        #    logger.debug(f"********\n-------> {effector.name_fr=} {memberships=}\n********")
         employers = node_uids(employers) if employers else []
         entries.append(
             {
@@ -790,7 +785,6 @@ def sync_get_entries(
                 "tagcats": tagcats
             }
         )
-    logger.debug(f"{len(entries)=}\n{entries[:2]=}")
     return entries
 
 async def get_entries(
@@ -800,10 +794,9 @@ async def get_entries(
     ):
     query = get_entries_query(directory, uid=uid, active=active)
     results, _meta = await adb.cypher_query(query, resolve_objects = True)
-    logger.debug(f"{results[:2]=} {len(results)=}")
+    logger.debug(f"{results[:1]=} {len(results)=}")
     entries=[]
     for row in results:
-        logger.debug(f"number of columns:{len(row)=}")
         (
             _,
             entry,
@@ -818,14 +811,14 @@ async def get_entries(
             [tags],
             [tagcats],
         ) = row
-        logger.debug(f"> {memberships=}")
-        logger.debug(f">> {tags=}")
-        logger.debug(f">>> {tagcats=}")
+        #logger.debug(f"> {memberships=}")
+        #logger.debug(f">> {tags=}")
+        #logger.debug(f">>> {tagcats=}")
         address = get_address(facility,commune,country)
         avatar = await async_get_avatar_url(entry=entry)
         memberships_uids = node_uids(memberships) if memberships else []
-        if memberships:
-            logger.debug(f"********\n-------> {effector.name_fr=} {memberships=}\n********")
+        #if memberships:
+        #    logger.debug(f"********\n-------> {effector.name_fr=} {memberships=}\n********")
         employers = node_uids(employers) if employers else []
         entries.append(
             {
@@ -997,13 +990,13 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
         RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats;"""
 
 def entry_dict(results, cols):
-    logger.debug(f"{results=} {len(results)=}")
+    logger.debug(f"{results[:1]=} {len(results)=}")
     try:
         row=results[0]
     except Exception as e:
         logger.error(e)
         return
-    logger.debug(f"{row=} {len(row)=}")
+    #logger.debug(f"{row=} {len(row)=}")
     [
         entry,
         effector_type,
@@ -1021,10 +1014,10 @@ def entry_dict(results, cols):
         [tags],
         [tagcats]
     ] = row
-    logger.debug(f"{entry=}")
-    logger.debug(f"{appointment_nodes=}")
-    logger.debug(f"{third_party_payers=}")
-    logger.debug(f"{effector_type_labels=}")
+    #logger.debug(f"{entry=}")
+    #logger.debug(f"{appointment_nodes=}")
+    #logger.debug(f"{third_party_payers=}")
+    #logger.debug(f"{effector_type_labels=}")
     address = get_address(facility,commune,country)
     phones = get_phones_neomodel(entry=entry)
     emails = get_emails_neomodel(
@@ -1112,11 +1105,10 @@ async def async_entry_dict(results, cols):
         try:
             appointment_nodes = [Appointment.inflate(a)]
         except Exception as e:
-            logger.debug(e)
+            logger.error(e)
             appointment_nodes = None
     else:
         appointment_nodes = None
-    logger.debug(f"{appointment_nodes=}")
     phones = await async_get_phones_neomodel(entry=entry)
     emails = await async_get_emails_neomodel(
         entry=entry,

@@ -77,6 +77,7 @@ async def clear_cache(endpoint: str, request: Request|None=None):
         cache_keys.append(cache_key)
         async for r in Role.objects.all():
             cache_keys.append(f"{cache_key}:{r.name}")
+        logger.debug(f"{cache_keys=}")
         for cache_key in cache_keys:
             deleted = cache.delete(cache_key)
             if deleted:
