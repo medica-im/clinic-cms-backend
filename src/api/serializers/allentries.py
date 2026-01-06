@@ -250,6 +250,7 @@ def process(entries):
         scrubbed_entries = []
         for entry in entries:
             phones = entry.phones
+            phones_count=len(phones)
             logger.debug(phones)
             if phones:
                 new_phones = [
@@ -258,6 +259,9 @@ def process(entries):
                     if (r in [role["name"] for role in phone["roles"]])
                 ]
                 logger.debug(new_phones)
+                new_phones_count=len(new_phones)
+                if new_phones_count != phones_count:
+                    logger.debug(f"{phones_count-new_phones_count} phone(s) removed!")
                 entry.phones=new_phones
             scrubbed_entries.append(entry)
         scrubbed_entries_dct[r]=scrubbed_entries
