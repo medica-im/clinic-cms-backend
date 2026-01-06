@@ -72,9 +72,15 @@ async def clear_cache(endpoint: str, request: Request|None=None):
             if site:
                 sites.append(site)
     for site in sites:
+        cache_keys = []
         cache_key = f"{endpoint}:{site.domain}"
-        deleted = cache.delete(cache_key)
-        logger.debug(f"cache {cache_key} {deleted=}")
+        cache_keys.append(cache_key)
+        async for r in Role.objects.all():
+            cache_keys.append(f"{cache_key}:r.name")
+        for cache_key in cache_keys:
+            deleted = cache.delete(cache_key)
+            if deleted:
+                logger.debug(f"cache {cache_key} {deleted=}")
         await set_timestamp(endpoint, site)
 
 def strip_slash(path):
