@@ -250,10 +250,10 @@ def make_evil_twins(entries):
     twin_dct={}
     for r in ["administrator","staff", "anonymous"]:
         twin = entries[0]
-        twin["uuid"]=uid_dct[r]
-        twin["label"]=r
-        twin["name"]=r
-        twin["slug"]=r
+        twin.uuid=uid_dct[r]
+        twin.label=r
+        twin.name=r
+        twin.slug=r
         twin_dct[r]=twin
     return twin_dct
 
