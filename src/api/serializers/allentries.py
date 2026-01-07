@@ -1,4 +1,5 @@
 import logging
+import copy
 from fastapi import Request, HTTPException, status
 
 from django.core.cache import cache
@@ -259,11 +260,10 @@ def make_evil_twins(entries):
 
 def process(entries):
     scrub_dct = {
-        "administrator": entries
+        "administrator": copy.deepcopy(entries)
     }
     for r in ["staff", "anonymous"]:
         logger.debug(f"\n{'*'*(len(r)+4)}\n* {r} *\n{'*'*(len(r)+4)}")
-        scrubbed_entries = []
         for entry in entries:
             phones = entry.phones            
             if phones:
@@ -280,15 +280,12 @@ def process(entries):
                     logger.debug([(phone["phone"], [r["name"] for r in phone["roles"]]) for phone in new_phones])
                     logger.debug([(phone["phone"], [r["name"] for r in phone["roles"]]) for phone in phones])
                     
-                entry.phones=new_phones
-            scrubbed_entries.append(entry)
-        scrub_dct[r]=scrubbed_entries
+                entry.phones = new_phones
+        scrub_dct[r]=copy.deepcopy(entries)
     if settings.DEBUG:
         twins: dict = make_evil_twins(entries)
         for r in twins.keys():
-            _entries = scrub_dct[r]
-            _entries.insert(0, twins[r])
-            scrub_dct[r] = _entries
+            scrub_dct[r].insert(0, twins[r])
     return scrub_dct
 
 def normalize_role(role):
