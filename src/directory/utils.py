@@ -836,7 +836,7 @@ async def get_entries(
                 "tagcats": tagcats
             }
         )
-    logger.debug(f"{len(entries)=}\n{entries[:2]=}")
+    logger.debug(f"{len(entries)=}\n{entries[0]=}")
     return entries
 
 def get_location_uids(effector_uids):

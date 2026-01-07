@@ -262,7 +262,7 @@ def process(entries):
         "administrator": entries
     }
     for r in ["staff", "anonymous"]:
-        logger.debug(f"{'*'*(len(r)+4)}\n* {r} *\n {'*'*(len(r)+4)}")
+        logger.debug(f"\n{'*'*(len(r)+4)}\n* {r} *\n{'*'*(len(r)+4)}")
         scrubbed_entries = []
         for entry in entries:
             phones = entry.phones            
