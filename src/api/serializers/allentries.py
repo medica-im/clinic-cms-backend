@@ -259,8 +259,9 @@ def make_evil_twins(entries):
     return twin_dct
 
 def process(entries):
+    administrator = copy.deepcopy(entries)
     scrub_dct = {
-        "administrator": copy.deepcopy(entries)
+        "administrator": administrator 
     }
     for r in ["staff", "anonymous"]:
         logger.debug(f"\n{'*'*(len(r)+4)}\n* {r} *\n{'*'*(len(r)+4)}")
@@ -281,11 +282,16 @@ def process(entries):
                     logger.debug([(phone["phone"], [r["name"] for r in phone["roles"]]) for phone in phones])
                     
                 entry.phones = new_phones
-        scrub_dct[r]=copy.deepcopy(entries)
+        current_entries=copy.deepcopy(entries)
+        scrub_dct[r]=current_entries
     if settings.DEBUG:
         twins: dict = make_evil_twins(entries)
         for r in twins.keys():
-            scrub_dct[r].insert(0, twins[r])
+            logger.debug(f"\ninserting {r} twin:\n{twins[r]}")
+            entries = scrub_dct[r]
+            logger.debug(f"scrub_dct[{r}] has {len(scrub_dct[r])} entries.")
+            entries.insert(0, twins[r])
+            logger.debug(f"scrub_dct[{r}] now has {len(scrub_dct[r])} entries.")
     return scrub_dct
 
 def normalize_role(role):
@@ -320,7 +326,7 @@ async def get_all_entries(request: Request, jwt, role: str):
                 request,
                 r
             )
-            logger.debug(f"setting cache: role {r}, {cache_key}")
+            logger.debug(f"\nsetting cache\nrole: {r}\nkey: {cache_key}\n1st entry: {scrubbed_entries_dct[r][0]}\n{timeout=}")
             cache.set(
                 cache_key,
                 scrubbed_entries_dct[r],
