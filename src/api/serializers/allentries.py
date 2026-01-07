@@ -250,7 +250,7 @@ def make_evil_twins(entries):
     }
     twin_dct={}
     for r in ["administrator","staff", "anonymous"]:
-        twin = entries[0]
+        twin = copy.deepcopy(entries[0])
         twin.uuid=uid_dct[r]
         twin.label=r
         twin.name=r
@@ -326,7 +326,7 @@ async def get_all_entries(request: Request, jwt, role: str):
                 request,
                 r
             )
-            logger.debug(f"\nsetting cache\nrole: {r}\nkey: {cache_key}\n1st entry: {scrubbed_entries_dct[r][0]}\n{timeout=}")
+            logger.debug(f"\nsetting cache\nrole: {r}\nkey: {cache_key}\n1st entry: {scrubbed_entries_dct[r][0].__dict__}\n{timeout=}")
             cache.set(
                 cache_key,
                 scrubbed_entries_dct[r],
