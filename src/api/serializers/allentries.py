@@ -241,8 +241,24 @@ async def get_object_list(request):
         contacts = await createEntryResources(nodes, request)
         return contacts
 
+def make_evil_twins(entries):
+    uid_dct = {
+        "administrator": "00000000-0000-4000-8000-000000000000",
+        "staff": "00000000-0000-4000-8000-000000000001",
+        "anonymous": "00000000-0000-4000-8000-000000000002"
+    }
+    twin_dct={}
+    for r in ["administrator","staff", "anonymous"]:
+        twin = entries[0]
+        twin["uuid"]=uid_dct[r]
+        twin["label"]=r
+        twin["name"]=r
+        twin["slug"]=r
+        twin_dct[r]=twin
+    return twin_dct
+
 def process(entries):
-    scrubbed_entries_dct = {
+    scrub_dct = {
         "administrator": entries
     }
     for r in ["staff", "anonymous"]:
@@ -264,8 +280,14 @@ def process(entries):
                     logger.debug(f"{phones_count-new_phones_count} phone(s) removed!")
                 entry.phones=new_phones
             scrubbed_entries.append(entry)
-        scrubbed_entries_dct[r]=scrubbed_entries
-    return scrubbed_entries_dct
+        scrub_dct[r]=scrubbed_entries
+    if settings.DEBUG:
+        twins: dict = make_evil_twins(entries)
+        for r in twins.keys():
+            entries = scrub_dct[r]
+            entries.insert(0, twins[r])
+            scrub_dct[r] = entries
+    return scrub_dct
 
 def normalize_role(role):
     if role == "registered":
