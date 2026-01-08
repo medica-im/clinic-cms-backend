@@ -96,7 +96,7 @@ async def flex_effector_type_label(
     return effector_type
 
 async def createEntryResource(node):
-    entry=node["entry"]
+    entry = node["entry"]
     uid = entry.uid
     effector_node=node["effector"]
     address=node["address"]
@@ -212,7 +212,7 @@ def make_evil_twins(entries):
     twin_dct={}
     for r in ["administrator","staff", "anonymous"]:
         twin = copy.deepcopy(entries[0])
-        twin["uuid"]=uid_dct[r]
+        twin["uid"]=uid_dct[r]
         twin["label"]=r
         twin["name"]=r
         twin["slug"]=r
