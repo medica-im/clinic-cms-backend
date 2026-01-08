@@ -21,7 +21,7 @@ async def async_get_fullentry(uid: str, req: Request, role: str, jwt)->FullEntry
     entry_dct = entry_object.__dict__
     logger.debug(f"{entry_dct=}")
     attributes = ["phones, emails"]
-    scrub_entry = process(entry_dct, role, attributes)
-    logger.debug(f"{scrub_entry=}")
-    entry_pydantic = FullEntry.model_validate(scrub_entry)
+    process(entry_dct, role, attributes)
+    logger.debug(f"{entry_dct=}")
+    entry_pydantic = FullEntry.model_validate(entry_dct)
     return entry_pydantic
