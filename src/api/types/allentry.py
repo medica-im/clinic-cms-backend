@@ -75,7 +75,7 @@ class Entry(BaseModel):
     employers: list[str]|None
     memberships: list[str]|None
     gender: str|None
-    label: str
+    label: str|None
     name: str
     slug: str
     phones: list[Phone]|None
