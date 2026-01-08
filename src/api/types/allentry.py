@@ -60,7 +60,7 @@ class Phone(BaseModel):
 
 class Entry(BaseModel):
     address: Address
-    avatar: Avatar|None
+    avatar: Avatar|None=None
     commune: Commune
     department: Department
     effector_uid: str
