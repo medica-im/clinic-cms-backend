@@ -167,7 +167,7 @@ async def createEntryResource(node):
         "name": name,
         "gender": gender,
         "slug": slug,
-        "uid:": uid,
+        "uid": uid,
         "effector_uid": effector_uid,
         "effector_type": effector_type,
         "commune": commune,
