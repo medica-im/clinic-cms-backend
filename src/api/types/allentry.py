@@ -60,12 +60,12 @@ class Phone(BaseModel):
 
 class Entry(BaseModel):
     address: Address
-    avatar: Avatar|None = None
+    avatar: Avatar|None
     commune: Commune
     department: Department
     effector_uid: str
-    uid: str|None = None
-    active: bool
+    uid: str
+    active: bool|None
     #deactivation_datetime: str|None
     #deactivation_reason: str|None
     updatedAt: int|None = 0
@@ -73,10 +73,10 @@ class Entry(BaseModel):
     facility: Facility
     effector_type: EffectorType
     employers: list[str]|None
-    memberships: list[str]|None = None
-    gender: str|None = None
+    memberships: list[str]|None
+    gender: str|None
     label: str
     name: str
     slug: str
     phones: list[Phone]|None
-    tags: list[Tag]|None = None
+    tags: list[Tag]|None
