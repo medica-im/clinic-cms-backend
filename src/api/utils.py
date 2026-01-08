@@ -131,11 +131,11 @@ async def get_ttl(api_version: str, request):
     if ttl_obj:
         return ttl_obj.ttl
 
-def process(entry: object, role: str, attributes: list[str]):
+def process(entry: dict[str, Any], role: str, attributes: list[str]):
     for attribute in attributes:
         try:
-            items: list[Any] = getattr(entry, attribute)
-        except:
+            items: list[Any] = entry[attribute]
+        except KeyError:
             continue            
         if items:
             new_items = [
@@ -147,9 +147,9 @@ def process(entry: object, role: str, attributes: list[str]):
             count=len(items)
             if new_count != count:
                 logger.debug(f"{count-new_count} item(s) removed!")
-            setattr(entry, attribute, new_items)
+            entry[attribute] = new_items
 
-def scrub(entries: list[object], attributes: list[str]):
+def scrub(entries: list[dict[str, Any]], attributes: list[str]):
     administrator = copy.deepcopy(entries)
     scrub_dct = {
         "administrator": administrator 

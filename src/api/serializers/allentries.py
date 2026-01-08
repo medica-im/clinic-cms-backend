@@ -94,48 +94,6 @@ async def flex_effector_type_label(
     effector_type.label = effector_type_label or name
     return effector_type
 
-
-class EntryObj(object):
-    def __init__ (
-            self,
-            label,
-            name,
-            gender,
-            slug,
-            uid,
-            effector_uid,
-            effector_type,
-            commune,
-            department,
-            address,
-            phones,
-            updatedAt,
-            facility,
-            avatar,
-            memberships,
-            employers,
-            tags,
-            active
-        ):
-        self.label = label
-        self.name = name
-        self.gender = gender
-        self.slug = slug
-        self.uid = uid
-        self.effector_uid = effector_uid
-        self.effector_type = effector_type
-        self.commune = commune
-        self.department = department
-        self.address = address
-        self.phones = phones
-        self.updatedAt = updatedAt
-        self.facility = facility
-        self.avatar = avatar
-        self.memberships = memberships
-        self.employers = employers
-        self.tags = tags
-        self.active = active
-
 async def createEntryResource(node):
     entry=node["entry"]
     uid = entry.uid
@@ -202,32 +160,31 @@ async def createEntryResource(node):
         tags = await serializer.adata
     except Exception as e:
         logger.error(e)
-    active=entry.active
-
-    entry = EntryObj(
-        label,
-        name,
-        gender,
-        slug,
-        uid,
-        effector_uid,
-        effector_type,
-        commune,
-        department,
-        address,
-        phones,
-        updatedAt,
-        facility,
-        avatar,
-        memberships,
-        employers,
-        tags,
-        active
-    )
+    active: bool = entry.active
+    entry = {
+        "label": label,
+        "name": name,
+        "gender": gender,
+        "slug": slug,
+        "uid:": uid,
+        "effector_uid": effector_uid,
+        "effector_type": effector_type,
+        "commune": commune,
+        "department": department,
+        "address": address,
+        "phones": phones,
+        "updatedAt": updatedAt,
+        "facility": facility,
+        "avatar": avatar,
+        "memberships": memberships,
+        "employers": employers,
+        "tags": tags,
+        "active": active
+    }
     return entry
 
 async def createEntryResources(nodes: list, request):
-    data= []
+    data: list[dict[str, Any]]= []
     # TODO manage Exception Value: 'NoneType' object is not iterable
     try:
         for node in nodes:
@@ -254,10 +211,10 @@ def make_evil_twins(entries):
     twin_dct={}
     for r in ["administrator","staff", "anonymous"]:
         twin = copy.deepcopy(entries[0])
-        twin.uuid=uid_dct[r]
-        twin.label=r
-        twin.name=r
-        twin.slug=r
+        twin["uuid"]=uid_dct[r]
+        twin["label"]=r
+        twin["name"]=r
+        twin["slug"]=r
         twin_dct[r]=twin
     return twin_dct
 
@@ -304,7 +261,7 @@ async def get_all_entries(request: Request, jwt, role: str)->list[Entry]:
                 request,
                 r
             )
-            logger.debug(f"\nsetting cache\nrole: {r}\nkey: {cache_key}\n1st entry: {scrubbed_entries_dct[r][0].__dict__}\n{timeout=}")
+            logger.debug(f"\nsetting cache\nrole: {r}\nkey: {cache_key}\n1st entry: {scrubbed_entries_dct[r][0]}\n{timeout=}")
             cache.set(
                 cache_key,
                 scrubbed_entries_dct[r],
