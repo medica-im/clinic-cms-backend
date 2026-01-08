@@ -280,7 +280,7 @@ def normalize_role(role):
     else:
         return role
 
-async def get_all_entries(request: Request, jwt, role: str):
+async def get_all_entries(request: Request, jwt, role: str)->list[Entry]:
     role = normalize_role(role)
     logger.debug(f"normalized role: {role}")
     cache_key = await generate_cache_key(
@@ -288,10 +288,9 @@ async def get_all_entries(request: Request, jwt, role: str):
         request,
         role
     )
-    cached = cache.get(cache_key)
-    if cached:
+    entries = cache.get(cache_key)
+    if entries:
         logger.warning(f"*** Using cache with key {cache_key} ***")
-        return cached
     else:
         logger.warning(f"cache for key '{cache_key}' is *** EMPTY ***")
         raw = await get_object_list(request)
@@ -315,5 +314,6 @@ async def get_all_entries(request: Request, jwt, role: str):
         endpoint = "%s:%s" % (API_VERSION, path)
         site = await get_site_from_request(request)
         await set_timestamp(endpoint, site)
-        ta = TypeAdapter(list[Entry])
-        return ta.validate_python(scrubbed_entries_dct[role])
+        entries = scrubbed_entries_dct[role]
+    ta = TypeAdapter(list[Entry])
+    return ta.validate_python(entries)
