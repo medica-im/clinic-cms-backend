@@ -64,7 +64,7 @@ class Entry(BaseModel):
     commune: Commune
     department: Department
     effector_uid: str
-    uid: str
+    uid: str|None = None
     active: bool
     #deactivation_datetime: str|None
     #deactivation_reason: str|None
