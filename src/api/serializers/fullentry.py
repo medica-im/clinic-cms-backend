@@ -16,6 +16,7 @@ def get_fullentry(uid):
 
 async def async_get_fullentry(uid: str, req: Request, role: str, jwt)->FullEntry:
     role = normalize_role(role)
+    logger.debug(f"{role=}")
     entry_node = await async_find_entry(uid=uid)
     entry_object = createEffectorRessource(entry_node)
     entry_dct = entry_object.__dict__
