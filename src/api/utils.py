@@ -137,7 +137,7 @@ def process(entry: dict[str, Any], role: str, attributes: list[str]):
         logger.debug(f"{attribute=}")
         try:
             items: list[Any] = entry[attribute]
-            logger.debug(f{"items"=})
+            logger.debug(f"{items=}")
         except KeyError as e:
             logger.error(e)
             continue            
