@@ -205,9 +205,9 @@ async def get_object_list(request):
 
 def make_evil_twins(entries):
     uid_dct = {
-        "administrator": "00000000-0000-4000-8000-000000000000",
-        "staff": "00000000-0000-4000-8000-000000000001",
-        "anonymous": "00000000-0000-4000-8000-000000000002"
+        "administrator": "00000000000040008000000000000000",
+        "staff": "00000000000040008000000000000001",
+        "anonymous": "00000000000040008000000000000002"
     }
     twin_dct={}
     for r in ["administrator","staff", "anonymous"]:
@@ -247,14 +247,14 @@ async def get_all_entries(request: Request, jwt, role: str)->list[Entry]:
         timeout = await get_ttl(API_VERSION, request) or TTL
         logger.debug(f"{timeout=}")
         scrubbed_entries_dct = scrub(raw, ["phones"])
-        add_evil_twins(scrubbed_entries_dct)
+        #add_evil_twins(scrubbed_entries_dct)
         for r in scrubbed_entries_dct.keys():
             cache_key = await generate_cache_key(
                 API_VERSION,
                 request,
                 r
             )
-            logger.debug(f"\nsetting cache\nrole: {r}\nkey: {cache_key}\n1st entry: {scrubbed_entries_dct[r][0]}\n{timeout=}")
+            logger.debug(f"\nsetting cache\nrole: {r}\nkey: {cache_key}\n1st entry: {scrubbed_entries_dct[r][0]}\n2st entry: {scrubbed_entries_dct[r][1]}\n{timeout=}")
             cache.set(
                 cache_key,
                 scrubbed_entries_dct[r],
