@@ -65,7 +65,7 @@ class Entry(BaseModel):
     department: Department
     effector_uid: str
     uid: str
-    active: bool|None
+    active: bool|None = None
     #deactivation_datetime: str|None
     #deactivation_reason: str|None
     updatedAt: int|None = 0
