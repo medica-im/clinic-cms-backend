@@ -132,10 +132,14 @@ async def get_ttl(api_version: str, request):
         return ttl_obj.ttl
 
 def process(entry: dict[str, Any], role: str, attributes: list[str]):
+    logger.debug(f'process {entry["name"]=}')
     for attribute in attributes:
+        logger.debug(f"{attribute=}")
         try:
             items: list[Any] = entry[attribute]
-        except KeyError:
+            logger.debug(f{"items"=})
+        except KeyError as e:
+            logger.error(e)
             continue            
         if items:
             new_items = [
@@ -157,7 +161,7 @@ def scrub(entries: list[dict[str, Any]], attributes: list[str]):
     for r in ["staff", "anonymous"]:
         logger.debug(f"\n{'*'*(len(r)+4)}\n* {r} *\n{'*'*(len(r)+4)}")
         for entry in entries:
-            process(entry, r,attributes)
+            process(entry, r, attributes)
         current_entries=copy.deepcopy(entries)
         scrub_dct[r]=current_entries
     return scrub_dct
