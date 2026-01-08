@@ -21,7 +21,6 @@ def check_cookie_jwt(request: Request):
     else:
         return 
 
-
 @router.get("/entries")
 async def entries(req: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> list[Entry]:
     logger.debug(f"{jwt=}")

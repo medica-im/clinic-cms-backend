@@ -1,9 +1,11 @@
 import logging
 import copy
 from typing import Any
+from pydantic import TypeAdapter
 from fastapi import Request, HTTPException, status
 from django.core.cache import cache
 from django.conf import settings
+from api.types.allentry import Entry
 from api.utils import (
     generate_cache_key,
     get_directory,
@@ -313,4 +315,5 @@ async def get_all_entries(request: Request, jwt, role: str):
         endpoint = "%s:%s" % (API_VERSION, path)
         site = await get_site_from_request(request)
         await set_timestamp(endpoint, site)
-        return scrubbed_entries_dct[role]
+        ta = TypeAdapter(list[Entry])
+        return ta.validate_python(scrubbed_entries_dct[role])
