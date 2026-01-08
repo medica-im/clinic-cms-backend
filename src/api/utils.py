@@ -1,5 +1,7 @@
 import logging
 import time
+import copy
+from typing import Any
 from django.contrib.sites.models import Site
 from access.models import Role
 from fastapi import Request, HTTPException, status
@@ -128,3 +130,34 @@ async def get_ttl(api_version: str, request):
         return
     if ttl_obj:
         return ttl_obj.ttl
+
+def process(entry: object, role: str, attributes: list[str]):
+    for attribute in attributes:
+        try:
+            items: list[Any] = getattr(entry, attribute)
+        except:
+            continue            
+        if items:
+            new_items = [
+                item
+                for item in items
+                if (role in [role["name"] for role in item["roles"]])
+            ] 
+            new_count=len(new_items)
+            count=len(items)
+            if new_count != count:
+                logger.debug(f"{count-new_count} item(s) removed!")
+            setattr(entry, attribute, new_items)
+
+def scrub(entries: list[object], attributes: list[str]):
+    administrator = copy.deepcopy(entries)
+    scrub_dct = {
+        "administrator": administrator 
+    }
+    for r in ["staff", "anonymous"]:
+        logger.debug(f"\n{'*'*(len(r)+4)}\n* {r} *\n{'*'*(len(r)+4)}")
+        for entry in entries:
+            process(entry, r,attributes)
+        current_entries=copy.deepcopy(entries)
+        scrub_dct[r]=current_entries
+    return scrub_dct

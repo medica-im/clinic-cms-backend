@@ -1,7 +1,7 @@
 import logging
 import copy
+from typing import Any
 from fastapi import Request, HTTPException, status
-
 from django.core.cache import cache
 from django.conf import settings
 from api.utils import (
@@ -10,6 +10,7 @@ from api.utils import (
     get_ttl,
     get_site_from_request,
     set_timestamp,
+    scrub,
 )
 from directory.utils import (
     get_entries,
@@ -258,41 +259,16 @@ def make_evil_twins(entries):
         twin_dct[r]=twin
     return twin_dct
 
-def process(entries):
-    administrator = copy.deepcopy(entries)
-    scrub_dct = {
-        "administrator": administrator 
-    }
-    for r in ["staff", "anonymous"]:
-        logger.debug(f"\n{'*'*(len(r)+4)}\n* {r} *\n{'*'*(len(r)+4)}")
-        for entry in entries:
-            phones = entry.phones            
-            if phones:
-                new_phones = [
-                    phone
-                    for phone in phones
-                    if (r in [role["name"] for role in phone["roles"]])
-                ]
-                
-                new_phones_count=len(new_phones)
-                phones_count=len(phones)
-                if new_phones_count != phones_count:
-                    logger.debug(f"{phones_count-new_phones_count} phone(s) removed!")
-                    logger.debug([(phone["phone"], [r["name"] for r in phone["roles"]]) for phone in new_phones])
-                    logger.debug([(phone["phone"], [r["name"] for r in phone["roles"]]) for phone in phones])
-                    
-                entry.phones = new_phones
-        current_entries=copy.deepcopy(entries)
-        scrub_dct[r]=current_entries
-    if settings.DEBUG:
-        twins: dict = make_evil_twins(entries)
-        for r in twins.keys():
-            logger.debug(f"\ninserting {r} twin:\n{twins[r]}")
-            entries = scrub_dct[r]
-            logger.debug(f"scrub_dct[{r}] has {len(scrub_dct[r])} entries.")
-            entries.insert(0, twins[r])
-            logger.debug(f"scrub_dct[{r}] now has {len(scrub_dct[r])} entries.")
-    return scrub_dct
+def add_evil_twins(scrub_dct):
+    if not settings.DEBUG:
+        return
+    twins: dict = make_evil_twins(scrub_dct["administrator"])
+    for r in twins.keys():
+        logger.debug(f"\ninserting {r} twin:\n{twins[r]}")
+        entries = scrub_dct[r]
+        logger.debug(f"scrub_dct[{r}] has {len(scrub_dct[r])} entries.")
+        entries.insert(0, twins[r])
+        logger.debug(f"scrub_dct[{r}] now has {len(scrub_dct[r])} entries.")
 
 def normalize_role(role):
     if role == "registered":
@@ -319,7 +295,8 @@ async def get_all_entries(request: Request, jwt, role: str):
         raw = await get_object_list(request)
         timeout = await get_ttl(API_VERSION, request) or TTL
         logger.debug(f"{timeout=}")
-        scrubbed_entries_dct = process(raw)
+        scrubbed_entries_dct = scrub(raw, ["phones"])
+        add_evil_twins(scrubbed_entries_dct)
         for r in scrubbed_entries_dct.keys():
             cache_key = await generate_cache_key(
                 API_VERSION,
