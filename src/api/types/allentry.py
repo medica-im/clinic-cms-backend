@@ -72,11 +72,11 @@ class Entry(BaseModel):
     createdAt: int|None = 0
     facility: Facility
     effector_type: EffectorType
-    employers: list[str]|None
-    memberships: list[str]|None
-    gender: str|None
+    employers: list[str]|None=None
+    memberships: list[str]|None=None
+    gender: str|None=None
     label: str|None=None
     name: str
     slug: str
-    phones: list[Phone]|None
-    tags: list[Tag]|None
+    phones: list[Phone]|None=None
+    tags: list[Tag]|None=None
