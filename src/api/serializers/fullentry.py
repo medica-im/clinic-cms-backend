@@ -1,6 +1,9 @@
 from directory.utils import find_entry, async_find_entry
+from api.utils import process
 from directory.tasty.fulleffectors import createEffectorRessource
 from api.types.fullentry import FullEntry
+from fastapi import Request, HTTPException, status
+from api.auth import normalize_role
 
 def get_fullentry(uid):
     entry_node = find_entry(uid=uid)
@@ -8,8 +11,12 @@ def get_fullentry(uid):
     entry_pydantic = FullEntry.model_validate(entry_object.__dict__)
     return entry_pydantic
 
-async def async_get_fullentry(uid)->FullEntry:
+async def async_get_fullentry(uid: str, req: Request, role: str, jwt)->FullEntry:
+    role = normalize_role(role)
     entry_node = await async_find_entry(uid=uid)
     entry_object = createEffectorRessource(entry_node)
-    entry_pydantic = FullEntry.model_validate(entry_object.__dict__)
+    entry_dct = entry_object.__dict__
+    attributes = ["phones, emails"]
+    scrub_entry = process(entry_dct, role, attributes)
+    entry_pydantic = FullEntry.model_validate(scrub_entry)
     return entry_pydantic

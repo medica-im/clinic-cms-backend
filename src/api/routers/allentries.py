@@ -5,21 +5,11 @@ from api.types.allentry import Entry
 from api.auth import authorize_api, role_from_request_jwt
 from api.auth import JWT
 from api.serializers.allentries import get_all_entries
-from api.auth import get_role_from_request_jwt
+from api.auth import get_role_from_request_jwt, check_cookie_jwt
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-def check_cookie_jwt(request: Request):
-    http_cookie = request.cookies.get('__Secure-authjs.session-token')
-    logger.debug(f"{http_cookie=}")
-    https_cookie = request.cookies.get('authjs.session-token')
-    logger.debug(f"{https_cookie=}")
-    if  http_cookie or https_cookie:
-        return JWT(request)
-    else:
-        return 
 
 @router.get("/entries")
 async def entries(req: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> list[Entry]:

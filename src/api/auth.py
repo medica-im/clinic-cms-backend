@@ -102,3 +102,21 @@ async def authorize(endpoint_name: str, role: Role, permissions: int):
             status_code=status.HTTP_403_FORBIDDEN, 
             detail="Insufficient permissions"
         )
+
+def check_cookie_jwt(request: Request):
+    http_cookie = request.cookies.get('__Secure-authjs.session-token')
+    logger.debug(f"{http_cookie=}")
+    https_cookie = request.cookies.get('authjs.session-token')
+    logger.debug(f"{https_cookie=}")
+    if  http_cookie or https_cookie:
+        return JWT(request)
+    else:
+        return
+
+def normalize_role(role):
+    if role == "registered":
+        return "anonymous"
+    elif role == "superuser":
+        return "administrator"
+    else:
+        return role
