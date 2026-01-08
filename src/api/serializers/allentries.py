@@ -266,7 +266,4 @@ async def get_all_entries(request: Request, jwt, role: str)->list[Entry]:
         await set_timestamp(endpoint, site)
         entries = scrubbed_entries_dct[role]
     ta = TypeAdapter(list[Entry])
-    logger.debug(type(entries))
-    logger.debug(entries)
-    return entries
     return ta.validate_python(entries)

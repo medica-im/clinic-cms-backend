@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/entries")
-async def entries(req: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)]):# -> list[Entry]:
+async def entries(req: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> list[Entry]:
     logger.debug(f"{jwt=}")
     role = await get_role_from_request_jwt(req,jwt)
     logger.debug(f"{role=}")
