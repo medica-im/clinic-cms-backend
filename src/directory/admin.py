@@ -99,6 +99,7 @@ class SettingAdmin(admin.ModelAdmin):
     list_display = (
         'directory',
         'sort_category',
+        'display_facility_organization',
     )
 
 
