@@ -151,7 +151,8 @@ class SettingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Setting
         fields = [
-            'sort_category_display'
+            'sort_category_display',
+            'display_facility_organization',
         ]
 
 

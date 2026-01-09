@@ -233,9 +233,13 @@ class Setting(models.Model):
         choices=SORT_CATEGORY_CHOICES,
         default=ALPHABETICAL,
     )
+    display_facility_organization = models.BooleanField(
+        null=True,
+        help_text="Display facilities which belong (True) or don't belong (False) to the organization or all facilities (null)."
+    )
     def __str__(self):
         return (
-            f'Setting {self.get_sort_category_display()}'
+            f'Setting sort_category: {self.get_sort_category_display()}, {self.display_facility_organization=}'
         )
 
 
