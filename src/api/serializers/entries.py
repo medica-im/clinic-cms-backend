@@ -23,7 +23,6 @@ from directory.models.agraph import (
     Organization as AsyncOrganization,
 )
 from api.serializers.fullentry import async_get_fullentry
-from directory.models.agraph import Entry as EntryAgraph
 from api.types.entry import EntryPatch, Entry, EntryPost
 from api.types.effector import Effector
 from api.types.fullentry import FullEntry, EffectorType
@@ -70,8 +69,8 @@ async def entry_if_exists(effector: Effector, effector_type: EffectorType, facil
     if not entry_uids:
         logger.debug(f"No entry exists with:\n{effector=}\n{effector_type=}\n{facility=}")
         return
-    active_entries = []
-    inactive_entries = []
+    active_entries: list[AsyncEntry] = []
+    inactive_entries: list[AsyncEntry] = []
     for uid in entry_uids:
         entry: AsyncEntry = await AsyncEntry.nodes.get(uid=uid)
         if entry.active:
@@ -123,20 +122,20 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
     logger.debug(f"{dir_name}")  
     neo4j_directory = await AsyncDirectory.nodes.get(name=dir_name)
     effector: Effector = await AsyncEffector.nodes.get(uid=entry.effector)
-    effector_type: EffectorType = await AsyncEffectorType.nodes.get(uid=entry.effector_type)
+    effector_type: AsyncEffectorType = await AsyncEffectorType.nodes.get(uid=entry.effector_type)
     facility: Facility = await AsyncFacility.nodes.get(uid=entry.facility)
     entry_uids: list[str] = get_entries(
         effector=effector.uid,
-        effector_type=effector_type.uid,
+        effector_type=str(effector_type.uid),
         facility=facility.uid
     )
     logger.debug(f"{entry_uids=}")
     ms = timestamp()
     for uid in entry_uids:
-        _entry: Entry = await EntryAgraph.nodes.get(uid=uid)
+        _entry: Entry = await AsyncEntry.nodes.get(uid=uid)
         createdAt = _entry.createdAt
         if createdAt and (ms - createdAt)<5000:
-            return await async_get_fullentry(str(_entry.uid))
+            return await async_get_fullentry(str(_entry.uid), request, role.name, jwt)
     new_entry = await entry_if_exists(effector, effector_type, facility)
     if not new_entry:
         new_entry = await AsyncEntry().save()
@@ -157,10 +156,10 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         if "HealthWorker" not in result[0][0][0]:
             raise HTTPException(status_code=500, detail=f"Label 'HealthWorker' not applied to Effector {effector.uid} of type {effector_type.name_fr}")
     await clear_cache("v1:entries", request)
-    return await async_get_fullentry(str(new_entry.uid))
+    return await async_get_fullentry(str(new_entry.uid), request, role.name, jwt)
 
 async def get_entry(uid:str)->Entry:
-    entry = await EntryAgraph.nodes.get(uid=uid)
+    entry = await AsyncEntry.nodes.get(uid=uid)
     #logger.debug(entry.__properties__)
     return Entry.model_validate(entry.__properties__)
 
@@ -192,7 +191,7 @@ async def update_entry_memberships(entry, memberships: list[str]):
 
 async def update_entry(uid:str, update_data: dict[str, Any], request: Request):
     #logger.debug(update_data)
-    entry = await EntryAgraph.nodes.get(uid=uid)
+    entry = await AsyncEntry.nodes.get(uid=uid)
     if 'carte_vitale' in update_data.keys():
         entry.carte_vitale=update_data['carte_vitale']
     if 'payment' in update_data.keys():
