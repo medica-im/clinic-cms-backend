@@ -19,6 +19,23 @@ from adrf.serializers import Serializer, ModelSerializer as AsyncModelSerializer
 logger=logging.getLogger(__name__)
 
 
+class AsyncSocialNetworkSerializer(AsyncModelSerializer):
+    type_display = serializers.CharField(
+        source='get_type_display'
+    )
+
+    class Meta:
+        model = SocialNetwork
+        fields = [
+            'id',
+            'type',
+            'type_display',
+            'url',
+            'roles',
+        ]
+        depth = 2
+
+
 class SocialNetworkSerializer(serializers.ModelSerializer):
     type_display = serializers.CharField(
         source='get_type_display'
