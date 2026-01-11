@@ -17,7 +17,7 @@ router = APIRouter()
 
 @router.get("/socialmedia/types")
 async def get_types():
-    return SocialNetwork.SocialNetworkType
+    return SocialNetwork.SocialNetworkType.__dict__
 
 @router.delete("/socialmedia/{item_id}")
 async def delete_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
