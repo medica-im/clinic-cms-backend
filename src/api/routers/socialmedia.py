@@ -15,6 +15,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+@router.get("/socialmedia/types")
+async def get_types():
+    return SocialNetwork.SocialNetworkType
+
 @router.delete("/socialmedia/{item_id}")
 async def delete_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
     await authorize_api("socialmedia_v2", request, jwt)

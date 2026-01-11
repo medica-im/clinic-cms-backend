@@ -17,6 +17,10 @@ class SocialMediaTypes(str, Enum):
     MASTODON = 'M'
 
 
+class SocialMediaTypes(BaseModel):
+    pass
+
+
 class SocialMediaPatch(BaseModel):
     url: str|None = None
     type: SocialMediaTypes|None = None
