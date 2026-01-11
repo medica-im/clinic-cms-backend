@@ -61,7 +61,7 @@ async def create_item(item: SocialMediaPost, request: Request, jwt: Annotated[di
     try:
         contact = await Contact.objects.aget(neomodel_uid=item.entry)
     except Contact.DoesNotExist:
-        raise HTTPException(status_code=404, detail=f"Contact {i.entry} not found")
+        raise HTTPException(status_code=404, detail=f"Contact {item.entry} not found")
     try:
         obj = await SocialNetwork.objects.acreate(
             contact = contact,
