@@ -197,9 +197,8 @@ async def createEntryResources(nodes: list, request):
 
 async def get_object_list(request):
         directory= await get_directory(request)
-        logger.debug(f"{directory=}")
         nodes = await get_entries(directory)
-        logger.debug(f"{nodes[:1] if nodes else []}")
+        #logger.debug(f"{nodes[:1] if nodes else []}")
         contacts = await createEntryResources(nodes, request)
         return contacts
 
@@ -254,7 +253,7 @@ async def get_all_entries(request: Request, jwt, role: str)->list[Entry]:
                 request,
                 r
             )
-            logger.debug(f"\nsetting cache\nrole: {r}\nkey: {cache_key}\n1st entry: {scrubbed_entries_dct[r][0]}\n2st entry: {scrubbed_entries_dct[r][1]}\n{timeout=}")
+            #logger.debug(f"\nsetting cache\nrole: {r}\nkey: {cache_key}\n1st entry: {scrubbed_entries_dct[r][0]}\n2st entry: {scrubbed_entries_dct[r][1]}\n{timeout=}")
             cache.set(
                 cache_key,
                 scrubbed_entries_dct[r],
