@@ -38,5 +38,5 @@ class SocialMedia(BaseModel):
 class SocialMediaPost(BaseModel):
     url: str
     type: SocialMediaTypes
-    roles: FrozenSet[Roles]
+    roles: list[Roles]
     entry: str
