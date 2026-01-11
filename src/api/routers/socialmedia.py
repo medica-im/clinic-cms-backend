@@ -75,4 +75,4 @@ async def create_item(item: SocialMediaPost, request: Request, jwt: Annotated[di
     await obj.asave()
     await set_roles(obj, item.roles)
     serializer = AsyncSocialNetworkSerializer(obj)
-    return SocialMedia.model_validate(serializer.data)
+    return SocialMedia.model_validate(await serializer.adata)
