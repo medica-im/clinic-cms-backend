@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/socialmedia/types")
+@router.get("/socialmediatypes")
 async def get_types():
     return SocialNetwork.SocialNetworkType.__dict__
 
