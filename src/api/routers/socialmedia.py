@@ -57,6 +57,7 @@ async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(
 
 @router.post("/socialmedia/", response_model=SocialMedia)
 async def create_item(item: SocialMediaPost, request: Request, jwt: Annotated[dict, Depends(JWT)])->SocialMedia:
+    logger.debug(f"{item=}")
     await authorize_api("socialmedia_v2", request, jwt)
     try:
         contact = await Contact.objects.aget(neomodel_uid=item.entry)
