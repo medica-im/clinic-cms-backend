@@ -39,7 +39,7 @@ async def update_item(item_id: str, item: SocialMediaPut, request: Request, jwt:
     await obj.asave()
     await set_roles(obj, item.roles )
     serializer = AsyncSocialNetworkSerializer(obj)
-    return SocialMedia.model_validate(serializer.data)
+    return SocialMedia.model_validate(await serializer.adata)
 
 @router.get("/socialmedia/{item_id}", response_model=SocialMedia)
 async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(JWT)])->SocialMedia:
