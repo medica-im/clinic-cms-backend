@@ -17,10 +17,10 @@ class SocialMediaTypes(str, Enum):
     MASTODON = 'M'
 
 
-class SocialMediaPatch(BaseModel):
-    url: str|None = None
-    type: SocialMediaTypes|None = None
-    roles: Optional[FrozenSet[Roles]]
+class SocialMediaPut(BaseModel):
+    url: str
+    type: SocialMediaTypes
+    roles: list[Roles]
 
 
 class SocialMedia(BaseModel):
