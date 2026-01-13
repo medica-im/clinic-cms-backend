@@ -97,7 +97,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         """Return a string representation of this `User`."""
-        return f'{self.full_name or ""} {self.username or ""} {self.email or ""}'
+        return f'{self.full_name or ""} {self.email or ""}'
 
     def get_full_name(self) -> Optional[str]:
         """Return the full name of the user."""

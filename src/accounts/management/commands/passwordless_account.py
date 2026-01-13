@@ -5,8 +5,8 @@ from django.db import DatabaseError, IntegrityError
 from django.contrib.sites.models import Site
 from directory.models import Slug
 from addressbook.models import Contact
-from accounts.models import GrammaticalGender
-from access.models import Role
+from accounts.models import GrammaticalGender, Role as AccountsRole
+from access.models import Role as AccessRole
 
 import logging
 
@@ -30,13 +30,18 @@ def validate_username(username):
 def list_sites():
     return [site.name for site in Site.objects.all()]
 
+def access_roles():
+    return [role.name for role in AccessRole.objects.all()]
+
+def list_genders():
+    return [gg.code for gg in GrammaticalGender.objects.all()]
+
 
 class Command(BaseCommand):
     help = 'Create a passwordless account using email'
 
     def add_arguments(self, parser):
         parser.add_argument('email', type=str)
-        parser.add_argument('--username', type=str, help="max 255 chars")
         parser.add_argument(
             '--site',
             type=str,
@@ -44,15 +49,20 @@ class Command(BaseCommand):
             help=f"site name among {list_sites()}"
         )
         parser.add_argument('--entry', type=str, help="Entry node UID")
-        parser.add_argument('--formatted_name', type=str)
+        parser.add_argument('--full_name', type=str)
         parser.add_argument(
             '--role',
             type=str,
-            choices=['superuser', 'administrator', 'staff', 'registered', 'anonymous'],
+            choices=access_roles(),
             help=(
-            "minimal access role allowed ('superuser', 'administrator',"
-            "'staff', 'registered', 'anonymous')"
+            f"access role ({access_roles()})"
             )
+        )
+        parser.add_argument(
+            '--gender',
+            type=str,
+            choices=list_genders(),
+            help=f"grammatical gender among {list_genders()}"
         )
 
     def handle(self, *args, **options):
@@ -62,11 +72,6 @@ class Command(BaseCommand):
             return
         if not validateEmail(email):
             raise CommandError('Email "%s" is not valid' % email)
-        username: str = options['username']
-        #if not username:
-        #    raise CommandError('You must provide a username.')
-        if not validate_username(username):
-            raise CommandError('username "%s" is not valid' % username)
         site=options['site']
         if site and site not in list_sites():
             raise CommandError('site "%s" is not valid' % site)
@@ -89,8 +94,6 @@ class Command(BaseCommand):
                 )
         except Exception as e:
             raise CommandError('User creation failed. %s' % e)
-
-        # create Slug
         if site:
             try:
                 site = Site.objects.get(name=options['site'])
@@ -98,38 +101,36 @@ class Command(BaseCommand):
                 raise CommandError(
                     f'Site with domain {site} does not exist.'
                 )
-            user.site=site
-
-        # create Contact
-        formatted_name = options['formatted_name']
         entry = options['entry']
-        if formatted_name:
-            person_type=Contact.PersonType.NATURAL
-            try:
-                Contact.objects.get_or_create(
-                    person_type=person_type,
-                    user=user,
-                    formatted_name=formatted_name
-                )
-            except Exception as e:
-                raise CommandError(
-                    f'Error during creation of Contact object: $s' % e
-                )
         if entry:
             user.effector=entry
-        user.username=username
-        user.full_name=formatted_name
+        full_name = options['full_name']
+        user.full_name=full_name
+        gender = options['gender']
+        if gender:
+            try:
+                gg=GrammaticalGender.objects.get(code=gender)
+            except GrammaticalGender.DoesNotExist as e:
+                raise CommandError(
+                    f'GrammaticalGender with code {gender} does not exist.'
+                )
+        user.grammatical_gender=gg
+        user.save()
         role_name=options["role"]
         if role_name:
             try:
-                role = Role.objects.get(name=role_name)
-            except Role.DoesNotExist:
+                role = AccessRole.objects.get(name=role_name)
+            except AccessRole.DoesNotExist:
                 raise CommandError(f'Role {role_name} does not exist.')
-        if role is not None:
-            user.role=role
-        user.save()
+        if role and site:
+            try:
+                role = AccountsRole(user=user,site=site,role=role)
+            except DatabaseError as e:
+                raise CommandError(f'Error during Accounts.Role creation: {e}')
+        user.refresh_from_db()
         self.stdout.write(
             self.style.SUCCESS(
-                f'{user} successfully created!'
+                f'{user} successfully created!\n'
+                f'{[(role.name,role.site,) for role in user.roles.all()]}'
             )
         )
