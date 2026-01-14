@@ -96,7 +96,7 @@ class Command(BaseCommand):
             raise CommandError('User creation failed. %s' % e)
         if site:
             try:
-                site = Site.objects.get(name=options['site'])
+                site = Site.objects.get(name=site)
             except Site.DoesNotExist as e:
                 raise CommandError(
                     f'Site with domain {site} does not exist.'
@@ -124,7 +124,8 @@ class Command(BaseCommand):
                 raise CommandError(f'Role {role_name} does not exist.')
         if role and site:
             try:
-                role = AccountsRole(user=user,site=site,role=role)
+                account_role = AccountsRole(user=user,site=site,role=role)
+                account_role.save()
             except DatabaseError as e:
                 raise CommandError(f'Error during Accounts.Role creation: {e}')
         user.refresh_from_db()
