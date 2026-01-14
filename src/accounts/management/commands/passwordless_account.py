@@ -132,6 +132,6 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f'{user} successfully created!\n'
-                f'{[(role.name,role.site,) for role in user.roles.all()]}'
+                f'{[(role.role, role.site,) for role in user.roles.all()]}'
             )
         )
