@@ -120,7 +120,7 @@ class GrammaticalGender(models.Model):
 class Role(models.Model):
     user = models.ForeignKey(
         "accounts.User",
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="roles",
     )
     site = models.ForeignKey(
