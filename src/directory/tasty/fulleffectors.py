@@ -72,6 +72,7 @@ class EffectorObj(object):
             deactivation_reason,
             memberships,
             tags,
+            directories,
         ):
         self.label = label
         self.name = name
@@ -101,6 +102,7 @@ class EffectorObj(object):
         self.deactivation_reason = deactivation_reason
         self.memberships = memberships
         self.tags = tags
+        self.directories = directories
 
 def createEffectorRessource(node):
     try:
@@ -227,6 +229,7 @@ def createEffectorRessource(node):
     except Exception as e:
         logger.error(e)
         tags = None
+    directories = [d.name for d in node["directories"]]
 
     effector = EffectorObj(
         label,
@@ -257,6 +260,7 @@ def createEffectorRessource(node):
         deactivation_reason,
         memberships,
         tags,
+        directories
     )
     return effector
 

@@ -21,7 +21,7 @@ from directory.models import (
     Label,
 )
 from django.contrib.sites.models import Site
-from directory.models.graph import Appointment, Office, HouseCall, Convention, Tag
+from directory.models.graph import Appointment, Office, HouseCall, Convention, Tag, Directory as GraphDirectory
 from addressbook.models import Contact
 from neomodel import db, adb
 from addressbook.api.serializers import (
@@ -964,7 +964,7 @@ def get_uid_query(uid: str):
         WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
         MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
         WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, COLLECT(DISTINCT directory) as directories
-        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats, directories;"""
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats,directories;"""
 
 def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
     return f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
@@ -1170,6 +1170,10 @@ async def async_entry_dict(results, cols):
             Tag.inflate(tag)
             for tag in row[cols.index('tags')]
         ] or None
+    directories=[
+            GraphDirectory.inflate(d)
+            for d in row[cols.index('directories')]
+        ] or None
     return {
         "entry": entry,
         "effector": effector,
@@ -1193,6 +1197,7 @@ async def async_entry_dict(results, cols):
         "convention": convention,
         "memberships": memberships,
         "tags": tags,
+        "directories": directories,
     }
 
 def find_entry(
