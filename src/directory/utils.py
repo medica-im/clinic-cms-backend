@@ -725,15 +725,17 @@ def get_entries_query(
         WITH d
         MATCH (d)-[:HAS_ENTRY]->(entry:Entry) WHERE entry.active={str(active)}
         WITH entry
+        MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
+        WITH entry, COLLECT(DISTINCT directory) as directories
         MATCH (e:Effector)<-[:HAS_EFFECTOR]-(entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country), (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
-        WITH DISTINCT entry, e, et, f, commune, dpt, country
+        WITH DISTINCT entry, directories, e, et, f, commune, dpt, country
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(membership:Entry)
-        WITH entry, e, et, f, commune, dpt, country, COLLECT(DISTINCT membership) as memberships
+        WITH entry, directories, e, et, f, commune, dpt, country, COLLECT(DISTINCT membership) as memberships
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Entry)
-        WITH entry, e, et, f, commune, dpt, country, memberships, COLLECT(DISTINCT employer) as employers
+        WITH entry, directories, e, et, f, commune, dpt, country, memberships, COLLECT(DISTINCT employer) as employers
         OPTIONAL MATCH (entry:Entry)<-[:TAGS]-(tag:Tag)-[IS_A]->(tagcat:TagCategory)<-[:HAS_TAG_CATEGORY]-(et)
-        WITH entry, e, et, f, commune, dpt, country, memberships, employers, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
-        RETURN DISTINCT entry.uid as uid, entry, e, et, f, memberships, employers, commune, dpt, country, tags, tagcats;"""
+        WITH entry, directories, e, et, f, commune, dpt, country, memberships, employers, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
+        RETURN DISTINCT entry.uid as uid, directories, entry, e, et, f, memberships, employers, commune, dpt, country, tags, tagcats;"""
     return query
 
 def sync_get_entries(
@@ -749,6 +751,7 @@ def sync_get_entries(
         (
             _,
             entry,
+            [directories],
             effector,
             effector_type,
             facility,
@@ -782,7 +785,8 @@ def sync_get_entries(
                 "memberships": memberships_uids,
                 "employers": employers,
                 "tags": tags,
-                "tagcats": tagcats
+                "tagcats": tagcats,
+                "directories": directories
             }
         )
     return entries
@@ -800,6 +804,7 @@ async def get_entries(
         (
             _,
             entry,
+            [directories],
             effector,
             effector_type,
             facility,
@@ -833,7 +838,8 @@ async def get_entries(
                 "memberships": memberships_uids,
                 "employers": employers,
                 "tags": tags,
-                "tagcats": tagcats
+                "tagcats": tagcats,
+                "directories": directories
             }
         )
     logger.debug(f"{len(entries)=}\n{entries[0]=}")

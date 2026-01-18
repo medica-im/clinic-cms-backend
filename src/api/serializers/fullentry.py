@@ -1,6 +1,6 @@
 import logging
 from directory.utils import find_entry, async_find_entry
-from api.utils import process
+from api.utils import process, get_directory
 from directory.tasty.fulleffectors import createEffectorRessource
 from api.types.fullentry import FullEntry
 from fastapi import Request, HTTPException, status
@@ -17,12 +17,13 @@ def get_fullentry(uid):
 async def async_get_fullentry(uid: str, req: Request, role: str, jwt)->FullEntry:
     role = normalize_role(role)
     logger.debug(f"{role=}")
+    directory = await get_directory(req)
     entry_node = await async_find_entry(uid=uid)
     entry_object = createEffectorRessource(entry_node)
     entry_dct = entry_object.__dict__
     logger.debug(f"{entry_dct=}")
     attributes = ["phones", "emails"]
-    process(entry_dct, role, attributes)
+    process(entry_dct, role, attributes, directory)
     logger.debug(f"{entry_dct=}")
     entry_pydantic = FullEntry.model_validate(entry_dct)
     return entry_pydantic

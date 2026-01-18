@@ -80,3 +80,4 @@ class Entry(BaseModel):
     slug: str
     phones: list[Phone]|None=None
     tags: list[Tag]|None=None
+    directories: list[str]|None = None

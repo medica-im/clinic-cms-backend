@@ -113,7 +113,12 @@ class RejectSlug(models.Model):
 
 class Directory(models.Model):
     """A directory grouping assets."""
-    
+
+    uid = models.UUIDField(
+        null=True,
+        blank=True,
+        help_text= "uuid of corresponding neo4j Directory node"
+    )
     name = models.CharField(
         max_length=255,
         unique=True

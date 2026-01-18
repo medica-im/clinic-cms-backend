@@ -162,6 +162,7 @@ async def createEntryResource(node):
     except Exception as e:
         logger.error(e)
     active: bool = entry.active
+    directories: list[str] = [d.name for d in node["directories"]]
     entry = {
         "label": label,
         "name": name,
@@ -180,7 +181,8 @@ async def createEntryResource(node):
         "memberships": memberships,
         "employers": employers,
         "tags": tags,
-        "active": active
+        "active": active,
+        "directories": directories,
     }
     return entry
 
@@ -241,11 +243,12 @@ async def get_all_entries(request: Request, jwt, role: str)->list[Entry]:
     if entries:
         logger.warning(f"*** Using cache with key {cache_key} ***")
     else:
+        directory = await get_directory(request)
         logger.warning(f"cache for key '{cache_key}' is *** EMPTY ***")
         raw = await get_object_list(request)
         timeout = await get_ttl(API_VERSION, request) or TTL
         logger.debug(f"{timeout=}")
-        scrubbed_entries_dct = scrub(raw, ["phones"])
+        scrubbed_entries_dct = scrub(raw, ["phones"], directory)
         add_evil_twins(scrubbed_entries_dct)
         for r in scrubbed_entries_dct.keys():
             cache_key = await generate_cache_key(

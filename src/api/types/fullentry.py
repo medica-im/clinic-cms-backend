@@ -175,3 +175,4 @@ class FullEntry(BaseModel):
     organizations: list[str]|None = None
     memberships: list[str]|None = None
     tags: list[Tag]|None = None
+    directories: list[str]|None = None
