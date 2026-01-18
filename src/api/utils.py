@@ -131,7 +131,7 @@ async def get_ttl(api_version: str, request):
     if ttl_obj:
         return ttl_obj.ttl
 
-def process(entry: dict[str, Any], role: str, attributes: list[str], directory: Directory):
+def process(entry: dict[str, Any], role: str, attributes: list[str]):
     logger.debug(f'process {entry["name"]=}')
     for attribute in attributes:
         logger.debug(f"{attribute=}")
@@ -145,7 +145,7 @@ def process(entry: dict[str, Any], role: str, attributes: list[str], directory: 
             new_items = [
                 item
                 for item in items
-                if (role in [role["name"] for role in item["roles"]]) and (directory.name in entry["directories"])
+                if (role in [role["name"] for role in item["roles"]])
             ] 
             new_count=len(new_items)
             count=len(items)
@@ -153,12 +153,15 @@ def process(entry: dict[str, Any], role: str, attributes: list[str], directory: 
                 logger.debug(f"{count-new_count} item(s) removed!")
             entry[attribute] = new_items
 
-def scrub(entries: list[dict[str, Any]], attributes: list[str], directory: Directory):
-    scrub_dct = {}
-    for r in ["administrator", "staff", "anonymous"]:
+def scrub(entries: list[dict[str, Any]], attributes: list[str]):
+    administrator = copy.deepcopy(entries)
+    scrub_dct = {
+        "administrator": administrator
+    }
+    for r in ["staff", "anonymous"]:
         logger.debug(f"\n{'*'*(len(r)+4)}\n* {r} *\n{'*'*(len(r)+4)}")
         for entry in entries:
-            process(entry, r, attributes, directory)
+            process(entry, r, attributes)
         current_entries=copy.deepcopy(entries)
         scrub_dct[r]=current_entries
     return scrub_dct

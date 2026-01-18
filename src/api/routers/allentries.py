@@ -2,7 +2,6 @@ import logging
 from typing import Annotated
 from fastapi import APIRouter, Request, Depends
 from api.types.allentry import Entry
-from api.auth import authorize_api, role_from_request_jwt
 from api.auth import JWT
 from api.serializers.allentries import get_all_entries
 from api.auth import get_role_from_request_jwt, check_cookie_jwt
@@ -14,6 +13,6 @@ router = APIRouter()
 @router.get("/entries")
 async def entries(req: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> list[Entry]:
     logger.debug(f"{jwt=}")
-    role = await get_role_from_request_jwt(req,jwt)
+    role = await get_role_from_request_jwt(jwt)
     logger.debug(f"{role=}")
     return await get_all_entries(req, jwt, role)

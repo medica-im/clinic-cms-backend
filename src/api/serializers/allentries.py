@@ -6,7 +6,7 @@ from fastapi import Request, HTTPException, status
 from django.core.cache import cache
 from django.conf import settings
 from api.types.allentry import Entry
-from api.auth import normalize_role
+from api.auth import normalize_role, RoleType
 from api.utils import (
     generate_cache_key,
     get_directory,
@@ -231,8 +231,9 @@ def add_evil_twins(scrub_dct):
         entries.insert(0, twins[r])
         logger.debug(f"scrub_dct[{r}] now has {len(scrub_dct[r])} entries.")
 
-async def get_all_entries(request: Request, jwt, role: str)->list[Entry]:
-    role = normalize_role(role)
+async def get_all_entries(request: Request, jwt, roles: list[RoleType])->list[Entry]:
+    directory = await get_directory(request)
+    role = normalize_role(roles, directory)
     logger.debug(f"normalized role: {role}")
     cache_key = await generate_cache_key(
         API_VERSION,

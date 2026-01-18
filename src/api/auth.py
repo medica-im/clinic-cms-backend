@@ -1,11 +1,13 @@
 import logging
 import os
+from typing import TypedDict
 from access.models import AccessControl, Endpoint, Role
 from accounts.models import User, Role as AccountRole
 from django.contrib.sites.models import Site
 from fastapi import Request, HTTPException, status
 from api.utils import get_site_from_request
 from fastapi_nextauth_jwt import NextAuthJWT
+from django.db.models import F
 
 logger = logging.getLogger(__name__)
 
@@ -61,12 +63,25 @@ async def role_from_request_jwt(request: Request, jwt: dict)->Role:
     logger.debug(f"{role=}")
     return role
 
-async def get_role_from_request_jwt(request: Request, jwt: dict)->str:
+class RoleType(TypedDict):
+    role: str
+    directory: str|None
+
+async def get_role_from_request_jwt(jwt: dict)->list[RoleType]:
+    anon: RoleType = {"role": "anonymous", "directory": None}
     if not jwt:
-        return "anonymous"
+        return [anon]
     else:
-        role = await role_from_request_jwt(request,jwt)
-        return role.name
+        email = jwt['email']
+        try:
+            user = await User.objects.aget(email=email)
+        except User.DoesNotExist:
+            return [anon]
+        roles: list[RoleType] = []
+        async for r in AccountRole.objects.filter(user=user).values(role=F("role__name"),directory=F("site__directory__name")):
+            roles.append(r)
+        logger.debug(f"{roles=}")
+        return roles
 
 async def authorize_api(endpoint: str, request: Request, jwt: dict):
     # get post put patch delete
@@ -113,10 +128,14 @@ def check_cookie_jwt(request: Request):
     else:
         return
 
-def normalize_role(role):
-    if role == "registered":
-        return "anonymous"
-    elif role == "superuser":
-        return "administrator"
-    else:
-        return role
+def normalize_role(roles, directory):
+    for r in roles:
+        if directory.name == r["directory"]:
+            role = r["role"]
+            if role == "registered":
+                return "anonymous"
+            elif role == "superuser":
+                return "administrator"
+            else:
+                return role
+    return "anonymous"
