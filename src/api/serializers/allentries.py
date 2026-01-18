@@ -198,7 +198,7 @@ async def createEntryResources(nodes: list, request):
     return data
 
 async def get_object_list(request):
-        directory= await get_directory(request)
+        directory = await get_directory(request)
         nodes = await get_entries(directory)
         #logger.debug(f"{nodes[:1] if nodes else []}")
         contacts = await createEntryResources(nodes, request)
@@ -244,12 +244,11 @@ async def get_all_entries(request: Request, jwt, roles: list[RoleType])->list[En
     if entries:
         logger.warning(f"*** Using cache with key {cache_key} ***")
     else:
-        directory = await get_directory(request)
         logger.warning(f"cache for key '{cache_key}' is *** EMPTY ***")
         raw = await get_object_list(request)
         timeout = await get_ttl(API_VERSION, request) or TTL
         logger.debug(f"{timeout=}")
-        scrubbed_entries_dct = scrub(raw, ["phones"], directory)
+        scrubbed_entries_dct = scrub(raw, ["phones"])
         add_evil_twins(scrubbed_entries_dct)
         for r in scrubbed_entries_dct.keys():
             cache_key = await generate_cache_key(
