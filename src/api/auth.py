@@ -64,11 +64,11 @@ async def role_from_request_jwt(request: Request, jwt: dict)->Role:
     return role
 
 class RoleType(TypedDict):
-    role: str
+    role_name: str
     directory: str|None
 
 async def get_role_from_request_jwt(jwt: dict)->list[RoleType]:
-    anon: RoleType = {"role": "anonymous", "directory": None}
+    anon: RoleType = {"role_name": "anonymous", "directory": None}
     if not jwt:
         return [anon]
     else:
@@ -78,7 +78,7 @@ async def get_role_from_request_jwt(jwt: dict)->list[RoleType]:
         except User.DoesNotExist:
             return [anon]
         roles: list[RoleType] = []
-        async for r in AccountRole.objects.filter(user=user).values(role=F("role__name"),directory=F("site__directory__name")):
+        async for r in AccountRole.objects.filter(user=user).values(role_name=F("role__name"),directory=F("site__directory__name")):
             roles.append(r)
         logger.debug(f"{roles=}")
         return roles
@@ -131,7 +131,7 @@ def check_cookie_jwt(request: Request):
 def normalize_role(roles, directory):
     for r in roles:
         if directory.name == r["directory"]:
-            role = r["role"]
+            role = r["role_name"]
             if role == "registered":
                 return "anonymous"
             elif role == "superuser":
