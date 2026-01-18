@@ -735,7 +735,7 @@ def get_entries_query(
         WITH entry, directories, e, et, f, commune, dpt, country, memberships, COLLECT(DISTINCT employer) as employers
         OPTIONAL MATCH (entry:Entry)<-[:TAGS]-(tag:Tag)-[IS_A]->(tagcat:TagCategory)<-[:HAS_TAG_CATEGORY]-(et)
         WITH entry, directories, e, et, f, commune, dpt, country, memberships, employers, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
-        RETURN DISTINCT entry.uid as uid, directories, entry, e, et, f, memberships, employers, commune, dpt, country, tags, tagcats;"""
+        RETURN DISTINCT entry.uid as uid, entry, directories, e, et, f, memberships, employers, commune, dpt, country, tags, tagcats;"""
     return query
 
 def sync_get_entries(
