@@ -962,7 +962,9 @@ def get_uid_query(uid: str):
         WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a,COLLECT(DISTINCT label) AS effector_type_labels,memberships
         OPTIONAL MATCH (entry:Entry)<-[:TAGS]-(tag:Tag)-[IS_A]->(tagcat:TagCategory)<-[:HAS_TAG_CATEGORY]-(et)
         WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
-        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats;"""
+        MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, COLLECT(DISTINCT directory) as directories
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats, directories;"""
 
 def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
     return f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
@@ -993,7 +995,9 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
         WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a,COLLECT(DISTINCT label) AS effector_type_labels,memberships
         OPTIONAL MATCH (entry:Entry)<-[:TAGS]-(tag:Tag)-[IS_A]->(tagcat:TagCategory)<-[:HAS_TAG_CATEGORY]-(et)
         WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
-        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats;"""
+        MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, COLLECT(DISTINCT directory) as directories
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats,directories;"""
 
 def entry_dict(results, cols):
     logger.debug(f"{results[:1]=} {len(results)=}")
@@ -1018,7 +1022,8 @@ def entry_dict(results, cols):
         [effector_type_labels],
         [memberships],
         [tags],
-        [tagcats]
+        [tagcats],
+        [directories],
     ] = row
     #logger.debug(f"{entry=}")
     #logger.debug(f"{appointment_nodes=}")
@@ -1061,6 +1066,7 @@ def entry_dict(results, cols):
         health_worker = None
     avatar=get_avatar_url(entry, effector, effector_facility, facility)
     fetl=flex_effector_type_label(effector, effector_type)
+    directories=[d.name for d in directories]
     return {
         "entry": entry,
         "effector": effector,
@@ -1084,7 +1090,8 @@ def entry_dict(results, cols):
         "convention": convention,
         "memberships": memberships,
         "tags": tags,
-        "tagcats": tagcats
+        "tagcats": tagcats,
+        "directories": directories,
     }
 
 async def async_entry_dict(results, cols):
