@@ -147,7 +147,7 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         #logger.debug(result[0][0][0])
         if "HealthWorker" not in result[0][0][0]:
             raise HTTPException(status_code=500, detail=f"Label 'HealthWorker' not applied to Effector {effector.uid} of type {effector_type.name_fr}")
-    await clear_cache("v1:entries", request)
+    await clear_cache("v2:entries", request)
     return await async_get_fullentry(str(new_entry.uid), request, roles, jwt)
 
 async def get_entry(uid:str)->Entry:
