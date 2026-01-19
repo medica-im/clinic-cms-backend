@@ -12,7 +12,5 @@ router = APIRouter()
 
 @router.get("/entries")
 async def entries(req: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> list[Entry]:
-    logger.debug(f"{jwt=}")
     role = await get_role_from_request_jwt(jwt)
-    logger.debug(f"{role=}")
     return await get_all_entries(req, jwt, role)

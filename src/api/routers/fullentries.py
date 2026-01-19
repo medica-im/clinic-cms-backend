@@ -11,8 +11,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/fullentries/{uid}")
-def get(uid: str) -> FullEntry:
-    return get_fullentry(uid)
+async def get(uid: str, req: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> FullEntry:
+    role = await get_role_from_request_jwt(jwt)
+    return await async_get_fullentry(uid, req, role, jwt)
 
 @router.get("/slugfullentries/{type}/{commune}/{effector}")
 async def get_slug_fullentries(req: Request, type: str, commune: str, effector: str, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> FullEntry|None:

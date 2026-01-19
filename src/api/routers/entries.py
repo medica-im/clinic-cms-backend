@@ -11,9 +11,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+'''
 @router.get("/entries/{uid}")
 async def entry(uid: str) -> Entry:
     return await get_entry(uid)
+'''
 
 @router.post("/entries", status_code=status.HTTP_201_CREATED)
 async def post_entry(entry: EntryPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> FullEntry:

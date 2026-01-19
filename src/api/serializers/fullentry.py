@@ -22,7 +22,7 @@ async def async_get_fullentry(uid: str, req: Request, roles: list[RoleType], jwt
     entry_object = createEffectorRessource(entry_node)
     entry_dct = entry_object.__dict__
     logger.debug(f"{entry_dct=}")
-    attributes = ["phones", "emails"]
+    attributes = ["phones", "emails", "socialnetworks"]
     if not directory.name in entry_dct["directories"]:
         role = "anonymous"
     process(entry_dct, role, attributes)
