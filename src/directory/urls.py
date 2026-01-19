@@ -30,8 +30,8 @@ v1_api.register(CareHomeResource())
 v1_api.register(ContactResource())
 v1_api.register(FacilityResource())
 v1_api.register(FacilityUidResource())
-v1_api.register(FullEffectorResource())
-v1_api.register(EntryResource())
+#v1_api.register(FullEffectorResource())
+#v1_api.register(EntryResource())
 
 # DRF
 router = routers.DefaultRouter()
