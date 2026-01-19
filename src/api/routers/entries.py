@@ -4,7 +4,7 @@ from fastapi import APIRouter, status, Request, Depends
 from api.serializers.entries import get_entries, create_entry, update_entry, get_entry
 from api.types.entry import EntryPost, EntryPatch, Entry
 from api.types.fullentry import FullEntry
-from api.auth import authorize_api, role_from_request_jwt
+from api.auth import authorize_api
 from api.auth import JWT
 
 logger = logging.getLogger(__name__)

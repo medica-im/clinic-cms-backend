@@ -56,18 +56,11 @@ async def get_role(user: User|None, site: Site) -> Role:
             detail="Insufficient permissions"
         )
 
-async def role_from_request_jwt(request: Request, jwt: dict)->Role:
-    site = await get_site_from_request(request)
-    user = await get_user(jwt)
-    role = await get_role(user, site)
-    logger.debug(f"{role=}")
-    return role
-
 class RoleType(TypedDict):
     role_name: str
     directory: str|None
 
-async def get_role_from_request_jwt(jwt: dict)->list[RoleType]:
+async def get_role_from_jwt(jwt: dict)->list[RoleType]:
     anon: RoleType = {"role_name": "anonymous", "directory": None}
     if not jwt:
         return [anon]
