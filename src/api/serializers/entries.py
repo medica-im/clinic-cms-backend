@@ -126,7 +126,11 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
     for uid in entry_uids:
         _entry: Entry = await AsyncEntry.nodes.get(uid=uid)
         createdAt = _entry.createdAt
-        if createdAt and (ms - createdAt)<(1000*60*5):
+        if createdAt:
+            logger.debug(f"{ms=}")
+            logger.debug(f"{createdAt=}")
+            logger.debug(f'(ms - createdAt)<(1000*60*5): {(ms - createdAt)<(1000*60*5)}')
+        if createdAt and ((ms - createdAt)<(1000*60*5)):
             await clear_cache("v2:entries", request)
             return await async_get_fullentry(str(_entry.uid), request, roles, jwt)
     new_entry = await entry_if_exists(effector, effector_type, facility)
