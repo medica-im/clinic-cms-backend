@@ -199,10 +199,10 @@ async def update_entry(uid:str, update_data: dict[str, Any], request: Request):
         entry.convention=update_data['convention']
     if 'active' in update_data.keys():
         entry.active=update_data['active']
-        await clear_cache("v1:entries", request)
+        await clear_cache("v2:entries", request)
     if 'memberships' in update_data.keys():
         do_cache_clear = await update_entry_memberships(entry, update_data['memberships'])
         if do_cache_clear:
-            await clear_cache("v1:entries", request)
+            await clear_cache("v2:entries", request)
     await entry.save()
     return Entry.model_validate(entry.__properties__)
