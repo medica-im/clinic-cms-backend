@@ -907,6 +907,41 @@ def entries_of_situation(request, situation):
     entries_uids = [ e.uid for e in entries]
     return entries_uids
 
+async def async_entries_of_situation(directory, situation):
+    entries=[]
+    q1=f"""
+        MATCH (s:Situation)
+        WHERE s.uid = "{situation.uid}"
+        MATCH (et:EffectorType)-[:MANAGES]->(s)
+        MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
+        WHERE d.name = "{directory.name}"
+        RETURN e
+        """
+    q2=f"""
+        MATCH (s:Situation)
+        WHERE s.uid = "{situation.uid}"
+        MATCH (s)-[:IMPACTS]->(n:Need)<-[:MANAGES]-(et:EffectorType)
+        MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
+        WHERE d.name = "{directory.name}"
+        RETURN e
+        """
+    q3=f"""
+        MATCH (s:Situation)
+        WHERE s.uid = "{situation.uid}"
+        MATCH (s)-[:IMPACTS]->(n:Need)<-[:PART_OF]-(n2:Need)<-[:MANAGES]-(et:EffectorType)
+        MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
+        WHERE d.name = "{directory.name}"
+        RETURN e
+        """
+    for q in [q1,q2,q3]:
+        results, _meta = await adb.cypher_query(q, resolve_objects = True)
+        if results:
+            for row in results:
+                (entry,)=row
+                entries.append(entry)
+    entries_uids = [e.uid for e in entries]
+    return entries_uids
+
 def add_label(uid: str, label: str):
     db.cypher_query(
         f"""MATCH (e)

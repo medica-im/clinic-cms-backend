@@ -11,3 +11,9 @@ class SituationPy(BaseModel):
     definition_fr: str|None
     ICD_11: list[str]|None
     need: list[NeedPy]|None
+
+
+class Situation(BaseModel):
+    uid: str
+    name: str
+    entries: list[str]
