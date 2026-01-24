@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Request
-from api.serializers.effector_type import get_effector_types, get_effector_type
 from api.types.situation import Situation
 from api.utils import get_directory
 from pydantic import ValidationError
 from directory.utils import async_entries_of_situation
-from directory.models.agraph import AsyncGraphSituation
+from directory.models.agraph import  Situation as AsyncGraphSituation
 from django.conf import settings
 
 router = APIRouter()
