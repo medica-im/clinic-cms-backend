@@ -4,7 +4,7 @@ from api.types.situation import Situation
 from api.utils import get_directory
 from pydantic import ValidationError
 from directory.utils import async_entries_of_situation
-from directory.models.agraph import Situation
+from directory.models.agraph import AsyncGraphSituation
 from django.conf import settings
 
 router = APIRouter()
@@ -12,7 +12,7 @@ router = APIRouter()
 @router.get("/situations")
 async def situations(request: Request) -> list[Situation]:
     directory = await get_directory(request)
-    nodes = await Situation.nodes.all()
+    nodes = await AsyncGraphSituation.nodes.all()
     data = []
     for node in nodes:
         uid = node.uid
