@@ -5,6 +5,7 @@ from enum import Enum
 from api.types.need import NeedPy
 from api.types.situation import SituationPy
 import annotated_types
+from api.types.utils import EmptyStrToNone
 
 RPPS = Annotated[int, annotated_types.Ge(10000000000), annotated_types.Le(99999999999)]
 
@@ -33,7 +34,7 @@ class EffectorPatch(BaseModel):
     label_en: str|None = None
     slug_en: str|None = None
     name_fr: str|None = None
-    label_fr: str|None = None
+    label_fr: EmptyStrToNone|str = None
     slug_fr: str|None = None
     rpps: RPPS|None = None
     spoken_languages: list[str]|None = None
