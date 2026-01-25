@@ -745,7 +745,7 @@ def sync_get_entries(
     ):
     query = get_entries_query(directory, uid=uid, active=active)
     results, _meta = db.cypher_query(query, resolve_objects = True)
-    logger.debug(f"{results[:1]=} {len(results)=}")
+    #logger.debug(f"{results[:1]=} {len(results)=}")
     entries=[]
     for row in results:
         (
@@ -798,7 +798,7 @@ async def get_entries(
     ):
     query = get_entries_query(directory, uid=uid, active=active)
     results, _meta = await adb.cypher_query(query, resolve_objects = True)
-    logger.debug(f"{results[:1]=} {len(results)=}")
+    #logger.debug(f"{results[:1]=} {len(results)=}")
     entries=[]
     for row in results:
         (
@@ -842,7 +842,7 @@ async def get_entries(
                 "directories": directories
             }
         )
-    logger.debug(f"{len(entries)=}\n{entries[0]=}")
+    #logger.debug(f"{len(entries)=}\n{entries[0]=}")
     return entries
 
 def get_location_uids(effector_uids):
@@ -1035,7 +1035,7 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
         RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats,directories;"""
 
 def entry_dict(results, cols):
-    logger.debug(f"{results[:1]=} {len(results)=}")
+    #logger.debug(f"{results[:1]=} {len(results)=}")
     try:
         row=results[0]
     except Exception as e:
