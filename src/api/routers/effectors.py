@@ -58,4 +58,4 @@ async def post_effector(jwt: Annotated[dict, Depends(JWT)], effector: EffectorPo
 @router.patch("/effectors/{uid}")
 async def patch_entry(uid: str, effector: EffectorPatch, request: Request, jwt: Annotated[dict, Depends(JWT)]):
     await authorize_api("effectors_v2", request, jwt)
-    return await patch_effector(uid, effector.model_dump(exclude_unset=True))
+    return await patch_effector(uid, effector.model_dump(exclude_unset=True), request)

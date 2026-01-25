@@ -1,25 +1,17 @@
 import logging
-import time
 from common.utils import timestamp
 from django.utils.text import slugify
 from neomodel import db
 from pydantic import ValidationError
-from directory.models import (
-    Directory,
-    Facility,
-    Commune,
-    Website,
-    DepartmentOfFrance
-)
 from directory.models.agraph import (
     HealthWorker as AsyncHealthWorker,
     Effector as AsyncEffector,
     Directory as AsyncDirectory,
 )
-from api.types.effector import Effector, EffectorPost, EffectorPatch
+from api.types.effector import Effector, EffectorPost
+from api.utils import clear_cache
 from rest_framework import serializers
 from adrf.serializers import Serializer
-from langcodes import standardize_tag
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +132,7 @@ class EffectorSerializer(Serializer):
         return instance
 
 
-async def patch_effector(uid, kwargs)->Effector:
+async def patch_effector(uid, kwargs, request)->Effector:
     logger.debug(f"{kwargs=}")
     hw=["rpps", "spoken_languages"]
     if (any(x in kwargs.keys() for x in hw)):
@@ -153,4 +145,5 @@ async def patch_effector(uid, kwargs)->Effector:
     effector_dct=node.__properties__
     effector=Effector.model_validate(effector_dct)
     logger.debug(effector)
+    await clear_cache("v2:entries", request)
     return effector
