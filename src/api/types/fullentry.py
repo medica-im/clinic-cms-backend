@@ -154,7 +154,7 @@ class FullEntry(BaseModel):
     effector_uid: str
     emails: list[Email]|None = None
     facility: Facility
-    label: str
+    label: str|None = None
     name: str
     gender: str|None = None
     contactUpdatedAt: int = 0
