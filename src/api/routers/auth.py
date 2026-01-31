@@ -3,7 +3,7 @@ import os
 from typing import Annotated
 from datetime import timedelta
 from django.contrib.auth import get_user_model
-from fastapi import APIRouter, Security, HTTPException, status, Request, Response, Depends
+from fastapi import APIRouter, Security, HTTPException, status, Request, Response, Depends, BackgroundTasks
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi_jwt import (
     JwtAccessBearer,
@@ -15,6 +15,7 @@ from api.utils import get_site_from_request
 from api.auth import get_user, get_role
 from fastapi_nextauth_jwt import NextAuthJWT
 from accounts.models import User
+from auditor.logger import log_oidc
 
 logger = logging.getLogger(__name__)
 
@@ -152,8 +153,8 @@ def refresh(
 
 @router.get("/users/me")
 async def read_current_user(
-        jwt: Annotated[dict, Depends(JWT)], request: Request
-):  
+        jwt: Annotated[dict, Depends(JWT)], request: Request,
+background_tasks: BackgroundTasks):  
     logger.debug(f"{jwt=}")
     site = await get_site_from_request(request)
     try:
@@ -179,6 +180,7 @@ async def read_current_user(
         picture = jwt["picture"]
     except:
         picture = None
+    background_tasks.add_task(log_oidc, jwt, site)
     return {
         "name": jwt["name"],
         "email": jwt["email"],
