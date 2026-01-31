@@ -49,9 +49,14 @@ class IATRangeFilter(admin.SimpleListFilter):
 
 
 class OIDCAdmin(admin.ModelAdmin):
-    list_display = ('email', 'sub', 'iss', 'aud', 'site')
-    search_fields = ('email', 'sub')
+    list_display = ('email', 'name', 'sub', 'view_iat_date', 'site')
+    search_fields = ('email', 'sub', 'name')
     list_filter = ('site', IATRangeFilter)
+
+    @admin.display(empty_value="?")
+    def view_iat_date(self, obj):
+        dt_object = datetime.fromtimestamp(obj.iat, tz=timezone.get_current_timezone())
+        return dt_object
 
 
 admin.site.register(OIDC, OIDCAdmin)
