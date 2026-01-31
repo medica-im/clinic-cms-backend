@@ -30,6 +30,7 @@ apps.populate(installed_apps=[
     'workforce',
     'facility',
     'nlp',
+    'auditor',
 ])
 # Make sure the above apps were loaded
 apps.check_apps_ready()
