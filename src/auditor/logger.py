@@ -15,8 +15,8 @@ def log_oidc(jwt, site):
         given_name=jwt.get('given_name', ''),
         family_name=jwt.get('family_name', ''),
         locale=jwt.get('locale', ''),
-        jti=jwt.get('jti')
-        site=site
+        jti=jwt.get('jti'),
+        site=site,
     )
     try:
         oidc_entry.save()

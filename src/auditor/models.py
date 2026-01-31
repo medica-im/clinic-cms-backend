@@ -15,7 +15,7 @@ class OIDC(models.Model):
     family_name=models.CharField(max_length=255)
     locale=models.CharField(max_length=10)
     site=models.ForeignKey(Site, on_delete=models.CASCADE)
-    jti=models.CharField(max_length=255)
+    jti=models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
         indexes = [
