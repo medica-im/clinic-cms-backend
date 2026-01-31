@@ -93,6 +93,7 @@ INSTALLED_APPS = [
     'opengraph',
     'nlp',
     'heatwave',
+    'auditor',
 ]
 
 if DEBUG:

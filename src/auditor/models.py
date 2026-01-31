@@ -16,5 +16,12 @@ class OIDC(models.Model):
     locale=models.CharField(max_length=10)
     site=models.ForeignKey(Site, on_delete=models.CASCADE)
 
+    class Meta:
+        indexes = [
+            models.Index("email", name="oidc_email_idx"),
+            models.Index("sub", name="oidc_sub_idx")
+        ]
+
+
     def __str__(self):
         return f"{self.email} ({self.sub})"
