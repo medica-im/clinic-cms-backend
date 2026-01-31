@@ -1,3 +1,6 @@
+from pydantic import ValidationError
+
+
 def log_oidc(jwt, site):
     from .models import OIDC
     oidc_entry = OIDC(
@@ -12,6 +15,10 @@ def log_oidc(jwt, site):
         given_name=jwt.get('given_name', ''),
         family_name=jwt.get('family_name', ''),
         locale=jwt.get('locale', ''),
+        jti=jwt.get('jti')
         site=site
     )
-    oidc_entry.save()
+    try:
+        oidc_entry.save()
+    except ValidationError as e:
+        pass

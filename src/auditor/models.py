@@ -22,6 +22,9 @@ class OIDC(models.Model):
             models.Index("email", name="oidc_email_idx"),
             models.Index("sub", name="oidc_sub_idx")
         ]
+        constraints = [
+            models.UniqueConstraint("jti", name="unique_jti_constraint"),
+        ]
 
 
     def __str__(self):
