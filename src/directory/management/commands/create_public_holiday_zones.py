@@ -96,6 +96,8 @@ class Command(BaseCommand):
                         )
                 )
                 # Build mapping for specific zones (exclude metropole default)
+                linked = 0
+                already_linked = 0
                 for dept in DepartmentOfFrance.nodes.all():
                     code = getattr(dept, 'code', None)
                     if not code:
