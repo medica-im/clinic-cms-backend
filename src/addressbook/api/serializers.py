@@ -223,6 +223,11 @@ class ContactSerializer(serializers.ModelSerializer):
         except Exception as e:
             logger.error(e)
             city = None
+        try:
+            department = facility.commune.all()[0].department.all()[0]
+            public_holidays_zone = department.public_holiday_zone.all()[0].name
+        except:
+            public_holidays_zone = None
         return {
             "building": facility.building,
             "city": city,
@@ -237,7 +242,7 @@ class ContactSerializer(serializers.ModelSerializer):
             "tooltip_direction": facility.tooltip_direction,
             "tooltip_permanent": facility.tooltip_permanent,
             "tooltip_text": facility.tooltip_text,
-            "public_holidays_zone": obj.address.public_holidays_zone,
+            "public_holidays_zone": public_holidays_zone,
         }
 
 

@@ -8,7 +8,7 @@ from api.types.fullentry import Address
 
 
 class OrganizationAddress(Address):
-    public_holidays_zone: str
+    public_holidays_zone: str|None = None
 
 
 class OrganizationPy(BaseModel):
