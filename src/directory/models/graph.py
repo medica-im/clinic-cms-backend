@@ -9,6 +9,7 @@ from neomodel import (
     StringProperty,
     IntegerProperty,
     DateTimeFormatProperty,
+    DateTimeProperty,
     UniqueIdProperty,
     RelationshipTo,
     RelationshipFrom,
@@ -18,6 +19,7 @@ from neomodel import (
     OneOrMore,
     One,
 )
+from access.neomodels import ROLES
 from django.utils.translation import get_language
 
 logger=logging.getLogger(__name__)
@@ -318,6 +320,10 @@ class DepartmentOfFrance(StructuredNode):
         'RegionOfFrance',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
     )
+    public_holiday_zone = RelationshipTo(
+        'PublicHolidayZone',
+        'PART_OF'
+    )
 
 
 class RegionOfFrance(StructuredNode):
@@ -455,4 +461,14 @@ class Tag(StructuredNode):
     entry = RelationshipTo(
         'Entry',
         'TAGS'
+    )
+
+
+class PublicHolidayZone(StructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    label = StringProperty(unique_index=True)
+    departments = RelationshipFrom(
+        'DepartmentOfFrance',
+        'PART_OF'
     )
