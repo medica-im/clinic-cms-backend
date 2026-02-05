@@ -49,7 +49,7 @@ class IATRangeFilter(admin.SimpleListFilter):
 
 
 class OIDCAdmin(admin.ModelAdmin):
-    list_display = ('email', 'name', 'sub', 'view_iat_date', 'site')
+    list_display = ('email', 'name', 'sub', 'provider', 'view_iat_date', 'site')
     search_fields = ('email', 'sub', 'name')
     list_filter = ('site', IATRangeFilter)
 

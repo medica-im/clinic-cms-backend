@@ -5,8 +5,7 @@ from api.serializers.effector import get_effector, get_effectors, create_effecto
 from api.routers.utils import get_directory_from_hostname
 from api.types.effector import Effector, EffectorPost, EffectorPatch
 from pydantic import ValidationError
-#from api.auth import JWT
-from api.auth import authorize_api
+from api.auth import JWT, authorize_api
 from fastapi_nextauth_jwt import NextAuthJWT
 logging.basicConfig(
     level=logging.DEBUG,
@@ -15,13 +14,6 @@ logging.basicConfig(
     stream=sys.stdout
 )
 logger = logging.getLogger(__name__)
-
-auth_secret=os.getenv("AUTH_SECRET")
-if auth_secret:
-    JWT = NextAuthJWT(
-        secret=auth_secret,
-        csrf_prevention_enabled=False
-    )
 
 router = APIRouter()
 

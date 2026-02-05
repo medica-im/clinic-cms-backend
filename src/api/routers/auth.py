@@ -12,7 +12,7 @@ from fastapi_jwt import (
 )
 from django.conf import settings
 from api.utils import get_site_from_request
-from api.auth import get_user, get_role
+from api.auth import get_user, get_role, JWT
 from fastapi_nextauth_jwt import NextAuthJWT
 from accounts.models import User
 from auditor.logger import log_oidc
@@ -21,12 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
-auth_secret=os.getenv("AUTH_SECRET")
-if auth_secret:
-    JWT = NextAuthJWT(
-        secret=auth_secret,
-        csrf_prevention_enabled=False
-    )
 
 # Read access token from bearer header and cookie (bearer priority)
 access_security = JwtAccessBearer(

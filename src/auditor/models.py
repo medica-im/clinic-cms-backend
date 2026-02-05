@@ -13,7 +13,6 @@ class OIDC(models.Model):
     picture=models.URLField()
     given_name=models.CharField(max_length=255)
     family_name=models.CharField(max_length=255)
-    locale=models.CharField(max_length=10)
     site=models.ForeignKey(Site, on_delete=models.CASCADE)
     jti=models.CharField(max_length=255, null=True, blank=True)
 

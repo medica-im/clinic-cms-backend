@@ -6,7 +6,7 @@ def log_oidc(jwt, site):
     oidc_entry = OIDC(
         iss=jwt.get('iss', ''),
         aud=jwt.get('aud', ''),
-        sub=jwt.get('sub', ''),
+        sub=jwt.get('providerAccountId', ''),
         iat=jwt.get('iat', 0),
         email=jwt.get('email', ''),
         email_verified=jwt.get('email_verified')=="",
@@ -14,7 +14,6 @@ def log_oidc(jwt, site):
         picture=jwt.get('picture', ''),
         given_name=jwt.get('given_name', ''),
         family_name=jwt.get('family_name', ''),
-        locale=jwt.get('locale', ''),
         jti=jwt.get('jti'),
         site=site,
     )
