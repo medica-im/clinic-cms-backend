@@ -104,7 +104,7 @@ async def auth_google(jwt: Annotated[dict, Depends(JWT)], request: Request, redi
             detail="Unauthorized client"
         )
     try:
-        user = await User.objects.aget(email=user_infos['email'])
+        user = await User.objects.aget(email__iexact=user_infos['email'])
         logger.debug(user)
     except User.DoesNotExist:
         RedirectResponse(url=f"/{redirect}")
@@ -158,7 +158,7 @@ background_tasks: BackgroundTasks):
     logger.debug(f"{jwt=}")
     site = await get_site_from_request(request)
     try:
-        django_user = await User.objects.select_related('grammatical_gender').aget(email=jwt["email"])
+        django_user = await User.objects.select_related('grammatical_gender').aget(email__iexact=jwt["email"])
     except User.DoesNotExist:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
