@@ -58,7 +58,7 @@ class Invitee(AsyncStructuredNode):
     createdAt = DateTimeProperty(default_now=True)
     createdBy = AsyncRelationshipTo('User', 'CREATED_BY')
     role = StringProperty(required=True, choices=ROLES)
-    entry = AsyncRelationshipTo('Entry', 'INVITED_TO')
+    entry = AsyncRelationshipTo('directory.models.agraph.Entry', 'INVITED_TO')
     active = BooleanProperty(
         index=True,
         default=True)
