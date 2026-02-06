@@ -78,7 +78,7 @@ async def create_invitee(
             detail=f"Entry with uid {item.entry} not found"
         )
     try:
-        account = await AsyncAccount.nodes.get(uid=jwt["providerAccountId"])
+        account = await AsyncAccount.nodes.get(sub=jwt["providerAccountId"])
     except AsyncAccount.DoesNotExist as e:
         logger.error(f'Failed to get Account with sub {jwt["providerAccountId"]}: {e}')
         raise HTTPException(
