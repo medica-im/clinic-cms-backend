@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, Depends, status, HTTPException
 from neomodel import adb
 from api.types.invitee import Invitee, InviteePost, InviteePatch
 from access.asyncneomodels import Invitee as AsyncInvitee, User as AsyncUser
-from directory.models.agraph import Entry as AsyncEntry
+from directory.models.agraph import Entry
 from api.auth import authorize_api
 from api.auth import JWT
 from api.utils import get_site_from_request
@@ -67,7 +67,7 @@ async def create_invitee(
     ).save()
 
     try:
-        entry = await AsyncEntry.nodes.get(uid=item.entry)
+        entry = await Entry.nodes.get(uid=item.entry)
         await new_invitee.entry.connect(entry)
     except Exception as e:
         logger.error(f"Failed to connect to Entry {item.entry}: {e}")
