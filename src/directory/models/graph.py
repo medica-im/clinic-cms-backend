@@ -19,7 +19,7 @@ from neomodel import (
     OneOrMore,
     One,
 )
-from access.neomodels import ROLES
+from access.roles import ROLES
 from django.utils.translation import get_language
 
 logger=logging.getLogger(__name__)

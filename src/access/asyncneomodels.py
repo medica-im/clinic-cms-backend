@@ -1,25 +1,25 @@
 import logging
 from neomodel import (
     config,
-    StructuredNode,
+    AsyncStructuredNode,
     ArrayProperty,
     BooleanProperty,
     StringProperty,
     IntegerProperty,
     UniqueIdProperty,
-    ArrayProperty,
-    RelationshipTo,
-    RelationshipFrom,
-    Relationship,
-    StructuredRel,
+    AsyncRelationshipTo,
+    AsyncRelationshipFrom,
+    AsyncRelationship,
+    AsyncStructuredRel,
     DateTimeProperty,
 )
 from django.utils.translation import get_language
 from access.roles import ROLES
 
-logger=logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
-class Role(StructuredNode):
+
+class Role(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name = StringProperty(unique_index=True)
     label_en = StringProperty()
@@ -28,56 +28,56 @@ class Role(StructuredNode):
     description_fr = StringProperty()
 
 
-class Access(StructuredNode):
+class Access(AsyncStructuredNode):
     uid = UniqueIdProperty()
     role = StringProperty(
         required=True,
         choices=ROLES,
         index=True
     )
-    user = RelationshipFrom(
+    user = AsyncRelationshipFrom(
         'directory.models.graph.User',
         'HAS_ACCESS'
     )
-    entry = RelationshipTo(
+    entry = AsyncRelationshipTo(
         'directory.models.graph.Entry',
         'ACCESS_TO'
     )
     createdAt = DateTimeProperty(default_now=True)
-    createdBy = RelationshipTo('User', 'CREATED_BY')
+    createdBy = AsyncRelationshipTo('User', 'CREATED_BY')
     active = BooleanProperty(
         index=True,
         default=True
     )
 
 
-class Invitee(StructuredNode):
+class Invitee(AsyncStructuredNode):
     uid = UniqueIdProperty()
     email = StringProperty()
     name = StringProperty()
     createdAt = DateTimeProperty(default_now=True)
-    createdBy = RelationshipTo('User', 'CREATED_BY')
+    createdBy = AsyncRelationshipTo('User', 'CREATED_BY')
     role = StringProperty(required=True, choices=ROLES)
-    entry = RelationshipTo('Entry', 'INVITED_TO')
+    entry = AsyncRelationshipTo('Entry', 'INVITED_TO')
     active = BooleanProperty(
         index=True,
         default=True)
 
 
-class User(StructuredNode):
+class User(AsyncStructuredNode):
     uid = UniqueIdProperty()
     invitee = StringProperty()
     email = StringProperty()
     name = StringProperty()
     createdAt = DateTimeProperty(default_now=True)
-    createdBy = RelationshipTo('User', 'CREATED_BY')
-    access = RelationshipTo('Access', 'HAS_ACCESS')
-    accounts = RelationshipTo('Account', 'HAS_ACCOUNT')
+    createdBy = AsyncRelationshipTo('User', 'CREATED_BY')
+    access = AsyncRelationshipTo('Access', 'HAS_ACCESS')
+    accounts = AsyncRelationshipTo('Account', 'HAS_ACCOUNT')
 
 
-class Account(StructuredNode):
+class Account(AsyncStructuredNode):
     uid = UniqueIdProperty()
     iss = StringProperty()
     sub = StringProperty(unique_index=True)
-    user = RelationshipFrom('User', 'HAS_ACCOUNT')
+    user = AsyncRelationshipFrom('User', 'HAS_ACCOUNT')
     createdAt = DateTimeProperty(default_now=True)
