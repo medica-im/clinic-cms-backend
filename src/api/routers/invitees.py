@@ -3,7 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Request, Depends, status, HTTPException
 from neomodel import adb
 from api.types.invitee import Invitee, InviteePost, InviteePatch
-from access.asyncneomodels import Invitee as AsyncInvitee, User as AsyncUser
+from access.asyncneomodels import Invitee as AsyncInvitee
+from access.asyncneomodels import User as AsyncUser
 from directory.models.agraph import Entry
 from api.auth import authorize_api
 from api.auth import JWT
