@@ -7,7 +7,6 @@ class InviteePost(BaseModel):
     role: str
     name: str | None = None
     entry: str
-    createdBy: str
 
 
 class InviteePatch(BaseModel):

@@ -5,6 +5,7 @@ from neomodel import adb
 from api.types.invitee import Invitee, InviteePost, InviteePatch
 from access.asyncneomodels import Invitee as AsyncInvitee
 from access.asyncneomodels import User as AsyncUser
+from access.asyncneomodels import Account as AsyncAccount
 from directory.models.agraph import Entry
 from api.auth import authorize_api
 from api.auth import JWT
@@ -77,13 +78,21 @@ async def create_invitee(
             detail=f"Entry with uid {item.entry} not found"
         )
     try:
-        user = await AsyncUser.nodes.get(uid=item.createdBy)
-        await new_invitee.createdBy.connect(user)
-    except Exception as e:
-        logger.error(f"Failed to connect to User {item.createdBy}: {e}")
+        account = await AsyncAccount.nodes.get(uid=jwt["sub"])
+    except AsyncAccount.DoesNotExist:
+        logger.error(f"Failed to get Account with sub {jwt['sub']}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with uid {item.createdBy} not found"
+            detail=f"Account with sub {jwt['sub']} not found"
+        )
+    try:
+        user = (await account.user.all())[0]
+        await new_invitee.createdBy.connect(user)
+    except Exception as e:
+        logger.error(f"Failed to connect to User: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User linked to Account {account} not found"
         )
     return Invitee.model_validate(new_invitee.__properties__)
 
