@@ -1,4 +1,5 @@
 import logging
+from time import time_ns
 from neomodel import (
     config,
     AsyncStructuredNode,
@@ -11,7 +12,6 @@ from neomodel import (
     AsyncRelationshipFrom,
     AsyncRelationship,
     AsyncStructuredRel,
-    DateTimeProperty,
 )
 from django.utils.translation import get_language
 from access.roles import ROLES
@@ -43,7 +43,7 @@ class Access(AsyncStructuredNode):
         'directory.models.graph.Entry',
         'ACCESS_TO'
     )
-    createdAt = DateTimeProperty(default_now=True)
+    createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
     createdBy = AsyncRelationshipTo('User', 'CREATED_BY')
     active = BooleanProperty(
         index=True,
@@ -55,7 +55,7 @@ class Invitee(AsyncStructuredNode):
     uid = UniqueIdProperty()
     email = StringProperty()
     name = StringProperty()
-    createdAt = DateTimeProperty(default_now=True)
+    createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
     createdBy = AsyncRelationshipTo('User', 'CREATED_BY')
     role = StringProperty(required=True, choices=ROLES)
     entry = AsyncRelationshipTo('directory.models.agraph.Entry', 'INVITED_TO')
@@ -69,7 +69,7 @@ class User(AsyncStructuredNode):
     invitee = StringProperty()
     email = StringProperty()
     name = StringProperty()
-    createdAt = DateTimeProperty(default_now=True)
+    createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
     createdBy = AsyncRelationshipTo('User', 'CREATED_BY')
     access = AsyncRelationshipTo('Access', 'HAS_ACCESS')
     accounts = AsyncRelationshipTo('Account', 'HAS_ACCOUNT')
@@ -80,4 +80,4 @@ class Account(AsyncStructuredNode):
     iss = StringProperty()
     sub = StringProperty(unique_index=True)
     user = AsyncRelationshipFrom('User', 'HAS_ACCOUNT')
-    createdAt = DateTimeProperty(default_now=True)
+    createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)

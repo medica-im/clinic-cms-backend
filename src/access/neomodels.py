@@ -1,4 +1,5 @@
 import logging
+from time import time_ns
 from neomodel import (
     config,
     StructuredNode,
@@ -12,7 +13,6 @@ from neomodel import (
     RelationshipFrom,
     Relationship,
     StructuredRel,
-    DateTimeProperty,
 )
 from django.utils.translation import get_language
 from access.roles import ROLES
@@ -43,7 +43,7 @@ class Access(StructuredNode):
         'directory.models.graph.Entry',
         'ACCESS_TO'
     )
-    createdAt = DateTimeProperty(default_now=True)
+    createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
     createdBy = RelationshipTo('User', 'CREATED_BY')
     active = BooleanProperty(
         index=True,
@@ -55,7 +55,7 @@ class Invitee(StructuredNode):
     uid = UniqueIdProperty()
     email = StringProperty()
     name = StringProperty()
-    createdAt = DateTimeProperty(default_now=True)
+    createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
     createdBy = RelationshipTo('User', 'CREATED_BY')
     role = StringProperty(required=True, choices=ROLES)
     entry = RelationshipTo('Entry', 'INVITED_TO')
@@ -69,7 +69,7 @@ class User(StructuredNode):
     invitee = StringProperty()
     email = StringProperty()
     name = StringProperty()
-    createdAt = DateTimeProperty(default_now=True)
+    createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
     createdBy = RelationshipTo('User', 'CREATED_BY')
     access = RelationshipTo('Access', 'HAS_ACCESS')
     accounts = RelationshipTo('Account', 'HAS_ACCOUNT')
@@ -80,4 +80,4 @@ class Account(StructuredNode):
     iss = StringProperty()
     sub = StringProperty(unique_index=True)
     user = RelationshipFrom('User', 'HAS_ACCOUNT')
-    createdAt = DateTimeProperty(default_now=True)
+    createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
