@@ -78,12 +78,12 @@ async def create_invitee(
             detail=f"Entry with uid {item.entry} not found"
         )
     try:
-        account = await AsyncAccount.nodes.get(uid=jwt["sub"])
-    except AsyncAccount.DoesNotExist:
-        logger.error(f"Failed to get Account with sub {jwt['sub']}")
+        account = await AsyncAccount.nodes.get(uid=jwt["providerAccountId"])
+    except AsyncAccount.DoesNotExist as e:
+        logger.error(f'Failed to get Account with sub {jwt["providerAccountId"]}: {e}')
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Account with sub {jwt['sub']} not found"
+            detail=f'Account with sub {jwt["providerAccountId"]} not found'
         )
     try:
         user = (await account.user.all())[0]
