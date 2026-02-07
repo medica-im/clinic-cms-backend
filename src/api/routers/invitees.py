@@ -38,7 +38,7 @@ async def invitees(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list
         )
 
     # Query Invitees connected to the Entry node with uid matching neomodel_uid
-    entry_uid = str(organization.neomodel_uid)
+    entry_uid = str(organization.neomodel_uid.hex)
     logger.info(f"Searching for Invitees connected to Entry with uid: {entry_uid}")
 
     query = """
