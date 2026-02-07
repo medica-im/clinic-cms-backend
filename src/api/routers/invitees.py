@@ -58,6 +58,27 @@ async def invitees(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list
     return invitee_list
 
 
+@router.get("/invitee/{invitee_uid}")
+async def get_invitee(
+    invitee_uid: str,
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)]
+) -> Invitee:
+    await authorize_api("invitees_v2", request, jwt)
+
+    # Get the Invitee node
+    try:
+        invitee = await AsyncInvitee.nodes.get(uid=invitee_uid)
+    except Exception as e:
+        logger.error(f"Failed to get Invitee {invitee_uid}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invitee with uid {invitee_uid} not found"
+        )
+
+    return Invitee.model_validate(invitee.__properties__)
+
+
 @router.post("/invitee", status_code=status.HTTP_201_CREATED)
 async def create_invitee(
     item: InviteePost,
