@@ -38,11 +38,16 @@ async def invitees(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list
         )
 
     # Query Invitees connected to the Entry node with uid matching neomodel_uid
+    entry_uid = str(organization.neomodel_uid)
+    logger.info(f"Searching for Invitees connected to Entry with uid: {entry_uid}")
+
     query = """
     MATCH (entry:Entry {uid: $entry_uid})<-[:INVITED_TO]-(invitee:Invitee)
     RETURN invitee
     """
-    results, _ = await adb.cypher_query(query, {"entry_uid": str(organization.neomodel_uid)}, resolve_objects=True)
+    results, _ = await adb.cypher_query(query, {"entry_uid": entry_uid}, resolve_objects=True)
+
+    logger.info(f"Query returned {len(results)} results")
 
     invitee_list = []
     if results:
