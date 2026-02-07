@@ -79,7 +79,7 @@ async def get_invitee(
     return Invitee.model_validate(invitee.__properties__)
 
 
-@router.post("/invitee", status_code=status.HTTP_201_CREATED)
+@router.post("/invitees", status_code=status.HTTP_201_CREATED)
 async def create_invitee(
     item: InviteePost,
     request: Request,
@@ -123,7 +123,7 @@ async def create_invitee(
     return Invitee.model_validate(new_invitee.__properties__)
 
 
-@router.patch("/invitee/{invitee_uid}")
+@router.patch("/invitees/{invitee_uid}")
 async def update_invitee(
     invitee_uid: str,
     item: InviteePatch,
