@@ -58,7 +58,7 @@ async def invitees(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list
     return invitee_list
 
 
-@router.get("/invitee/{invitee_uid}")
+@router.get("/invitees/{invitee_uid}")
 async def get_invitee(
     invitee_uid: str,
     request: Request,
