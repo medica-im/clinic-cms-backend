@@ -75,6 +75,8 @@ class DirectoryAdmin(admin.ModelAdmin):
         'presentation',
         'slug',
         'postal_codes',
+        'department_default',
+        'commune_default',
     )
 
 

@@ -177,6 +177,8 @@ class DirectorySerializer(serializers.ModelSerializer):
             'postal_codes',
             'inputField',
             'setting',
+            'department_default',
+            'commune_default',
         ]
         depth = 3
 

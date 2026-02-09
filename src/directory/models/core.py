@@ -151,6 +151,12 @@ class Directory(models.Model):
             "limit address search results to postal codes starting with these "
             "strings")
     )
+    department_default = models.BooleanField(
+        default=False,
+        help_text="Whether to use the department of the organization as default in the facility creation form.")
+    commune_default = models.BooleanField(
+        default=False,
+        help_text="Whether to use the commune of the organization as default in the facility creation form.")
 
     def __str__(self):
         return f"Directory {self.name}"
