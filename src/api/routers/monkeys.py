@@ -17,6 +17,6 @@ async def entries() -> list[Monkey]:
 
 @router.post("/monkeys/", status_code=status.HTTP_201_CREATED)
 async def post_entry(monkey: MonkeyPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> Monkey:
-    await authorize_api("monkeys_v2", request, jwt)
+    await authorize_api("monkeys_v3", request, jwt)
     _monkey = await AsyncMonkey(name=monkey.name).save()
     return Monkey.model_validate(_monkey.__properties__)
