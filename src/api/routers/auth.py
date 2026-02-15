@@ -13,6 +13,7 @@ from fastapi_jwt import (
 from django.conf import settings
 from api.utils import get_site_from_request
 from api.auth import get_user, get_role, JWT
+from api.neo4j_auth import get_or_create_neo4j_user
 from fastapi_nextauth_jwt import NextAuthJWT
 from accounts.models import User
 from auditor.logger import log_oidc
@@ -148,14 +149,23 @@ def refresh(
 @router.get("/users/me")
 async def read_current_user(
         jwt: Annotated[dict, Depends(JWT)], request: Request,
-background_tasks: BackgroundTasks):  
+background_tasks: BackgroundTasks):
     logger.debug(f"{jwt=}")
     site = await get_site_from_request(request)
+
+    # Neo4j-based user lookup (Invitee auto-provisioning)
+    neo4j_result = await get_or_create_neo4j_user(jwt, site)
+    logger.debug(f"{neo4j_result=}")
+    if neo4j_result:
+        background_tasks.add_task(log_oidc, jwt, site)
+        return neo4j_result
+
+    # Django fallback (existing behavior)
     try:
         django_user = await User.objects.select_related('grammatical_gender').aget(email__iexact=jwt["email"])
     except User.DoesNotExist:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions"
         )
     role = await get_role(django_user, site)

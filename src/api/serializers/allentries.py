@@ -225,11 +225,8 @@ def add_evil_twins(scrub_dct):
         return
     twins: dict = make_evil_twins(scrub_dct["administrator"])
     for r in twins.keys():
-        logger.debug(f"\ninserting {r} twin:\n{twins[r]}")
         entries = scrub_dct[r]
-        logger.debug(f"scrub_dct[{r}] has {len(scrub_dct[r])} entries.")
         entries.insert(0, twins[r])
-        logger.debug(f"scrub_dct[{r}] now has {len(scrub_dct[r])} entries.")
 
 async def get_all_entries(request: Request, jwt, roles: list[RoleType])->list[Entry]:
     directory = await get_directory(request)

@@ -36,7 +36,7 @@ class Access(StructuredNode):
         index=True
     )
     user = RelationshipFrom(
-        'directory.models.graph.User',
+        'access.neomodels.User',
         'HAS_ACCESS'
     )
     entry = RelationshipTo(

@@ -36,11 +36,11 @@ class Access(AsyncStructuredNode):
         index=True
     )
     user = AsyncRelationshipFrom(
-        'directory.models.graph.User',
+        'access.asyncneomodels.User',
         'HAS_ACCESS'
     )
     entry = AsyncRelationshipTo(
-        'directory.models.graph.Entry',
+        'directory.models.agraph.Entry',
         'ACCESS_TO'
     )
     createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
