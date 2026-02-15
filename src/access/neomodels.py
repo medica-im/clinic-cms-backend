@@ -62,6 +62,7 @@ class Invitee(StructuredNode):
     active = BooleanProperty(
         index=True,
         default=True)
+    redeemedAt = IntegerProperty()
 
 
 class User(StructuredNode):

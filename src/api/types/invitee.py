@@ -23,3 +23,4 @@ class Invitee(BaseModel):
     createdAt: datetime | None = None
     role: str
     active: bool | None = True
+    redeemedAt: int | None = None

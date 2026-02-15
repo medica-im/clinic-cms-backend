@@ -1,4 +1,5 @@
 import logging
+from time import time_ns
 
 from django.contrib.sites.models import Site
 from neomodel import adb
@@ -94,7 +95,7 @@ async def _find_invitee(email: str, entry_uid: str):
     """
     query = """
     MATCH (i:Invitee {active: true})-[:INVITED_TO]->(e:Entry {uid: $entry_uid})
-    WHERE toLower(i.email) = toLower($email)
+    WHERE toLower(i.email) = toLower($email) AND i.redeemedAt IS NULL
     RETURN i, e
     """
     results, _ = await adb.cypher_query(
@@ -137,8 +138,8 @@ async def _create_user_from_invitee(
     # Connect User as creator of Access
     await access.createdBy.connect(user)
 
-    # Deactivate the Invitee
-    invitee.active = False
+    # Mark the Invitee as redeemed
+    invitee.redeemedAt = time_ns() // 1_000_000
     await invitee.save()
 
     logger.info(
