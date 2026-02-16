@@ -15,9 +15,11 @@ from neomodel import (
     RelationshipFrom,
     Relationship,
     StructuredRel,
+    ZeroOrMore,
     ZeroOrOne,
     OneOrMore,
     One,
+    EmailProperty,
 )
 from access.roles import ROLES
 from django.utils.translation import get_language
@@ -207,6 +209,8 @@ class Effector(StructuredNode):
     #)
     updatedAt = IntegerProperty(default=0)
     createdAt = IntegerProperty(default=0)
+    creator = RelationshipTo('access.neomodels.User', 'CREATED_BY')
+    owner = RelationshipTo('access.neomodels.User', 'OWNED_BY')
     gender = StringProperty(
         choices=(("F","Feminine"), ("M","Masculine"),("N", "Neutral"))
     )
@@ -358,6 +362,8 @@ class Facility(StructuredNode):
     )
     contactUpdatedAt = IntegerProperty(default=0)
     updated = IntegerProperty(default=0)
+    createdAt = IntegerProperty()
+    creator = RelationshipTo('access.neomodels.User', 'CREATED_BY')
     name = StringProperty()
     label = StringProperty()
     slug = StringProperty()
@@ -390,6 +396,9 @@ class Entry(StructuredNode):
     updatedAt = IntegerProperty(default=0)
     createdAt = IntegerProperty()
     contactUpdatedAt = IntegerProperty(default=0)
+    owner = RelationshipTo('access.neomodels.User', 'OWNED_BY')
+    creator = RelationshipTo('access.neomodels.User', 'CREATED_BY')
+    redeemEmail = EmailProperty()
     effector = RelationshipTo('Effector', 'HAS_EFFECTOR')
     facility = RelationshipTo('Facility', 'HAS_FACILITY')
     effector_type = RelationshipTo('EffectorType', 'HAS_EFFECTOR_TYPE')
@@ -402,11 +411,16 @@ class Entry(StructuredNode):
     payment = ArrayProperty(base_property=StringProperty())
     third_party_payer = ArrayProperty(base_property=StringProperty())
     convention = StringProperty()
-    appointments = RelationshipTo('Appointment', 'HAS_APPOINTMENT')
+    appointments = RelationshipTo(
+        'Appointment',
+        'HAS_APPOINTMENT',
+        cardinality=ZeroOrMore
+    )
     tags = RelationshipFrom(
         'Tag',
         'TAGS'
     )
+
 
 class Directory(StructuredNode):
     uid = UniqueIdProperty()
@@ -420,6 +434,12 @@ class Appointment(StructuredNode):
     uid = UniqueIdProperty()
     url = StringProperty()
     phone = StringProperty()
+    entry = RelationshipFrom(
+        'Entry',
+        'HAS_APPOINTMENT',
+        cardinality=One
+    )
+
 
 
 class Office(Appointment):

@@ -8,6 +8,8 @@ from fastapi import Request, HTTPException, status
 from api.utils import get_site_from_request
 from fastapi_nextauth_jwt import NextAuthJWT
 from django.db.models import F
+from api.neo4j_auth import get_neo4j_role
+from access.asyncneomodels import User as Neo4jUser
 
 logger = logging.getLogger(__name__)
 
@@ -76,24 +78,48 @@ async def get_role_from_jwt(jwt: dict)->list[RoleType]:
         logger.debug(f"{roles=}")
         return roles
 
-async def authorize_api(endpoint: str, request: Request, jwt: dict):
-    # get post put patch delete
+def _method_to_permission(method: str) -> int:
+    if method == "GET":
+        return 1
+    elif method == "POST":
+        return 2
+    elif method in ("PUT", "PATCH"):
+        return 4
+    elif method == "DELETE":
+        return 8
+    return 0
+
+async def authorize_api(endpoint: str, request: Request, jwt: dict, users: list[Neo4jUser]|None=None):
     logger.debug(f"{request.method=}")
     site = await get_site_from_request(request)
-    logger.debug(site)
+    permission = _method_to_permission(request.method)
+
+    # Object-level permission: check if the requesting user is in the authorized list
+    if users and jwt:
+        sub = jwt.get("providerAccountId")
+        if sub:
+            for user in users:
+                accounts = await user.accounts.all()
+                if any(account.sub == sub for account in accounts):
+                    logger.debug(
+                        f"Object permission granted: {user} with sub={sub} is in authorized users list"
+                    )
+                    return True
+
+    # Try Neo4j first
+    neo4j_role_name = await get_neo4j_role(jwt, site)
+    logger.debug(f"{neo4j_role_name=}")
+    if neo4j_role_name:
+        roles_dct = await get_role_objs()
+        role = roles_dct.get(neo4j_role_name)
+        if role:
+            logger.debug(f"Neo4j auth: {site=} {role=}")
+            return await authorize(endpoint, role, permission)
+
+    # Django fallback (existing behavior)
     user = await get_user(jwt)
-    logger.debug(user)
     role = await get_role(user, site)
-    logger.debug(f"{site=} {user=} {role=}")
-    permission = 0
-    if request.method == "GET":
-        permission = 1 
-    elif request.method == "POST":
-        permission = 2
-    elif request.method in ["PUT", "PATCH"]:
-        permission = 4
-    elif request.method == "DELETE":
-        permission = 8
+    logger.debug(f"Django auth: {site=} {user=} {role=}")
     return await authorize(endpoint, role, permission)
 
 async def authorize(endpoint_name: str, role: Role, permissions: int):

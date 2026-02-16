@@ -14,9 +14,11 @@ from neomodel import (
     AsyncRelationshipFrom,
     AsyncRelationship,
     AsyncStructuredRel,
+    AsyncZeroOrMore,
     AsyncZeroOrOne,
     OneOrMore,
     AsyncOne,
+    EmailProperty,
 )
 from django.utils.translation import get_language
 
@@ -205,6 +207,8 @@ class Effector(AsyncStructuredNode):
     #)
     updatedAt = IntegerProperty(default=0)
     createdAt = IntegerProperty(default=timestamp)
+    creator = AsyncRelationshipTo('access.asyncneomodels.User', 'CREATED_BY')
+    owner = AsyncRelationshipTo('access.asyncneomodels.User', 'OWNED_BY')
     gender = StringProperty(
         choices=(("F","Feminine"), ("M","Masculine"),("N", "Neutral"))
     )
@@ -349,6 +353,8 @@ class Facility(AsyncStructuredNode):
     )
     contactUpdatedAt = IntegerProperty(default=0)
     updated = IntegerProperty(default=0)
+    createdAt = IntegerProperty()
+    creator = AsyncRelationshipTo('access.asyncneomodels.User', 'CREATED_BY')
     name = StringProperty()
     label = StringProperty()
     slug = StringProperty()
@@ -381,6 +387,9 @@ class Entry(AsyncStructuredNode):
     updatedAt = IntegerProperty(default=0)
     createdAt = IntegerProperty(default=timestamp)
     contactUpdatedAt = IntegerProperty(default=0)
+    owner = AsyncRelationshipTo('access.asyncneomodels.User', 'OWNED_BY')
+    creator = AsyncRelationshipTo('access.asyncneomodels.User', 'CREATED_BY')
+    redeemEmail = EmailProperty()
     effector = AsyncRelationshipTo('Effector', 'HAS_EFFECTOR')
     facility = AsyncRelationshipTo('Facility', 'HAS_FACILITY')
     effector_type = AsyncRelationshipTo('EffectorType', 'HAS_EFFECTOR_TYPE')
@@ -393,7 +402,11 @@ class Entry(AsyncStructuredNode):
     payment = ArrayProperty(base_property=StringProperty())
     third_party_payer = ArrayProperty(base_property=StringProperty())
     convention = StringProperty()
-    appointments = AsyncRelationshipTo('Appointment', 'HAS_APPOINTMENT')
+    appointments = AsyncRelationshipTo(
+        'Appointment',
+        'HAS_APPOINTMENT',
+        cardinality=AsyncZeroOrMore
+    )
     tags = AsyncRelationshipFrom(
         'Tag',
         'TAGS'
@@ -417,6 +430,11 @@ class Appointment(AsyncStructuredNode):
     uid = UniqueIdProperty()
     url = StringProperty()
     phone = StringProperty()
+    entry = AsyncRelationshipFrom(
+        'Entry',
+        'HAS_APPOINTMENT',
+        cardinality=AsyncOne
+    )
 
 
 class Office(Appointment):

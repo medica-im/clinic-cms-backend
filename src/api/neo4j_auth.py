@@ -150,6 +150,21 @@ async def _create_user_from_invitee(
     return user.__properties__, invitee.role
 
 
+async def get_neo4j_role(jwt: dict, site: Site) -> str | None:
+    """Resolve role from Neo4j Access graph. Returns role name string or None."""
+    sub = jwt.get("providerAccountId")
+    if not sub:
+        return None
+    entry_uid = await _get_entry_uid(site)
+    if not entry_uid:
+        return None
+    result = await _find_user_by_sub(sub, entry_uid)
+    if result:
+        _, role = result
+        return role
+    return None
+
+
 def _build_response(user_props: dict, role: str, jwt: dict) -> dict:
     return {
         "name": user_props.get("name"),
