@@ -1,6 +1,7 @@
 import logging
 from directory.models.graph import Appointment, Office, HouseCall, Entry
 from rest_framework import serializers
+from adrf.serializers import Serializer
 from neomodel import db
 
 logger=logging.getLogger(__name__)

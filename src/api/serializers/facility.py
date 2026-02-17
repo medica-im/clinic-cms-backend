@@ -14,6 +14,7 @@ from neomodel import adb
 from neomodel.contrib.spatial_properties import NeomodelPoint, PointProperty
 from directory.models.agraph import Commune, Facility
 from api.utils import get_site_from_request, clear_cache
+from api.neo4j_auth import get_neo4j_user
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +159,7 @@ async def async_get_facilities(
                 raise ValidationError(e)
     return facilities
 
-async def create_facility(f: FacilityPost, request: Request)->FacilityPy:
+async def create_facility(f: FacilityPost, request: Request, jwt: dict)->FacilityPy:
     try:
         longitude: Decimal|None = f.longitude
         logger.debug(longitude)
@@ -190,6 +191,10 @@ async def create_facility(f: FacilityPost, request: Request)->FacilityPy:
             await node.commune.connect(commune_node)
         except Exception as e:
             raise Exception(e)
+    neo4j_user = await get_neo4j_user(jwt)
+    if neo4j_user:
+        await node.creator.connect(neo4j_user)
+        await node.owner.connect(neo4j_user)
     facility = await async_get_facility(uid=str(node.uid))
     await clear_cache("v1:facilities", request)
     return facility

@@ -21,6 +21,7 @@ from api.types.fullentry import FullEntry, EffectorType
 from api.types.facility import Facility
 from api.utils import clear_cache
 from api.auth import get_role_from_jwt
+from api.neo4j_auth import get_neo4j_user
 from api.routers.utils import get_directory_from_hostname
 
 logger = logging.getLogger(__name__)
@@ -139,6 +140,10 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         await new_entry.effector.connect(effector)
         await new_entry.effector_type.connect(effector_type)
         await new_entry.facility.connect(facility)
+    neo4j_user = await get_neo4j_user(jwt)
+    if neo4j_user:
+        await new_entry.creator.connect(neo4j_user)
+        await new_entry.owner.connect(neo4j_user)
     if entry.memberships:
         await connect_member_of(new_entry, entry)
     await neo4j_directory.entries.connect(new_entry)

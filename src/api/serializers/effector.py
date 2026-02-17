@@ -10,6 +10,7 @@ from directory.models.agraph import (
 )
 from api.types.effector import Effector, EffectorPost
 from api.utils import clear_cache
+from api.neo4j_auth import get_neo4j_user
 from rest_framework import serializers
 from adrf.serializers import Serializer
 
@@ -78,7 +79,7 @@ def get_effectors(
                 logger.error(e)
     return effectors
 
-async def create_effector(effector: EffectorPost, directory_name: str)->Effector:
+async def create_effector(effector: EffectorPost, directory_name: str, jwt: dict)->Effector:
     try:
         existing_effector: Effector = await AsyncEffector.nodes.get(
             name_fr=effector.name_fr,
@@ -101,6 +102,10 @@ async def create_effector(effector: EffectorPost, directory_name: str)->Effector
         gender=effector.gender,
         creator_directory=neo4j_directory.name,
     ).save()
+    neo4j_user = await get_neo4j_user(jwt)
+    if neo4j_user:
+        await node.creator.connect(neo4j_user)
+        await node.owner.connect(neo4j_user)
     _effector = await AsyncEffector.nodes.get(uid=node.uid)
     effector_dct=_effector.__properties__
     new_effector=Effector.model_validate(effector_dct)
@@ -132,7 +137,7 @@ class EffectorSerializer(Serializer):
         return instance
 
 
-async def patch_effector(uid, kwargs, request)->Effector:
+async def update_effector(uid, kwargs, request)->Effector:
     logger.debug(f"{kwargs=}")
     hw=["rpps", "spoken_languages"]
     if (any(x in kwargs.keys() for x in hw)):

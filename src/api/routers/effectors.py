@@ -1,7 +1,8 @@
 import logging, os, sys
 from typing import Annotated
-from fastapi import APIRouter, status, Depends, Request
-from api.serializers.effector import get_effector, get_effectors, create_effector, patch_effector
+from fastapi import APIRouter, status, Depends, Request, HTTPException
+from api.serializers.effector import get_effector, get_effectors, create_effector, update_effector
+from directory.models.agraph import Effector as AgraphEffector
 from api.routers.utils import get_directory_from_hostname
 from api.types.effector import Effector, EffectorPost, EffectorPatch
 from pydantic import ValidationError
@@ -45,9 +46,14 @@ async def effector(uid: str)->Effector:
 async def post_effector(jwt: Annotated[dict, Depends(JWT)], effector: EffectorPost, request: Request) -> Effector:
     await authorize_api("effectors_v2", request, jwt)
     directory = await get_directory_from_hostname(request.url.hostname)
-    return await create_effector(effector, directory.name)
+    return await create_effector(effector, directory.name, jwt)
 
 @router.patch("/effectors/{uid}")
-async def patch_entry(uid: str, effector: EffectorPatch, request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    await authorize_api("effectors_v2", request, jwt)
-    return await patch_effector(uid, effector.model_dump(exclude_unset=True), request)
+async def patch_effector(uid: str, effector: EffectorPatch, request: Request, jwt: Annotated[dict, Depends(JWT)]):
+    try:
+        effector_node = await AgraphEffector.nodes.get(uid=uid)
+    except AgraphEffector.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Effector not found")
+    users = await effector_node.owner.all() or await effector_node.creator.all()
+    await authorize_api("effectors_v2", request, jwt, users)
+    return await update_effector(uid, effector.model_dump(exclude_unset=True), request)

@@ -12,6 +12,8 @@ from neomodel import (
     AsyncRelationshipFrom,
     AsyncRelationship,
     AsyncStructuredRel,
+    AsyncOne,
+    AsyncOneOrMore,
 )
 from django.utils.translation import get_language
 from access.roles import ROLES
@@ -73,12 +75,12 @@ class User(AsyncStructuredNode):
     createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
     createdBy = AsyncRelationshipTo('User', 'CREATED_BY')
     access = AsyncRelationshipTo('Access', 'HAS_ACCESS')
-    accounts = AsyncRelationshipTo('Account', 'HAS_ACCOUNT')
+    accounts = AsyncRelationshipTo('Account', 'HAS_ACCOUNT', cardinality=AsyncOneOrMore)
 
 
 class Account(AsyncStructuredNode):
     uid = UniqueIdProperty()
     iss = StringProperty()
     sub = StringProperty(unique_index=True)
-    user = AsyncRelationshipFrom('User', 'HAS_ACCOUNT')
+    user = AsyncRelationshipFrom('User', 'HAS_ACCOUNT', cardinality=AsyncOne)
     createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)

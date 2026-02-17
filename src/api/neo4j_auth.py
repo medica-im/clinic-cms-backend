@@ -165,6 +165,18 @@ async def get_neo4j_role(jwt: dict, site: Site) -> str | None:
     return None
 
 
+async def get_neo4j_user(jwt: dict) -> AsyncUser | None:
+    """Return the Neo4j User node for the requesting user, or None."""
+    sub = jwt.get("providerAccountId")
+    if not sub:
+        return None
+    try:
+        account = await AsyncAccount.nodes.get(sub=sub)
+    except AsyncAccount.DoesNotExist:
+        return None
+    return await account.user.single()
+
+
 def _build_response(user_props: dict, role: str, jwt: dict) -> dict:
     return {
         "name": user_props.get("name"),

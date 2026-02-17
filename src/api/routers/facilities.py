@@ -23,7 +23,7 @@ async def facility(uid: str) -> Facility:
 async def post_facility(facility: FacilityPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> Facility:
     logger.debug(f'${facility=}')
     await authorize_api("facilities_v2", request, jwt)
-    return await create_facility(facility, request)
+    return await create_facility(facility, request, jwt)
 
 @router.put("/facilities/{uid}", status_code=status.HTTP_201_CREATED)
 async def put_facility(uid: str, facility: FacilityPut, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> Facility:
