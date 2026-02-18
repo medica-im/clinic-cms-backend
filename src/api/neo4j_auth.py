@@ -149,24 +149,21 @@ async def _create_user_from_invitee(
 
     return user.__properties__, invitee.role
 
-
-async def get_neo4j_role(jwt: dict, site: Site) -> str:
+async def get_neo4j_role(jwt: dict, site: Site) -> str|None:
     """Resolve role from Neo4j Access graph. Returns role name string or None."""
-    ANON = "anonymous"
     try:
         sub = jwt.get("providerAccountId")
     except AttributeError:
-        return ANON
+        return
     if not sub:
-        return ANON
+        return
     entry_uid = await _get_entry_uid(site)
     if not entry_uid:
-        return ANON
+        return
     result = await _find_user_by_sub(sub, entry_uid)
     if result:
         _, role = result
         return role
-    return ANON
 
 def normalize_neo4j_role(role: str|None) -> str:
     if role == "registered" or role is None:
