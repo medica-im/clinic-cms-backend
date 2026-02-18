@@ -12,23 +12,20 @@ router = APIRouter()
 
 @router.get("/fullentries/{uid}")
 async def get(uid: str, req: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> FullEntry:
-    roles = await get_role_from_jwt(jwt)
-    return await async_get_fullentry(uid, req, roles, jwt)
+    return await async_get_fullentry(uid, req, jwt)
 
 @router.get("/slugfullentries/{type}/{commune}/{effector}")
 async def get_slug_fullentries(req: Request, type: str, commune: str, effector: str, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> FullEntry|None:
-    roles = await get_role_from_jwt(jwt)
-    uid = await slug_find_entry(commune, effector, type)
-    return await async_get_fullentry(uid, req, roles, jwt)
+    active=None
+    uid = await slug_find_entry(commune, effector, type, active)
+    return await async_get_fullentry(uid, req, jwt)
 
 @router.get("/queryfullentries/")
 async def get_query_fullentries(req: Request, effector: str, facility: str, type: str, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> FullEntry|None:
-    roles = await get_role_from_jwt(jwt)
     uid = await query_find_entry(effector, facility, type)
-    return await async_get_fullentry(uid, req, roles, jwt)
+    return await async_get_fullentry(uid, req, jwt)
 
 @router.get("/ftefullentries/{facility}/{type}/{effector}")
 async def get_fte_fullentries(req: Request, effector: str, facility: str, type: str, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> FullEntry|None:
-    roles = await get_role_from_jwt(jwt)
     uid = await query_find_entry(effector, facility, type)
-    return await async_get_fullentry(uid, req, roles, jwt)
+    return await async_get_fullentry(uid, req, jwt)

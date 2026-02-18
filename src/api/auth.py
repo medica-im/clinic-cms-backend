@@ -21,7 +21,10 @@ if auth_secret:
     )
 
 async def get_user(jwt: dict) -> User|None:
-    email = jwt['email']
+    try:
+        email = jwt['email']
+    except (AttributeError,TypeError,):
+        return None
     try:
         return await User.objects.aget(email__iexact=email)
     except User.DoesNotExist as e:
@@ -89,6 +92,19 @@ def _method_to_permission(method: str) -> int:
         return 8
     return 0
 
+async def is_user_in_authorized_list(jwt: dict, users: list[Neo4jUser]) -> bool:
+    sub = jwt.get("providerAccountId")
+    if not sub:
+        return False
+    for user in users:
+        accounts = await user.accounts.all()
+        if any(account.sub == sub for account in accounts):
+            logger.debug(
+                f"Object permission granted: {user} with sub={sub} is in authorized users list"
+            )
+            return True
+    return False
+
 async def authorize_api(endpoint: str, request: Request, jwt: dict, users: list[Neo4jUser]|None=None):
     logger.debug(f"{request.method=}")
     site = await get_site_from_request(request)
@@ -96,15 +112,8 @@ async def authorize_api(endpoint: str, request: Request, jwt: dict, users: list[
 
     # Object-level permission: check if the requesting user is in the authorized list
     if users and jwt:
-        sub = jwt.get("providerAccountId")
-        if sub:
-            for user in users:
-                accounts = await user.accounts.all()
-                if any(account.sub == sub for account in accounts):
-                    logger.debug(
-                        f"Object permission granted: {user} with sub={sub} is in authorized users list"
-                    )
-                    return True
+        if await is_user_in_authorized_list(jwt, users):
+            return True
 
     # Try Neo4j first
     neo4j_role_name = await get_neo4j_role(jwt, site)

@@ -19,9 +19,9 @@ from api.types.entry import Entry, EntryPost
 from api.types.effector import Effector
 from api.types.fullentry import FullEntry, EffectorType
 from api.types.facility import Facility
-from api.utils import clear_cache
+from api.utils import clear_cache, get_site_from_request
 from api.auth import get_role_from_jwt
-from api.neo4j_auth import get_neo4j_user
+from api.neo4j_auth import get_neo4j_user, get_neo4j_role
 from api.routers.utils import get_directory_from_hostname
 
 logger = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ async def entry_if_exists(effector: Effector, effector_type: EffectorType, facil
         raise HTTPException(status_code=452, detail=detail)
     if len(inactive_entries) == 1:
         entry = inactive_entries[0]
-        entry.active = True
+        entry.active = True  # type: ignore[reportAttributeAccessIssue]
         entry = await entry.save()
         logger.debug(f"Existing Entry found: {entry}")
         return entry
@@ -106,8 +106,9 @@ async def connect_member_of(new_entry, entry: EntryPost):
                     raise Exception(e)
 
 async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
-    roles = await get_role_from_jwt(jwt)
-    if entry.directory and 'superuser' in [r["role_name"] for r in roles]:
+    site = await get_site_from_request(request)
+    role = await get_neo4j_role(jwt, site)
+    if entry.directory and role == "superuser":
         dir_name=entry.directory
     else:
         directory = await get_directory_from_hostname(request.url.hostname)
@@ -133,7 +134,7 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
             logger.debug(f'(ms - createdAt)<(1000*60*5): {(ms - createdAt)<(1000*60*5)}')
         if createdAt and ((ms - createdAt)<(1000*60*5)):
             await clear_cache("v2:entries", request)
-            return await async_get_fullentry(str(_entry.uid), request, roles, jwt)
+            return await async_get_fullentry(str(_entry.uid), request, jwt)
     new_entry = await entry_if_exists(effector, effector_type, facility)
     if not new_entry:
         new_entry = await AsyncEntry().save()
@@ -158,7 +159,7 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         if "HealthWorker" not in result[0][0][0]:
             raise HTTPException(status_code=500, detail=f"Label 'HealthWorker' not applied to Effector {effector.uid} of type {effector_type.name_fr}")
     await clear_cache("v2:entries", request)
-    return await async_get_fullentry(str(new_entry.uid), request, roles, jwt)
+    return await async_get_fullentry(str(new_entry.uid), request, jwt)
 
 async def get_entry(uid:str)->Entry:
     entry = await AsyncEntry.nodes.get(uid=uid)

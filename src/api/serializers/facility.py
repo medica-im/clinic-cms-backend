@@ -233,17 +233,16 @@ async def update_facility(uid: str, f: FacilityPut, request: Request)->FacilityP
     return facility
 
 async def delete_facility(uid: str)->dict:
-    query=(
-        f"""MATCH (f:Facility) WHERE f.uid="{uid}" RETURN f;"""
-    )
-    results, cols = await adb.cypher_query(query)
-    logger.debug(f"{results=}\n{cols=}")
-    if not results:
+    try:
+        facility_node = await Facility.nodes.get(uid=uid)
+    except Facility.DoesNotExist:
         raise HTTPException(status_code=404, detail="Facility not found")
-    query=(
-        f"""MATCH (f:Facility) WHERE f.uid="{uid}" DETACH DELETE f;"""
-    )
-    results, cols = await adb.cypher_query(query)
-    logger.debug(f"{results=}\n{cols=}")
+    entries = await facility_node.entries.all()
+    if entries:
+        raise HTTPException(
+            status_code=409,
+            detail="Facility is still linked to one or more entries and cannot be deleted"
+        )
+    await facility_node.delete()
     return {"ok": True}
         

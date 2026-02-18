@@ -9,7 +9,7 @@ from access.models import Role
 from api.types.email import Email, EmailPost
 from api.auth import JWT
 from api.auth import authorize_api
-from api.utils import set_roles
+from api.utils import set_roles, get_entry, get_entry_users
 
 logger = logging.getLogger(__name__)
 
@@ -17,23 +17,29 @@ router = APIRouter()
 
 @router.delete("/emails/{item_id}")
 async def delete_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    await authorize_api("emails_v2", request, jwt)
-    try:
-        await DjangoEmail.objects.filter(id=item_id).adelete()
-    except DjangoEmail.DoesNotExist:
-        raise HTTPException(status_code=404, detail=f"Email not found")
-
-@router.put("/emails/{item_id}", response_model=Email)
-async def update_item(item_id: str, item: Email, request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    await authorize_api("emails_v2", request, jwt)
-    logger.debug(item)
-    i = jsonable_encoder(item)
-    logger.debug(i)
     try:
         email = await DjangoEmail.objects.select_related('contact').aget(id=item_id)
     except DjangoEmail.DoesNotExist:
-        raise HTTPException(status_code=404, detail=f"Email not found")
-    logger.debug(i)
+        raise HTTPException(status_code=404, detail="Email not found")
+    if not email.contact.neomodel_uid:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    entry = await get_entry(email.contact.neomodel_uid.hex)
+    users = await get_entry_users(entry)
+    await authorize_api("emails_v2", request, jwt, users=users)
+    await DjangoEmail.objects.filter(id=item_id).adelete()
+
+@router.put("/emails/{item_id}", response_model=Email)
+async def update_item(item_id: str, item: Email, request: Request, jwt: Annotated[dict, Depends(JWT)]):
+    i = jsonable_encoder(item)
+    try:
+        email = await DjangoEmail.objects.select_related('contact').aget(id=item_id)
+    except DjangoEmail.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Email not found")
+    if not email.contact.neomodel_uid:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    entry = await get_entry(email.contact.neomodel_uid.hex)
+    users = await get_entry_users(entry)
+    await authorize_api("emails_v2", request, jwt, users=users)
     email.email=i['email']
     await email.asave()
     await set_roles(email,i['roles'] )
@@ -52,7 +58,9 @@ async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(
 
 @router.post("/emails/", response_model=Email)
 async def create_item(item: EmailPost, request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    await authorize_api("emails_v2", request, jwt)
+    entry = await get_entry(item.entry)
+    users = await get_entry_users(entry)
+    await authorize_api("emails_v2", request, jwt, users=users)
     i = item.model_dump()
     try:
         contact = await Contact.objects.aget(neomodel_uid=item.entry)

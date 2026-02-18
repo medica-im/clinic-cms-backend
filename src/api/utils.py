@@ -10,8 +10,18 @@ from directory.models.core import Directory
 from django.core.cache import cache
 from facility.models import Organization
 from django.db import DatabaseError
+from directory.models.agraph import Entry
 
 logger = logging.getLogger(__name__)
+
+async def get_entry(entry_uid: str) -> Entry:
+    try:
+        return await Entry.nodes.get(uid=entry_uid)
+    except Entry.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+async def get_entry_users(entry: Entry):
+    return await entry.owner.all() or await entry.creator.all()
 
 async def get_site_from_request(request: Request) -> Site:
     try:
@@ -113,7 +123,7 @@ def sync_get_directory(request):
 async def get_directory(request):
     site = await get_site_from_request(request)
     try:
-        return await Directory.objects.aget(site=site)
+        return await Directory.objects.select_related("site").aget(site=site)
     except Directory.DoesNotExist:
         raise Directory.DoesNotExist
 

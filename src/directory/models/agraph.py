@@ -355,6 +355,7 @@ class Facility(AsyncStructuredNode):
     updated = IntegerProperty(default=0)
     createdAt = IntegerProperty()
     creator = AsyncRelationshipTo('access.asyncneomodels.User', 'CREATED_BY')
+    owner = AsyncRelationshipTo('access.asyncneomodels.User', 'OWNED_BY')
     name = StringProperty()
     label = StringProperty()
     slug = StringProperty()

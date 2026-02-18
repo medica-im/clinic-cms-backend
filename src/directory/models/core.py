@@ -137,8 +137,6 @@ class Directory(models.Model):
     site = models.OneToOneField(
         Site,
         on_delete=models.CASCADE,
-        null=True,
-        blank=True,
         related_name="directory",
     )
     postal_codes = ArrayField(

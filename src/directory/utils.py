@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import TypedDict
 from asgiref.sync import sync_to_async
 from django.contrib.sites.shortcuts import get_current_site
 from directory.models import (
@@ -22,6 +23,7 @@ from directory.models import (
 )
 from django.contrib.sites.models import Site
 from directory.models.graph import Appointment, Office, HouseCall, Convention, Tag, Directory as GraphDirectory
+from directory.models.agraph import HealthWorker as AsyncHealthWorker
 from addressbook.models import Contact
 from neomodel import db, adb
 from addressbook.api.serializers import (
@@ -43,6 +45,30 @@ from django.core.cache import cache
 from facility.models import Organization
 
 logger = logging.getLogger(__name__)
+
+class EntryDict(TypedDict):
+    entry: Entry
+    effector: Effector
+    location: EffectorFacility | None
+    address: str
+    effector_type: EffectorType
+    flex_effector_type_label: str
+    effector_type_labels: list
+    facility: Facility
+    phones: list
+    emails: list
+    websites: list
+    socialnetworks: list
+    appointments: list | None
+    profile: list
+    third_party_payers: list[ThirdPartyPayer] | None
+    payment_methods: list[PaymentMethod] | None
+    health_worker: HealthWorker
+    avatar: str | None
+    convention: Convention | None
+    memberships: list[Entry] | None
+    tags: list[Tag] | None
+    directories: list[GraphDirectory] | None
 
 def flex_effector_type_label(
         effector,
@@ -262,6 +288,34 @@ def appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment)
             'phone': node.phone,
             'url': node.url,
             'location': get_location(node)
+        } for node in nodes
+    ]
+    serializer = AppointmentSerializer(data=data, many=True)
+    if serializer.is_valid():
+        return serializer.validated_data
+    else:
+        logger.error(serializer.errors)
+
+async def async_appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment):
+    async def get_location(node: Appointment):
+        labels = await node.labels()
+        if 'HouseCall' in labels:
+            return 'house_call'
+        elif 'Office' in labels:
+            return 'office'
+        else:
+            return None
+    if not nodes or nodes==[[]]:
+        return None
+    if type(nodes) in [Appointment, Office, HouseCall]:
+        nodes = [nodes]
+    data = [
+        {
+            'uid': node.uid,
+            'entry': entry,
+            'phone': node.phone,
+            'url': node.url,
+            'location': await get_location(node)
         } for node in nodes
     ]
     serializer = AppointmentSerializer(data=data, many=True)
@@ -711,7 +765,7 @@ def display(_list):
 def get_entries_query(
     directory: Directory,
     uid = None,
-    active: bool = True,
+    active: bool|None = True,
 )->str:
     if uid:
         query=f"""MATCH (entry:Entry) WHERE entry.uid="{uid}" WITH entry MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector) WITH * OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
@@ -723,7 +777,7 @@ def get_entries_query(
     else:
         query=f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
         WITH d
-        MATCH (d)-[:HAS_ENTRY]->(entry:Entry) WHERE entry.active={str(active)}
+        MATCH (d)-[:HAS_ENTRY]->(entry:Entry) {f'WHERE entry.active={str(active)}' if active is not None else ''}
         WITH entry
         MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
         WITH entry, COLLECT(DISTINCT directory) as directories
@@ -794,7 +848,7 @@ def sync_get_entries(
 async def get_entries(
         directory: Directory,
         uid = None,
-        active: bool = True,
+        active: bool|None=True,
     ):
     query = get_entries_query(directory, uid=uid, active=active)
     results, _meta = await adb.cypher_query(query, resolve_objects = True)
@@ -1129,34 +1183,31 @@ def entry_dict(results, cols):
         "directories": directories,
     }
 
-async def async_entry_dict(results, cols):
+async def async_entry_dict(results, cols) -> EntryDict:
     try:
         row=results[0]
     except Exception as e:
-        logger.error(e)
-        return
-    entry=Entry.inflate(row[cols.index('entry')])
-    effector=Effector.inflate(row[cols.index('e')])
-    try:
-        effector_facility=EffectorFacility.inflate(row[cols.index('rel')])
-    except Exception as e:
-        effector_facility=None
-    facility=Facility.inflate(row[cols.index('f')])
-    commune=Commune.inflate(row[cols.index('c')])
-    country=Country.inflate(row[cols.index('country')])
-    effector_type=EffectorType.inflate(row[cols.index('et')])
+        logger.error(f"Entry not found: {e}")
+        return {}
+    [
+        entry,
+        effector_type,
+        effector,
+        effector_facility,
+        facility,
+        commune,
+        country,
+        [third_party_payers],
+        [payment_methods],
+        convention,
+        [appointment_nodes],
+        [effector_type_labels],
+        [memberships],
+        [tags],
+        [tagcats],
+        [directories],
+    ] = row
     address = get_address(facility,commune,country)
-    a=row[cols.index('a')]
-    if a and isinstance(a, list) and len(a) and a[0]:
-        appointment_nodes = [Appointment.inflate(node) for node in a]
-    elif a and not isinstance(a,list):
-        try:
-            appointment_nodes = [Appointment.inflate(a)]
-        except Exception as e:
-            logger.error(e)
-            appointment_nodes = None
-    else:
-        appointment_nodes = None
     phones = await async_get_phones_neomodel(entry=entry)
     emails = await async_get_emails_neomodel(
         entry=entry,
@@ -1169,7 +1220,7 @@ async def async_entry_dict(results, cols):
         entry=entry,
         facility=facility
     )
-    appointments = appointments_from_neomodel(
+    appointments = await async_appointments_from_neomodel(
         entry=entry.uid,
         nodes=appointment_nodes
     )
@@ -1180,35 +1231,12 @@ async def async_entry_dict(results, cols):
         f=facility
     )
     try:
-        third_party_payers = [
-            ThirdPartyPayer.inflate(payer)
-            for payer in row[cols.index('tpp')]
-        ]
-    except:    
-        third_party_payers = None
-    payment_methods = [
-        PaymentMethod.inflate(pm)
-        for pm in row[cols.index('pm')]
-    ] or None
-    try:
-        convention =  Convention.inflate(row[cols.index('convention')])
-    except:
-        convention = None
-    memberships = [
-        Entry.inflate(e)
-        for e in row[cols.index('memberships')]
-    ] or None
-    health_worker=HealthWorker.inflate(row[cols.index('e')])
+        health_worker = await AsyncHealthWorker.nodes.get(uid=effector.uid)
+    except Exception as e:
+        logger.warning(e)
+        health_worker = None
     avatar= await async_get_avatar_url(entry, effector, effector_facility, facility)
     fetl= await async_flex_effector_type_label(effector, effector_type)
-    tags = [
-            Tag.inflate(tag)
-            for tag in row[cols.index('tags')]
-        ] or None
-    directories=[
-            GraphDirectory.inflate(d)
-            for d in row[cols.index('directories')]
-        ] or None
     return {
         "entry": entry,
         "effector": effector,
@@ -1217,7 +1245,7 @@ async def async_entry_dict(results, cols):
         #"commune": commune,
         "effector_type": effector_type,
         "flex_effector_type_label": fetl,
-        "effector_type_labels": row[cols.index('effector_type_labels')],
+        "effector_type_labels": effector_type_labels,
         "facility": facility,
         "phones": phones,
         "emails": emails,
@@ -1232,6 +1260,7 @@ async def async_entry_dict(results, cols):
         "convention": convention,
         "memberships": memberships,
         "tags": tags,
+        "tagcats": tagcats,
         "directories": directories,
     }
 
@@ -1259,8 +1288,8 @@ async def async_find_entry(
     if uid:
         query = get_uid_query(uid)
     else:
-        query= get_slug_query(directory, effector_slug, effector_type_slug, facility_slug)
-    results, cols = await adb.cypher_query(query)
+        query = get_slug_query(directory, effector_slug, effector_type_slug, facility_slug)
+    results, cols = await adb.cypher_query(query, resolve_objects=True)
     return await async_entry_dict(results, cols)
 
 def effector_types(directory: Directory) -> list[str]:

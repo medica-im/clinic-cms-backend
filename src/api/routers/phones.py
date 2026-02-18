@@ -8,7 +8,7 @@ from access.models import Role
 from api.types.phones import Phone, PhonePost
 from api.auth import JWT
 from api.auth import authorize_api
-from api.utils import clear_cache
+from api.utils import clear_cache, set_roles, get_entry, get_entry_users
 
 logger = logging.getLogger(__name__)
 
@@ -16,37 +16,37 @@ router = APIRouter()
 
 @router.delete("/phones/{item_id}")
 async def delete_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    await authorize_api("phones_v2", request, jwt)
     try:
-        await PhoneNumber.objects.filter(id=item_id).adelete()
+        phone = await PhoneNumber.objects.select_related('contact').aget(id=item_id)
     except PhoneNumber.DoesNotExist:
-        raise HTTPException(status_code=404, detail=f"PhoneNumber not found")
+        raise HTTPException(status_code=404, detail="PhoneNumber not found")
+    if not phone.contact.neomodel_uid:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    entry = await get_entry(phone.contact.neomodel_uid.hex)
+    users = await get_entry_users(entry)
+    await authorize_api("phones_v2", request, jwt, users=users)
+    await PhoneNumber.objects.filter(id=item_id).adelete()
 
 @router.put("/phones/{item_id}", response_model=Phone)
 async def update_item(item_id: str, item: Phone, request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    await authorize_api("phones_v2", request, jwt)
-    logger.debug(item)
     i = jsonable_encoder(item)
     try:
-        phone_number = await PhoneNumber.objects.select_related('contact').aget(id=item_id)
-        logger.debug(phone_number)
+        phone = await PhoneNumber.objects.select_related('contact').aget(id=item_id)
     except PhoneNumber.DoesNotExist:
-        raise HTTPException(status_code=404, detail=f"PhoneNumber not found")
-    phone_number.type=i['type']
-    phone_number.phone=i['phone']
+        raise HTTPException(status_code=404, detail="PhoneNumber not found")
+    if not phone.contact.neomodel_uid:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    entry = await get_entry(phone.contact.neomodel_uid.hex)
+    users = await get_entry_users(entry)
+    await authorize_api("phones_v2", request, jwt, users=users)
+    phone.type=i['type']
+    phone.phone=i['phone']
     try:
-        await phone_number.asave()
+        await phone.asave()
     except IntegrityError as e:
         logger.debug(f"{e}")
         raise HTTPException(status_code=409, detail=f"Le numéro de téléphone {i['phone']} associé au type {i['type']} existe déjà pour cette entrée.")
-    roles_qs=Role.objects.filter(name__in=i['roles'])
-    roles = []
-    async for id in roles_qs.values_list('id', flat=True):
-        roles.append(id)
-    if roles:
-        await phone_number.roles.aset(roles)
-    phone_number = await PhoneNumber.objects.prefetch_related("roles").aget(id=item_id)
-    logger.debug(f'after aset: {phone_number.roles.all()}')
+    await set_roles(phone, i['roles'])
     await clear_cache('v2:entries', request)
     return i
 
@@ -55,39 +55,31 @@ async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(
     await authorize_api("phones_v2", request, jwt)
     try:
         phone_number = await PhoneNumber.objects.aget(id=item_id)
-        logger.debug(phone_number)
     except PhoneNumber.DoesNotExist:
-        raise HTTPException(status_code=404, detail=f"PhoneNumber not found")
+        raise HTTPException(status_code=404, detail="PhoneNumber not found")
     return phone_number
 
 @router.post("/phones/", response_model=Phone)
 async def create_item(item: PhonePost, request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    await authorize_api("phones_v2", request, jwt)
-    logger.debug(item)
+    entry = await get_entry(item.entry)
+    users = await get_entry_users(entry)
+    await authorize_api("phones_v2", request, jwt, users=users)
     i = item.model_dump()
-    logger.debug(i)
     try:
-        contact = await Contact.objects.aget(neomodel_uid=i['entry'])
+        contact = await Contact.objects.aget(neomodel_uid=item.entry)
     except Contact.DoesNotExist:
-        raise HTTPException(status_code=404, detail=f"Contact {i['entry']} not found")
-    roles_qs=Role.objects.filter(name__in=i['roles'])
-    roles = []
-    async for id in roles_qs.values_list('id', flat=True):
-        roles.append(id)
-    logger.debug(f'{roles=}')
+        raise HTTPException(status_code=404, detail=f"Contact {item.entry} not found")
     try:
         phone_number = await PhoneNumber.objects.acreate(
             contact = contact,
             phone = i['phone'],
             type = i['type']
         )
-        logger.debug(phone_number)
     except IntegrityError as e:
         logger.debug(f"{e}")
         raise HTTPException(status_code=409, detail=f"Le numéro de téléphone {i['phone']} associé au type {i['type']} existe déjà pour cette entrée.")
     await phone_number.asave()
-    if roles:
-        await phone_number.roles.aset(roles)
+    await set_roles(phone_number, item.roles)
     i['id']=phone_number.pk
     await clear_cache('v2:entries', request)
     return i

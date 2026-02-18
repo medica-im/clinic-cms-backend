@@ -229,7 +229,7 @@ def createEffectorRessource(node):
     except Exception as e:
         logger.error(e)
         tags = None
-    directories = [d.name for d in node["directories"]]
+    directories = [d.name for d in node["directories"] if d is not None] if node["directories"] else []
 
     effector = EffectorObj(
         label,

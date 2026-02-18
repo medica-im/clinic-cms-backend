@@ -3,8 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends, Request
 from directory.models.agraph import Appointment as AgraphAppointment
 from api.types.appointment import Appointment, AppointmentPost, AppointmentPut
-from api.auth import JWT
-from api.auth import authorize_api
+from api.auth import JWT, authorize_api
+from api.utils import get_entry, get_entry_users
 from api.asyncserializers.appointment import AppointmentSerializer
 from neomodel.exceptions import CardinalityViolation
 
@@ -14,7 +14,9 @@ router = APIRouter()
 
 @router.post("/appointments/", response_model=Appointment)
 async def create_item(item: AppointmentPost, request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    await authorize_api("appointments_v2", request, jwt)
+    entry = await get_entry(item.entry)
+    users = await get_entry_users(entry)
+    await authorize_api("appointments_v2", request, jwt, users=users)
     i = item.model_dump()
     serializer = AppointmentSerializer(data=i)
     serializer.is_valid(raise_exception=True)

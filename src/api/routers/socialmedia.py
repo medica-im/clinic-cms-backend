@@ -8,7 +8,7 @@ from access.models import Role
 from api.types.socialmedia import SocialMedia, SocialMediaPut, SocialMediaPost
 from api.auth import JWT
 from api.auth import authorize_api
-from api.utils import set_roles
+from api.utils import set_roles, get_entry, get_entry_users
 from addressbook.api.serializers import AsyncSocialNetworkSerializer
 
 logger = logging.getLogger(__name__)
@@ -21,23 +21,32 @@ async def get_types():
 
 @router.delete("/socialmedia/{item_id}")
 async def delete_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(JWT)]):
-    await authorize_api("socialmedia_v2", request, jwt)
     try:
-        await SocialNetwork.objects.filter(id=item_id).adelete()
+        obj = await SocialNetwork.objects.select_related('contact').aget(id=item_id)
     except SocialNetwork.DoesNotExist:
-        raise HTTPException(status_code=404, detail=f"SocialNetwork not found")
+        raise HTTPException(status_code=404, detail="SocialNetwork not found")
+    if not obj.contact.neomodel_uid:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    entry = await get_entry(obj.contact.neomodel_uid.hex)
+    users = await get_entry_users(entry)
+    await authorize_api("socialmedia_v2", request, jwt, users=users)
+    await SocialNetwork.objects.filter(id=item_id).adelete()
 
 @router.put("/socialmedia/{item_id}", response_model=SocialMedia)
 async def update_item(item_id: str, item: SocialMediaPut, request: Request, jwt: Annotated[dict, Depends(JWT)])->SocialMedia:
-    await authorize_api("socialmedia_v2", request, jwt)
     try:
-        obj = await SocialNetwork.objects.aget(id=item_id)
+        obj = await SocialNetwork.objects.select_related('contact').aget(id=item_id)
     except SocialNetwork.DoesNotExist:
-        raise HTTPException(status_code=404, detail=f"SocialNetwork not found")
+        raise HTTPException(status_code=404, detail="SocialNetwork not found")
+    if not obj.contact.neomodel_uid:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    entry = await get_entry(obj.contact.neomodel_uid.hex)
+    users = await get_entry_users(entry)
+    await authorize_api("socialmedia_v2", request, jwt, users=users)
     obj.url=item.url
     obj.type=item.type
     await obj.asave()
-    await set_roles(obj, item.roles )
+    await set_roles(obj, item.roles)
     serializer = AsyncSocialNetworkSerializer(obj)
     return SocialMedia.model_validate(await serializer.adata)
 
@@ -55,7 +64,9 @@ async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(
 @router.post("/socialmedia/", response_model=SocialMedia)
 async def create_item(item: SocialMediaPost, request: Request, jwt: Annotated[dict, Depends(JWT)])->SocialMedia:
     logger.debug(f"{item=}")
-    await authorize_api("socialmedia_v2", request, jwt)
+    entry = await get_entry(item.entry)
+    users = await get_entry_users(entry)
+    await authorize_api("socialmedia_v2", request, jwt, users=users)
     try:
         contact = await Contact.objects.aget(neomodel_uid=item.entry)
     except Contact.DoesNotExist:
