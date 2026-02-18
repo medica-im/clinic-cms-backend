@@ -163,11 +163,13 @@ background_tasks: BackgroundTasks):
     # Django fallback (existing behavior)
     try:
         django_user = await User.objects.select_related('grammatical_gender').aget(email__iexact=jwt["email"])
-    except User.DoesNotExist:
+    except User.DoesNotExist as e:
+        logger.warning(f"User does not exist: {jwt['email']}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions"
         )
+    logger.debug(f"{django_user=}")
     role = await get_role(django_user, site)
     gg = getattr(
         getattr(django_user, "grammatical_gender", None),

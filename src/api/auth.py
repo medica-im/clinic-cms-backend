@@ -52,7 +52,8 @@ async def get_role(user: User|None, site: Site) -> Role:
     try:
         account_role = await AccountRole.objects.prefetch_related('role').aget(user=user, site=site, active=True)
         return account_role.role
-    except AccountRole.DoesNotExist:
+    except AccountRole.DoesNotExist as e:
+        logger.warning(f"No active role found for user {user} on site {site.domain}. Defaulting to anonymous.")
         return roles_dct["anonymous"]
     except AccountRole.MultipleObjectsReturned as e:
         logger.error(e)
