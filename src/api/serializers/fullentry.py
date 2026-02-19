@@ -198,10 +198,12 @@ async def async_get_fullentry(uid: str, req: Request, jwt)->FullEntry:
     if entry_node_dct and entry_node_dct["entry"].active == False:
         if role == "anonymous":
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
-        users = await entry.owner.all() or await entry.creator.all()
+        owners = await entry.owner.all()
+        creators = await entry.creator.all()
+        users = owners + creators
         user_authorized = await is_user_in_authorized_list(jwt, users)
         logger.debug(f"{user_authorized=}")
-        if not user_authorized and not role == "administrator":
+        if not user_authorized and not role in ["administrator", "superuser"]:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
     entry_dct = await createFullEntryResource(entry_node_dct)
     logger.debug(f"{entry_dct=}")
