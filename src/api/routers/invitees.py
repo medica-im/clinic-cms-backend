@@ -87,9 +87,13 @@ async def create_invitee(
     await authorize_api("invitees_v2", request, jwt)
     site = await get_site_from_request(request)
     role = await get_neo4j_role(jwt, site)
+    logger.debug(f"{role}")
     if not role:
         user = await get_user(jwt)
+        logger.debug(f"{user}")
         role = await get_role(user, site)
+        logger.debug(f"{role}")
+    logger.debug(f"{item.role}")
     if item.role == "superuser" and role != "superuser":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
