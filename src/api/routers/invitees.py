@@ -7,8 +7,7 @@ from access.asyncneomodels import Invitee as AsyncInvitee
 from access.asyncneomodels import User as AsyncUser
 from access.asyncneomodels import Account as AsyncAccount
 from directory.models.agraph import Entry
-from api.auth import authorize_api
-from api.auth import JWT
+from api.auth import JWT, get_neo4j_role, authorize_api, get_user, get_role
 from api.utils import get_site_from_request
 from facility.models import Organization
 
@@ -86,7 +85,16 @@ async def create_invitee(
     jwt: Annotated[dict, Depends(JWT)]
 ) -> Invitee:
     await authorize_api("invitees_v2", request, jwt)
-
+    site = await get_site_from_request(request)
+    role = await get_neo4j_role(jwt, site)
+    if not role:
+        user = await get_user(jwt)
+        role = await get_role(user, site)
+    if item.role == "superuser" and role != "superuser":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only superusers can create superuser invitees"
+        )
     # Create the Invitee node
     new_invitee = await AsyncInvitee(
         email=item.email,
