@@ -10,6 +10,7 @@ from directory.models.agraph import Entry
 from api.auth import JWT, get_neo4j_role, authorize_api, get_user, get_role
 from api.utils import get_site_from_request
 from facility.models import Organization
+from access.models import Role
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,8 @@ async def create_invitee(
     if not role:
         user = await get_user(jwt)
         logger.debug(f"{user=}")
-        role = await get_role(user, site)
+        _role: Role = await get_role(user, site)
+        role = _role.name
         logger.debug(f"django {role=}")
     logger.debug(f"{item.role=}")
     if item.role == "superuser" and role != "superuser":
