@@ -67,7 +67,7 @@ async def _get_entry_uid(site: Site) -> str | None:
         return None
     if not organization.neomodel_uid:
         return None
-    return str(organization.neomodel_uid.hex)
+    return organization.neomodel_uid.hex
 
 
 async def _find_user_by_sub(sub: str, entry_uid: str) -> tuple[dict, str] | None:
@@ -80,6 +80,7 @@ async def _find_user_by_sub(sub: str, entry_uid: str) -> tuple[dict, str] | None
     results, _ = await adb.cypher_query(
         query, {"sub": sub, "entry_uid": entry_uid}, resolve_objects=True
     )
+    logger.debug(f"{results=}")
     if not results:
         return None
 
@@ -158,6 +159,7 @@ async def get_neo4j_role(jwt: dict, site: Site) -> str|None:
     if not sub:
         return
     entry_uid = await _get_entry_uid(site)
+    logger.debug(f"{entry_uid=}")
     if not entry_uid:
         return
     result = await _find_user_by_sub(sub, entry_uid)
