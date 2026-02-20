@@ -188,6 +188,7 @@ async def createFullEntryResource(node) -> dict:
 async def async_get_fullentry(uid: str, req: Request, jwt)->FullEntry:
     directory = await get_directory(req)
     role = await get_neo4j_role(jwt, directory.site)
+    logger.debug(f"{role=}")
     normalized_role = normalize_neo4j_role(role)
     logger.debug(f"{normalized_role=}")
     entry_node_dct = await async_find_entry(uid=uid)
