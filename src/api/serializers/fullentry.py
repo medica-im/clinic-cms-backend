@@ -196,7 +196,7 @@ async def async_get_fullentry(uid: str, req: Request, jwt)->FullEntry:
     except KeyError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
     if entry_node_dct and entry_node_dct["entry"].active == False:
-        if role == "anonymous":
+        if role == "anonymous" or role is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
         owners = await entry.owner.all()
         creators = await entry.creator.all()
