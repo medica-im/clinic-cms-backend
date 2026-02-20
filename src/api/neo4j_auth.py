@@ -83,9 +83,10 @@ async def _find_user_by_sub(sub: str, entry_uid: str) -> tuple[dict, str] | None
     logger.debug(f"{results=}")
     if not results:
         return None
-
     user_node = results[0][0]
-    role = results[0][1] or "anonymous"
+    logger.debug(f"{user_node=}")
+    role = results[0][1]
+    logger.debug(f"{role=}")
     return user_node.__properties__, role
 
 
@@ -154,6 +155,7 @@ async def get_neo4j_role(jwt: dict, site: Site) -> str|None:
     """Resolve role from Neo4j Access graph. Returns role name string or None."""
     try:
         sub = jwt.get("providerAccountId")
+        logger.debug(f"{sub=}")
     except AttributeError:
         return
     if not sub:
