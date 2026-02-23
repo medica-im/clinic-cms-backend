@@ -24,7 +24,9 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', cast=bool, default=False)
 
-LOG_LEVEL = config('DJANGO_LOG_LEVEL', default='DEBUG')
+DJANGO_LOG_LEVEL = config('DJANGO_LOG_LEVEL', default='DEBUG')
+DJANGO_LOG_DIR = str(config('DJANGO_LOG_DIR', default=str(BASE_DIR / 'logs')))
+os.makedirs(DJANGO_LOG_DIR, exist_ok=True)
 
 LOGGING = {
     "version": 1,
@@ -33,6 +35,14 @@ LOGGING = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "simple",
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(DJANGO_LOG_DIR, "django.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10 MB
+            "backupCount": 5,
+            "formatter": "verbose",
+            "level": DJANGO_LOG_LEVEL,
         },
     },
     "formatters": {
@@ -46,7 +56,7 @@ LOGGING = {
         },
     },
     "root": {
-        "handlers": ["console"],
+        "handlers": ["console", "file"],
         "level": "DEBUG",
     },
 }
