@@ -60,7 +60,7 @@ async def set_timestamp(endpoint_name: str, site: Site):
     try:
         endpoint = await Endpoint.objects.aget(name=endpoint_name)
     except Endpoint.DoesNotExist as e:
-        logger.error(e)
+        logger.error(f"{endpoint_name=}\n{site=}\n{e}")
         return
     try:
         ts = await Timestamp.objects.aget(endpoint=endpoint,site=site)
