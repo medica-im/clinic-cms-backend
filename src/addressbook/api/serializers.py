@@ -12,7 +12,7 @@ from addressbook.models import (
     Address,
 )
 from access.serializers import AsyncRoleSerializer
-from directory.models.graph import Appointment, Office, HouseCall, Entry
+from directory.models.graph import Entry
 from rest_framework import serializers
 from adrf.serializers import Serializer, ModelSerializer as AsyncModelSerializer
 

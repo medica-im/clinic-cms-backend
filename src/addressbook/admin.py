@@ -213,16 +213,13 @@ class ContactAdmin(admin.ModelAdmin):
             return
         try:
             entry = Entry.nodes.get(uid=obj.neomodel_uid.hex)
-            logger.debug(entry)
         except Exception as e:
-            logger.debug(e)
+            logger.error(e)
             return
         effector: list[Effector]= entry.effector.all()
-        logger.debug(effector)
         try:
             return effector[0].name_fr
         except Exception as e:
-            logger.debug(e)
             return
 
     @admin.display(description='Phones')

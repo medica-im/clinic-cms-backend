@@ -183,6 +183,8 @@ async def createEntryResource(node):
         "tags": tags,
         "active": active,
         "directories": directories,
+        "creator": node.get("creator_uids"),
+        "owner": node.get("owner_uids"),
     }
     return entry
 

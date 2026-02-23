@@ -81,3 +81,5 @@ class Entry(BaseModel):
     phones: list[Phone]|None=None
     tags: list[Tag]|None=None
     directories: list[str]|None = None
+    owner: list[str]|None = None
+    creator: list[str]|None = None

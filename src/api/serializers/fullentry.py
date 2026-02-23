@@ -183,6 +183,8 @@ async def createFullEntryResource(node) -> dict:
         "memberships": memberships,
         "tags": tags,
         "directories": directories,
+        "creator": node.get("creator_uids"),
+        "owner": node.get("owner_uids"),
     }
 
 async def async_get_fullentry(uid: str, req: Request, jwt)->FullEntry:

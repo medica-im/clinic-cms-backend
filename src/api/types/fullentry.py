@@ -176,3 +176,5 @@ class FullEntry(BaseModel):
     memberships: list[str]|None = None
     tags: list[Tag]|None = None
     directories: list[str]|None = None
+    creator: list[str]|None = None
+    owner: list[str]|None = None

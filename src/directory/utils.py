@@ -773,7 +773,11 @@ def get_entries_query(
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(memberships:Entry)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer:Organization)
         OPTIONAL MATCH (entry:Entry)-[:EMPLOYER]->(employer_entry:Entry)
-        RETURN entry,e,et,f,rel,o,COLLECT(DISTINCT memberships) as memberships,employer,employer_entry,commune,dpt,country;"""
+        OPTIONAL MATCH (entry)-[:CREATED_BY]->(creator:User)
+        WITH entry,e,et,f,rel,o,COLLECT(DISTINCT memberships) as memberships,employer,employer_entry,commune,dpt,country,COLLECT(DISTINCT creator.uid) as creator_uids
+        OPTIONAL MATCH (entry)-[:OWNED_BY]->(owner:User)
+        WITH entry,e,et,f,rel,o,memberships,employer,employer_entry,commune,dpt,country,creator_uids,COLLECT(DISTINCT owner.uid) as owner_uids
+        RETURN entry,e,et,f,rel,o,memberships,employer,employer_entry,commune,dpt,country,creator_uids,owner_uids;"""
     else:
         query=f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
         WITH d
@@ -789,7 +793,11 @@ def get_entries_query(
         WITH entry, directories, e, et, f, commune, dpt, country, memberships, COLLECT(DISTINCT employer) as employers
         OPTIONAL MATCH (entry:Entry)<-[:TAGS]-(tag:Tag)-[IS_A]->(tagcat:TagCategory)<-[:HAS_TAG_CATEGORY]-(et)
         WITH entry, directories, e, et, f, commune, dpt, country, memberships, employers, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
-        RETURN DISTINCT entry.uid as uid, entry, directories, e, et, f, memberships, employers, commune, dpt, country, tags, tagcats;"""
+        OPTIONAL MATCH (entry)-[:CREATED_BY]->(creator:User)
+        WITH entry, directories, e, et, f, commune, dpt, country, memberships, employers, tags, tagcats, COLLECT(DISTINCT creator.uid) as creator_uids
+        OPTIONAL MATCH (entry)-[:OWNED_BY]->(owner:User)
+        WITH entry, directories, e, et, f, commune, dpt, country, memberships, employers, tags, tagcats, creator_uids, COLLECT(DISTINCT owner.uid) as owner_uids
+        RETURN DISTINCT entry.uid as uid, entry, directories, e, et, f, memberships, employers, commune, dpt, country, tags, tagcats, creator_uids, owner_uids;"""
     return query
 
 def sync_get_entries(
@@ -816,6 +824,8 @@ def sync_get_entries(
             country,
             [tags],
             [tagcats],
+            [creator_uids],
+            [owner_uids],
         ) = row
         #logger.debug(f"> {memberships=}")
         #logger.debug(f">> {tags=}")
@@ -840,7 +850,9 @@ def sync_get_entries(
                 "employers": employers,
                 "tags": tags,
                 "tagcats": tagcats,
-                "directories": directories
+                "directories": directories,
+                "creator_uids": creator_uids,
+                "owner_uids": owner_uids,
             }
         )
     return entries
@@ -869,6 +881,8 @@ async def get_entries(
             country,
             [tags],
             [tagcats],
+            [creator_uids],
+            [owner_uids],
         ) = row
         #logger.debug(f"> {memberships=}")
         #logger.debug(f">> {tags=}")
@@ -893,7 +907,9 @@ async def get_entries(
                 "employers": employers,
                 "tags": tags,
                 "tagcats": tagcats,
-                "directories": directories
+                "directories": directories,
+                "creator_uids": creator_uids,
+                "owner_uids": owner_uids,
             }
         )
     #logger.debug(f"{len(entries)=}\n{entries[0]=}")
@@ -1053,7 +1069,11 @@ def get_uid_query(uid: str):
         WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
         MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
         WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, COLLECT(DISTINCT directory) as directories
-        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats,directories;"""
+        OPTIONAL MATCH (entry)-[:CREATED_BY]->(creator:User)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, directories, COLLECT(DISTINCT creator.uid) as creator_uids
+        OPTIONAL MATCH (entry)-[:OWNED_BY]->(owner:User)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, directories, creator_uids, COLLECT(DISTINCT owner.uid) as owner_uids
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats,directories,creator_uids,owner_uids;"""
 
 def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
     return f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
@@ -1086,7 +1106,11 @@ def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
         WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
         MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
         WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, COLLECT(DISTINCT directory) as directories
-        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats,directories;"""
+        OPTIONAL MATCH (entry)-[:CREATED_BY]->(creator:User)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, directories, COLLECT(DISTINCT creator.uid) as creator_uids
+        OPTIONAL MATCH (entry)-[:OWNED_BY]->(owner:User)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, directories, creator_uids, COLLECT(DISTINCT owner.uid) as owner_uids
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats,directories,creator_uids,owner_uids;"""
 
 def entry_dict(results, cols):
     #logger.debug(f"{results[:1]=} {len(results)=}")
@@ -1113,6 +1137,8 @@ def entry_dict(results, cols):
         [tags],
         [tagcats],
         [directories],
+        [creator_uids],
+        [owner_uids],
     ] = row
     #logger.debug(f"{entry=}")
     #logger.debug(f"{appointment_nodes=}")
@@ -1181,6 +1207,8 @@ def entry_dict(results, cols):
         "tags": tags,
         "tagcats": tagcats,
         "directories": directories,
+        "creator_uids": creator_uids,
+        "owner_uids": owner_uids,
     }
 
 async def async_entry_dict(results, cols) -> EntryDict:
@@ -1206,6 +1234,8 @@ async def async_entry_dict(results, cols) -> EntryDict:
         [tags],
         [tagcats],
         [directories],
+        [creator_uids],
+        [owner_uids],
     ] = row
     address = get_address(facility,commune,country)
     phones = await async_get_phones_neomodel(entry=entry)
@@ -1262,6 +1292,8 @@ async def async_entry_dict(results, cols) -> EntryDict:
         "tags": tags,
         "tagcats": tagcats,
         "directories": directories,
+        "creator_uids": creator_uids,
+        "owner_uids": owner_uids,
     }
 
 def find_entry(
