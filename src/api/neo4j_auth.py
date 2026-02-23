@@ -38,26 +38,45 @@ async def get_or_create_neo4j_user(jwt: dict, site: Site) -> dict | None:
     result = await _find_user_by_sub(sub, entry_uid)
     if result:
         user_props, role = result
-        return _build_response(user_props, role, jwt)
+        if role:
+            # Case A: user exists and already has Access for this entry
+            return _build_response(user_props, role, jwt)
+        # Case B: user exists but has no Access for this entry — fall through
 
     # 2. Look up active Invitee by email + Entry
     if not email:
+        if result:
+            return _build_response(result[0], None, jwt)
         return None
 
     try:
         invitee, entry = await _find_invitee(email, entry_uid)
     except LookupError:
+        if result:
+            return _build_response(result[0], None, jwt)
         return None
 
-    # 3. Create User + Account + Access from Invitee
-    try:
-        user_props, role = await _create_user_from_invitee(
-            invitee, entry, sub, iss, email, jwt.get("name", "")
-        )
-        return _build_response(user_props, role, jwt)
-    except Exception:
-        logger.exception("Failed to create Neo4j user from invitee")
-        return None
+    # 3. Create or augment Access from Invitee
+    if result:
+        # Case B: add a new Access to an existing User
+        try:
+            user_props, role = await _add_access_to_existing_user(
+                result[0], invitee, entry
+            )
+            return _build_response(user_props, role, jwt)
+        except Exception:
+            logger.exception("Failed to add Access to existing Neo4j user")
+            return None
+    else:
+        # Case C: brand-new user — create User + Account + Access
+        try:
+            user_props, role = await _create_user_from_invitee(
+                invitee, entry, sub, iss, email, jwt.get("name", "")
+            )
+            return _build_response(user_props, role, jwt)
+        except Exception:
+            logger.exception("Failed to create Neo4j user from invitee")
+            return None
 
 
 async def _get_entry_uid(site: Site) -> str | None:
@@ -151,6 +170,35 @@ async def _create_user_from_invitee(
 
     return user.__properties__, invitee.role
 
+async def _add_access_to_existing_user(
+    user_props: dict, invitee, entry
+) -> tuple[dict, str]:
+    """Add a new Access node to an already-existing User for a new entry/role.
+
+    Access.createdBy is taken from the Invitee's createdBy relationship
+    (i.e. the admin who issued the invitation).
+    """
+    user = await AsyncUser.nodes.get(uid=user_props["uid"])
+
+    # Inherit the creator from the Invitee
+    invitee_creator = await invitee.createdBy.single()
+
+    access = await AsyncAccess(role=invitee.role).save()
+    await user.access.connect(access)
+    await access.entry.connect(entry)
+    if invitee_creator:
+        await access.createdBy.connect(invitee_creator)
+
+    invitee.redeemedAt = time_ns() // 1_000_000
+    await invitee.save()
+
+    logger.info(
+        f"Added Access (role={invitee.role}) to existing User {user.uid} "
+        f"from Invitee {invitee.uid}"
+    )
+    return user.__properties__, invitee.role
+
+
 async def get_neo4j_role(jwt: dict, site: Site) -> str|None:
     """Resolve role from Neo4j Access graph. Returns role name string or None."""
     try:
@@ -189,8 +237,9 @@ async def get_neo4j_user(jwt: dict) -> AsyncUser | None:
     return await account.user.single()
 
 
-def _build_response(user_props: dict, role: str, jwt: dict) -> dict:
+def _build_response(user_props: dict, role: str | None, jwt: dict) -> dict:
     return {
+        "uid": user_props.get("uid"),
         "name": user_props.get("name"),
         "email": user_props.get("email"),
         "picture": jwt.get("picture"),
