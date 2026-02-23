@@ -1,8 +1,15 @@
 # Let Django knows where the project's settings is.
 import os, sys
 import logging
+import logging.handlers
 from logging.config import dictConfig
+from pathlib import Path
 from django.db.utils import IntegrityError
+
+FASTAPI_LOG_DIR = os.environ.get('FASTAPI_LOG_DIR', str(Path(__file__).resolve().parent / 'logs'))
+FASTAPI_LOG_LEVEL = os.environ.get('FASTAPI_LOG_LEVEL', 'DEBUG')
+
+os.makedirs(FASTAPI_LOG_DIR, exist_ok=True)
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -10,8 +17,20 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
     stream=sys.stdout
 )
+
+file_handler = logging.handlers.RotatingFileHandler(
+    os.path.join(FASTAPI_LOG_DIR, "fastapi.log"),
+    maxBytes=10 * 1024 * 1024,  # 10 MB
+    backupCount=5,
+)
+file_handler.setLevel(getattr(logging, FASTAPI_LOG_LEVEL, logging.DEBUG))
+file_handler.setFormatter(logging.Formatter(
+    "%(levelname)s %(asctime)s %(name)s %(funcName)s %(process)d %(thread)d %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+))
+logging.getLogger().addHandler(file_handler)
+
 logging.getLogger("django.db.backends").setLevel(logging.WARNING)
-#dictConfig(log_config)
 logger = logging.getLogger(__name__)
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')

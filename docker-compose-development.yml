@@ -65,6 +65,7 @@ services:
     command: bash -c "fastapi run main.py --root-path /api/v2 --port 80 --reload --proxy-headers"
     volumes:
       - ./src:/app
+      - ${FASTAPI_LOG_DIR}:${FASTAPI_LOG_DIR}
     depends_on:
       database:
         condition: service_started
