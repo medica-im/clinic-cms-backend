@@ -28,6 +28,25 @@ class Role(StructuredNode):
     description_fr = StringProperty()
 
 
+class User(StructuredNode):
+    uid = UniqueIdProperty()
+    invitee = StringProperty()
+    email = StringProperty()
+    name = StringProperty()
+    createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
+    createdBy = RelationshipTo('User', 'CREATED_BY')
+    access = RelationshipTo('Access', 'HAS_ACCESS')
+    accounts = RelationshipTo('Account', 'HAS_ACCOUNT')
+
+
+class Account(StructuredNode):
+    uid = UniqueIdProperty()
+    iss = StringProperty()
+    sub = StringProperty(unique_index=True)
+    user = RelationshipFrom('User', 'HAS_ACCOUNT')
+    createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
+
+
 class Access(StructuredNode):
     uid = UniqueIdProperty()
     role = StringProperty(
@@ -63,22 +82,3 @@ class Invitee(StructuredNode):
         index=True,
         default=True)
     redeemedAt = IntegerProperty()
-
-
-class User(StructuredNode):
-    uid = UniqueIdProperty()
-    invitee = StringProperty()
-    email = StringProperty()
-    name = StringProperty()
-    createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
-    createdBy = RelationshipTo('User', 'CREATED_BY')
-    access = RelationshipTo('Access', 'HAS_ACCESS')
-    accounts = RelationshipTo('Account', 'HAS_ACCOUNT')
-
-
-class Account(StructuredNode):
-    uid = UniqueIdProperty()
-    iss = StringProperty()
-    sub = StringProperty(unique_index=True)
-    user = RelationshipFrom('User', 'HAS_ACCOUNT')
-    createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
