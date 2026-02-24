@@ -47,7 +47,7 @@ async def update_item(item_id: str, item: Phone, request: Request, jwt: Annotate
         logger.debug(f"{e}")
         raise HTTPException(status_code=409, detail=f"Le numéro de téléphone {i['phone']} associé au type {i['type']} existe déjà pour cette entrée.")
     await set_roles(phone, i['roles'])
-    await clear_cache('v2:entries', request)
+    await clear_cache('v2:/entries', request)
     return i
 
 @router.get("/phones/{item_id}", response_model=Phone)
@@ -81,5 +81,5 @@ async def create_item(item: PhonePost, request: Request, jwt: Annotated[dict, De
     await phone_number.asave()
     await set_roles(phone_number, item.roles)
     i['id']=phone_number.pk
-    await clear_cache('v2:entries', request)
+    await clear_cache('v2:/entries', request)
     return i
