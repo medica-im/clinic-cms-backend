@@ -133,7 +133,7 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
             logger.debug(f"{createdAt=}")
             logger.debug(f'(ms - createdAt)<(1000*60*5): {(ms - createdAt)<(1000*60*5)}')
         if createdAt and ((ms - createdAt)<(1000*60*5)):
-            await clear_cache("v2:/entries", request)
+            await clear_cache("v2:entries", request)
             return await async_get_fullentry(str(_entry.uid), request, jwt)
     new_entry = await entry_if_exists(effector, effector_type, facility)
     if not new_entry:
@@ -158,7 +158,7 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         #logger.debug(result[0][0][0])
         if "HealthWorker" not in result[0][0][0]:
             raise HTTPException(status_code=500, detail=f"Label 'HealthWorker' not applied to Effector {effector.uid} of type {effector_type.name_fr}")
-    await clear_cache("v2:/entries", request)
+    await clear_cache("v2:entries", request)
     return await async_get_fullentry(str(new_entry.uid), request, jwt)
 
 async def get_entry(uid:str)->Entry:
@@ -205,10 +205,10 @@ async def update_entry(uid:str, update_data: dict[str, Any], request: Request):
         entry.convention=update_data['convention']
     if 'active' in update_data.keys():
         entry.active=update_data['active']
-        await clear_cache("v2:/entries", request)
+        await clear_cache("v2:entries", request)
     if 'memberships' in update_data.keys():
         do_cache_clear = await update_entry_memberships(entry, update_data['memberships'])
         if do_cache_clear:
-            await clear_cache("v2:/entries", request)
+            await clear_cache("v2:entries", request)
     await entry.save()
     return Entry.model_validate(entry.__properties__)

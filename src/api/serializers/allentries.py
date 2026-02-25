@@ -14,6 +14,7 @@ from api.utils import (
     get_site_from_request,
     set_timestamp,
     scrub,
+    strip_slash
 )
 from directory.utils import (
     get_entries,
@@ -263,6 +264,7 @@ async def get_all_entries(request: Request, jwt, roles: list[RoleType])->list[En
                 timeout=timeout
             )
         path = request.scope['route'].path
+        path = strip_slash(path)
         endpoint = "%s:%s" % (API_VERSION, path)
         site = await get_site_from_request(request)
         await set_timestamp(endpoint, site)

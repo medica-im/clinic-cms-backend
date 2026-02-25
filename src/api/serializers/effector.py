@@ -150,5 +150,5 @@ async def update_effector(uid, kwargs, request)->Effector:
     effector_dct=node.__properties__
     effector=Effector.model_validate(effector_dct)
     logger.debug(effector)
-    await clear_cache("v2:/entries", request)
+    await clear_cache("v2:entries", request)
     return effector

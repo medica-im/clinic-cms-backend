@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from directory.utils import async_entries_of_situation
 from directory.models.agraph import  Situation as AsyncGraphSituation
 from django.conf import settings
-from api.utils import generate_cache_key, get_ttl, set_timestamp, get_site_from_request
+from api.utils import generate_cache_key, get_ttl, set_timestamp, get_site_from_request, strip_slash
 from django.core.cache import cache
 
 logger=logging.getLogger(__name__)
@@ -51,6 +51,7 @@ async def situations(request: Request) -> list[Situation]:
                 timeout=timeout
             )
         path = request.scope['route'].path
+        path = strip_slash(path)
         endpoint = "%s:%s" % (API_VERSION, path)
         site = await get_site_from_request(request)
         await set_timestamp(endpoint, site)
