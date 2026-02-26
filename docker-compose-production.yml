@@ -30,6 +30,11 @@ services:
     image: redis:latest
     sysctls:
       net.core.somaxconn: 1024
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   django:
     restart: always
     env_file:
