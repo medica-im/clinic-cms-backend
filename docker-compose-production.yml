@@ -1,5 +1,5 @@
 services:
-  database_production:
+  database:
     restart: always                                                                      
     image: postgres-non-root
     build:
@@ -25,12 +25,12 @@ services:
       - "${DATABASE_CONF_FILE}:/etc/postgresql.conf"
       - "${DATABASE_BACKUP_DIR}:/backup"
       - "${DATABASE_LOG_DIR}:/var/log/postgresql:z"
-  redis_production:
+  redis:
     restart: always
     image: redis:latest
     sysctls:
       net.core.somaxconn: 1024
-  django_production:
+  django:
     restart: always
     env_file:
       - .env
@@ -47,9 +47,9 @@ services:
       - ${GUNICORN_LOG}:${GUNICORN_LOG}
       - ${DJANGO_LOG_DIR}:${DJANGO_LOG_DIR}
     depends_on:
-      database_production:
+      database:
         condition: service_started
-      redis_production:
+      redis:
         condition: service_started
       neo4j:
         condition: service_healthy
@@ -68,13 +68,13 @@ services:
       - ./src:/app
       - ${FASTAPI_LOG_DIR}:${FASTAPI_LOG_DIR}
     depends_on:
-      database_production:
+      database:
         condition: service_started
-      redis_production:
+      redis:
         condition: service_started
       neo4j:
         condition: service_healthy
-      django_production:
+      django:
         condition: service_started
     working_dir: /app
     ports:
