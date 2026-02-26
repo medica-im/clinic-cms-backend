@@ -1,5 +1,6 @@
 import logging
 from time import time_ns
+from uuid import uuid4
 
 from django.contrib.sites.models import Site
 from neomodel import adb
@@ -71,7 +72,8 @@ async def get_or_create_neo4j_user(jwt: dict, site: Site) -> dict | None:
         # Case C: brand-new user — create User + Account + Access
         try:
             user_props, role = await _create_user_from_invitee(
-                invitee, entry, sub, iss, email, jwt.get("name", "")
+                invitee, entry, sub, iss, email, jwt.get("name", ""),
+                entry_uid,
             )
             return _build_response(user_props, role, jwt)
         except Exception:
@@ -128,47 +130,69 @@ async def _find_invitee(email: str, entry_uid: str):
 
 
 async def _create_user_from_invitee(
-    invitee, entry, sub: str, iss: str, email: str, name: str
+    invitee, entry, sub: str, iss: str, email: str, name: str,
+    entry_uid: str,
 ) -> tuple[dict, str]:
-    """Create Account, User, and Access nodes from an Invitee.
+    """Atomically create Account, User, and Access nodes from an Invitee.
+
+    Uses a single Cypher query to prevent race conditions where concurrent
+    logins could create duplicate User nodes for the same email.
 
     Returns (user_properties, role_name).
     """
-    # Create Account
-    account = await AsyncAccount(sub=sub, iss=iss).save()
+    now = time_ns() // 1_000_000
+    query = """
+    MATCH (i:Invitee {uid: $invitee_uid})
+    WHERE i.redeemedAt IS NULL
+    SET i.redeemedAt = $now
 
-    # Create User
-    user = await AsyncUser(
-        email=email,
-        name=name,
-        invitee=invitee.uid,
-    ).save()
+    WITH i
 
-    # Connect User -> Account
-    await user.accounts.connect(account)
+    MERGE (a:Account {sub: $sub})
+    ON CREATE SET a.uid = $account_uid, a.iss = $iss, a.createdAt = $now
 
-    # Create Access with the Invitee's role
-    access = await AsyncAccess(role=invitee.role).save()
+    MERGE (u:User {email: $email})
+    ON CREATE SET u.uid = $user_uid, u.name = $name,
+                  u.invitee = $invitee_uid, u.createdAt = $now
 
-    # Connect User -> Access
-    await user.access.connect(access)
+    MERGE (u)-[:HAS_ACCOUNT]->(a)
 
-    # Connect Access -> Entry
-    await access.entry.connect(entry)
+    WITH u, i
+    MATCH (e:Entry {uid: $entry_uid})
+    CREATE (ac:Access {uid: $access_uid, role: i.role, active: true, createdAt: $now})
+    CREATE (u)-[:HAS_ACCESS]->(ac)
+    CREATE (ac)-[:ACCESS_TO]->(e)
+    CREATE (ac)-[:CREATED_BY]->(u)
 
-    # Connect User as creator of Access
-    await access.createdBy.connect(user)
+    RETURN u {.*} AS user_props, ac.role AS role
+    """
+    params = {
+        "invitee_uid": invitee.uid,
+        "now": now,
+        "sub": sub,
+        "iss": iss,
+        "email": email,
+        "name": name,
+        "entry_uid": entry_uid,
+        "account_uid": uuid4().hex,
+        "user_uid": uuid4().hex,
+        "access_uid": uuid4().hex,
+    }
+    results, _ = await adb.cypher_query(query, params)
+    if not results:
+        raise RuntimeError(
+            f"Invitee {invitee.uid} was already redeemed (concurrent request)"
+        )
 
-    # Mark the Invitee as redeemed
-    invitee.redeemedAt = time_ns() // 1_000_000
-    await invitee.save()
+    user_props = results[0][0]
+    role = results[0][1]
 
     logger.info(
-        f"Created Neo4j User {user.uid} from Invitee {invitee.uid} "
-        f"with role {invitee.role}"
+        f"Created Neo4j User {user_props.get('uid')} from Invitee {invitee.uid} "
+        f"with role {role}"
     )
 
-    return user.__properties__, invitee.role
+    return user_props, role
 
 async def _add_access_to_existing_user(
     user_props: dict, invitee, entry

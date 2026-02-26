@@ -70,7 +70,7 @@ class Invitee(AsyncStructuredNode):
 class User(AsyncStructuredNode):
     uid = UniqueIdProperty()
     invitee = StringProperty()
-    email = StringProperty()
+    email = StringProperty(unique_index=True)
     name = StringProperty()
     createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
     createdBy = AsyncRelationshipTo('User', 'CREATED_BY')
