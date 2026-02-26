@@ -44,6 +44,10 @@ class Command(BaseCommand):
                     stdout=self.stdout
                 )
         else:
+            # Import all modules containing StructuredNode subclasses
+            # so install_all_labels can discover them via __subclasses__().
+            import access.neomodels  # noqa: F401
+            import directory.models.graph  # noqa: F401
             install_all_labels(
                 stdout=self.stdout
             )
