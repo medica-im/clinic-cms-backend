@@ -249,8 +249,8 @@ async def get_all_entries(request: Request, jwt, roles: list[RoleType])->list[En
         timeout = await get_ttl(API_VERSION, request) or TTL
         logger.debug(f"{timeout=}")
         scrubbed_entries_dct = scrub(raw, ["phones"])
-        if settings.DEBUG:
-            add_evil_twins(scrubbed_entries_dct)
+        #if settings.DEBUG:
+        #    add_evil_twins(scrubbed_entries_dct)
         for r in scrubbed_entries_dct.keys():
             cache_key = await generate_cache_key(
                 API_VERSION,
