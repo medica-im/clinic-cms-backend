@@ -43,26 +43,35 @@ def get_effectors(
         directory: str|None = None,
         uid: str|None = None,
         active: bool = True,
+        owner: str|None = None,
     )->list[Effector]:
-    filter: list = []
-    if effector_type:
-        filter.append(f'et.uid="{effector_type}"')
-    if facility:
-        filter.append(f'f.uid="{facility}"')
-    elif commune:
-        filter.append(f'commune.uid="{commune}"')
-    elif department_of_france:
-        filter.append(f'dof.code="{department_of_france}"')
-    if directory:
-        filter.append(f'effector.creator_directory="{directory}"')
+    def get_user_snippet(owner):
+        return f'(u:User {{uid: "{owner}"}})<-[:OWNED_BY]-'
+    def get_filter_snippet():
+        filter: list = []
+        if effector_type:
+            filter.append(f'et.uid="{effector_type}"')
+        if facility:
+            filter.append(f'f.uid="{facility}"')
+        elif commune:
+            filter.append(f'commune.uid="{commune}"')
+        elif department_of_france:
+            filter.append(f'dof.code="{department_of_france}"')
+        if directory:
+            filter.append(f'effector.creator_directory="{directory}"')
+        if filter:
+            return f'WHERE {" AND ".join(filter)}'
+        else:
+            return ''
     if uid:
         query = (f"""MATCH (effector:Effector) WHERE effector.uid="{uid}" RETURN effector;""")
-    elif not filter:
+    elif not filter and not owner:
         query=(f"""MATCH (effector:Effector) RETURN effector;""")
     else:
         query=(f"""MATCH (entry:Entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY
 ]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY
-]->(dof:DepartmentOfFrance), (effector:Effector)<-[:HAS_EFFECTOR]-(entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) WHERE {" AND ".join(filter)} RETURN DISTINCT effector;""")
+]->(dof:DepartmentOfFrance), {get_user_snippet(owner) if owner else ''}(effector:Effector)<-[:HAS_EFFECTOR]-(entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) {get_filter_snippet()} RETURN DISTINCT effector;""")
+    logger.debug(f"{query=}")
     q = db.cypher_query(query,resolve_objects = True)
     effectors: list[Effector]=[]
     if q:
@@ -103,6 +112,7 @@ async def create_effector(effector: EffectorPost, directory_name: str, jwt: dict
         creator_directory=neo4j_directory.name,
     ).save()
     neo4j_user = await get_neo4j_user(jwt)
+    logger.debug(f"{neo4j_user=}")
     if neo4j_user:
         await node.creator.connect(neo4j_user)
         await node.owner.connect(neo4j_user)

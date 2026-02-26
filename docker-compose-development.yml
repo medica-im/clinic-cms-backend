@@ -30,6 +30,11 @@ services:
     image: redis:latest
     sysctls:
       net.core.somaxconn: 1024
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   django:
     restart: always
     env_file:
@@ -126,4 +131,38 @@ services:
       interval: 1s
       timeout: 10s
       retries: 30
-      start_period: 5s
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  celery:
+    restart: always
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: docker/django/Dockerfile
+      target: dev
+    command: celery -A backend worker --loglevel=info
+    working_dir: /app
+    volumes:
+      - ./src:/app
+      - ${CELERY_LOG_DIR}:${CELERY_LOG_DIR}
+    depends_on:
+      django:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy

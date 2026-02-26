@@ -35,8 +35,8 @@ async def post_cookie(request: Request, jwt: Annotated[dict, Depends(JWT)]):
     return request.cookies.get('__Secure-authjs.session-token')
 
 @router.get("/effectors")
-async def effectors(effector_type: str|None = None, department_of_france: str|None = None, commune: str|None = None, facility: str|None = None, directory: str|None = None) -> list[Effector]:
-    return get_effectors(effector_type=effector_type, department_of_france=department_of_france, commune=commune, facility=facility, directory=directory)
+async def effectors(effector_type: str|None = None, department_of_france: str|None = None, commune: str|None = None, facility: str|None = None, directory: str|None = None, owner: str|None = None) -> list[Effector]:
+    return get_effectors(effector_type=effector_type, department_of_france=department_of_france, commune=commune, facility=facility, directory=directory, owner=owner)
 
 @router.get("/effectors/{uid}")
 async def effector(uid: str)->Effector:

@@ -11,6 +11,7 @@ from api.auth import JWT, get_neo4j_role, authorize_api, get_user, get_role
 from api.utils import get_site_from_request
 from facility.models import Organization
 from access.models import Role
+from api.serializers.invitee import notification_email
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +137,9 @@ async def create_invitee(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User linked to Account {account} not found"
         )
-    return Invitee.model_validate(new_invitee.__properties__)
+    invitee = Invitee.model_validate(new_invitee.__properties__)
+    await notification_email(invitee, site)
+    return invitee
 
 
 @router.patch("/invitees/{invitee_uid}")

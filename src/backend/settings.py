@@ -27,6 +27,8 @@ DEBUG = config('DEBUG', cast=bool, default=False)
 DJANGO_LOG_LEVEL = config('DJANGO_LOG_LEVEL', default='DEBUG')
 DJANGO_LOG_DIR = str(config('DJANGO_LOG_DIR', default=str(BASE_DIR / 'logs')))
 os.makedirs(DJANGO_LOG_DIR, exist_ok=True)
+CELERY_LOG_DIR = str(config('CELERY_LOG_DIR', default=str(BASE_DIR / 'logs')))
+os.makedirs(CELERY_LOG_DIR, exist_ok=True)
 
 LOGGING = {
     "version": 1,
@@ -44,6 +46,14 @@ LOGGING = {
             "formatter": "verbose",
             "level": DJANGO_LOG_LEVEL,
         },
+        "celery_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(CELERY_LOG_DIR, "celery.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10 MB
+            "backupCount": 5,
+            "formatter": "verbose",
+            "level": "DEBUG",
+        },
     },
     "formatters": {
         "verbose": {
@@ -53,6 +63,18 @@ LOGGING = {
         "simple": {
             "format": "{levelname} {asctime} {module} {funcName} {message}",
             "style": "{",
+        },
+    },
+    "loggers": {
+        "celery": {
+            "handlers": ["console", "celery_file"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "celery.task": {
+            "handlers": ["console", "celery_file"],
+            "level": "DEBUG",
+            "propagate": False,
         },
     },
     "root": {
@@ -104,6 +126,7 @@ INSTALLED_APPS = [
     'nlp',
     'heatwave',
     'auditor',
+    'mailer',
 ]
 
 if DEBUG:
@@ -243,6 +266,10 @@ THUMBNAIL_ALIASES = {
 DEFAULT_FILE_STORAGE='django.core.files.storage.FileSystemStorage'
 AVATAR_FILE_STORAGE = config('AVATAR_FILE_STORAGE', default="")
 
+# Celery
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='amqp://guest:guest@rabbitmq:5672//')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://redis:6379/0')
+
 # Redis
 REDIS_HOST = config('REDIS_HOST', default='redis_development')
 REDIS_PORT = config('REDIS_PORT', cast=str, default='6379')
@@ -290,3 +317,9 @@ LOGIN_URL = '/admin/login/'
 JWT_SECRET_KEY=config('JWT_SECRET_KEY')
 ACCESS_TOKEN_EXPIRE_MINUTES=config('ACCESS_TOKEN_EXPIRE_MINUTES', cast=int, default=30)
 OIDC_GOOGLE_CLIENT_ID=config('OIDC_GOOGLE_CLIENT_ID')
+
+# mailer
+MAILGUN_API_URL = "https://api.eu.mailgun.net/v3/mail.medica.im/messages"
+MAILGUN_SENDING_KEY = config('MAILGUN_SENDING_KEY')
+MAILGUN_SENDING_KEY_ID = config('MAILGUN_SENDING_KEY_ID')
+
