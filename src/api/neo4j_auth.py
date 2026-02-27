@@ -7,10 +7,7 @@ from neomodel import adb
 from access.asyncneomodels import (
     Account as AsyncAccount,
     User as AsyncUser,
-    Access as AsyncAccess,
-    Invitee as AsyncInvitee,
 )
-from directory.models.agraph import Entry
 from facility.models import Organization
 
 logger = logging.getLogger(__name__)
@@ -72,7 +69,7 @@ async def get_or_create_neo4j_user(jwt: dict, site: Site) -> dict | None:
         # Case C: brand-new user — create User + Account + Access
         try:
             user_props, role = await _create_user_from_invitee(
-                invitee, entry, sub, iss, email, jwt.get("name", ""),
+                invitee, sub, iss, email, jwt.get("name", ""),
                 entry_uid,
             )
             return _build_response(user_props, role, jwt)
@@ -130,7 +127,7 @@ async def _find_invitee(email: str, entry_uid: str):
 
 
 async def _create_user_from_invitee(
-    invitee, entry, sub: str, iss: str, email: str, name: str,
+    invitee, sub: str, iss: str, email: str, name: str,
     entry_uid: str,
 ) -> tuple[dict, str]:
     """Atomically create Account, User, and Access nodes from an Invitee.
@@ -197,30 +194,57 @@ async def _create_user_from_invitee(
 async def _add_access_to_existing_user(
     user_props: dict, invitee, entry
 ) -> tuple[dict, str]:
-    """Add a new Access node to an already-existing User for a new entry/role.
+    """Atomically add a new Access node to an existing User for a new entry/role.
+
+    Uses a single Cypher query to prevent race conditions where concurrent
+    logins could create duplicate Access nodes for the same User+Entry.
 
     Access.createdBy is taken from the Invitee's createdBy relationship
     (i.e. the admin who issued the invitation).
     """
-    user = await AsyncUser.nodes.get(uid=user_props["uid"])
+    now = time_ns() // 1_000_000
+    query = """
+    MATCH (i:Invitee {uid: $invitee_uid})
+    WHERE i.redeemedAt IS NULL
+    SET i.redeemedAt = $now
 
-    # Inherit the creator from the Invitee
-    invitee_creator = await invitee.createdBy.single()
+    WITH i
+    MATCH (u:User {uid: $user_uid})
+    MATCH (e:Entry {uid: $entry_uid})
 
-    access = await AsyncAccess(role=invitee.role).save()
-    await user.access.connect(access)
-    await access.entry.connect(entry)
-    if invitee_creator:
-        await access.createdBy.connect(invitee_creator)
+    CREATE (ac:Access {uid: $access_uid, role: i.role, active: true, createdAt: $now})
+    CREATE (u)-[:HAS_ACCESS]->(ac)
+    CREATE (ac)-[:ACCESS_TO]->(e)
 
-    invitee.redeemedAt = time_ns() // 1_000_000
-    await invitee.save()
+    WITH u, ac, i
+    OPTIONAL MATCH (i)-[:CREATED_BY]->(creator:User)
+    FOREACH (_ IN CASE WHEN creator IS NOT NULL THEN [1] ELSE [] END |
+        CREATE (ac)-[:CREATED_BY]->(creator)
+    )
+
+    RETURN u {.*} AS user_props, ac.role AS role
+    """
+    params = {
+        "invitee_uid": invitee.uid,
+        "now": now,
+        "user_uid": user_props["uid"],
+        "entry_uid": entry.uid,
+        "access_uid": uuid4().hex,
+    }
+    results, _ = await adb.cypher_query(query, params)
+    if not results:
+        raise RuntimeError(
+            f"Invitee {invitee.uid} was already redeemed (concurrent request)"
+        )
+
+    user_props = results[0][0]
+    role = results[0][1]
 
     logger.info(
-        f"Added Access (role={invitee.role}) to existing User {user.uid} "
+        f"Added Access (role={role}) to existing User {user_props.get('uid')} "
         f"from Invitee {invitee.uid}"
     )
-    return user.__properties__, invitee.role
+    return user_props, role
 
 
 async def get_neo4j_role(jwt: dict, site: Site) -> str|None:
