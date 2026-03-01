@@ -66,7 +66,7 @@ def get_effectors(
     if uid:
         query = (f"""MATCH (effector:Effector) WHERE effector.uid="{uid}" RETURN effector;""")
     elif owner:
-        query = f"""(u:User {{uid: "{owner}"}})<-[:OWNED_BY]-(effector:Effector)
+        query = f"""MATCH (u:User {{uid: "{owner}"}})<-[:OWNED_BY]-(effector:Effector)
         RETURN DISTINCT effector"""
     elif not filter and not owner:
         query=(f"""MATCH (effector:Effector) RETURN effector;""")
