@@ -1,7 +1,8 @@
 import logging, os, sys
 from typing import Annotated
 from fastapi import APIRouter, status, Depends, Request, HTTPException
-from api.serializers.effector import get_effector, get_effectors, create_effector, update_effector
+from api.serializers.effector import get_effector, get_effectors, get_effectors_by_user, create_effector, update_effector
+from api.neo4j_auth import get_neo4j_user
 from directory.models.agraph import Effector as AgraphEffector
 from api.routers.utils import get_directory_from_hostname
 from api.types.effector import Effector, EffectorPost, EffectorPatch
@@ -33,6 +34,14 @@ async def post_cookie(request: Request, jwt: Annotated[dict, Depends(JWT)]):
     logger.info(f"JWT cookie {request.cookies}")
     logger.debug(f"JWT cookie {request.cookies.get('__Secure-authjs.session-token')=}")
     return request.cookies.get('__Secure-authjs.session-token')
+
+@router.get("/staff-effectors")
+async def staff_effectors(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list[Effector]:
+    await authorize_api("staff-effectors", request, jwt)
+    neo4j_user = await get_neo4j_user(jwt)
+    if not neo4j_user:
+        return []
+    return await get_effectors_by_user(str(neo4j_user.uid))
 
 @router.get("/effectors")
 async def effectors(effector_type: str|None = None, department_of_france: str|None = None, commune: str|None = None, facility: str|None = None, directory: str|None = None, owner: str|None = None) -> list[Effector]:

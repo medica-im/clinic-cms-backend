@@ -1,7 +1,7 @@
 import logging
 from common.utils import timestamp
 from django.utils.text import slugify
-from neomodel import db
+from neomodel import adb, db
 from pydantic import ValidationError
 from directory.models.agraph import (
     HealthWorker as AsyncHealthWorker,
@@ -90,6 +90,24 @@ def get_effectors(
             except ValidationError as e:
                 logger.error(e)
     return effectors
+
+async def get_effectors_by_user(user_uid: str) -> list[Effector]:
+    query = (
+        'MATCH (u:User {uid: $user_uid})<-[:OWNED_BY|CREATED_BY]-(effector:Effector) '
+        'RETURN DISTINCT effector'
+    )
+    results, _ = await adb.cypher_query(
+        query, {"user_uid": user_uid}, resolve_objects=True
+    )
+    effectors: list[Effector] = []
+    for row in results:
+        effector_node = row[0]
+        try:
+            effectors.append(Effector.model_validate(effector_node.__properties__))
+        except ValidationError as e:
+            logger.error(e)
+    return effectors
+
 
 async def create_effector(effector: EffectorPost, directory_name: str, jwt: dict)->Effector:
     try:
