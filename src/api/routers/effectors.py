@@ -1,7 +1,7 @@
 import logging, os, sys
 from typing import Annotated
 from fastapi import APIRouter, status, Depends, Request, HTTPException
-from api.serializers.effector import get_effector, get_effectors, get_effectors_by_user, create_effector, update_effector
+from api.serializers.effector import get_effector, get_effectors, get_all_effectors, get_effectors_by_user, get_effectors_by_entry_colleagues, create_effector, update_effector
 from api.neo4j_auth import get_neo4j_user
 from directory.models.agraph import Effector as AgraphEffector
 from api.routers.utils import get_directory_from_hostname
@@ -42,6 +42,19 @@ async def staff_effectors(request: Request, jwt: Annotated[dict, Depends(JWT)]) 
     if not neo4j_user:
         return []
     return await get_effectors_by_user(str(neo4j_user.uid))
+
+@router.get("/superuser-effectors")
+async def superuser_effectors(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list[Effector]:
+    await authorize_api("superuser-effectors", request, jwt)
+    return await get_all_effectors()
+
+@router.get("/administrator-effectors")
+async def administrator_effectors(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list[Effector]:
+    await authorize_api("administrator-effectors", request, jwt)
+    neo4j_user = await get_neo4j_user(jwt)
+    if not neo4j_user:
+        return []
+    return await get_effectors_by_entry_colleagues(str(neo4j_user.uid))
 
 @router.get("/effectors")
 async def effectors(effector_type: str|None = None, department_of_france: str|None = None, commune: str|None = None, facility: str|None = None, directory: str|None = None, owner: str|None = None) -> list[Effector]:

@@ -109,6 +109,39 @@ async def get_effectors_by_user(user_uid: str) -> list[Effector]:
     return effectors
 
 
+async def get_all_effectors() -> list[Effector]:
+    query = 'MATCH (effector:Effector) RETURN effector'
+    results, _ = await adb.cypher_query(query, resolve_objects=True)
+    effectors: list[Effector] = []
+    for row in results:
+        effector_node = row[0]
+        try:
+            effectors.append(Effector.model_validate(effector_node.__properties__))
+        except ValidationError as e:
+            logger.error(e)
+    return effectors
+
+
+async def get_effectors_by_entry_colleagues(user_uid: str) -> list[Effector]:
+    query = (
+        'MATCH (requester:User {uid: $user_uid})-[:HAS_ACCESS]->(:Access)-[:ACCESS_TO]->'
+        '(:Entry)<-[:ACCESS_TO]-(:Access)<-[:HAS_ACCESS]-(colleague:User)'
+        '<-[:OWNED_BY|CREATED_BY]-(effector:Effector) '
+        'RETURN DISTINCT effector'
+    )
+    results, _ = await adb.cypher_query(
+        query, {"user_uid": user_uid}, resolve_objects=True
+    )
+    effectors: list[Effector] = []
+    for row in results:
+        effector_node = row[0]
+        try:
+            effectors.append(Effector.model_validate(effector_node.__properties__))
+        except ValidationError as e:
+            logger.error(e)
+    return effectors
+
+
 async def create_effector(effector: EffectorPost, directory_name: str, jwt: dict)->Effector:
     try:
         existing_effector: Effector = await AsyncEffector.nodes.get(
