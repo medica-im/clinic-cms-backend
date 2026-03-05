@@ -12,7 +12,7 @@ from fastapi_jwt import (
 )
 from django.conf import settings
 from api.utils import get_site_from_request
-from api.auth import get_user, get_role, JWT
+from api.auth import JWT
 from api.neo4j_auth import get_or_create_neo4j_user
 from fastapi_nextauth_jwt import NextAuthJWT
 from accounts.models import User
@@ -152,48 +152,16 @@ async def read_current_user(
 background_tasks: BackgroundTasks):
     logger.debug(f"{jwt=}")
     site = await get_site_from_request(request)
+    background_tasks.add_task(log_oidc, jwt, site)
 
     # Neo4j-based user lookup (Invitee auto-provisioning)
     neo4j_result = await get_or_create_neo4j_user(jwt, site)
     logger.debug(f"{neo4j_result=}")
-    if neo4j_result:
-        background_tasks.add_task(log_oidc, jwt, site)
-        return neo4j_result
 
-    # Django fallback (existing behavior)
-    try:
-        django_user = await User.objects.select_related('grammatical_gender').aget(email__iexact=jwt["email"])
-    except User.DoesNotExist as e:
-        logger.warning(f"User does not exist: {jwt['email']}")
+    if not neo4j_result:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions"
         )
-    logger.debug(f"{django_user=}")
-    role = await get_role(django_user, site)
-    gg = getattr(
-        getattr(django_user, "grammatical_gender", None),
-        "code",
-        None
-    )
-    effector = getattr(
-        getattr(django_user, "effector", None),
-        "hex",
-        None
-    )
-    full_name = getattr(django_user, "full_name", None)
-    try:
-        picture = jwt["picture"]
-    except:
-        picture = None
-    background_tasks.add_task(log_oidc, jwt, site)
-    return {
-        "name": jwt["name"],
-        "email": jwt["email"],
-        "picture": picture,
-        "role": role.name,
-        "gender": gg,
-        "effector": effector,
-        "full_name": full_name
-    }
+    return neo4j_result
 
