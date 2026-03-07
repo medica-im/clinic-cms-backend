@@ -16,6 +16,7 @@ class EntryPatch(BaseModel):
     convention: str|None = None
     active: bool|None = None
     memberships: list[str]|None = None
+    owners: list[str]|None = None
 
 
 class EffectorType(BaseModel):
@@ -43,3 +44,4 @@ class Entry(BaseModel):
     payment: list[str]|None =None
     third_party_payer: list[str]|None = None
     memberships: list[str]|None = None
+    owners: list[str]|None = None

@@ -21,6 +21,7 @@ from api.types.fullentry import FullEntry, EffectorType
 from api.types.facility import Facility
 from api.utils import clear_cache, get_site_from_request
 from api.auth import get_role_from_jwt
+from access.asyncneomodels import User as AsyncUser
 from api.neo4j_auth import get_neo4j_user, get_neo4j_role
 from api.routers.utils import get_directory_from_hostname
 
@@ -192,6 +193,32 @@ async def update_entry_memberships(entry, memberships: list[str]):
                 pass
     return True
 
+async def update_entry_owners(entry, owners: list[str]):
+    if owners is None:
+        return False
+    if not owners:
+        await entry.owner.disconnect_all()
+        return True
+    connected_uids = [str(user.uid) for user in await entry.owner.all()]
+    if set(connected_uids) == set(owners):
+        return False
+    for uid in owners:
+        if uid not in connected_uids:
+            try:
+                user = await AsyncUser.nodes.get(uid=uid)
+                await entry.owner.connect(user)
+            except AsyncUser.DoesNotExist:
+                logger.error(f"User with uid={uid} not found")
+    for uid in connected_uids:
+        if uid not in owners:
+            try:
+                user = await AsyncUser.nodes.get(uid=uid)
+                await entry.owner.disconnect(user)
+            except AsyncUser.DoesNotExist:
+                logger.error(f"User with uid={uid} not found")
+    return True
+
+
 async def update_entry(uid:str, update_data: dict[str, Any], request: Request):
     #logger.debug(update_data)
     entry = await AsyncEntry.nodes.get(uid=uid)
@@ -203,12 +230,22 @@ async def update_entry(uid:str, update_data: dict[str, Any], request: Request):
         entry.third_party_payer=update_data['third_party_payer']
     if 'convention' in update_data.keys():
         entry.convention=update_data['convention']
+    should_clear_cache = False
     if 'active' in update_data.keys():
         entry.active=update_data['active']
-        await clear_cache("v2:entries", request)
+        should_clear_cache = True
     if 'memberships' in update_data.keys():
-        do_cache_clear = await update_entry_memberships(entry, update_data['memberships'])
-        if do_cache_clear:
-            await clear_cache("v2:entries", request)
+        if await update_entry_memberships(entry, update_data['memberships']):
+            should_clear_cache = True
+    if 'owners' in update_data.keys():
+        if await update_entry_owners(entry, update_data['owners']):
+            should_clear_cache = True
     await entry.save()
-    return Entry.model_validate(entry.__properties__)
+    if should_clear_cache:
+        await clear_cache("v2:entries", request)
+    entry_data = entry.__properties__
+    owner_nodes = await entry.owner.all()
+    entry_data["owners"] = [str(user.uid) for user in owner_nodes]
+    membership_nodes = await entry.memberships.all()
+    entry_data["memberships"] = [str(m.uid) for m in membership_nodes]
+    return Entry.model_validate(entry_data)
