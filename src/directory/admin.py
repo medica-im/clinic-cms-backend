@@ -175,4 +175,12 @@ class TimestampAdmin(admin.ModelAdmin):
         'site',
         'endpoint',
         'timestamp',
+        'timestamp_iso',
     )
+
+    @admin.display(description='Timestamp for humans')
+    def timestamp_iso(self, obj):
+        from datetime import datetime, timezone
+        if obj.timestamp:
+            return datetime.fromtimestamp(obj.timestamp / 1000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        return ''
