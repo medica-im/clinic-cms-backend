@@ -8,6 +8,7 @@ from directory.models.core import (
     InputField,
     Setting,
     Label,
+    sync_clear_cache
 )
 from directory.models.graph import (
     PaymentMethod,
