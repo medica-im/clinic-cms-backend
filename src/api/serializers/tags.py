@@ -1,7 +1,8 @@
 from directory.models.agraph import Tag, TagCategory, Entry
 from api.types.tag import TagCategory as TagCategoryPy, Tag as TagPy, TagEntry
+from api.utils import clear_cache
 from rest_framework import serializers
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from pydantic import TypeAdapter
 import logging
 
@@ -71,7 +72,7 @@ async def tags(category: str|None)->list[TagPy]:
     ta = TypeAdapter(list[TagPy] or None)
     return ta.validate_python(serializer.data or None)
 
-async def update_tags(item: TagEntry):
+async def update_tags(item: TagEntry, request: Request):
     try:
         entry = await Entry.nodes.get(uid=item.entry)
     except Exception as e:
@@ -103,6 +104,6 @@ async def update_tags(item: TagEntry):
         pass
     for tag in removeTags:
         await entry.tags.disconnect(tag)
-
-
+    if addTags or removeTags:
+        await clear_cache("v2:entries", request)
 

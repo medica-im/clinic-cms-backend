@@ -27,5 +27,5 @@ async def post_entry_tags(item: TagEntry, request: Request, jwt: Annotated[dict,
     entry = await get_entry(item.entry)
     users = await get_entry_users(entry)
     await authorize_api("entry_tag_v2", request, jwt, users=users)
-    return await update_tags(item)
+    return await update_tags(item, request)
 
