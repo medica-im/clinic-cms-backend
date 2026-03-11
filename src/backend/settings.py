@@ -254,12 +254,12 @@ CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', cast=Csv())
 
 THUMBNAIL_ALIASES = {
     'addressbook.Contact.profile_image': {
-        'avatar_facebook': {'size': (170, 170), 'crop': False},
-        'avatar_linkedin_twitter': {'size': (400, 400), 'crop': False},
+        'avatar_sm': {'size': (256, 256), 'crop': 'smart'},
+        'avatar_lg': {'size': (512, 512), 'crop': 'smart'},
     },
     'facility.Organization.logo': {
-        'avatar_facebook': {'size': (170, 170), 'crop': False},
-        'avatar_linkedin_twitter': {'size': (400, 400), 'crop': False},
+        'avatar_sm': {'size': (256, 256), 'crop': 'smart'},
+        'avatar_lg': {'size': (512, 512), 'crop': 'smart'},
     }
 }
 

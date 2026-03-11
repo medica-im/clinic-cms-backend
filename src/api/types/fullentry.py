@@ -40,8 +40,8 @@ class Address(BaseModel):
 
 
 class Avatar(BaseModel):
-    fb: str|None = None
-    lt: str|None = None
+    sm: str|None = None
+    lg: str|None = None
     raw: str|None = None
 
 

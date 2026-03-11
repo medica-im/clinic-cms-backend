@@ -452,20 +452,20 @@ def get_avatar_url(
         if not profile_image:
             return
         try:
-            fb = profile_image["avatar_facebook"].url
+            sm = profile_image["avatar_sm"].url
         except:
-            fb = None
+            sm = None
         try:
-            lt = profile_image["avatar_linkedin_twitter"].url
+            lg = profile_image["avatar_lg"].url
         except:
-            lt = None
+            lg = None
         try:
             raw = profile_image.url
         except:
             raw = None
         return {
-            "fb": fb,
-            "lt": lt,
+            "sm": sm,
+            "lg": lg,
             "raw": raw
         }
     try:
@@ -503,20 +503,23 @@ async def async_get_avatar_url(
         if not profile_image:
             return
         try:
-            fb = profile_image["avatar_facebook"].url
-        except:
-            fb = None
+            sm = profile_image["avatar_sm"].url
+        except Exception as e:
+            logger.error(f"avatar_sm error: {e}")
+            sm = None
         try:
-            lt = profile_image["avatar_linkedin_twitter"].url
-        except:
-            lt = None
+            lg = profile_image["avatar_lg"].url
+        except Exception as e:
+            logger.error(f"avatar_lg error: {e}")
+            lg = None
         try:
             raw = profile_image.url
-        except:
+        except Exception as e:
+            logger.error(f"avatar raw error: {e}")
             raw = None
         return {
-            "fb": fb,
-            "lt": lt,
+            "sm": sm,
+            "lg": lg,
             "raw": raw
         }
     try:
@@ -539,14 +542,15 @@ async def async_get_avatar_url(
         f_avatar = contact.profile_image
     except (Contact.DoesNotExist, AttributeError):
         f_avatar = None
+    async_get_avatar_dict = sync_to_async(get_avatar_dict)
     if (entry_avatar):
-        return get_avatar_dict(entry_avatar)
+        return await async_get_avatar_dict(entry_avatar)
     if (ef_avatar):
-        return get_avatar_dict(ef_avatar)
+        return await async_get_avatar_dict(ef_avatar)
     if (effector_avatar):
-        return get_avatar_dict(effector_avatar)
+        return await async_get_avatar_dict(effector_avatar)
     if (f_avatar):
-        return get_avatar_dict(f_avatar)
+        return await async_get_avatar_dict(f_avatar)
 
 def get_address(facility: Facility, commune: Commune, country: Country):
     if facility.location:

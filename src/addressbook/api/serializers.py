@@ -12,7 +12,6 @@ from addressbook.models import (
     Address,
 )
 from access.serializers import AsyncRoleSerializer
-from directory.models.graph import Entry
 from rest_framework import serializers
 from adrf.serializers import Serializer, ModelSerializer as AsyncModelSerializer
 
@@ -210,6 +209,7 @@ class ContactSerializer(serializers.ModelSerializer):
             return
         logger.debug(f"{entry_node_uid=}")
         try:
+            from directory.models.graph import Entry
             entry = Entry.nodes.get(uid=entry_node_uid)
         except Exception as e:
             logger.error(e)
