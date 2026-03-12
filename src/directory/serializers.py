@@ -153,6 +153,7 @@ class SettingSerializer(serializers.ModelSerializer):
         fields = [
             'sort_category_display',
             'display_facility_organization',
+            'list_navigation',
         ]
 
 
