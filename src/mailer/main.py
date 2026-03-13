@@ -48,7 +48,7 @@ def send_single_email(to_address: str, subject: str, message: str):
         return {"error": str(ex)}
 
 
-def send_batch_emails(recipients: dict, subject: str, message: str):
+def send_batch_emails(recipients: dict, subject: str, message: str) -> dict:
     try:
         to_address = list(recipients.keys())  # get only email addresses
         recipients_json = json.dumps(recipients)
@@ -60,7 +60,10 @@ def send_batch_emails(recipients: dict, subject: str, message: str):
                                    "recipient-variables": recipients_json})
         if resp.status_code == 200:  # success
             logger.info(f"Successfully sent email to {len(recipients)} recipients via Mailgun API.")
+            return {"success": True, "status_code": resp.status_code, "response": resp.json()}
         else:   # error
-            logging.error(f"Could not send emails, reason: {resp.text}")
+            logger.error(f"Could not send emails, reason: {resp.text}")
+            return {"success": False, "status_code": resp.status_code, "response": resp.text}
     except Exception as ex:
-        logging.exception(f"Mailgun error: {ex}")
+        logger.exception(f"Mailgun error: {ex}")
+        return {"success": False, "status_code": None, "response": str(ex)}

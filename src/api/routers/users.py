@@ -46,14 +46,9 @@ async def get_users(
     results, _ = await adb.cypher_query(
         query, {"entry_uid": entry_uid}, resolve_objects=True
     )
-    logger.debug(f"{results=}")
     user_list = []
     for row in results:
-        logger.debug(f"{row=}")
         (user_node, [account_nodes], [access_nodes]) = row
-        logger.debug(f"{user_node=}")
-        logger.debug(f"{account_nodes=}")
-        logger.debug(f"{access_nodes=}")
         accounts = [
             AccountOut.model_validate(a.__dict__)
             for a in account_nodes
@@ -62,12 +57,10 @@ async def get_users(
             AccessOut.model_validate(ac.__dict__)
             for ac in access_nodes
         ]
-
         user_data = user_node.__properties__
         user_data["accounts"] = accounts
         user_data["access"] = accesses
         user_list.append(User.model_validate(user_data))
-
     return user_list
 
 
