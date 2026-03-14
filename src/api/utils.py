@@ -63,13 +63,10 @@ async def set_timestamp(endpoint_name: str, site: Site):
         logger.error(f"{endpoint_name=}\n{site=}\n{e}")
         return
     try:
-        ts = await Timestamp.objects.aget(endpoint=endpoint,site=site)
-    except Timestamp.DoesNotExist:
-        try:
-            ts = await Timestamp.objects.acreate(endpoint=endpoint,site=site)
-        except DatabaseError as e:
-            logger.error(e)
-            return
+        ts, _ = await Timestamp.objects.aget_or_create(endpoint=endpoint,site=site)
+    except DatabaseError as e:
+        logger.error(e)
+        return
     ts.timestamp=timestamp
     await ts.asave()
 
