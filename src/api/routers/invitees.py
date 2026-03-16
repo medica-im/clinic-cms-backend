@@ -133,6 +133,24 @@ async def create_invitee(
             detail="Entry does not belong to this organization"
         )
 
+    # Check for existing invitation with same email and entry
+    duplicate_query = """
+    MATCH (entry:Entry {uid: $entry_uid})<-[:INVITED_TO]-(invitee:Invitee {email: $email})
+    RETURN invitee
+    """
+    results, _ = await adb.cypher_query(
+        duplicate_query,
+        {"entry_uid": item.entry, "email": item.email}
+    )
+    if results:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+        "code": "DUPLICATE_EMAIL",
+        "message": f"Une invitation adressée à {item.email} existe déjà."
+    }
+        )
+
     role = await get_neo4j_role(jwt, site)
     logger.debug(f"neo4j {role=}")
     if not role:
