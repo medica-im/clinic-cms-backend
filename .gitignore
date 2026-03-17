@@ -89,3 +89,6 @@ frontend/src/routes/test
 
 # fixtures
 src/addressbook/fixtures/
+
+# Claude
+.claude

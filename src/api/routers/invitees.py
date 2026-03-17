@@ -18,6 +18,36 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+async def verify_invitee_ownership(request: Request, invitee_uid: str):
+    """Verify that an invitee belongs to the requesting site's organization."""
+    site = await get_site_from_request(request)
+    try:
+        organization = await Organization.objects.aget(site=site)
+    except Organization.DoesNotExist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found for this site"
+        )
+    if not organization.neomodel_uid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization does not have a neomodel_uid"
+        )
+    query = """
+    MATCH (entry:Entry {uid: $entry_uid})<-[:INVITED_TO]-(invitee:Invitee {uid: $invitee_uid})
+    RETURN invitee
+    """
+    results, _ = await adb.cypher_query(
+        query,
+        {"entry_uid": organization.neomodel_uid.hex, "invitee_uid": invitee_uid}
+    )
+    if not results:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invitee does not belong to this organization"
+        )
+
+
 @router.get("/invitees")
 async def invitees(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list[Invitee]:
     await authorize_api("invitees_v2", request, jwt)
@@ -88,6 +118,39 @@ async def create_invitee(
 ) -> Invitee:
     await authorize_api("invitees_v2", request, jwt)
     site = await get_site_from_request(request)
+
+    # Verify the entry belongs to this site's organization
+    try:
+        organization = await Organization.objects.aget(site=site)
+    except Organization.DoesNotExist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found for this site"
+        )
+    if not organization.neomodel_uid or item.entry != organization.neomodel_uid.hex:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Entry does not belong to this organization"
+        )
+
+    # Check for existing invitation with same email and entry
+    duplicate_query = """
+    MATCH (entry:Entry {uid: $entry_uid})<-[:INVITED_TO]-(invitee:Invitee {email: $email})
+    RETURN invitee
+    """
+    results, _ = await adb.cypher_query(
+        duplicate_query,
+        {"entry_uid": item.entry, "email": item.email}
+    )
+    if results:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+        "code": "DUPLICATE_EMAIL",
+        "message": f"Une invitation adressée à {item.email} existe déjà."
+    }
+        )
+
     role = await get_neo4j_role(jwt, site)
     logger.debug(f"neo4j {role=}")
     if not role:
@@ -102,6 +165,7 @@ async def create_invitee(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only superusers can create superuser invitees"
         )
+
     # Create the Invitee node
     new_invitee = await AsyncInvitee(
         email=item.email,
@@ -150,6 +214,7 @@ async def update_invitee(
     jwt: Annotated[dict, Depends(JWT)]
 ) -> Invitee:
     await authorize_api("invitees_v2", request, jwt)
+    await verify_invitee_ownership(request, invitee_uid)
 
     # Get the Invitee node
     try:
@@ -189,6 +254,7 @@ async def delete_single_invitee(
     DELETE /invitees/{invitee_uid} - Deletes one Invitee with the specified uid
     """
     await authorize_api("invitees_v2", request, jwt)
+    await verify_invitee_ownership(request, invitee_uid)
 
     # Get and delete the Invitee
     try:
