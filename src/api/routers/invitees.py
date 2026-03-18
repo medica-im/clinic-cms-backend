@@ -74,17 +74,19 @@ async def invitees(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list
 
     query = """
     MATCH (entry:Entry {uid: $entry_uid})<-[:INVITED_TO]-(invitee:Invitee)
-    RETURN invitee
+    OPTIONAL MATCH (invitee)-[:CREATED_BY]->(user:User)
+    RETURN invitee, user.uid AS createdBy
     """
-    results, _ = await adb.cypher_query(query, {"entry_uid": entry_uid}, resolve_objects=True)
+    results, _ = await adb.cypher_query(query, {"entry_uid": entry_uid}, resolve_objects=False)
 
     logger.info(f"Query returned {len(results)} results")
 
     invitee_list = []
     if results:
         for row in results:
-            invitee_node = row[0]
-            invitee_list.append(Invitee.model_validate(invitee_node.__properties__))
+            props = dict(row[0])
+            props["createdBy"] = row[1]
+            invitee_list.append(Invitee.model_validate(props))
 
     return invitee_list
 
@@ -97,17 +99,20 @@ async def get_invitee(
 ) -> Invitee:
     await authorize_api("invitees_v2", request, jwt)
 
-    # Get the Invitee node
-    try:
-        invitee = await AsyncInvitee.nodes.get(uid=invitee_uid)
-    except Exception as e:
-        logger.error(f"Failed to get Invitee {invitee_uid}: {e}")
+    query = """
+    MATCH (invitee:Invitee {uid: $invitee_uid})
+    OPTIONAL MATCH (invitee)-[:CREATED_BY]->(user:User)
+    RETURN invitee, user.uid AS createdBy
+    """
+    results, _ = await adb.cypher_query(query, {"invitee_uid": invitee_uid}, resolve_objects=False)
+    if not results:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Invitee with uid {invitee_uid} not found"
         )
-
-    return Invitee.model_validate(invitee.__properties__)
+    props = dict(results[0][0])
+    props["createdBy"] = results[0][1]
+    return Invitee.model_validate(props)
 
 
 @router.post("/invitees", status_code=status.HTTP_201_CREATED)

@@ -21,6 +21,7 @@ class Invitee(BaseModel):
     email: str | None = None
     name: str | None = None
     createdAt: datetime | None = None
+    createdBy: str | None = None
     role: str
     active: bool | None = True
     redeemedAt: int | None = None
