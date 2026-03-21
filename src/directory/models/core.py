@@ -266,6 +266,11 @@ class Label(models.Model):
         ENGLISH = 'en', _('English')
         FRENCH = 'fr', _('French')
 
+    class TermType(models.TextChoices):
+        NAME = 'name', _('Name')
+        LABEL = 'label', _('Label')
+        SYNONYM = 'synonym', _('Synonym')
+
     label = models.CharField(max_length=255)
     uid = models.UUIDField(
         help_text="uid of neo4j EffectorType node"
@@ -284,29 +289,32 @@ class Label(models.Model):
         choices=Languages.choices,
         default=Languages.ENGLISH,
     )
+    term_type = models.CharField(
+        max_length=7,
+        choices=TermType.choices,
+        default=TermType.NAME,
+    )
 
     def __str__(self):
         return self.label
 
     def natural_key(self):
         return (self.label, self.language)
-    
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         sync_clear_cache("v1:effector_type_labels", key="v1:effector_type_labels:fr")
 
     class Meta:
-        models.UniqueConstraint(
-            "label",
-            "uid",
-            "gender",
-            "grammatical_number",
-            "language",
-            name="unique_label_uid_gender_grammatical_number_language"
-        )
+        constraints = [
+            models.UniqueConstraint(
+                fields=["label", "uid", "grammatical_number", "language", "term_type"],
+                name="unique_label_uid_number_language_term_type"
+            )
+        ]
 
     @staticmethod
-    def get_label(uid: str, gender_code: str, number: str, language: str) -> str|None:
+    def get_label(uid: str, gender_code: str, number: str, language: str, term_type: str = "name") -> str|None:
         try:
             gender = GrammaticalGender.objects.get(code=gender_code)
         except GrammaticalGender.DoesNotExist:
@@ -316,15 +324,16 @@ class Label(models.Model):
                 uid=uid,
                 gender=gender,
                 grammatical_number=number,
-                language=language
+                language=language,
+                term_type=term_type,
             )
             return label.label
         except Label.DoesNotExist as e:
-            logger.debug(f'{e} for {uid=}, {gender=}, {number=}, {language=}')
+            logger.debug(f'{e} for {uid=}, {gender=}, {number=}, {language=}, {term_type=}')
             return
 
     @staticmethod
-    async def async_get_label(uid: str, gender_code: str, number: str, language: str) -> str|None:
+    async def async_get_label(uid: str, gender_code: str, number: str, language: str, term_type: str = "name") -> str|None:
         try:
             gender = await GrammaticalGender.objects.aget(code=gender_code)
         except GrammaticalGender.DoesNotExist:
@@ -334,9 +343,10 @@ class Label(models.Model):
                 uid=uid,
                 gender=gender,
                 grammatical_number=number,
-                language=language
+                language=language,
+                term_type=term_type,
             )
             return label.label
         except Label.DoesNotExist as e:
-            logger.debug(f'{e} for {uid=}, {gender=}, {number=}, {language=}')
+            logger.debug(f'{e} for {uid=}, {gender=}, {number=}, {language=}, {term_type=}')
             return
