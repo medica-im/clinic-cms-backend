@@ -387,6 +387,7 @@ class Facility(StructuredNode):
 
 class Entry(StructuredNode):
     uid = UniqueIdProperty()
+    slug = StringProperty(unique_index=True)
     active = BooleanProperty(
         index=True,
         default=True

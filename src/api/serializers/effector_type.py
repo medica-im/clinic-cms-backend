@@ -7,7 +7,16 @@ from directory.models import (
     Directory,
     EffectorType,
 )
-from api.types.effector_type import EffectorType as EffectorTypePy
+from directory.models.agraph import (
+    EffectorType as AsyncEffectorType,
+    HCW as AsyncHCW,
+    RPPS as AsyncRPPS,
+)
+from api.types.effector_type import (
+    EffectorType as EffectorTypePy,
+    EffectorTypePost,
+    EffectorTypePatch,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +36,9 @@ def get_effector_types(
         active: bool = True
     )->list[EffectorTypePy]:
     if uid:
-        query=f"""MATCH (et:EffectorType) WHERE et.uid="{uid}" OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType)  RETURN DISTINCT et,collect(s),collect(n),et2;"""
+        query=f"""MATCH (et:EffectorType) WHERE et.uid="{uid}" OPTIONAL MATCH (et)-[:MANAGES]->(s:Situation) OPTIONAL MATCH (et)-[:MANAGES]->(n:Need) OPTIONAL MATCH (et)-[:IS_A]->(et2:EffectorType) OPTIONAL MATCH (et)-[:HAS_TAG_CATEGORY]->(tc:TagCategory) RETURN DISTINCT et,collect(DISTINCT s),collect(DISTINCT n),et2,collect(DISTINCT tc);"""
     else:
-        query=f"""MATCH (et:EffectorType) OPTIONAL MATCH (n:Need)<-[:MANAGES]-(et)-[:MANAGES]->(s:Situation), (et)-[:IS_A]->(et2:EffectorType) OPTIONAL MATCH (et)-[:HAS_TAG_CATEGORY]->(tc:TagCategory) RETURN DISTINCT et,collect(s),collect(n),et2,collect(tc);"""
+        query=f"""MATCH (et:EffectorType) OPTIONAL MATCH (et)-[:MANAGES]->(s:Situation) OPTIONAL MATCH (et)-[:MANAGES]->(n:Need) OPTIONAL MATCH (et)-[:IS_A]->(et2:EffectorType) OPTIONAL MATCH (et)-[:HAS_TAG_CATEGORY]->(tc:TagCategory) RETURN DISTINCT et,collect(DISTINCT s),collect(DISTINCT n),et2,collect(DISTINCT tc);"""
     q = db.cypher_query(query, resolve_objects = True)
     nodes: list[EffectorTypePy]=[]
     for row in q[0]:
@@ -52,6 +61,8 @@ def get_effector_types(
         try:
             et_dct=effector_type.__properties__
             et_dct["effector_type"]=None
+            et_dct["effector_type_uid"] = related_effector_type.uid if related_effector_type else None
+            et_dct["effector_type_label_fr"] = related_effector_type.label_fr if related_effector_type else None
             et_dct["situation"]=None
             et_dct["need"]=None
             et=EffectorTypePy.model_validate(et_dct)
@@ -61,3 +72,93 @@ def get_effector_types(
             logger.debug(e)
             raise ValidationError(e)
     return nodes
+
+
+def _get_node_class(isHCW: bool, isRPPS: bool):
+    if isRPPS:
+        return AsyncRPPS
+    if isHCW:
+        return AsyncHCW
+    return AsyncEffectorType
+
+
+def _node_properties(data: dict) -> dict:
+    """Extract non-node-property fields from the input dict."""
+    exclude = {"isHCW", "isRPPS", "effector_type_uid"}
+    return {k: v for k, v in data.items() if k not in exclude}
+
+
+async def _connect_effector_type_rel(node, effector_type_uid: str|None):
+    """Connect or replace the IS_A relationship to a parent EffectorType."""
+    if effector_type_uid is None:
+        return
+    parent = await AsyncEffectorType.nodes.get(uid=effector_type_uid)
+    # disconnect existing IS_A relationships first
+    existing = await node.effector_type.all()
+    for old in existing:
+        await node.effector_type.disconnect(old)
+    await node.effector_type.connect(parent)
+
+
+async def create_effector_type(data: EffectorTypePost) -> EffectorTypePy:
+    node_cls = _get_node_class(data.isHCW, data.isRPPS)
+    props = _node_properties(data.model_dump(exclude_unset=False))
+    node = await node_cls(**props).save()
+    await _connect_effector_type_rel(node, data.effector_type_uid)
+    saved = await node_cls.nodes.get(uid=node.uid)
+    et_dct = saved.__properties__
+    et_dct["effector_type"] = None
+    et_dct["situation"] = None
+    et_dct["need"] = None
+    if data.effector_type_uid:
+        parent = await AsyncEffectorType.nodes.get(uid=data.effector_type_uid)
+        et_dct["effector_type_uid"] = parent.uid
+        et_dct["effector_type_label_fr"] = parent.label_fr
+    else:
+        et_dct["effector_type_uid"] = None
+        et_dct["effector_type_label_fr"] = None
+    return EffectorTypePy.model_validate(et_dct)
+
+
+async def delete_effector_type(uid: str):
+    """Delete an EffectorType node."""
+    node = await AsyncEffectorType.nodes.get(uid=uid)
+    await node.delete()
+
+
+async def disconnect_effector_type_rel(uid: str):
+    """Disconnect all IS_A relationships from the given EffectorType node."""
+    node = await AsyncEffectorType.nodes.get(uid=uid)
+    existing = await node.effector_type.all()
+    for old in existing:
+        await node.effector_type.disconnect(old)
+
+
+async def update_effector_type(uid: str, data: EffectorTypePatch) -> EffectorTypePy:
+    changed = data.model_dump(exclude_unset=True)
+    isHCW = changed.pop("isHCW", None)
+    isRPPS = changed.pop("isRPPS", None)
+    effector_type_uid = changed.pop("effector_type_uid", None)
+    if isRPPS:
+        node_cls = AsyncRPPS
+    elif isHCW:
+        node_cls = AsyncHCW
+    else:
+        node_cls = AsyncEffectorType
+    node = await node_cls.nodes.get(uid=uid)
+    for attr, value in changed.items():
+        setattr(node, attr, value)
+    await node.save()
+    await _connect_effector_type_rel(node, effector_type_uid)
+    et_dct = node.__properties__
+    et_dct["effector_type"] = None
+    et_dct["situation"] = None
+    et_dct["need"] = None
+    if effector_type_uid:
+        parent = await AsyncEffectorType.nodes.get(uid=effector_type_uid)
+        et_dct["effector_type_uid"] = parent.uid
+        et_dct["effector_type_label_fr"] = parent.label_fr
+    else:
+        et_dct["effector_type_uid"] = None
+        et_dct["effector_type_label_fr"] = None
+    return EffectorTypePy.model_validate(et_dct)
