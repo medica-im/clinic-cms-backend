@@ -2,11 +2,13 @@ import logging
 import json
 from typing import Union
 from pydantic import ValidationError
-from neomodel import db
+from neomodel import db, adb
 from directory.models import (
     Directory,
     EffectorType,
+    HCW,
 )
+from directory.models.graph import RPPS
 from directory.models.agraph import (
     EffectorType as AsyncEffectorType,
     HCW as AsyncHCW,
@@ -63,6 +65,8 @@ def get_effector_types(
             et_dct["effector_type"]=None
             et_dct["effector_type_uid"] = related_effector_type.uid if related_effector_type else None
             et_dct["effector_type_label_fr"] = related_effector_type.label_fr if related_effector_type else None
+            et_dct["isHCW"] = isinstance(effector_type, HCW)
+            et_dct["isRPPS"] = isinstance(effector_type, RPPS)
             et_dct["situation"]=None
             et_dct["need"]=None
             et=EffectorTypePy.model_validate(et_dct)
@@ -110,6 +114,8 @@ async def create_effector_type(data: EffectorTypePost) -> EffectorTypePy:
     et_dct["effector_type"] = None
     et_dct["situation"] = None
     et_dct["need"] = None
+    et_dct["isHCW"] = data.isHCW
+    et_dct["isRPPS"] = data.isRPPS
     if data.effector_type_uid:
         parent = await AsyncEffectorType.nodes.get(uid=data.effector_type_uid)
         et_dct["effector_type_uid"] = parent.uid
@@ -134,26 +140,47 @@ async def disconnect_effector_type_rel(uid: str):
         await node.effector_type.disconnect(old)
 
 
+async def _sync_labels(uid: str, isHCW: bool | None, isRPPS: bool | None):
+    """Add or remove HCW/RPPS labels on the node via Cypher."""
+    if isHCW is None and isRPPS is None:
+        return
+    if isRPPS:
+        # RPPS implies HCW
+        await adb.cypher_query(
+            "MATCH (n:EffectorType {uid: $uid}) SET n:HCW:RPPS",
+            {"uid": uid},
+        )
+    elif isHCW:
+        await adb.cypher_query(
+            "MATCH (n:EffectorType {uid: $uid}) REMOVE n:RPPS SET n:HCW",
+            {"uid": uid},
+        )
+    else:
+        # Plain EffectorType — remove both
+        await adb.cypher_query(
+            "MATCH (n:EffectorType {uid: $uid}) REMOVE n:HCW:RPPS",
+            {"uid": uid},
+        )
+
+
 async def update_effector_type(uid: str, data: EffectorTypePatch) -> EffectorTypePy:
     changed = data.model_dump(exclude_unset=True)
     isHCW = changed.pop("isHCW", None)
     isRPPS = changed.pop("isRPPS", None)
     effector_type_uid = changed.pop("effector_type_uid", None)
-    if isRPPS:
-        node_cls = AsyncRPPS
-    elif isHCW:
-        node_cls = AsyncHCW
-    else:
-        node_cls = AsyncEffectorType
-    node = await node_cls.nodes.get(uid=uid)
+    # Always fetch with the base class — the node may not have HCW/RPPS labels yet
+    node = await AsyncEffectorType.nodes.get(uid=uid)
     for attr, value in changed.items():
         setattr(node, attr, value)
     await node.save()
+    await _sync_labels(uid, isHCW, isRPPS)
     await _connect_effector_type_rel(node, effector_type_uid)
     et_dct = node.__properties__
     et_dct["effector_type"] = None
     et_dct["situation"] = None
     et_dct["need"] = None
+    et_dct["isHCW"] = bool(isHCW)
+    et_dct["isRPPS"] = bool(isRPPS)
     if effector_type_uid:
         parent = await AsyncEffectorType.nodes.get(uid=effector_type_uid)
         et_dct["effector_type_uid"] = parent.uid

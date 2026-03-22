@@ -59,8 +59,10 @@ class EffectorType(BaseModel):
     effector_type: Annotated[EffectorType|None, Field(exclude=True)] = None
     effector_type_uid: str|None = None
     effector_type_label_fr: str|None = None
+    isHCW: bool = False
+    isRPPS: bool = False
     need: Annotated[list[NeedPy]|None, Field(exclude=True)] = None
     situation: Annotated[list[SituationPy]|None, Field(exclude=True)] = None
-    concept_fr: Annotated[str|None, Field(exclude=True)] = None
-    concept_en: Annotated[str|None, Field(exclude=True)] = None
-    unique_ID: Annotated[str|None, Field(exclude=True)] = None
+    concept_fr: str|None = None
+    concept_en: str|None = None
+    unique_ID: str|None = None
