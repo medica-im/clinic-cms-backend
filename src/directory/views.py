@@ -72,7 +72,7 @@ class DirectoryView(RetrieveAPIView):
 
 def get_effector_type_labels(language: str):
     dictionary = {}
-    node_label_set = set([uid.hex for uid in Label.objects.values_list("uid", flat=True)])
+    node_label_set = set([uid.hex for uid in Label.objects.filter(term_type="name").values_list("uid", flat=True)])
     for uid in node_label_set:
         dictionary[uid] = {
             "S": {
@@ -99,7 +99,8 @@ def get_effector_type_labels(language: str):
                         uid=uid,
                         gender=G,
                         grammatical_number=Num,
-                        language=language
+                        language=language,
+                        term_type="name",
                     )
                     dictionary[uid][Num][G.code]=l.label
                 except Label.DoesNotExist:

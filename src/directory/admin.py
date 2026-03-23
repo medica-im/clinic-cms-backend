@@ -115,11 +115,13 @@ class LabelAdmin(admin.ModelAdmin):
         'effector_type_tag',
         'genders_tag',
         'grammatical_number',
+        'term_type',
     )
     list_filter = (
         'language',
         'gender',
         'grammatical_number',
+        'term_type',
         'uid',
     )
     fields = (
@@ -130,6 +132,7 @@ class LabelAdmin(admin.ModelAdmin):
         'gender',
         'genders_tag',
         'grammatical_number',
+        'term_type',
     )
     readonly_fields = (
         'effector_type_tag',

@@ -379,6 +379,7 @@ class Facility(AsyncStructuredNode):
 
 class Entry(AsyncStructuredNode):
     uid = UniqueIdProperty()
+    slug = StringProperty(unique_index=True)
     active = BooleanProperty(
         index=True,
         default=True

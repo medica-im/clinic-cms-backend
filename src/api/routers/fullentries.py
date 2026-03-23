@@ -1,14 +1,24 @@
 import logging
 from typing import Annotated
-from fastapi import APIRouter, status, Request, Depends
+from fastapi import APIRouter, status, Request, Depends, HTTPException
 from api.serializers.fullentry import get_fullentry, async_get_fullentry
 from api.serializers.slug_fullentry import slug_find_entry, query_find_entry
 from api.types.fullentry import FullEntry
+from directory.models.agraph import Entry
 from api.auth import get_role_from_jwt, check_cookie_jwt, JWT
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+@router.get("/fullentries/slug/{slug}")
+async def get_full_entry_from_slug(slug: str, req: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> FullEntry:
+    try:
+        entry = await Entry.nodes.get(slug=slug)
+    except Entry.DoesNotExist:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Entry with {slug=} not found")
+    uid = entry.uid
+    return await async_get_fullentry(uid, req, jwt)
 
 @router.get("/fullentries/{uid}")
 async def get(uid: str, req: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> FullEntry:
