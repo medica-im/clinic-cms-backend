@@ -38,7 +38,7 @@ We believe healthcare organizations are first and foremost social networks. The 
 ### neo4j
 
 ```
-docker exec --interactive --tty clinic-cms-backend-neo4j-1 bin/neo4j-admin database backup neo4j --to-path=/backup
+docker exec backend-neo4j-1 bin/neo4j-admin backup --database=neo4j --backup-dir=/backup
 ```
 
 #### apoc triggers

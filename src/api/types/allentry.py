@@ -78,6 +78,7 @@ class Entry(BaseModel):
     label: str|None=None
     name: str
     slug: str
+    entrySlug: str|None=None
     phones: list[Phone]|None=None
     tags: list[Tag]|None=None
     directories: list[str]|None = None

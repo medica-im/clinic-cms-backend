@@ -166,6 +166,7 @@ class FullEntry(BaseModel):
     profile: str|None = None
     rpps: RPPS|None = None
     slug: str
+    entrySlug: str|None = None
     socialnetworks: list[SocialNetwork]|None = None
     spoken_languages: list[SpokenLanguage]|None = None
     third_party_payers: list[ThirdPartyPayer]|None = None

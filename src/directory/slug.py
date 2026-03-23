@@ -63,8 +63,10 @@ async def _get_et_terms(effector_type, gender: str | None) -> list[str]:
     return terms
 
 
-def _name_variants(name_fr: str, include_last_only: bool = False) -> list[str]:
+def _name_variants(name_fr: str | None, include_last_only: bool = False) -> list[str]:
     """Generate name permutations from a full name string."""
+    if not name_fr:
+        return []
     parts = name_fr.strip().split()
     if not parts:
         return []

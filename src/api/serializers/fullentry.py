@@ -158,6 +158,7 @@ async def createFullEntryResource(node) -> dict:
         "name": name,
         "gender": gender,
         "slug": slug,
+        "entrySlug": entry_node.slug,
         "uid": uid,
         "effector_uid": effector_uid,
         "effector_type": effector_type,

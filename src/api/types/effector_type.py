@@ -47,15 +47,15 @@ class EffectorType(BaseModel):
     element_id_property: str = Field(exclude=True)
     uid: str
     name_fr: str
-    name_en: str|None = Field(exclude=True)
+    name_en: str|None = None
     label_fr: str
-    label_en: str|None = Field(exclude=True)
+    label_en: str|None = None
     synonyms_fr: list[str]|None
-    synonyms_en: list[str]|None = Field(exclude=True)
+    synonyms_en: list[str]|None = None
     definition_fr: str|None
-    definition_en: str|None = Field(exclude=True)
+    definition_en: str|None = None
     slug_fr: str|None
-    slug_en: str|None = Field(exclude=True)
+    slug_en: str|None = None
     effector_type: Annotated[EffectorType|None, Field(exclude=True)] = None
     effector_type_uid: str|None = None
     effector_type_label_fr: str|None = None

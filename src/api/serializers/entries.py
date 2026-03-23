@@ -24,6 +24,7 @@ from api.auth import get_role_from_jwt
 from access.asyncneomodels import User as AsyncUser
 from api.neo4j_auth import get_neo4j_user, get_neo4j_role
 from api.routers.utils import get_directory_from_hostname
+from directory.slug import generate_entry_slugs
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +107,18 @@ async def connect_member_of(new_entry, entry: EntryPost):
                     logger.error(f"No node (Organization or Entry) found for {uid=}")
                     raise Exception(e)
 
+async def ensure_slug(entry_node, effector, facility, effector_type):
+    """Assign a slug to an Entry node if it doesn't have one."""
+    if entry_node.slug:
+        return
+    slugs = await generate_entry_slugs(effector, facility, effector_type, count=1)
+    if slugs:
+        entry_node.slug = slugs[0]  # type: ignore[reportAttributeAccessIssue]
+        await entry_node.save()
+    else:
+        raise HTTPException(status_code=500, detail="Could not generate a unique slug for this entry.")
+
+
 async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
     site = await get_site_from_request(request)
     role = await get_neo4j_role(jwt, site)
@@ -134,6 +147,7 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
             logger.debug(f"{createdAt=}")
             logger.debug(f'(ms - createdAt)<(1000*60*5): {(ms - createdAt)<(1000*60*5)}')
         if createdAt and ((ms - createdAt)<(1000*60*5)):
+            await ensure_slug(_entry, effector, facility, effector_type)
             await clear_cache("v2:entries", request)
             return await async_get_fullentry(str(_entry.uid), request, jwt)
     new_entry = await entry_if_exists(effector, effector_type, facility)
@@ -144,10 +158,11 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         await new_entry.facility.connect(facility)
     neo4j_user = await get_neo4j_user(jwt)
     if neo4j_user:
-        await new_entry.creator.connect(neo4j_user)
-        await new_entry.owner.connect(neo4j_user)
+        await new_entry.creator.connect(neo4j_user)  # type: ignore[reportAttributeAccessIssue]
+        await new_entry.owner.connect(neo4j_user)  # type: ignore[reportAttributeAccessIssue]
     if entry.memberships:
         await connect_member_of(new_entry, entry)
+    await ensure_slug(new_entry, effector, facility, effector_type)
     await neo4j_directory.entries.connect(new_entry)
     try:
         await Contact.objects.acreate(neomodel_uid=new_entry.uid)

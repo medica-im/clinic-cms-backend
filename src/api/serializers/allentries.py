@@ -164,11 +164,12 @@ async def createEntryResource(node):
         logger.error(e)
     active: bool = entry.active
     directories: list[str] = [d.name for d in node["directories"]]
-    entry = {
+    return {
         "label": label,
         "name": name,
         "gender": gender,
         "slug": slug,
+        "entrySlug": entry.slug,
         "uid": uid,
         "effector_uid": effector_uid,
         "effector_type": effector_type,
@@ -187,7 +188,6 @@ async def createEntryResource(node):
         "creator": node.get("creator_uids"),
         "owner": node.get("owner_uids"),
     }
-    return entry
 
 async def createEntryResources(nodes: list, request):
     data: list[dict[str, Any]]= []
