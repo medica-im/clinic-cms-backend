@@ -79,7 +79,7 @@ LOGGING = {
     },
     "root": {
         "handlers": ["console", "file"],
-        "level": "DEBUG",
+        "level": DJANGO_LOG_LEVEL,
     },
 }
 
