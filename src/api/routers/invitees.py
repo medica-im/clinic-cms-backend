@@ -190,22 +190,20 @@ async def create_invitee(
     sub=jwt["providerAccountId"]
     logger.debug(f"JWT providerAccountId {sub=}")
     try:
-        account = await AsyncAccount.nodes.get(sub=sub)
-    except AsyncAccount.DoesNotExist as e:
-        logger.error(f'Failed to get Account with sub {jwt["providerAccountId"]}: {e}')
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f'Account with sub {jwt["providerAccountId"]} not found'
+        query = """
+        MATCH (a:Account {sub: $sub})<-[:HAS_ACCOUNT]-(u:User)
+        MATCH (i:Invitee {uid: $invitee_uid})
+        MERGE (i)-[:CREATED_BY]->(u)
+        RETURN u.uid AS userUid
+        """
+        results, _ = await adb.cypher_query(
+            query,
+            {"sub": sub, "invitee_uid": new_invitee.uid}
         )
-    try:
-        user = (await account.user.all())[0]
-        await new_invitee.createdBy.connect(user)
+        if not results:
+            logger.error(f'No User found linked to Account with sub {sub}')
     except Exception as e:
-        logger.error(f"Failed to connect to User: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User linked to Account {account} not found"
-        )
+        logger.error(f"Failed to connect createdBy for Invitee: {e}")
     invitee = Invitee.model_validate(new_invitee.__properties__)
     await notification_email(invitee, site)
     return invitee
