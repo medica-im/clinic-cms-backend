@@ -12,14 +12,10 @@ from directory.tasty.types import (
 from directory.tasty.communes import (
     CommuneResource,
 )
-from directory.tasty.fulleffectors import (
-    FullEffectorResource,
-)
 from directory.tasty.carehome import CareHomeResource
 from directory.tasty.contacts import ContactResource
 from directory.tasty.facilities import FacilityResource
 from directory.tasty.facilities_uid import FacilityUidResource
-from directory.tasty.entries import EntryResource
 
 # tastypie
 v1_api = NamespacedApi(api_name='v1', urlconf_namespace='directory')
@@ -30,8 +26,6 @@ v1_api.register(CareHomeResource())
 v1_api.register(ContactResource())
 v1_api.register(FacilityResource())
 v1_api.register(FacilityUidResource())
-#v1_api.register(FullEffectorResource())
-#v1_api.register(EntryResource())
 
 # DRF
 router = routers.DefaultRouter()

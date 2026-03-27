@@ -155,7 +155,6 @@ async def createEntryResource(node):
     }
     avatar=node["avatar"]
     memberships=node["memberships"]
-    employers=node["employers"]
     tags = None
     try:
         serializer = AsyncTagSerializer(node["tags"], many=True)
@@ -181,7 +180,6 @@ async def createEntryResource(node):
         "facility": facility,
         "avatar": avatar,
         "memberships": memberships,
-        "employers": employers,
         "tags": tags,
         "active": active,
         "directories": directories,
