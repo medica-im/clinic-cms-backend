@@ -70,9 +70,11 @@ async def set_timestamp(endpoint_name: str, site: Site):
     ts.timestamp=timestamp
     await ts.asave()
 
-async def clear_cache(endpoint: str, request: Request|None=None):
+async def clear_cache(endpoint: str, request: Request|None=None, site: Site|None=None):
     sites: list[Site] = []
-    if request:
+    if site:
+        sites.append(site)
+    elif request:
         site = await get_site_from_request(request)
         sites.append(site)
     else:

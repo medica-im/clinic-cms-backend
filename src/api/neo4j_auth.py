@@ -9,6 +9,7 @@ from access.asyncneomodels import (
     User as AsyncUser,
 )
 from facility.models import Organization
+from api.utils import clear_cache
 
 logger = logging.getLogger(__name__)
 
@@ -309,8 +310,16 @@ async def _claim_entries_by_redeem_email(
             query,
             {"entry_uid": entry_uid, "email": email, "user_uid": user_uid},
         )
-        for row in results:
-            logger.info(f"Claimed Entry {row[0]} ownership for User {user_uid}")
+        if results:
+            for row in results:
+                logger.info(f"Claimed Entry {row[0]} ownership for User {user_uid}")
+            try:
+                org = await Organization.objects.select_related('site').aget(
+                    neomodel_uid=entry_uid
+                )
+                await clear_cache("v2:entries", site=org.site)
+            except Organization.DoesNotExist:
+                logger.warning(f"Could not find Organization for entry_uid={entry_uid} to clear cache")
     except Exception:
         logger.exception(
             f"Failed to claim entries by redeemEmail for User {user_uid}"
