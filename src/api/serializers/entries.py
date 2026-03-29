@@ -15,7 +15,7 @@ from directory.models.agraph import (
     Organization as AsyncOrganization,
 )
 from api.serializers.fullentry import async_get_fullentry
-from api.types.entry import Entry, EntryPost
+from api.types.entry import Entry, EntryPost, EntryPatch
 from api.types.effector import Effector
 from api.types.fullentry import FullEntry, EffectorType
 from api.types.facility import Facility
@@ -159,7 +159,17 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
     neo4j_user = await get_neo4j_user(jwt)
     if neo4j_user:
         await new_entry.creator.connect(neo4j_user)  # type: ignore[reportAttributeAccessIssue]
-        await new_entry.owner.connect(neo4j_user)  # type: ignore[reportAttributeAccessIssue]
+        if entry.isOwner:
+            await new_entry.owner.connect(neo4j_user)  # type: ignore[reportAttributeAccessIssue]
+    if entry.redeemEmail:
+        if role not in ("administrator", "superuser"):
+            logger.error(f"Role {role} attempted to set redeemEmail")
+            raise HTTPException(
+                status_code=403,
+                detail="Only administrators and superusers can set redeemEmail"
+            )
+        new_entry.redeemEmail = entry.redeemEmail
+        await new_entry.save()
     if entry.memberships:
         await connect_member_of(new_entry, entry)
     await ensure_slug(new_entry, effector, facility, effector_type)
@@ -234,27 +244,38 @@ async def update_entry_owners(entry, owners: list[str]):
     return True
 
 
-async def update_entry(uid:str, update_data: dict[str, Any], request: Request):
-    #logger.debug(update_data)
+async def update_entry(uid:str, update_data: EntryPatch, request: Request, jwt: dict|None = None):
     entry = await AsyncEntry.nodes.get(uid=uid)
-    if 'carte_vitale' in update_data.keys():
-        entry.carte_vitale=update_data['carte_vitale']
-    if 'payment' in update_data.keys():
-        entry.payment=update_data['payment']
-    if 'third_party_payer' in update_data.keys():
-        entry.third_party_payer=update_data['third_party_payer']
-    if 'convention' in update_data.keys():
-        entry.convention=update_data['convention']
+    keys = update_data.model_fields_set
+    logger.debug(f"{keys=}")
+    if 'carte_vitale' in keys:
+        entry.carte_vitale = update_data.carte_vitale
+    if 'payment' in keys:
+        entry.payment = update_data.payment
+    if 'third_party_payer' in keys:
+        entry.third_party_payer = update_data.third_party_payer
+    if 'convention' in keys:
+        entry.convention = update_data.convention
     should_clear_cache = False
-    if 'active' in update_data.keys():
-        entry.active=update_data['active']
+    if 'active' in keys:
+        entry.active = update_data.active
         should_clear_cache = True
-    if 'memberships' in update_data.keys():
-        if await update_entry_memberships(entry, update_data['memberships']):
+    if 'memberships' in keys and update_data.memberships:
+        if await update_entry_memberships(entry, update_data.memberships):
             should_clear_cache = True
-    if 'owners' in update_data.keys():
-        if await update_entry_owners(entry, update_data['owners']):
+    if 'owners' in keys and update_data.owners:
+        if await update_entry_owners(entry, update_data.owners):
             should_clear_cache = True
+    if 'redeemEmail' in keys:
+        site = await get_site_from_request(request)
+        role = await get_neo4j_role(jwt, site) if jwt else None
+        if role not in ("administrator", "superuser"):
+            logger.error(f"Role {role} attempted to set redeemEmail")
+            raise HTTPException(
+                status_code=403,
+                detail="Only administrators and superusers can set redeemEmail"
+            )
+        entry.redeemEmail = update_data.redeemEmail
     await entry.save()
     if should_clear_cache:
         await clear_cache("v2:entries", request)

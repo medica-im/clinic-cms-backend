@@ -410,6 +410,7 @@ async def createFullEntryResource(node) -> dict:
         "directories": directories,
         "creator": node.get("creator_uids"),
         "owner": node.get("owner_uids"),
+        "redeemEmail": entry_node.redeemEmail,
     }
 
 async def async_get_fullentry(uid: str, req: Request, jwt)->FullEntry:

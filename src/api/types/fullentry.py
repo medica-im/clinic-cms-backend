@@ -179,3 +179,4 @@ class FullEntry(BaseModel):
     directories: list[str]|None = None
     creator: list[str]|None = None
     owner: list[str]|None = None
+    redeemEmail: str|None = None

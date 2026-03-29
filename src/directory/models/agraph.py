@@ -391,7 +391,7 @@ class Entry(AsyncStructuredNode):
     contactUpdatedAt = IntegerProperty(default=0)
     owner = AsyncRelationshipTo('access.asyncneomodels.User', 'OWNED_BY')
     creator = AsyncRelationshipTo('access.asyncneomodels.User', 'CREATED_BY')
-    redeemEmail = EmailProperty()
+    redeemEmail: str = EmailProperty() # type: ignore
     effector = AsyncRelationshipTo('Effector', 'HAS_EFFECTOR')
     facility = AsyncRelationshipTo('Facility', 'HAS_FACILITY')
     effector_type = AsyncRelationshipTo('EffectorType', 'HAS_EFFECTOR_TYPE')

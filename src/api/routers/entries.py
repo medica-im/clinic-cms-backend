@@ -31,4 +31,4 @@ async def patch_entry(uid: str, entry: EntryPatch, request: Request, jwt: Annota
         raise HTTPException(status_code=404, detail=f"Entry not found")
     users = await entry_node.owner.all() or await entry_node.creator.all()
     await authorize_api("entries_v2", request, jwt, users)
-    return await update_entry(uid, entry.model_dump(exclude_unset=True), request)
+    return await update_entry(uid, entry, request, jwt)

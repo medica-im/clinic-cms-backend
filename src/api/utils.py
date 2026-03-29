@@ -140,18 +140,20 @@ async def get_ttl(api_version: str, request):
 
 def process(entry: dict[str, Any], role: str, attributes: list[str]):
     #logger.debug(f'process {entry["name"]=}')
+    if role not in ("administrator", "superuser"):
+        entry.pop("redeemEmail", None)
     for attribute in attributes:
         try:
             items: list[Any] = entry[attribute]
         except KeyError as e:
             logger.error(e)
-            continue            
+            continue
         if items:
             new_items = [
                 item
                 for item in items
                 if (role in [role["name"] for role in item["roles"]])
-            ] 
+            ]
             new_count=len(new_items)
             count=len(items)
             if new_count != count:

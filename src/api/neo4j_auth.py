@@ -61,6 +61,7 @@ async def get_or_create_neo4j_user(jwt: dict, site: Site) -> dict | None:
             user_props, role = await _add_access_to_existing_user(
                 result[0], invitee, entry
             )
+            await _claim_entries_by_redeem_email(user_props["uid"], email, entry_uid)
             return _build_response(user_props, role, jwt)
         except Exception:
             logger.exception("Failed to add Access to existing Neo4j user")
@@ -72,6 +73,7 @@ async def get_or_create_neo4j_user(jwt: dict, site: Site) -> dict | None:
                 invitee, sub, iss, email, jwt.get("name", ""),
                 entry_uid,
             )
+            await _claim_entries_by_redeem_email(user_props["uid"], email, entry_uid)
             return _build_response(user_props, role, jwt)
         except Exception:
             logger.exception("Failed to create Neo4j user from invitee")
@@ -283,6 +285,36 @@ async def get_neo4j_user(jwt: dict) -> AsyncUser | None:
     except AsyncAccount.DoesNotExist:
         return None
     return await account.user.single()
+
+
+async def _claim_entries_by_redeem_email(
+    user_uid: str, email: str, entry_uid: str
+) -> None:
+    """Claim Entry ownership when redeemEmail matches the user's email.
+
+    Finds all entries in the site's directories where redeemEmail matches,
+    creates OWNED_BY relationships, and removes the redeemEmail property.
+    """
+    query = """
+    MATCH (org_entry:Entry {uid: $entry_uid})<-[:HAS_ENTRY]-(d:Directory)-[:HAS_ENTRY]->(e:Entry)
+    WHERE toLower(e.redeemEmail) = toLower($email)
+    WITH e
+    MATCH (u:User {uid: $user_uid})
+    CREATE (e)-[:OWNED_BY]->(u)
+    REMOVE e.redeemEmail
+    RETURN e.uid AS claimed_uid
+    """
+    try:
+        results, _ = await adb.cypher_query(
+            query,
+            {"entry_uid": entry_uid, "email": email, "user_uid": user_uid},
+        )
+        for row in results:
+            logger.info(f"Claimed Entry {row[0]} ownership for User {user_uid}")
+    except Exception:
+        logger.exception(
+            f"Failed to claim entries by redeemEmail for User {user_uid}"
+        )
 
 
 def _build_response(user_props: dict, role: str | None, jwt: dict) -> dict:
