@@ -250,6 +250,12 @@ class Setting(models.Model):
         default=False,
         help_text="Display navigation links in the directory listing."
     )
+    path = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text="URL path of the directory.",
+    )
     def __str__(self):
         return (
             f'Setting sort_category: {self.get_sort_category_display()}, {self.display_facility_organization=}'

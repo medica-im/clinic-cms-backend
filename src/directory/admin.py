@@ -103,6 +103,7 @@ class SettingAdmin(admin.ModelAdmin):
         'sort_category',
         'display_facility_organization',
         'list_navigation',
+        'path',
     )
 
 

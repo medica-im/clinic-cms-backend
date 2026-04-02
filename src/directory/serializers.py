@@ -154,6 +154,7 @@ class SettingSerializer(serializers.ModelSerializer):
             'sort_category_display',
             'display_facility_organization',
             'list_navigation',
+            'path',
         ]
 
 
