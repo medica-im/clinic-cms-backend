@@ -77,6 +77,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'contact',
             'registration',
             'google_site_verification',
+            'google_calendar_id',
+            'google_calendar_api_key',
             'city',
             'legal_entity',
             'uid',

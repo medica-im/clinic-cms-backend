@@ -102,6 +102,8 @@ class Organization(BaseModel):
     contact: Contact
     registration: bool
     google_site_verification: str
+    google_calendar_id: str|None=None
+    google_calendar_api_key: str|None=None
     city: City
     gender: Gender|None=None
     legal_entity: LegalEntity
