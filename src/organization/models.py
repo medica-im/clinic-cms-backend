@@ -30,6 +30,16 @@ class OrganizationRole(AsyncStructuredNode):
     label = StringProperty()
 
 
+class MembershipCategory(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    label = StringProperty()
+    entry = AsyncRelationshipTo(
+        'Entry',
+        'CATEGORY_OF',
+        cardinality=AsyncOne
+    )
+
+
 class HasRoleRel(AsyncStructuredRel):
     label = StringProperty()
 
@@ -69,4 +79,9 @@ class BoardMember(AsyncStructuredNode):
         'Effector',
         'HAS_EFFECTOR',
         cardinality=AsyncOne
+    )
+    category = AsyncRelationshipTo(
+        'MembershipCategory',
+        'HAS_MEMBERSHIP_CATEGORY',
+        cardinality=AsyncZeroOrOne
     )

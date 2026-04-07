@@ -409,6 +409,11 @@ class Entry(AsyncStructuredNode):
         'HAS_APPOINTMENT',
         cardinality=AsyncZeroOrMore
     )
+    membership_categories = AsyncRelationshipFrom(
+        'organization.models.MembershipCategory',
+        'CATEGORY_OF',
+        cardinality=AsyncZeroOrMore
+    )
     tags = AsyncRelationshipFrom(
         'Tag',
         'TAGS'

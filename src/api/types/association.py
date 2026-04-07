@@ -29,6 +29,7 @@ class OfficerResponse(BaseModel):
 class BoardMemberPost(BaseModel):
     entry_uid: str
     effector_uid: str
+    category_uid: str | None = None
     start: str
     stop: str | None = None
 
@@ -42,5 +43,6 @@ class BoardMemberResponse(BaseModel):
     uid: str
     entry_uid: str
     effector_uid: str
+    category_uid: str | None = None
     start: str
     stop: str | None = None

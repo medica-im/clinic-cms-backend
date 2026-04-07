@@ -3,7 +3,7 @@ from typing import Annotated
 from uuid import uuid4
 from fastapi import APIRouter, Request, Depends, status, HTTPException
 from neomodel import adb
-from api.auth import JWT, authorize_api
+from api.auth import JWT, authorize_api, verify_user_access
 from api.types.association import (
     OfficerPost,
     OfficerPatch,
@@ -16,30 +16,6 @@ from api.types.association import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-async def verify_user_access(jwt: dict, entry_uid: str):
-    """Verify the requesting user has an active Access for the given Entry."""
-    sub = jwt.get("providerAccountId")
-    if not sub:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No account identifier in JWT"
-        )
-    query = """
-    MATCH (a:Account {sub: $sub})<-[:HAS_ACCOUNT]-(u:User)
-          -[:HAS_ACCESS]->(ac:Access {active: true})
-          -[:ACCESS_TO]->(e:Entry {uid: $entry_uid})
-    RETURN ac.role
-    """
-    results, _ = await adb.cypher_query(
-        query, {"sub": sub, "entry_uid": entry_uid}
-    )
-    if not results:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No access to this entry"
-        )
 
 
 async def _get_entry_uid_for_node(label: str, uid: str) -> str:
@@ -238,7 +214,8 @@ async def list_board_members(
     query = """
     MATCH (bm:BoardMember)-[:MEMBER_OF]->(e:Entry {uid: $entry_uid})
     MATCH (bm)-[:HAS_EFFECTOR]->(eff:Effector)
-    RETURN bm, e.uid AS entry_uid, eff.uid AS effector_uid
+    OPTIONAL MATCH (bm)-[:HAS_MEMBERSHIP_CATEGORY]->(mc:MembershipCategory)
+    RETURN bm, e.uid AS entry_uid, eff.uid AS effector_uid, mc.uid AS category_uid
     """
     results, _ = await adb.cypher_query(
         query, {"entry_uid": entry_uid}, resolve_objects=False
@@ -250,6 +227,7 @@ async def list_board_members(
             uid=props["uid"],
             entry_uid=row[1],
             effector_uid=row[2],
+            category_uid=row[3],
             start=str(props.get("start")),
             stop=str(props["stop"]) if props.get("stop") else None,
         ))
@@ -264,21 +242,33 @@ async def create_board_member(
 ) -> BoardMemberResponse:
     await authorize_api("association", request, jwt)
     await verify_user_access(jwt, item.entry_uid)
-    query = """
-    MATCH (e:Entry {uid: $entry_uid})
-    MATCH (eff:Effector {uid: $effector_uid})
-    CREATE (bm:BoardMember {uid: $uid, start: date($start)})
+
+    category_match = ""
+    category_link = ""
+    if item.category_uid:
+        category_match = "MATCH (mc:MembershipCategory {uid: $category_uid})"
+        category_link = "CREATE (bm)-[:HAS_MEMBERSHIP_CATEGORY]->(mc)"
+
+    query = f"""
+    MATCH (e:Entry {{uid: $entry_uid}})
+    MATCH (eff:Effector {{uid: $effector_uid}})
+    {category_match}
+    CREATE (bm:BoardMember {{uid: $uid, start: date($start)}})
     CREATE (bm)-[:MEMBER_OF]->(e)
     CREATE (bm)-[:HAS_EFFECTOR]->(eff)
+    {category_link}
     WITH bm, e, eff
     FOREACH (_ IN CASE WHEN $stop IS NOT NULL THEN [1] ELSE [] END |
         SET bm.stop = date($stop)
     )
-    RETURN bm, e.uid AS entry_uid, eff.uid AS effector_uid
+    WITH bm, e, eff
+    OPTIONAL MATCH (bm)-[:HAS_MEMBERSHIP_CATEGORY]->(mc2:MembershipCategory)
+    RETURN bm, e.uid AS entry_uid, eff.uid AS effector_uid, mc2.uid AS category_uid
     """
     params = {
         "entry_uid": item.entry_uid,
         "effector_uid": item.effector_uid,
+        "category_uid": item.category_uid,
         "uid": uuid4().hex,
         "start": item.start,
         "stop": item.stop,
@@ -287,13 +277,14 @@ async def create_board_member(
     if not results:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Entry or Effector not found"
+            detail="Entry, Effector, or MembershipCategory not found"
         )
     props = dict(results[0][0])
     return BoardMemberResponse(
         uid=props["uid"],
         entry_uid=results[0][1],
         effector_uid=results[0][2],
+        category_uid=results[0][3],
         start=str(props.get("start")),
         stop=str(props["stop"]) if props.get("stop") else None,
     )
@@ -331,7 +322,8 @@ async def update_board_member(
     WITH bm
     MATCH (bm)-[:MEMBER_OF]->(e:Entry)
     MATCH (bm)-[:HAS_EFFECTOR]->(eff:Effector)
-    RETURN bm, e.uid AS entry_uid, eff.uid AS effector_uid
+    OPTIONAL MATCH (bm)-[:HAS_MEMBERSHIP_CATEGORY]->(mc:MembershipCategory)
+    RETURN bm, e.uid AS entry_uid, eff.uid AS effector_uid, mc.uid AS category_uid
     """
     results, _ = await adb.cypher_query(query, params, resolve_objects=False)
     if not results:
@@ -344,6 +336,7 @@ async def update_board_member(
         uid=props["uid"],
         entry_uid=results[0][1],
         effector_uid=results[0][2],
+        category_uid=results[0][3],
         start=str(props.get("start")),
         stop=str(props["stop"]) if props.get("stop") else None,
     )
