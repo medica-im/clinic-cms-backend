@@ -3,11 +3,13 @@ from typing import Annotated
 from uuid import uuid4
 from fastapi import APIRouter, Request, Depends, status, HTTPException
 from neomodel import adb
+from asgiref.sync import sync_to_async
 from api.auth import JWT, authorize_api
 from api.types.organization_role import (
     OrganizationRolePost,
     OrganizationRolePatch,
     OrganizationRoleResponse,
+    OrganizationRoleLabelsResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -119,3 +121,17 @@ async def delete_organization_role(
             detail="OrganizationRole not found"
         )
     return {"message": "OrganizationRole deleted", "uid": uid}
+
+
+@router.get("/organization-role-labels")
+async def get_organization_role_labels(
+    request: Request,
+) -> OrganizationRoleLabelsResponse:
+    from api.utils import get_site_from_request
+    from facility.models import Organization
+    from directory.views import get_effector_type_labels
+
+    site = await get_site_from_request(request)
+    organization = await Organization.objects.select_related('site').aget(site=site)
+    labels = await sync_to_async(get_effector_type_labels)(organization.language, "officer")
+    return labels

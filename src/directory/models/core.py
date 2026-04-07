@@ -280,6 +280,7 @@ class Label(models.Model):
         NAME = 'name', _('Name')
         LABEL = 'label', _('Label')
         SYNONYM = 'synonym', _('Synonym')
+        OFFICER = 'officer', _('Officer category')
 
     label = models.CharField(max_length=255)
     uid = models.UUIDField(

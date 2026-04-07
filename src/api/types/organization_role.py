@@ -12,3 +12,17 @@ class OrganizationRolePatch(BaseModel):
 class OrganizationRoleResponse(BaseModel):
     uid: str
     label: str | None = None
+
+
+class GenderLabels(BaseModel):
+    F: str | None = None
+    M: str | None = None
+    N: str | None = None
+
+
+class NumberLabels(BaseModel):
+    S: GenderLabels = GenderLabels()
+    P: GenderLabels = GenderLabels()
+
+
+OrganizationRoleLabelsResponse = dict[str, NumberLabels]
