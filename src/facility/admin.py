@@ -52,7 +52,9 @@ class OrganizationAdmin(TranslationAdmin):
         'logo',
         'logo_tag',
         'logo_alt',
-        'google_site_verification'
+        'google_site_verification',
+        'google_calendar_id',
+        'google_calendar_api_key',
     )
     readonly_fields = (
         'created',

@@ -70,9 +70,9 @@ class DirectoryView(RetrieveAPIView):
             raise NotFound(detail="Directory not found.", code="not_found")
 
 
-def get_effector_type_labels(language: str):
+def get_effector_type_labels(language: str, term_type: str):
     dictionary = {}
-    node_label_set = set([uid.hex for uid in Label.objects.filter(term_type="name").values_list("uid", flat=True)])
+    node_label_set = set([uid.hex for uid in Label.objects.filter(term_type=term_type).values_list("uid", flat=True)])
     for uid in node_label_set:
         dictionary[uid] = {
             "S": {
@@ -100,7 +100,7 @@ def get_effector_type_labels(language: str):
                         gender=G,
                         grammatical_number=Num,
                         language=language,
-                        term_type="name",
+                        term_type=term_type,
                     )
                     dictionary[uid][Num][G.code]=l.label
                 except Label.DoesNotExist:
@@ -128,7 +128,7 @@ class EffectorTypeLabel(APIView):
             return Response(cached)
         else:
             logger.debug(f"cache for key '{cache_key}' is *** EMPTY ***")
-            value = get_effector_type_labels(language)
+            value = get_effector_type_labels(language, "name")
             timeout = get_ttl(endpoint, request) or TTL
             logger.debug(f"{timeout=}")
             cache.set(

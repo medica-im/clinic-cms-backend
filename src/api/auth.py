@@ -153,6 +153,31 @@ async def authorize(endpoint_name: str, role: Role, permissions: int):
             detail="Insufficient permissions"
         )
 
+async def verify_user_access(jwt: dict, entry_uid: str):
+    """Verify the requesting user has an active Access for the given Entry."""
+    sub = jwt.get("providerAccountId")
+    if not sub:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No account identifier in JWT"
+        )
+    query = """
+    MATCH (a:Account {sub: $sub})<-[:HAS_ACCOUNT]-(u:User)
+          -[:HAS_ACCESS]->(ac:Access {active: true})
+          -[:ACCESS_TO]->(e:Entry {uid: $entry_uid})
+    RETURN ac.role
+    """
+    from neomodel import adb
+    results, _ = await adb.cypher_query(
+        query, {"sub": sub, "entry_uid": entry_uid}
+    )
+    if not results:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No access to this entry"
+        )
+
+
 def check_cookie_jwt(request: Request):
     https_cookie = request.cookies.get('__Secure-authjs.session-token')
     logger.debug(f"{https_cookie=}")

@@ -80,6 +80,16 @@ class Organization(models.Model):
         blank=True,
         help_text="Google site verification meta tag",
     )
+    google_calendar_id = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Google Calendar ID",
+    )
+    google_calendar_api_key = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Google Calendar API key",
+    )
     language = models.CharField(
         max_length=3,
         blank=True,

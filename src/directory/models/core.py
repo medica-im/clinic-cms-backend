@@ -246,6 +246,10 @@ class Setting(models.Model):
         null=True,
         help_text="Display facilities which belong (True) or don't belong (False) to the organization or all facilities (null)."
     )
+    display_association = models.BooleanField(
+        default=False,
+        help_text="Display association page."
+    )
     list_navigation = models.BooleanField(
         default=False,
         help_text="Display navigation links in the directory listing."
@@ -258,7 +262,7 @@ class Setting(models.Model):
     )
     def __str__(self):
         return (
-            f'Setting sort_category: {self.get_sort_category_display()}, {self.display_facility_organization=}'
+            f'Setting sort_category: {self.get_sort_category_display()}, {self.display_facility_organization=}'  # type: ignore[attr-defined]
         )
 
 
@@ -276,6 +280,7 @@ class Label(models.Model):
         NAME = 'name', _('Name')
         LABEL = 'label', _('Label')
         SYNONYM = 'synonym', _('Synonym')
+        OFFICER = 'officer', _('Officer category')
 
     label = models.CharField(max_length=255)
     uid = models.UUIDField(
