@@ -125,8 +125,9 @@ async def async_get_facilities(
         else:
             query=(
                 f"""
-                MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance) OPTIONAL MATCH (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType)
-                RETURN DISTINCT f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");
+                MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)
+                OPTIONAL MATCH (f)<-[:HAS_FACILITY]-(entry:Entry)<-[:HAS_EFFECTOR]-(e:Effector)-[:IS_A]->(et:EffectorType)
+                RETURN DISTINCT f, c, dpt, collect(e.name_fr + " (" + et.name_fr + ")");
                 """)
     q = await adb.cypher_query(query, resolve_objects = True)
     facilities: list[FacilityPy]=[]
