@@ -412,6 +412,7 @@ class Entry(StructuredNode):
     payment = ArrayProperty(base_property=StringProperty())
     third_party_payer = ArrayProperty(base_property=StringProperty())
     convention = StringProperty()
+    access = StringProperty(default='anonymous')
     appointments = RelationshipTo(
         'Appointment',
         'HAS_APPOINTMENT',

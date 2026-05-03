@@ -83,3 +83,4 @@ class Entry(BaseModel):
     directories: list[str]|None = None
     owner: list[str]|None = None
     creator: list[str]|None = None
+    access: str = 'anonymous'

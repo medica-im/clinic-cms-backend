@@ -8,7 +8,7 @@ from directory.serializers import (
 )
 from directory.tasty.types import createEffectorTypeResources
 from api.serializers.allentries import AsyncTagSerializer
-from api.utils import process, get_directory
+from api.utils import process, get_directory, ALLOWED_ACCESS
 from api.types.fullentry import FullEntry
 from fastapi import Request, HTTPException, status
 from api.neo4j_auth import get_neo4j_role, normalize_neo4j_role
@@ -411,13 +411,14 @@ async def createFullEntryResource(node) -> dict:
         "creator": node.get("creator_uids"),
         "owner": node.get("owner_uids"),
         "redeemEmail": entry_node.redeemEmail,
+        "access": getattr(entry_node, 'access', 'anonymous'),
     }
 
 async def async_get_fullentry(uid: str, req: Request, jwt)->FullEntry:
     logger.debug(f"{jwt=}")
     directory = await get_directory(req)
     logger.debug(f"{directory=}")
-    role = await get_neo4j_role(jwt, directory.site)
+    role = await get_neo4j_role(jwt, directory.site) or "anonymous"
     logger.debug(f"get_neo4j_role: {role=}")
     normalized_role = normalize_neo4j_role(role)
     logger.debug(f"{normalized_role=}")
@@ -426,8 +427,12 @@ async def async_get_fullentry(uid: str, req: Request, jwt)->FullEntry:
         entry: AgraphEntry = entry_node_dct["entry"]
     except KeyError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
+    entry_access = getattr(entry, 'access', 'anonymous')
+    allowed = ALLOWED_ACCESS.get(role)
+    if allowed and entry_access not in allowed:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
     if entry_node_dct and entry_node_dct["entry"].active == False:
-        if role == "anonymous" or role is None:
+        if role == "anonymous":
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
         owners = await entry.owner.all()
         creators = await entry.creator.all()

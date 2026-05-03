@@ -162,15 +162,29 @@ def process(entry: dict[str, Any], role: str, attributes: list[str]):
                 logger.debug(f"{count-new_count} item(s) removed!")
             entry[attribute] = new_items
 
+ALLOWED_ACCESS = {
+    "administrator": {"anonymous", "registered", "staff", "administrator"},
+    "staff": {"anonymous", "registered", "staff"},
+    "anonymous": {"anonymous"},
+}
+
+def filter_by_access(entries: list[dict[str, Any]], role: str) -> list[dict[str, Any]]:
+    allowed = ALLOWED_ACCESS.get(role)
+    if not allowed:
+        return entries
+    return [e for e in entries if e.get("access", "anonymous") in allowed]
+
 def scrub(entries: list[dict[str, Any]], attributes: list[str]):
-    administrator = copy.deepcopy(entries)
+    superuser = copy.deepcopy(entries)
+    administrator = filter_by_access(copy.deepcopy(entries), "administrator")
     scrub_dct = {
-        "administrator": administrator
+        "superuser": superuser,
+        "administrator": administrator,
     }
     for r in ["staff", "anonymous"]:
         #logger.debug(f"\n{'*'*(len(r)+4)}\n* {r} *\n{'*'*(len(r)+4)}")
         for entry in entries:
             process(entry, r, attributes)
-        current_entries=copy.deepcopy(entries)
+        current_entries = filter_by_access(copy.deepcopy(entries), r)
         scrub_dct[r]=current_entries
     return scrub_dct

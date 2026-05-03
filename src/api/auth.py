@@ -194,8 +194,5 @@ def normalize_role(roles, directory):
             role = r["role_name"]
             if role == "registered":
                 return "anonymous"
-            elif role == "superuser":
-                return "administrator"
-            else:
-                return role
+            return role
     return "anonymous"

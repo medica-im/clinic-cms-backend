@@ -185,6 +185,7 @@ async def createEntryResource(node):
         "directories": directories,
         "creator": node.get("creator_uids"),
         "owner": node.get("owner_uids"),
+        "access": getattr(entry, 'access', 'anonymous'),
     }
 
 async def createEntryResources(nodes: list, request):
@@ -246,6 +247,7 @@ async def get_all_entries(request: Request, jwt, roles: list[RoleType])->list[En
         raw = await get_object_list(request)
         timeout = await get_ttl(API_VERSION, request) or TTL
         logger.debug(f"{timeout=}")
+
         scrubbed_entries_dct = scrub(raw, ["phones"])
         #if settings.DEBUG:
         #    add_evil_twins(scrubbed_entries_dct)

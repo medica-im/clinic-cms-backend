@@ -404,6 +404,7 @@ class Entry(AsyncStructuredNode):
     payment = ArrayProperty(base_property=StringProperty())
     third_party_payer = ArrayProperty(base_property=StringProperty())
     convention = StringProperty()
+    access = StringProperty(default='anonymous')
     appointments = AsyncRelationshipTo(
         'Appointment',
         'HAS_APPOINTMENT',
