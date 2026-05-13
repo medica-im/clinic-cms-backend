@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/entries")
-async def entries(request: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)]) -> list[Entry]:
+async def entries(request: Request, jwt: Annotated[dict, Depends(check_cookie_jwt)], directory: str|None = None) -> list[Entry]:
     await authorize_api("entries_v2", request, jwt)
     roles = await get_role_from_jwt(jwt)
-    return await get_all_entries(request, jwt, roles)
+    return await get_all_entries(request, jwt, roles, directory_name=directory)
