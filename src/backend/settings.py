@@ -318,6 +318,9 @@ JWT_SECRET_KEY=config('JWT_SECRET_KEY')
 ACCESS_TOKEN_EXPIRE_MINUTES=config('ACCESS_TOKEN_EXPIRE_MINUTES', cast=int, default=30)
 OIDC_GOOGLE_CLIENT_ID=config('OIDC_GOOGLE_CLIENT_ID')
 
+# Google Calendar Service Account
+GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON=config('GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON', default='')
+
 # mailer
 MAILGUN_API_URL = "https://api.eu.mailgun.net/v3/mail.medica.im/messages"
 MAILGUN_SENDING_KEY = config('MAILGUN_SENDING_KEY')

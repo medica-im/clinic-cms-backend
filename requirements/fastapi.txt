@@ -2,5 +2,6 @@ fastapi[standard]>=0.115.0,<0.116.0
 pydantic-extra-types
 fastapi-jwt[authlib]
 google-auth
+google-api-python-client>=2.0.0
 fastapi-nextauth-jwt
 pyjwt[crypto]
