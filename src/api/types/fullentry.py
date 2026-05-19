@@ -180,3 +180,4 @@ class FullEntry(BaseModel):
     creator: list[str]|None = None
     owner: list[str]|None = None
     redeemEmail: str|None = None
+    access: str = 'anonymous'

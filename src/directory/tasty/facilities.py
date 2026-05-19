@@ -24,6 +24,7 @@ from directory.models import Facility
 from django.urls import re_path
 from django.core.cache import cache
 from tastypie.authorization import Authorization
+from tastypie.exceptions import NotFound
 from tastypie.resources import Resource
 from tastypie.bundle import Bundle
 from tastypie.utils import (
@@ -232,5 +233,5 @@ class FacilityResource(Resource):
         objects = createFacilityResources(bundle.request, facilities)
         try:
             return objects[0]
-        except Exception as e:
-            raise Exception(f"{e}\nCan't find Facility {slug}")
+        except IndexError:
+            raise NotFound(f"Can't find Facility {slug}")

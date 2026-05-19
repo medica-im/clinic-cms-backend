@@ -25,8 +25,16 @@ from access.asyncneomodels import User as AsyncUser
 from api.neo4j_auth import get_neo4j_user, get_neo4j_role
 from api.routers.utils import get_directory_from_hostname
 from directory.slug import generate_entry_slugs
+from access.models import Role
 
 logger = logging.getLogger(__name__)
+
+async def validate_access(access: str):
+    if not await Role.objects.filter(name=access).aexists():
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid access role: '{access}'"
+        )
 
 def get_entries(
         effector_type: str|None = None,
@@ -120,6 +128,7 @@ async def ensure_slug(entry_node, effector, facility, effector_type):
 
 
 async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
+    await validate_access(entry.access)
     site = await get_site_from_request(request)
     role = await get_neo4j_role(jwt, site)
     if entry.directory and role == "superuser":
@@ -152,7 +161,7 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
             return await async_get_fullentry(str(_entry.uid), request, jwt)
     new_entry = await entry_if_exists(effector, effector_type, facility)
     if not new_entry:
-        new_entry = await AsyncEntry().save()
+        new_entry = await AsyncEntry(access=entry.access).save()
         await new_entry.effector.connect(effector)
         await new_entry.effector_type.connect(effector_type)
         await new_entry.facility.connect(facility)
@@ -276,6 +285,10 @@ async def update_entry(uid:str, update_data: EntryPatch, request: Request, jwt: 
                 detail="Only administrators and superusers can set redeemEmail"
             )
         entry.redeemEmail = update_data.redeemEmail
+    if 'access' in keys:
+        await validate_access(update_data.access)
+        entry.access = update_data.access
+        should_clear_cache = True
     await entry.save()
     if should_clear_cache:
         await clear_cache("v2:entries", request)

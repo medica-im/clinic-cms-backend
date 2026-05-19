@@ -6,7 +6,7 @@ from fastapi import Request, HTTPException, status
 from django.core.cache import cache
 from django.conf import settings
 from api.types.allentry import Entry
-from api.auth import normalize_role, RoleType
+from api.neo4j_auth import get_neo4j_role, normalize_neo4j_role
 from api.utils import (
     generate_cache_key,
     get_directory,
@@ -185,6 +185,7 @@ async def createEntryResource(node):
         "directories": directories,
         "creator": node.get("creator_uids"),
         "owner": node.get("owner_uids"),
+        "access": getattr(entry, 'access', 'anonymous'),
     }
 
 async def createEntryResources(nodes: list, request):
@@ -198,8 +199,12 @@ async def createEntryResources(nodes: list, request):
         pass
     return data
 
-async def get_object_list(request):
-        directory = await get_directory(request)
+async def get_object_list(request, directory_name: str|None = None):
+        if directory_name:
+            from directory.models.core import Directory
+            directory = await Directory.objects.select_related("site").aget(name=directory_name)
+        else:
+            directory = await get_directory(request)
         nodes = await get_entries(directory, active=None)
         #logger.debug(f"{nodes[:1] if nodes else []}")
         contacts = await createEntryResources(nodes, request)
@@ -229,23 +234,31 @@ def add_evil_twins(scrub_dct):
         entries = scrub_dct[r]
         entries.insert(0, twins[r])
 
-async def get_all_entries(request: Request, jwt, roles: list[RoleType])->list[Entry]:
-    directory = await get_directory(request)
-    role = normalize_role(roles, directory)
+async def get_all_entries(request: Request, jwt, directory_name: str|None = None)->list[Entry]:
+    if directory_name:
+        from directory.models.core import Directory
+        directory = await Directory.objects.select_related("site").aget(name=directory_name)
+    else:
+        directory = await get_directory(request)
+    dir_name = directory.name
+    raw_role = await get_neo4j_role(jwt, directory.site) or "anonymous"
+    role = normalize_neo4j_role(raw_role)
     logger.debug(f"normalized role: {role}")
     cache_key = await generate_cache_key(
         API_VERSION,
         request,
-        role
+        role,
+        directory_name=dir_name
     )
     entries = cache.get(cache_key)
     if entries:
         logger.warning(f"*** Using cache with key {cache_key} ***")
     else:
         logger.warning(f"cache for key '{cache_key}' is *** EMPTY ***")
-        raw = await get_object_list(request)
+        raw = await get_object_list(request, directory_name=directory_name)
         timeout = await get_ttl(API_VERSION, request) or TTL
         logger.debug(f"{timeout=}")
+
         scrubbed_entries_dct = scrub(raw, ["phones"])
         #if settings.DEBUG:
         #    add_evil_twins(scrubbed_entries_dct)
@@ -253,7 +266,8 @@ async def get_all_entries(request: Request, jwt, roles: list[RoleType])->list[En
             cache_key = await generate_cache_key(
                 API_VERSION,
                 request,
-                r
+                r,
+                directory_name=dir_name
             )
             #logger.debug(f"\nsetting cache\nrole: {r}\nkey: {cache_key}\n1st entry: {scrubbed_entries_dct[r][0]}\n2st entry: {scrubbed_entries_dct[r][1]}\n{timeout=}")
             cache.set(

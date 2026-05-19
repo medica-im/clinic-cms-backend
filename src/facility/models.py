@@ -120,6 +120,13 @@ class Organization(models.Model):
         blank=True,
         unique=True,
     )
+    directory = models.OneToOneField(
+        "directory.Directory",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="organization",
+    )
     logo = ThumbnailerImageField(
         upload_to=logo_path,
         blank=True,

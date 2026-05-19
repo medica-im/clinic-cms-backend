@@ -29,36 +29,63 @@ class OrganizationSerializer(serializers.ModelSerializer):
     contact = ContactSerializer(many=False, read_only=True)
     legal_entity = LegalEntitySerializer(many=False, read_only=True)
     uid = serializers.UUIDField(format='hex', source='neomodel_uid')
+    commune = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
 
-    def get_department(self, obj):
+    def _get_commune_and_department(self, obj):
+        """Traverse Neo4j: Entry → Facility → Commune → Department. Cached per obj."""
+        cache_attr = f'_cached_commune_dept_{obj.pk}'
+        if hasattr(self, cache_attr):
+            return getattr(self, cache_attr)
+        result = self._fetch_commune_and_department(obj)
+        setattr(self, cache_attr, result)
+        return result
+
+    def _fetch_commune_and_department(self, obj):
         try:
             entry = Entry.nodes.get(uid=obj.neomodel_uid.hex)
         except Exception as e:
             logger.error(f"{e}\n Cannot find an Entry neo4j node with uid {obj.neomodel_uid.hex} for Organization {obj.name}")
-            return
+            return None, None
         try:
             facility = entry.facility.all()[0]
         except Exception as e:
             logger.error(f"{e}")
+            return None, None
         try:
             commune = facility.commune.all()[0]
         except Exception as e:
             logger.error(e)
+            return None, None
         try:
             department = commune.department.all()[0]
         except Exception as e:
             logger.error(f"{e}")
-        try:
-            return {
-                "uid": department.uid,
-                "name": department.name,
-                "code": department.code,
-                "slug": department.slug,
-                "wikidata": department.wikidata
-            }
-        except Exception as e:
-            return
+            return commune, None
+        return commune, department
+
+    def get_commune(self, obj):
+        commune, _ = self._get_commune_and_department(obj)
+        if not commune:
+            return None
+        return {
+            "uid": commune.uid,
+            "name_fr": commune.name_fr,
+            "slug_fr": commune.slug_fr,
+            "wikidata": commune.wikidata,
+        }
+
+    def get_department(self, obj):
+        _, department = self._get_commune_and_department(obj)
+        if not department:
+            return None
+        return {
+            "uid": department.uid,
+            "name": department.name,
+            "code": department.code,
+            "slug": department.slug,
+            "wikidata": department.wikidata
+        }
 
 
     class Meta:
@@ -80,6 +107,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'google_calendar_id',
             'google_calendar_api_key',
             'city',
+            'commune',
             'legal_entity',
             'uid',
             'department',

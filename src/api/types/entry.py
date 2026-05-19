@@ -9,6 +9,7 @@ class EntryPost(BaseModel):
     directory: str|None = None
     isOwner: bool = True
     redeemEmail: str|None = None
+    access: str = 'anonymous'
 
 
 class EntryPatch(BaseModel):
@@ -20,6 +21,7 @@ class EntryPatch(BaseModel):
     memberships: list[str]|None = None
     owners: list[str]|None = None
     redeemEmail: str|None = None
+    access: str|None = None
 
 
 class EffectorType(BaseModel):
@@ -49,3 +51,4 @@ class Entry(BaseModel):
     memberships: list[str]|None = None
     owners: list[str]|None = None
     redeemEmail: str|None = None
+    access: str = 'anonymous'

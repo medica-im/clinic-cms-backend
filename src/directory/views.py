@@ -64,8 +64,9 @@ class DirectoryView(RetrieveAPIView):
     serializer_class = serializers.DirectorySerializer
 
     def get_object(self):
+        from directory.utils import get_directory
         try:
-            return Directory.objects.get(site=self.request.site)
+            return get_directory(self.request)
         except Directory.DoesNotExist:
             raise NotFound(detail="Directory not found.", code="not_found")
 
