@@ -1,3 +1,4 @@
+import uuid
 import neomodel
 import logging
 from django.core.management.base import BaseCommand, CommandError
@@ -28,6 +29,7 @@ class Command(BaseCommand):
             node = Directory(name=dir_name)
             node.save()
         if owner_uid:
+            owner_uid = uuid.UUID(owner_uid).hex
             try:
                 owner = Entry.nodes.get(uid=owner_uid)
             except neomodel.DoesNotExist as e:
