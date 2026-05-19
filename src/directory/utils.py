@@ -117,19 +117,47 @@ def get_ttl(endpoint: str, request):
     if ttl_obj:
         return ttl_obj.ttl
 
+def get_directory_for_site(site):
+    """Core logic: resolve a single Directory for a given Site.
+    Checks Organization.directory first, then falls back to single directory."""
+    from facility.models import Organization
+    try:
+        org = Organization.objects.select_related('directory', 'directory__site').get(site=site)
+        if org.directory:
+            return org.directory
+    except Organization.DoesNotExist:
+        pass
+    directories = list(Directory.objects.select_related("site").filter(site=site))
+    if len(directories) == 1:
+        return directories[0]
+    if len(directories) == 0:
+        raise Directory.DoesNotExist
+    raise Directory.MultipleObjectsReturned(
+        f"Multiple directories for site {site.domain} and no default set on Organization"
+    )
+
 def get_directory(request):
     site = get_current_site(request)
-    try:
-        return Directory.objects.get(site=site)
-    except Directory.DoesNotExist:
-        raise Directory.DoesNotExist
+    return get_directory_for_site(site)
 
-async def async_get_directory(request):
-    site = get_current_site(request)
+async def async_get_directory_for_site(site):
+    """Async core logic: resolve a single Directory for a given Site.
+    Checks Organization.directory first, then falls back to single directory."""
+    from facility.models import Organization
     try:
-        return await Directory.objects.aget(site=site)
-    except Directory.DoesNotExist:
+        org = await Organization.objects.select_related('directory', 'directory__site').aget(site=site)
+        if org.directory:
+            return org.directory
+    except Organization.DoesNotExist:
+        pass
+    directories = [d async for d in Directory.objects.select_related("site").filter(site=site)]
+    if len(directories) == 1:
+        return directories[0]
+    if len(directories) == 0:
         raise Directory.DoesNotExist
+    raise Directory.MultipleObjectsReturned(
+        f"Multiple directories for site {site.domain} and no default set on Organization"
+    )
 
 def get_contact_related_elements(
         neo_entity,

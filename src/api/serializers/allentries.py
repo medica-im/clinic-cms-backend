@@ -6,7 +6,7 @@ from fastapi import Request, HTTPException, status
 from django.core.cache import cache
 from django.conf import settings
 from api.types.allentry import Entry
-from api.auth import normalize_role, RoleType
+from api.neo4j_auth import get_neo4j_role, normalize_neo4j_role
 from api.utils import (
     generate_cache_key,
     get_directory,
@@ -202,7 +202,7 @@ async def createEntryResources(nodes: list, request):
 async def get_object_list(request, directory_name: str|None = None):
         if directory_name:
             from directory.models.core import Directory
-            directory = await Directory.objects.aget(name=directory_name)
+            directory = await Directory.objects.select_related("site").aget(name=directory_name)
         else:
             directory = await get_directory(request)
         nodes = await get_entries(directory, active=None)
@@ -234,18 +234,21 @@ def add_evil_twins(scrub_dct):
         entries = scrub_dct[r]
         entries.insert(0, twins[r])
 
-async def get_all_entries(request: Request, jwt, roles: list[RoleType], directory_name: str|None = None)->list[Entry]:
+async def get_all_entries(request: Request, jwt, directory_name: str|None = None)->list[Entry]:
     if directory_name:
         from directory.models.core import Directory
-        directory = await Directory.objects.aget(name=directory_name)
+        directory = await Directory.objects.select_related("site").aget(name=directory_name)
     else:
         directory = await get_directory(request)
-    role = normalize_role(roles, directory)
+    dir_name = directory.name
+    raw_role = await get_neo4j_role(jwt, directory.site) or "anonymous"
+    role = normalize_neo4j_role(raw_role)
     logger.debug(f"normalized role: {role}")
     cache_key = await generate_cache_key(
         API_VERSION,
         request,
-        role
+        role,
+        directory_name=dir_name
     )
     entries = cache.get(cache_key)
     if entries:
@@ -263,7 +266,8 @@ async def get_all_entries(request: Request, jwt, roles: list[RoleType], director
             cache_key = await generate_cache_key(
                 API_VERSION,
                 request,
-                r
+                r,
+                directory_name=dir_name
             )
             #logger.debug(f"\nsetting cache\nrole: {r}\nkey: {cache_key}\n1st entry: {scrubbed_entries_dct[r][0]}\n2st entry: {scrubbed_entries_dct[r][1]}\n{timeout=}")
             cache.set(

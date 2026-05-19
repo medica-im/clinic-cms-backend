@@ -20,12 +20,14 @@ class OrganizationAdmin(TranslationAdmin):
         'language',
         'category',
         'city',
+        'directory',
     )
     list_filter = (
         'active',
         'category',
         'language',
         'city',
+        'directory',
     )
     raw_id_fields = ["contact"]
     search_fields = [
@@ -49,6 +51,7 @@ class OrganizationAdmin(TranslationAdmin):
         'language',
         'category',
         'city',
+        'directory',
         'logo',
         'logo_tag',
         'logo_alt',

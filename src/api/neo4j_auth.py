@@ -271,10 +271,7 @@ async def get_neo4j_role(jwt: dict, site: Site) -> str|None:
 def normalize_neo4j_role(role: str|None) -> str:
     if role == "registered" or role is None:
         return "anonymous"
-    elif role == "superuser":
-        return "administrator"
-    else:
-        return role
+    return role
 
 async def get_neo4j_user(jwt: dict) -> AsyncUser | None:
     """Return the Neo4j User node for the requesting user, or None."""

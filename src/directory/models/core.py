@@ -134,10 +134,10 @@ class Directory(models.Model):
         null=True,
         unique=True,
     )
-    site = models.OneToOneField(
+    site = models.ForeignKey(
         Site,
         on_delete=models.CASCADE,
-        related_name="directory",
+        related_name="directories",
     )
     postal_codes = ArrayField(
         models.CharField(

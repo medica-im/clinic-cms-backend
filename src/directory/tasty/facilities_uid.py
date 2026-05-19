@@ -18,6 +18,7 @@ from directory.utils import (
 from directory.models import Facility, Commune, Country
 from django.urls import re_path
 from tastypie.authorization import Authorization
+from tastypie.exceptions import NotFound
 from tastypie.resources import Resource
 from tastypie.bundle import Bundle
 from tastypie.utils import (
@@ -136,5 +137,5 @@ class FacilityUidResource(Resource):
             logger.debug(f"{facilities}")
             objects = createFacilityResources(bundle.request, facilities)
             return objects[0]
-        except Exception as e:
-            raise Exception(f"{e}\nCan't find Facility {uid}")
+        except IndexError:
+            raise NotFound(f"Can't find Facility {uid}")

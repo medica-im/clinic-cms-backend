@@ -6,10 +6,11 @@ from django.contrib.sites.models import Site
 from access.models import Role
 from fastapi import Request, HTTPException, status
 from directory.models.api import Timestamp, Endpoint, TTL
-from directory.models.core import Directory
 from django.core.cache import cache
-from facility.models import Organization
 from django.db import DatabaseError
+from directory.utils import async_get_directory_for_site
+from directory.models.core import Directory
+from facility.models import Organization
 from directory.models.agraph import Entry
 
 logger = logging.getLogger(__name__)
@@ -84,15 +85,18 @@ async def clear_cache(endpoint: str, request: Request|None=None, site: Site|None
                 sites.append(site)
     for site in sites:
         cache_keys = []
-        cache_key = f"{endpoint}:{site.domain}"
-        cache_keys.append(cache_key)
+        base_key = f"{endpoint}:{site.domain}"
+        cache_keys.append(base_key)
+        dir_names = [d.name async for d in Directory.objects.filter(site=site)]
         async for r in Role.objects.all():
-            cache_keys.append(f"{cache_key}:{r.name}")
+            cache_keys.append(f"{base_key}:{r.name}")
+            for dn in dir_names:
+                cache_keys.append(f"{base_key}:{dn}:{r.name}")
         logger.debug(f"{cache_keys=}")
-        for cache_key in cache_keys:
-            deleted = cache.delete(cache_key)
+        for ck in cache_keys:
+            deleted = cache.delete(ck)
             if deleted:
-                logger.debug(f"cache {cache_key} {deleted=}")
+                logger.debug(f"cache {ck} {deleted=}")
         await set_timestamp(endpoint, site)
 
 def strip_slash(path):
@@ -102,29 +106,21 @@ def strip_slash(path):
         path = path[:-1]
     return path
 
-async def generate_cache_key(api_version: str, request: Request, role:str|None=None):
+async def generate_cache_key(api_version: str, request: Request, role:str|None=None, directory_name:str|None=None):
         site = await get_site_from_request(request)
         domain = site.domain
         path = request.scope['route'].path
         path = strip_slash(path)
         cache_key = "%s:%s:%s" % (api_version, path, domain)
+        if directory_name:
+            cache_key = "%s:%s" % (cache_key, directory_name)
         if role:
             cache_key = "%s:%s" % (cache_key, role)
         return cache_key
 
-def sync_get_directory(request):
-    site = sync_get_site_from_request(request)
-    try:
-        return Directory.objects.get(site=site)
-    except Directory.DoesNotExist:
-        raise Directory.DoesNotExist
-
 async def get_directory(request):
     site = await get_site_from_request(request)
-    try:
-        return await Directory.objects.select_related("site").aget(site=site)
-    except Directory.DoesNotExist:
-        raise Directory.DoesNotExist
+    return await async_get_directory_for_site(site)
 
 async def get_ttl(api_version: str, request):
     path = request.scope['route'].path
@@ -175,6 +171,7 @@ def filter_by_access(entries: list[dict[str, Any]], role: str) -> list[dict[str,
     return [e for e in entries if e.get("access", "anonymous") in allowed]
 
 def scrub(entries: list[dict[str, Any]], attributes: list[str]):
+    logger.debug(f"scrub: {len(entries)} entries in, access values: {[e.get('access', 'anonymous') for e in entries[:5]]}")
     superuser = copy.deepcopy(entries)
     administrator = filter_by_access(copy.deepcopy(entries), "administrator")
     scrub_dct = {
@@ -187,4 +184,6 @@ def scrub(entries: list[dict[str, Any]], attributes: list[str]):
             process(entry, r, attributes)
         current_entries = filter_by_access(copy.deepcopy(entries), r)
         scrub_dct[r]=current_entries
+    for r, e in scrub_dct.items():
+        logger.debug(f"scrub: {r} -> {len(e)} entries")
     return scrub_dct

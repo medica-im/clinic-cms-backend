@@ -427,26 +427,30 @@ async def async_get_fullentry(uid: str, req: Request, jwt)->FullEntry:
         entry: AgraphEntry = entry_node_dct["entry"]
     except KeyError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
+    # downgrade role if entry doesn't belong to the request's directory
+    # superuser can access everything regardless
+    if normalized_role != "superuser":
+        entry_directories = [d.name for d in entry_node_dct["directories"] if d is not None] if entry_node_dct.get("directories") else []
+        if directory.name not in entry_directories:
+            normalized_role = "anonymous"
     entry_access = getattr(entry, 'access', 'anonymous')
-    allowed = ALLOWED_ACCESS.get(role)
+    allowed = ALLOWED_ACCESS.get(normalized_role)
     if allowed and entry_access not in allowed:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
     if entry_node_dct and entry_node_dct["entry"].active == False:
-        if role == "anonymous":
+        if normalized_role == "anonymous":
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
         owners = await entry.owner.all()
         creators = await entry.creator.all()
         users = owners + creators
         user_authorized = await is_user_in_authorized_list(jwt, users)
         logger.debug(f"{user_authorized=}")
-        if not user_authorized and not role in ["administrator", "superuser"]:
+        if not user_authorized and not normalized_role in ["administrator", "superuser"]:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
     entry_dct = await createFullEntryResource(entry_node_dct)
     logger.debug(f"{entry_dct=}")
     attributes = ["phones", "emails", "socialnetworks"]
-    if not directory.name in entry_dct["directories"]:
-        role = "anonymous"
-    process(entry_dct, role, attributes)
+    process(entry_dct, normalized_role, attributes)
     logger.debug(f"{entry_dct=}")
     entry_pydantic = FullEntry.model_validate(entry_dct)
     return entry_pydantic
