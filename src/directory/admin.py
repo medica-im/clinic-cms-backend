@@ -104,6 +104,7 @@ class SettingAdmin(admin.ModelAdmin):
         'display_facility_organization',
         'display_association',
         'list_navigation',
+        'type_slug',
         'path',
     )
 

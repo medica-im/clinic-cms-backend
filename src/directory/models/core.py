@@ -254,6 +254,10 @@ class Setting(models.Model):
         default=False,
         help_text="Display navigation links in the directory listing."
     )
+    type_slug = models.BooleanField(
+        default=False,
+        help_text="Use effector type slug in addressbook URL."
+    )
     path = models.CharField(
         max_length=255,
         blank=True,
