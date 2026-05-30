@@ -104,7 +104,7 @@ class Organization(BaseModel):
     google_site_verification: str
     google_calendar_id: str|None=None
     google_calendar_api_key: str|None=None
-    city: City
+    city: City|None = None
     commune: Commune|None = None
     gender: Gender|None=None
     legal_entity: LegalEntity
