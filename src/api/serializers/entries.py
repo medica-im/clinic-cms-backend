@@ -1,7 +1,7 @@
 import logging
 from common.utils import timestamp
 from typing import Any
-from neomodel import db
+from neomodel import db, adb
 from fastapi import HTTPException, Request
 from django.db import IntegrityError
 from addressbook.models import Contact
@@ -20,7 +20,6 @@ from api.types.effector import Effector
 from api.types.fullentry import FullEntry, EffectorType
 from api.types.facility import Facility
 from api.utils import clear_cache, get_site_from_request
-from api.auth import get_role_from_jwt
 from access.asyncneomodels import User as AsyncUser
 from api.neo4j_auth import get_neo4j_user, get_neo4j_role
 from api.routers.utils import get_directory_from_hostname
@@ -102,14 +101,19 @@ async def entry_if_exists(effector: Effector, effector_type: EffectorType, facil
 async def connect_member_of(new_entry, entry: EntryPost):
     if entry.memberships:
         for uid in entry.memberships:
+            if not uid:
+                continue
             try:
                 org = await AsyncOrganization.nodes.get(uid=uid)
                 await new_entry.organizations.connect(org)
             except Exception as e:
                 logger.debug(e)
                 try:
-                    _entry = await AsyncEntry.nodes.get(uid=uid)
-                    await new_entry.memberships.connect(_entry)
+                    await adb.cypher_query(
+                        'MATCH (a:Entry {uid: $a_uid}), (b:Entry {uid: $b_uid}) '
+                        'MERGE (a)-[:MEMBER_OF]->(b)',
+                        {'a_uid': new_entry.uid, 'b_uid': uid}
+                    )
                 except Exception as e:
                     logger.debug(e)
                     logger.error(f"No node (Organization or Entry) found for {uid=}")
