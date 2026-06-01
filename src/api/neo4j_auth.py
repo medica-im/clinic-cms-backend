@@ -45,6 +45,9 @@ async def get_or_create_neo4j_user(jwt: dict, site: Site) -> dict | None:
     # 2. Look up active Invitee by email + Entry
     if not email:
         if result:
+            if await _is_sandbox(site):
+                role = await _ensure_sandbox_access(result[0]["uid"], entry_uid)
+                return _build_response(result[0], role, jwt)
             return _build_response(result[0], None, jwt)
         return None
 
@@ -52,7 +55,21 @@ async def get_or_create_neo4j_user(jwt: dict, site: Site) -> dict | None:
         invitee, entry = await _find_invitee(email, entry_uid)
     except LookupError:
         if result:
+            # User exists but no Invitee — sandbox auto-grant
+            if await _is_sandbox(site):
+                role = await _ensure_sandbox_access(result[0]["uid"], entry_uid)
+                return _build_response(result[0], role, jwt)
             return _build_response(result[0], None, jwt)
+        # No user, no Invitee — sandbox auto-create
+        if await _is_sandbox(site):
+            try:
+                user_props, role = await _create_sandbox_user(
+                    sub, iss, email, jwt.get("name", ""), entry_uid,
+                )
+                return _build_response(user_props, role, jwt)
+            except Exception:
+                logger.exception("Failed to create sandbox user")
+                return None
         return None
 
     # 3. Create or augment Access from Invitee
@@ -247,6 +264,84 @@ async def _add_access_to_existing_user(
         f"Added Access (role={role}) to existing User {user_props.get('uid')} "
         f"from Invitee {invitee.uid}"
     )
+    return user_props, role
+
+
+async def _is_sandbox(site: Site) -> bool:
+    """Check if the organization for this site has sandbox mode enabled."""
+    try:
+        org = await Organization.objects.aget(site=site)
+        return org.sandbox
+    except Organization.DoesNotExist:
+        return False
+
+
+async def _ensure_sandbox_access(user_uid: str, entry_uid: str) -> str:
+    """Grant staff Access to a user for a sandbox org's Entry.
+
+    If an active Access already exists, returns the existing role.
+    Otherwise creates a new Access with role='staff'.
+    """
+    now = time_ns() // 1_000_000
+    query = """
+    MATCH (u:User {uid: $user_uid})
+    MATCH (e:Entry {uid: $entry_uid})
+    MERGE (u)-[:HAS_ACCESS]->(ac:Access {active: true})-[:ACCESS_TO]->(e)
+    ON CREATE SET ac.uid = $access_uid, ac.role = 'staff', ac.createdAt = $now
+    RETURN ac.role AS role
+    """
+    params = {
+        "user_uid": user_uid,
+        "entry_uid": entry_uid,
+        "access_uid": uuid4().hex,
+        "now": now,
+    }
+    results, _ = await adb.cypher_query(query, params)
+    role = results[0][0]
+    logger.info(f"Sandbox: ensured Access (role={role}) for User {user_uid}")
+    return role
+
+
+async def _create_sandbox_user(
+    sub: str, iss: str, email: str, name: str, entry_uid: str,
+) -> tuple[dict, str]:
+    """Create User + Account + Access with staff role for a sandbox org.
+
+    Used when a brand-new user signs in on a sandbox site with no Invitee.
+    """
+    now = time_ns() // 1_000_000
+    query = """
+    MERGE (a:Account {sub: $sub})
+    ON CREATE SET a.uid = $account_uid, a.iss = $iss, a.createdAt = $now
+
+    MERGE (u:User {email: $email})
+    ON CREATE SET u.uid = $user_uid, u.name = $name, u.createdAt = $now
+
+    MERGE (u)-[:HAS_ACCOUNT]->(a)
+
+    WITH u
+    MATCH (e:Entry {uid: $entry_uid})
+    CREATE (ac:Access {uid: $access_uid, role: 'staff', active: true, createdAt: $now})
+    CREATE (u)-[:HAS_ACCESS]->(ac)
+    CREATE (ac)-[:ACCESS_TO]->(e)
+
+    RETURN u {.*} AS user_props, ac.role AS role
+    """
+    params = {
+        "sub": sub,
+        "iss": iss,
+        "email": email,
+        "name": name,
+        "entry_uid": entry_uid,
+        "account_uid": uuid4().hex,
+        "user_uid": uuid4().hex,
+        "access_uid": uuid4().hex,
+        "now": now,
+    }
+    results, _ = await adb.cypher_query(query, params)
+    user_props = results[0][0]
+    role = results[0][1]
+    logger.info(f"Sandbox: created User {user_props.get('uid')} with role={role}")
     return user_props, role
 
 

@@ -66,22 +66,6 @@ class RoleType(TypedDict):
     role_name: str
     directory: str|None
 
-async def get_role_from_jwt(jwt: dict)->list[RoleType]:
-    anon: RoleType = {"role_name": "anonymous", "directory": None}
-    if not jwt:
-        return [anon]
-    else:
-        email = jwt['email']
-        try:
-            user = await User.objects.aget(email__iexact=email)
-        except User.DoesNotExist:
-            return [anon]
-        roles: list[RoleType] = []
-        async for r in AccountRole.objects.filter(user=user).values(role_name=F("role__name"),directory=F("site__directory__name")):
-            roles.append(r)
-        logger.debug(f"{roles=}")
-        return roles
-
 def _method_to_permission(method: str) -> int:
     if method == "GET":
         return 1

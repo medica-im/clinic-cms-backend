@@ -5,7 +5,7 @@ from api.serializers.fullentry import get_fullentry, async_get_fullentry
 from api.serializers.slug_fullentry import slug_find_entry, query_find_entry
 from api.types.fullentry import FullEntry
 from directory.models.agraph import Entry
-from api.auth import get_role_from_jwt, check_cookie_jwt, JWT
+from api.auth import check_cookie_jwt, JWT
 
 logger = logging.getLogger(__name__)
 

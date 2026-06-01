@@ -21,6 +21,7 @@ class OrganizationAdmin(TranslationAdmin):
         'category',
         'city',
         'directory',
+        'sandbox',
     )
     list_filter = (
         'active',
@@ -28,6 +29,7 @@ class OrganizationAdmin(TranslationAdmin):
         'language',
         'city',
         'directory',
+        'sandbox',
     )
     raw_id_fields = ["contact"]
     search_fields = [
@@ -58,6 +60,7 @@ class OrganizationAdmin(TranslationAdmin):
         'google_site_verification',
         'google_calendar_id',
         'google_calendar_api_key',
+        'sandbox',
     )
     readonly_fields = (
         'created',

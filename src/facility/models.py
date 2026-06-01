@@ -127,6 +127,10 @@ class Organization(models.Model):
         blank=True,
         related_name="organization",
     )
+    sandbox = models.BooleanField(
+        default=False,
+        help_text="Auto-grant staff role to any authenticated user.",
+    )
     logo = ThumbnailerImageField(
         upload_to=logo_path,
         blank=True,
