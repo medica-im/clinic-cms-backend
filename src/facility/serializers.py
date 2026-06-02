@@ -113,6 +113,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'department',
             'logo',
             'logo_alt',
+            'sandbox',
         ]
         depth = 4
 

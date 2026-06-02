@@ -111,3 +111,4 @@ class Organization(BaseModel):
     department: Department
     logo: str|None
     logo_alt: str|None
+    sandbox: bool = False
