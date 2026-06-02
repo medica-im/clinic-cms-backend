@@ -4,8 +4,10 @@ from typing import Annotated, Union
 from fastapi import APIRouter, status, Depends, Request, HTTPException
 from api.serializers.facility import async_get_facilities, async_get_facility, create_facility, update_facility, delete_facility
 from api.types.facility import Facility, FacilityPost, FacilityPut
-from api.auth import authorize_api
-from api.auth import JWT
+from api.auth import authorize_api, verify_user_access, JWT
+from api.neo4j_auth import get_neo4j_role, normalize_neo4j_role
+from api.utils import get_site_from_request
+from facility.models import Organization
 from directory.models.agraph import Facility as AgraphFacility
 
 logger = logging.getLogger(__name__)
@@ -13,8 +15,27 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/facilities")
-async def facilities() -> list[Facility]:
-    return await async_get_facilities()
+async def facilities(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list[Facility]:
+    site = await get_site_from_request(request)
+    raw_role = await get_neo4j_role(jwt, site) or "anonymous"
+    role = normalize_neo4j_role(raw_role)
+    if role not in ("staff", "administrator", "superuser"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Staff role or higher required"
+        )
+    if role == "superuser":
+        return await async_get_facilities()
+    # staff / administrator: return only facilities from this organization
+    org = await Organization.objects.aget(site=site)
+    if not org.neomodel_uid:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization has no linked Entry"
+        )
+    entry_uid = org.neomodel_uid.hex
+    await verify_user_access(jwt, entry_uid)
+    return await async_get_facilities(entry_uid=entry_uid)
 
 @router.get("/facilities/{uid}")
 async def facility(uid: str) -> Facility:

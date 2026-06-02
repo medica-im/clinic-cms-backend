@@ -12,9 +12,11 @@ from api.types.geography import Commune as CommunePy, DepartmentOfFrance as Depa
 from neomodel import db
 from neomodel import adb
 from neomodel.contrib.spatial_properties import NeomodelPoint, PointProperty
-from directory.models.agraph import Commune, Facility
+from directory.models.agraph import Commune, Facility, Entry
 from api.utils import get_site_from_request, clear_cache
 from api.neo4j_auth import get_neo4j_user
+from api.auth import verify_user_access
+from facility.models import Organization
 
 logger = logging.getLogger(__name__)
 
@@ -106,11 +108,21 @@ async def async_get_facility(
 async def async_get_facilities(
         directory: str|None = None,
         uid: str|None = None,
+        entry_uid: str|None = None,
         active: bool = True,
     ) -> list[FacilityPy]:
     if uid:
             query=(
                 f"""MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance) WHERE f.uid="{uid}" WITH f,c,dpt OPTIONAL MATCH (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType) RETURN f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");""")
+    elif entry_uid:
+        query=(
+            f"""
+            MATCH (org_entry:Entry {{uid: "{entry_uid}"}})<-[:PART_OF]-(f:Facility)
+                  -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)
+                  -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)
+            OPTIONAL MATCH (f)<-[:HAS_FACILITY]-(entry:Entry)<-[:HAS_EFFECTOR]-(e:Effector)-[:IS_A]->(et:EffectorType)
+            RETURN DISTINCT f, c, dpt, collect(e.name_fr + " (" + et.name_fr + ")");
+            """)
     else:
         if directory:
             query=(
@@ -196,6 +208,17 @@ async def create_facility(f: FacilityPost, request: Request, jwt: dict)->Facilit
     if neo4j_user:
         await node.creator.connect(neo4j_user)
         await node.owner.connect(neo4j_user)
+    # Connect facility to the organization's Entry via PART_OF
+    site = await get_site_from_request(request)
+    org = await Organization.objects.aget(site=site)
+    if org.neomodel_uid:
+        entry_uid = org.neomodel_uid.hex
+        await verify_user_access(jwt, entry_uid)
+        await adb.cypher_query(
+            "MATCH (f:Facility {uid: $f_uid}), (e:Entry {uid: $e_uid}) "
+            "MERGE (f)-[:PART_OF]->(e)",
+            {"f_uid": node.uid, "e_uid": entry_uid},
+        )
     facility = await async_get_facility(uid=str(node.uid))
     await clear_cache("v1:facilities", request)
     return facility
