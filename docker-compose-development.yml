@@ -139,6 +139,7 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit deprecated_features [{permit,transient_nonexcl_queues}]"
     ports:
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     healthcheck:
