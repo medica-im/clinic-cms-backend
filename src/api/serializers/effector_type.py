@@ -96,12 +96,15 @@ async def _connect_effector_type_rel(node, effector_type_uid: str|None):
     """Connect or replace the IS_A relationship to a parent EffectorType."""
     if effector_type_uid is None:
         return
-    parent = await AsyncEffectorType.nodes.get(uid=effector_type_uid)
-    # disconnect existing IS_A relationships first
-    existing = await node.effector_type.all()
-    for old in existing:
-        await node.effector_type.disconnect(old)
-    await node.effector_type.connect(parent)
+    await adb.cypher_query(
+        "MATCH (n:EffectorType {uid: $uid})-[r:IS_A]->() DELETE r",
+        {"uid": node.uid},
+    )
+    await adb.cypher_query(
+        "MATCH (n:EffectorType {uid: $child_uid}), (p:EffectorType {uid: $parent_uid}) "
+        "MERGE (n)-[:IS_A]->(p)",
+        {"child_uid": node.uid, "parent_uid": effector_type_uid},
+    )
 
 
 async def create_effector_type(data: EffectorTypePost) -> EffectorTypePy:
