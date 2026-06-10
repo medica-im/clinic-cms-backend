@@ -211,24 +211,30 @@ async def update_entry_memberships(entry, memberships: list[str]):
     if not memberships:
         await entry.memberships.disconnect_all()
         return True
-    connected_uids = [entry.uid for entry in await entry.memberships.all()]
+    connected_uids = [e.uid for e in await entry.memberships.all()]
     logger.debug(f"{connected_uids=}")
     if set(connected_uids) == set(memberships):
         return False
     for uid in memberships:
         if uid not in connected_uids:
             try:
-                _entry = await AsyncEntry.nodes.get(uid=uid)
-                await entry.memberships.connect(_entry)
-            except:
-                pass
+                await adb.cypher_query(
+                    'MATCH (a:Entry {uid: $a_uid}), (b:Entry {uid: $b_uid}) '
+                    'MERGE (a)-[:MEMBER_OF]->(b)',
+                    {'a_uid': entry.uid, 'b_uid': uid}
+                )
+            except Exception as e:
+                logger.error(f"Failed to connect membership {uid}: {e}")
     for uid in connected_uids:
         if uid not in memberships:
             try:
-                _entry = await AsyncEntry.nodes.get(uid=uid)
-                await entry.memberships.disconnect(_entry)
-            except:
-                pass
+                await adb.cypher_query(
+                    'MATCH (a:Entry {uid: $a_uid})-[r:MEMBER_OF]->(b:Entry {uid: $b_uid}) '
+                    'DELETE r',
+                    {'a_uid': entry.uid, 'b_uid': uid}
+                )
+            except Exception as e:
+                logger.error(f"Failed to disconnect membership {uid}: {e}")
     return True
 
 async def update_entry_owners(entry, owners: list[str]):
@@ -273,10 +279,10 @@ async def update_entry(uid:str, update_data: EntryPatch, request: Request, jwt: 
     if 'active' in keys:
         entry.active = update_data.active
         should_clear_cache = True
-    if 'memberships' in keys and update_data.memberships:
+    if 'memberships' in keys and update_data.memberships is not None:
         if await update_entry_memberships(entry, update_data.memberships):
             should_clear_cache = True
-    if 'owners' in keys and update_data.owners:
+    if 'owners' in keys and update_data.owners is not None:
         if await update_entry_owners(entry, update_data.owners):
             should_clear_cache = True
     if 'redeemEmail' in keys:
