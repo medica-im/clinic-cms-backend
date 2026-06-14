@@ -23,6 +23,8 @@ neomodel==5.5.3
 shapely
 SPARQLWrapper
 pandas
+openpyxl
+odfpy
 https://github.com/django-tastypie/django-tastypie/archive/master.tar.gz
 colorlog
 requests
