@@ -99,11 +99,11 @@ class AppointmentSerializer(Serializer):
         elif location == 'house_call':
             a = HouseCall(**kwargs)
         await a.save()
-        try:
-            entry = await Entry.nodes.get(uid=entry_uid)
-        except Entry.DoesNotExist:
-            raise serializers.ValidationError(f"Entry {entry_uid} not found")
-        await entry.appointments.connect(a)
+        query = """
+        MATCH (e:Entry {uid: $entry_uid}), (a:Appointment {uid: $appt_uid})
+        CREATE (e)-[:HAS_APPOINTMENT]->(a)
+        """
+        await adb.cypher_query(query, {"entry_uid": entry_uid, "appt_uid": a.uid})
         return a
 
     async def aupdate(self, instance: Appointment | Office | HouseCall, validated_data):
