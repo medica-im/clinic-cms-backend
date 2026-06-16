@@ -7,118 +7,16 @@ import json
 logger=logging.getLogger(__name__)
 
 url="https://public-api.meteofrance.fr/public/DPVigilance/v1/textesvigilance/encours"
+url_carte="https://public-api.meteofrance.fr/public/DPVigilance/v1/cartevigilance/encours"
 headers = {
     'accept': '*/*',
     'apikey': settings.PUBLIC_API_METEOFRANCE
 }
-domain_id_idx = {
-    "FRA": 0,
-    "ZDF_PARIS": 1,
-    "ZDF_NORD": 2,
-    "ZDF_SUD_OUEST": 3,
-    "ZDF_SUD": 4,
-    "ZDF_OUEST": 5,
-    "ZDF_SUD_EST": 6,
-    "ZDF_EST": 7,
-    "10": 8,
-    "11": 9,
-    "12": 10,
-    "13": 11,
-    "14": 12,
-    "15": 13,
-    "16": 14,
-    "17": 15,
-    "18": 16,
-    "19": 17,
-    "21": 18,
-    "22": 19,
-    "23": 20,
-    "24": 21,
-    "25": 22,
-    "26": 23,
-    "27": 24,
-    "28": 25,
-    "29": 26,
-    "30": 27,
-    "31": 28,
-    "32": 29,
-    "33": 30,
-    "34": 31,
-    "35": 32,
-    "36": 33,
-    "37": 34,
-    "38": 35,
-    "39": 36,
-    "40": 37,
-    "41": 38,
-    "42": 39,
-    "43": 40,
-    "43": 40,
-    "44": 41,
-    "45": 42,
-    "46": 43,
-    "47": 44,
-    "48": 45,
-    "49": 46,
-    "50": 47,
-    "51": 48,
-    "52": 49,
-    "53": 50,
-    "54": 51,
-    "55": 52,
-    "56": 53,
-    "57": 54,
-    "58": 55,
-    "59": 56,
-    "60": 57,
-    "61": 58,
-    "62": 59,
-    "63": 60,
-    "64": 61,
-    "65": 62,
-    "66": 63,
-    "67": 64,
-    "68": 65,
-    "69": 66,
-    "70": 67,
-    "71": 68,
-    "72": 69,
-    "73": 70,
-    "74": 71,
-    "02": 72,
-    "03": 73,
-    "04": 74,
-    "75": 75,
-    "76": 76,
-    "77": 77,
-    "78": 78,
-    "79": 79,
-    "80": 80,
-    "81": 81,
-    "82": 82,
-    "83": 83,
-    "84": 84,
-    "85": 85,
-    "86": 86,
-    "87": 87,
-    "88": 88,
-    "89": 89,
-    "90": 90,
-    "91": 91,
-    "05": 92,
-    "06": 93,
-    "07": 94,
-    "08": 95,
-    "09": 96,
-    "2A": 97,
-    "2B": 98,
-    "92": 99,
-    "93": 100,
-    "94": 101,
-    "95": 102,
-    "99": 103,
-    "01": 104
-}
+def _find_bloc_by_domain_id(data, domain_id: str) -> dict | None:
+    for bloc in data.get("product", {}).get("text_bloc_items", []):
+        if bloc.get("domain_id") == domain_id:
+            return bloc
+    return None
 
 def get_warning_cached():
     return cache.get_or_set(
@@ -129,9 +27,11 @@ def get_warning_cached():
 
 def get_warning():
     response = requests.get(url, headers=headers)
+    logger.debug(f"Météo France API response status: {response.status_code}")
     if response.status_code == 200:
         data = response.json()
-        #logger.debug(f"{data=}")
+        logger.debug(f"API returned {len(data.get('product', {}).get('text_bloc_items', []))} text_bloc_items")
+        logger.debug(f"Full API response: {json.dumps(data, ensure_ascii=False)}")
         return data
     else:
         # Print an error message
@@ -150,20 +50,83 @@ def get_heatwave_by_department(dpt_code: str):
     except Exception as e:
         raise Exception(e)
 
-    idx = domain_id_idx[dpt_code]
+    logger.debug(f"{dpt_code=}")
     if data:
-        try:
-            DEP_SUIVI__TEXT_ITEMS: list = data["product"]["text_bloc_items"][idx]["bloc_items"][-1]["text_items"]
-            print(DEP_SUIVI__TEXT_ITEMS)
-        except:
+        bloc = _find_bloc_by_domain_id(data, dpt_code)
+        if not bloc:
+            logger.debug(f"No text_bloc_item found for {dpt_code=}")
             return res
-    
+        try:
+            DEP_SUIVI__TEXT_ITEMS: list = bloc["bloc_items"][-1]["text_items"]
+            logger.debug(f"{DEP_SUIVI__TEXT_ITEMS=}")
+        except (KeyError, IndexError) as e:
+            logger.debug(f"No text_items for {dpt_code=}: {e}")
+            return res
+
         for text_item in DEP_SUIVI__TEXT_ITEMS:
+            logger.debug(f"text_item hazard_code={text_item.get('hazard_code')}")
             if text_item["hazard_code"] == '6':
                 term_item=text_item["term_items"][-1]
-                print(term_item)
+                logger.debug(f"{term_item=}")
                 res["start_time"]=term_item["start_time"]
                 res["end_time"]=term_item["end_time"]
                 res["risk_code"]=term_item["risk_code"]
+    logger.debug(f"get_heatwave_by_department result: {res}")
+    return res
+
+
+def get_carte_cached():
+    return cache.get_or_set(
+        "vigilance_carte",
+        lambda: get_carte(),
+        settings.PUBLIC_API_METEOFRANCE_TTL
+    )
+
+def get_carte():
+    response = requests.get(url_carte, headers=headers)
+    logger.debug(f"Météo France carte API response status: {response.status_code}")
+    if response.status_code == 200:
+        data = response.json()
+        logger.debug(f"Carte API response: {json.dumps(data, ensure_ascii=False)}")
+        return data
+    else:
+        error_msg=f'Error fetching carte data: {response.status_code=}'
+        logger.error(error_msg)
+        raise Exception(error_msg)
+
+def get_heatwave_by_department_carte(dpt_code: str):
+    res = {
+        "start_time": None,
+        "end_time": None,
+        "risk_code": None
+    }
+    try:
+        data = get_carte_cached()
+    except Exception as e:
+        raise Exception(e)
+    logger.debug(f"carte: {dpt_code=}")
+    if not data:
+        return res
+    for period in data.get("product", {}).get("periods", []):
+        for item in period.get("timelaps", {}).get("domain_ids", []):
+            if item.get("domain_id") != dpt_code:
+                continue
+            for hazard in item.get("phenomenon_items", []):
+                logger.debug(f"carte: {dpt_code=} hazard_id={hazard.get('phenomenon_id')} max_color_id={hazard.get('phenomenon_max_color_id')}")
+                if str(hazard.get("phenomenon_id")) == "6":
+                    color_id = hazard.get("phenomenon_max_color_id")
+                    logger.debug(f"carte: CANICULE found {color_id=} timelaps_items={hazard.get('timelaps_items')}")
+                    if color_id and color_id > 1:
+                        timelaps_items = hazard.get("timelaps_items", [])
+                        if timelaps_items:
+                            last = timelaps_items[-1]
+                            res["start_time"] = last.get("begin_time")
+                            res["end_time"] = last.get("end_time")
+                            res["risk_code"] = str(last.get("color_id", color_id))
+                        else:
+                            res["risk_code"] = str(color_id)
+                        logger.debug(f"carte result: {res}")
+                        return res
+    logger.debug(f"carte result: {res}")
     return res
 
