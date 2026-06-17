@@ -1,11 +1,18 @@
 from __future__ import annotations
-from pydantic import BaseModel, Field
-from typing import Any
+from pydantic import BaseModel, Field, PlainSerializer
+from typing import Annotated, Any
+from zoneinfo import ZoneInfo
 from django.conf import settings
 from api.types.website import WebsitePy
 from api.types.organization_types import OrganizationTypePy
 from api.types.geography import Commune
 from api.types.fullentry import Address
+
+
+SerializableZoneInfo = Annotated[
+    ZoneInfo,
+    PlainSerializer(lambda tz: tz.key, return_type=str, when_used='always')
+]
 
 
 class OrganizationAddress(Address):
@@ -110,7 +117,7 @@ class Organization(BaseModel):
     gender: Gender|None=None
     legal_entity: LegalEntity
     department: Department
-    timezone: str = settings.TIME_ZONE
+    timezone: SerializableZoneInfo | str = settings.TIME_ZONE
     logo: str|None
     logo_alt: str|None
     sandbox: bool = False
