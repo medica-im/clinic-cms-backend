@@ -116,7 +116,7 @@ class Organization(BaseModel):
     gender: Gender|None=None
     legal_entity: LegalEntity
     department: Department
-    timezone: SerializableZoneInfo | str = settings.TIME_ZONE
+    timezone: SerializableZoneInfo = ZoneInfo(settings.TIME_ZONE)
     logo: str|None
     logo_alt: str|None
     sandbox: bool = False
