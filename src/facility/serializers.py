@@ -1,12 +1,34 @@
 import logging
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from facility.models import Organization, Category, Facility, LegalEntity
 from nlp.models import City
 from addressbook.api.serializers import ContactSerializer
 from rest_framework import serializers
 from directory.models import Organization as Neo4jOrganization
 from directory.models import Entry
+from timezone_field import TimeZoneField as TimeZoneModelField
 
 logger = logging.getLogger(__name__)
+
+
+class ZoneInfoField(serializers.Field):
+    def to_representation(self, value):
+        if value is None:
+            return None
+        return value.key
+
+    def to_internal_value(self, data):
+        if not data:
+            return None
+        try:
+            return ZoneInfo(str(data))
+        except ZoneInfoNotFoundError:
+            raise serializers.ValidationError(
+                f"'{data}' is not a valid IANA time zone identifier."
+            )
+
+
+serializers.ModelSerializer.serializer_field_mapping[TimeZoneModelField] = ZoneInfoField
 
 class LegalEntitySerializer(serializers.ModelSerializer):
 
@@ -50,7 +72,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     uid = serializers.UUIDField(format='hex', source='neomodel_uid')
     commune = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
-    timezone = serializers.SerializerMethodField()
+    timezone = ZoneInfoField()
     category = CategorySerializer(read_only=True)
     city = CitySerializer(read_only=True)
 
@@ -96,9 +118,6 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "slug_fr": commune.slug_fr,
             "wikidata": commune.wikidata,
         }
-
-    def get_timezone(self, obj):
-        return str(obj.timezone)
 
     def get_department(self, obj):
         _, department = self._get_commune_and_department(obj)
