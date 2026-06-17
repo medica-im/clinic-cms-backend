@@ -25,6 +25,18 @@ class LegalEntitySerializer(serializers.ModelSerializer):
         ]
 
 
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = [
+            'id',
+            'name',
+            'formatted_name',
+            'definition',
+            'slug',
+        ]
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     contact = ContactSerializer(many=False, read_only=True)
     legal_entity = LegalEntitySerializer(many=False, read_only=True)
@@ -32,6 +44,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     commune = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
     timezone = serializers.SerializerMethodField()
+    category = CategorySerializer(read_only=True)
 
     def _get_commune_and_department(self, obj):
         """Traverse Neo4j: Entry → Facility → Commune → Department. Cached per obj."""
@@ -119,17 +132,4 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'logo',
             'logo_alt',
             'sandbox',
-        ]
-        depth = 4
-
-
-class CategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Category
-        fields = [
-            'id',
-            'name',
-            'formatted_name',
-            'definition',
-            'slug',
         ]
