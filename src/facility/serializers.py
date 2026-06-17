@@ -1,5 +1,6 @@
 import logging
 from facility.models import Organization, Category, Facility, LegalEntity
+from nlp.models import City
 from addressbook.api.serializers import ContactSerializer
 from rest_framework import serializers
 from directory.models import Organization as Neo4jOrganization
@@ -25,6 +26,12 @@ class LegalEntitySerializer(serializers.ModelSerializer):
         ]
 
 
+class CitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = City
+        fields = ['id', 'name', 'label', 'to_label', 'from_label', 'grammatical_number']
+
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -45,6 +52,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     department = serializers.SerializerMethodField()
     timezone = serializers.SerializerMethodField()
     category = CategorySerializer(read_only=True)
+    city = CitySerializer(read_only=True)
 
     def _get_commune_and_department(self, obj):
         """Traverse Neo4j: Entry → Facility → Commune → Department. Cached per obj."""
