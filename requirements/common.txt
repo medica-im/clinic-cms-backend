@@ -33,4 +33,3 @@ django-anymail[mailgun]
 adrf
 celery>=5.6.2,<6.0.0
 django-celery-results
-django-timezone-field

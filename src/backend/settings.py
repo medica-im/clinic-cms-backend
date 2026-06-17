@@ -125,7 +125,6 @@ INSTALLED_APPS = [
     'opengraph',
     'nlp',
     'heatwave',
-    'timezone_field',
     'auditor',
     'mailer',
 ]
