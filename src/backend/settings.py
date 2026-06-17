@@ -125,6 +125,7 @@ INSTALLED_APPS = [
     'opengraph',
     'nlp',
     'heatwave',
+    'timezone_field',
     'auditor',
     'mailer',
 ]
@@ -211,7 +212,7 @@ LANGUAGES = [
     ('en', _('English')),
 ]
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = config('TIME_ZONE', default='Europe/Paris')
 
 USE_I18N = True
 

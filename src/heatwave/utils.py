@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from django.conf import settings
 from django.core.cache import cache
 import requests
@@ -40,7 +41,7 @@ def get_warning():
         raise Exception(error_msg)
     
 def get_heatwave_by_department(dpt_code: str):
-    res = {
+    res: dict[str, str | None] = {
         "start_time": None,
         "end_time": None,
         "risk_code": None
@@ -95,7 +96,7 @@ def get_carte():
         raise Exception(error_msg)
 
 def get_heatwave_by_department_carte(dpt_code: str):
-    res = {
+    res: dict[str, str | None] = {
         "start_time": None,
         "end_time": None,
         "risk_code": None
@@ -118,15 +119,18 @@ def get_heatwave_by_department_carte(dpt_code: str):
                     logger.debug(f"carte: CANICULE found {color_id=} timelaps_items={hazard.get('timelaps_items')}")
                     if color_id and color_id > 1:
                         timelaps_items = hazard.get("timelaps_items", [])
-                        if timelaps_items:
-                            last = timelaps_items[-1]
-                            res["start_time"] = last.get("begin_time")
-                            res["end_time"] = last.get("end_time")
-                            res["risk_code"] = str(last.get("color_id", color_id))
-                        else:
-                            res["risk_code"] = str(color_id)
-                        logger.debug(f"carte result: {res}")
-                        return res
+                        now = datetime.now(timezone.utc)
+                        logger.debug(f"carte: {now=}")
+                        for ti in timelaps_items:
+                            begin = datetime.fromisoformat(ti["begin_time"])
+                            end = datetime.fromisoformat(ti["end_time"])
+                            ti_color = ti.get("color_id", 1)
+                            logger.debug(f"carte: checking {begin=} <= {now=} < {end=} color={ti_color} match={begin <= now < end and ti_color > 1}")
+                            if begin <= now < end and ti_color > 1:
+                                res["start_time"] = ti["begin_time"]
+                                res["end_time"] = ti["end_time"]
+                                res["risk_code"] = str(ti_color)
+                                logger.debug(f"carte: current alert found {res}")
     logger.debug(f"carte result: {res}")
     return res
 

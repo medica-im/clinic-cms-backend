@@ -1,5 +1,6 @@
 from datetime import timedelta
 from django.db import models
+from timezone_field import TimeZoneField
 from django.contrib.sites.models import Site
 from workforce.models import NodeSet
 import logging
@@ -114,6 +115,10 @@ class Organization(models.Model):
         on_delete=models.PROTECT,
         null=True,
         blank=True,
+    )
+    timezone = TimeZoneField(
+        default=settings.TIME_ZONE,
+        help_text="IANA timezone (e.g. Europe/Paris)",
     )
     neomodel_uid = models.UUIDField(
         null=True,

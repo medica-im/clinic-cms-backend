@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pydantic import BaseModel, Field
 from typing import Any
+from django.conf import settings
 from api.types.website import WebsitePy
 from api.types.organization_types import OrganizationTypePy
 from api.types.geography import Commune
@@ -109,6 +110,7 @@ class Organization(BaseModel):
     gender: Gender|None=None
     legal_entity: LegalEntity
     department: Department
+    timezone: str = settings.TIME_ZONE
     logo: str|None
     logo_alt: str|None
     sandbox: bool = False

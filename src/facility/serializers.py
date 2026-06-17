@@ -31,6 +31,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     uid = serializers.UUIDField(format='hex', source='neomodel_uid')
     commune = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
+    timezone = serializers.CharField()
 
     def _get_commune_and_department(self, obj):
         """Traverse Neo4j: Entry → Facility → Commune → Department. Cached per obj."""
@@ -111,6 +112,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'legal_entity',
             'uid',
             'department',
+            'timezone',
             'logo',
             'logo_alt',
             'sandbox',
