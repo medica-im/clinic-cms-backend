@@ -1,4 +1,3 @@
-from __future__ import annotations
 from pydantic import BaseModel, Field, PlainSerializer
 from typing import Annotated, Any
 from zoneinfo import ZoneInfo
@@ -27,7 +26,7 @@ class OrganizationPy(BaseModel):
     label_fr: str
     label_en: str|None = Field(exclude=True)
     type: OrganizationTypePy
-    organization: OrganizationPy | None
+    organization: 'OrganizationPy | None'
     commune: Commune
     website: WebsitePy | None
 
