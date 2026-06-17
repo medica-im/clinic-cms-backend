@@ -1,4 +1,5 @@
 from directory.models.agraph import Tag, TagCategory, Entry
+from neomodel import adb
 from api.types.tag import TagCategory as TagCategoryPy, Tag as TagPy, TagEntry
 from api.utils import clear_cache
 from rest_framework import serializers
@@ -90,7 +91,11 @@ async def update_tags(item: TagEntry, request: Request):
     except TypeError:
         pass
     for tag in addTags:
-        await entry.tags.connect(tag)
+        query = """
+        MATCH (e:Entry {uid: $entry_uid}), (t:Tag {uid: $tag_uid})
+        MERGE (t)-[:TAGS]->(e)
+        """
+        await adb.cypher_query(query, {"entry_uid": entry.uid, "tag_uid": tag.uid})
     removeTags = []
     try:
         for t in item.removeTags:
@@ -103,7 +108,11 @@ async def update_tags(item: TagEntry, request: Request):
     except TypeError:
         pass
     for tag in removeTags:
-        await entry.tags.disconnect(tag)
+        query = """
+        MATCH (t:Tag {uid: $tag_uid})-[r:TAGS]->(e:Entry {uid: $entry_uid})
+        DELETE r
+        """
+        await adb.cypher_query(query, {"entry_uid": entry.uid, "tag_uid": tag.uid})
     if addTags or removeTags:
         await clear_cache("v2:entries", request)
 
