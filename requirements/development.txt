@@ -4,3 +4,7 @@ django-cors-headers
 django-extensions
 Werkzeug
 colorlog
+pytest
+pytest-asyncio
+pytest-django
+httpx

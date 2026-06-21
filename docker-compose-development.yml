@@ -67,6 +67,7 @@ services:
     build:
       context: .
       dockerfile: docker/fastapi/Dockerfile
+      target: dev
     command: bash -c "fastapi run main.py --root-path /api/v2 --port 80 --reload --proxy-headers"
     volumes:
       - ./src:/app
