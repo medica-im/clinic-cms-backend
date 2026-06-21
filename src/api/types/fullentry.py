@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, NonNegativeInt
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 from typing import Any
 from decimal import Decimal
 from api.types.appointment import Appointment
@@ -102,9 +102,7 @@ class Phone(BaseModel):
     type: PhoneType
     type_display: str
     roles: list[Role]|None = None
-
-    class Config:  
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class SocialNetwork(BaseModel):
