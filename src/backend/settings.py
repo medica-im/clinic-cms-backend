@@ -83,7 +83,7 @@ LOGGING = {
     },
 }
 
-ADMIN = config('ADMIN', cast=Csv(post_process=tuple))
+ADMIN = config('ADMIN', cast=Csv(post_process=tuple))  # type: ignore[arg-type]
 ADMINS = [ADMIN]
 MANAGERS = ADMINS
 
@@ -130,10 +130,16 @@ INSTALLED_APPS = [
 ]
 
 if DEBUG:
-    INSTALLED_APPS += [
-        'django_extensions',
-        'corsheaders',
-    ]
+    try:
+        import django_extensions
+        INSTALLED_APPS += ['django_extensions']
+    except ImportError:
+        logger.info("django_extensions not installed, skipping")
+    try:
+        import corsheaders
+        INSTALLED_APPS += ['corsheaders']
+    except ImportError:
+        logger.info("corsheaders not installed, skipping")
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -263,7 +269,6 @@ THUMBNAIL_ALIASES = {
     }
 }
 
-DEFAULT_FILE_STORAGE='django.core.files.storage.FileSystemStorage'
 AVATAR_FILE_STORAGE = config('AVATAR_FILE_STORAGE', default="")
 
 # Celery
@@ -271,13 +276,13 @@ CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='amqp://guest:guest@rabb
 CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://redis:6379/0')
 
 # Redis
-REDIS_HOST = config('REDIS_HOST', default='redis_development')
+REDIS_HOST = config('REDIS_HOST', cast=str, default='redis_development')
 REDIS_PORT = config('REDIS_PORT', cast=str, default='6379')
-REDIS_DATABASE_ID = config('REDIS_DATABASE_ID', default='0')
+REDIS_DATABASE_ID = config('REDIS_DATABASE_ID', cast=str, default='0')
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": "redis://" + REDIS_HOST + ":" + REDIS_PORT + "/" + REDIS_DATABASE_ID,
+        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DATABASE_ID}",
     }
 }
 
