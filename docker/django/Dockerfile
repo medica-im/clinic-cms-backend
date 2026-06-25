@@ -1,4 +1,4 @@
-FROM python:3.12-trixie AS prod
+FROM python:3.14-trixie AS prod
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
