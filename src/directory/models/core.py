@@ -180,7 +180,9 @@ class AssetFacility(models.Model):
     class Meta:
         managed = True
         db_table = 'asset_facility'
-        unique_together = (('asset', 'facility'),)
+        constraints = [
+            models.UniqueConstraint(fields=["asset", "facility"], name="unique_asset_facility"),
+        ]
 
 
 class Asset(models.Model):

@@ -82,7 +82,9 @@ class WorkforceNetworkedgeOrganizations(models.Model):
     class Meta:
         managed = True
         db_table = 'workforce_networkedge_organizations'
-        unique_together = (('networkedge', 'organization'),)
+        constraints = [
+            models.UniqueConstraint(fields=["networkedge", "organization"], name="unique_networkedge_organization"),
+        ]
 
 
 class WorkforceNetworkedgeFacilities(models.Model):
@@ -99,7 +101,9 @@ class WorkforceNetworkedgeFacilities(models.Model):
     class Meta:
         managed = True
         db_table = 'workforce_networkedge_facilities'
-        unique_together = (('networkedge', 'facility'),)
+        constraints = [
+            models.UniqueConstraint(fields=["networkedge", "facility"], name="unique_networkedge_facility"),
+        ]
 
 
 class NetworkEdge(edge_factory("NetworkNode", concrete=False)):

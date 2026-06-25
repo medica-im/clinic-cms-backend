@@ -274,7 +274,9 @@ class PhoneNumber(models.Model):
     contact_visible = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = [["contact", "phone", "type"]]
+        constraints = [
+            UniqueConstraint(fields=["contact", "phone", "type"], name="unique_contact_phone_type"),
+        ]
 
     def __str__(self):
         return "%s %s: %s" % (
@@ -319,7 +321,9 @@ class Email(models.Model):
     contact_visible = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = [["contact", "email"]]
+        constraints = [
+            UniqueConstraint(fields=["contact", "email"], name="unique_contact_email"),
+        ]
 
     def __str__(self):
         return "%s %s: %s" % (
@@ -357,7 +361,9 @@ class Website(models.Model):
     contact_visible = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = [["contact", "url"]]
+        constraints = [
+            UniqueConstraint(fields=["contact", "url"], name="unique_contact_url"),
+        ]
 
     def __str__(self):
         return "%s: %s" % (self.contact.neomodel_uid, self.url)
@@ -463,10 +469,12 @@ class Profile(models.Model):
 
 
     class Meta:
-        models.UniqueConstraint(
-            fields=['contact', 'organization'],
-            name='unique_profile'
-        )
+        constraints = [
+            models.UniqueConstraint(
+                fields=['contact', 'organization'],
+                name='unique_profile',
+            ),
+        ]
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.

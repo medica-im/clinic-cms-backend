@@ -27,7 +27,7 @@ class Contact(BaseModel):
     formatted_name: str
     formatted_name_definite_article: str
     url: str
-    address: OrganizationAddress
+    address: OrganizationAddress | None = None
     phonenumbers: list[Any]
     socialnetworks: list[Any]
     websites: list[Any]
