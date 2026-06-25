@@ -39,14 +39,9 @@ services:
     restart: always
     env_file:
       - .env
-    build:
-      context: .
-      dockerfile: docker/django/Dockerfile
-      target: prod
-    image: backend_prod
+    image: ${BACKEND_IMAGE}
     command: bash -c "DJANGO_SETTINGS_MODULE=backend.settings python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn backend.wsgi:application --workers=${GUNICORN_WORKERS} --log-file=${GUNICORN_LOG}/gunicorn.log --log-level=${GUNICORN_LOG_LEVEL} -b '[::]:80' --worker-tmp-dir /dev/shm --timeout ${GUNICORN_TIMEOUT} --max-requests=${GUNICORN_MAX_REQUESTS:-500}"
     volumes:
-      - ./src:/backend/src
       - ${STATIC_ROOT}:${STATIC_ROOT}
       - ${MEDIA_ROOT}:${MEDIA_ROOT}
       - ${GUNICORN_LOG}:${GUNICORN_LOG}
@@ -58,20 +53,21 @@ services:
         condition: service_started
       neo4j:
         condition: service_healthy
-    working_dir: /backend/src
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:80/\")'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     ports:
       - "${EXTERNAL_PORT_PRODUCTION}:80"
   fastapi:
     restart: always
     env_file:
       - .env
-    build:
-      context: .
-      dockerfile: docker/fastapi/Dockerfile
-      target: prod
-    command: bash -c "fastapi run main.py --root-path /api/v2 --port 80 --reload"
+    image: ${BACKEND_IMAGE}
+    command: bash -c "fastapi run main.py --root-path /api/v2 --port 80"
     volumes:
-      - ./src:/app
       - ${MEDIA_ROOT}:${MEDIA_ROOT}
       - ${FASTAPI_LOG_DIR}:${FASTAPI_LOG_DIR}
     depends_on:
@@ -82,8 +78,7 @@ services:
       neo4j:
         condition: service_healthy
       django:
-        condition: service_started
-    working_dir: /app
+        condition: service_healthy
     ports:
       - "${FASTAPI_PORT}:80"
   neo4j:
@@ -152,18 +147,13 @@ services:
     restart: always
     env_file:
       - .env
-    build:
-      context: .
-      dockerfile: docker/django/Dockerfile
-      target: dev
+    image: ${BACKEND_IMAGE}
     command: celery -A backend worker --loglevel=info
-    working_dir: /app
     volumes:
-      - ./src:/app
       - ${CELERY_LOG_DIR}:${CELERY_LOG_DIR}
     depends_on:
       django:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_healthy
       rabbitmq:
