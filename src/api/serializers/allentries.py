@@ -23,10 +23,7 @@ from directory.utils import (
 from adrf.serializers import Serializer
 from rest_framework import serializers
 from directory.models.core import Label
-from directory.tasty.communes import createCommuneResources
-from directory.tasty.types import (
-    createEffectorTypeResources
-)
+from api.transformers import createCommuneResources, createEffectorTypeResources
 
 API_VERSION="v2"
 

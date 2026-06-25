@@ -6,7 +6,7 @@ from directory.serializers import (
     ThirdPartyPayerSerializer,
     display_tag_name,
 )
-from directory.tasty.types import createEffectorTypeResources
+from api.transformers import createEffectorTypeResources
 from api.serializers.allentries import AsyncTagSerializer
 from api.utils import process, get_directory, ALLOWED_ACCESS
 from api.types.fullentry import FullEntry

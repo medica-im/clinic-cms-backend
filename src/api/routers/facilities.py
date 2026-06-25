@@ -41,6 +41,10 @@ async def facilities(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> li
 async def facility(uid: str) -> Facility:
     return await async_get_facility(uid=uid)
 
+@router.get("/facilities-slug/{slug}")
+async def facility_by_slug(slug: str) -> Facility:
+    return await async_get_facility(slug=slug)
+
 @router.post("/facilities/", status_code=status.HTTP_201_CREATED)
 async def post_facility(facility: FacilityPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> Facility:
     logger.debug(f'${facility=}')

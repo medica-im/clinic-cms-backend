@@ -92,28 +92,35 @@ def get_facilities(
 async def async_get_facility(
         directory: str|None = None,
         uid: str|None = None,
+        slug: str|None = None,
         active: bool = True,
     ) -> FacilityPy:
     try:
         facilities = await async_get_facilities(
             directory=directory,
             uid=uid,
+            slug=slug,
             active=active
         )
         return facilities[0]
     except IndexError as e:
         logger.debug(e)
-        raise HTTPException(status_code=404, detail=f"Facility {uid} not found")
+        detail = f"Facility {slug or uid} not found"
+        raise HTTPException(status_code=404, detail=detail)
 
 async def async_get_facilities(
         directory: str|None = None,
         uid: str|None = None,
+        slug: str|None = None,
         entry_uid: str|None = None,
         active: bool = True,
     ) -> list[FacilityPy]:
     if uid:
             query=(
                 f"""MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance) WHERE f.uid="{uid}" WITH f,c,dpt OPTIONAL MATCH (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType) RETURN f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");""")
+    elif slug:
+            query=(
+                f"""MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance) WHERE f.slug="{slug}" WITH f,c,dpt OPTIONAL MATCH (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType) RETURN f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");""")
     elif entry_uid:
         query=(
             f"""
