@@ -14,6 +14,7 @@ from django.conf import settings
 from api.utils import get_site_from_request
 from api.auth import JWT
 from api.neo4j_auth import get_or_create_neo4j_user
+from api.types.user import UserMeOut
 from fastapi_nextauth_jwt import NextAuthJWT
 from accounts.models import User
 from auditor.logger import log_oidc
@@ -146,7 +147,7 @@ def refresh(
     refresh_token = refresh_security.create_refresh_token(subject=credentials.subject, expires_delta=timedelta(days=2))
     return {"access_token": access_token, "refresh_token": refresh_token}
 
-@router.get("/users/me")
+@router.get("/users/me", response_model=UserMeOut)
 async def read_current_user(
         jwt: Annotated[dict, Depends(JWT)], request: Request,
 background_tasks: BackgroundTasks):

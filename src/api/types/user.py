@@ -22,3 +22,14 @@ class User(BaseModel):
     createdAt: int | None = None
     accounts: list[AccountOut] = []
     access: list[AccessOut] = []
+
+
+class UserMeOut(BaseModel):
+    uid: str
+    name: str | None = None
+    email: str | None = None
+    picture: str | None = None
+    role: str | None = None
+    gender: str | None = None
+    effector: str | None = None
+    full_name: str | None = None
