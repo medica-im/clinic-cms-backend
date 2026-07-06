@@ -33,3 +33,7 @@ class UserMeOut(BaseModel):
     gender: str | None = None
     effector: str | None = None
     full_name: str | None = None
+
+
+class ListmonkExportRequest(BaseModel):
+    user_uids: list[str]
