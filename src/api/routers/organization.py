@@ -15,7 +15,7 @@ def organization(request: Request) -> OrganizationPy:
     logger.debug(f"{request.client=}")
     site = sync_get_site_from_request(request)
     try:
-        org = Organization.objects.select_related('contact').get(site=site)
+        org = Organization.objects.select_related('contact').get(site=site, active=True)
     except Organization.DoesNotExist:
         raise HTTPException(status_code=404, detail="Organization not found")
     serializer = OrganizationSerializer(org)
