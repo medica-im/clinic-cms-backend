@@ -34,7 +34,7 @@ The frontend is a SvelteKit SSR rendered app / website. It gives you the best of
 We believe healthcare organizations are first and foremost social networks. The graph database running our social networks is neo4j. The legacy database for tabular data is Postgres.
 
 ## production build
-```docker build -f docker/backend/Dockerfile --target prod -t ghcr.io/medica-im/clinic-cms-backend:latest .```
+```docker build -f docker/backend/Dockerfile --target prod -t ghcr.io/medica-im/clinic-cms-backend:latest -t ghcr.io/medica-im/clinic-cms-backend:$(git rev-parse --short HEAD) .```
 
 ## Backup
 
