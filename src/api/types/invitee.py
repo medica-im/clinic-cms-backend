@@ -9,6 +9,10 @@ class InviteePost(BaseModel):
     entry: str
 
 
+class InviteeListmonkExportRequest(BaseModel):
+    invitee_uids: list[str]
+
+
 class InviteePatch(BaseModel):
     email: EmailStr | None = None
     role: str | None = None
