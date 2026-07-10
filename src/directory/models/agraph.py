@@ -70,6 +70,7 @@ class EffectorType(AsyncStructuredNode):
     synonyms_en = ArrayProperty(base_property=StringProperty())
     definition_fr = StringProperty()
     definition_en = StringProperty()
+    unique_ID = StringProperty(unique_index=True)
     need = AsyncRelationshipTo('Need', 'MANAGES')
     situation = AsyncRelationshipTo('Situation', 'MANAGES')
     effector_type = AsyncRelationshipTo(
@@ -85,7 +86,6 @@ class EffectorType(AsyncStructuredNode):
 class HCW(EffectorType):
     concept_en = StringProperty(unique_index=True)
     concept_fr = StringProperty(unique_index=True)
-    unique_ID = StringProperty(unique_index=True)
     hcw = AsyncRelationshipTo('HCW', 'IS_A')
 
 

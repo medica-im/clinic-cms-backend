@@ -72,6 +72,7 @@ class EffectorType(StructuredNode):
     synonyms_en = ArrayProperty(base_property=StringProperty())
     definition_fr = StringProperty()
     definition_en = StringProperty()
+    unique_ID = StringProperty(unique_index=True)
     need = RelationshipTo('Need', 'MANAGES')
     situation = RelationshipTo('Situation', 'MANAGES')
     effector_type = RelationshipTo(
@@ -87,7 +88,6 @@ class EffectorType(StructuredNode):
 class HCW(EffectorType):
     concept_en = StringProperty(unique_index=True)
     concept_fr = StringProperty(unique_index=True)
-    unique_ID = StringProperty(unique_index=True)
     hcw = RelationshipTo('HCW', 'IS_A')
 
 
