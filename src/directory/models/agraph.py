@@ -429,7 +429,6 @@ class Directory(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name = StringProperty(unique_index=True)
     entries = AsyncRelationshipTo('Entry', 'HAS_ENTRY')
-    organization = AsyncRelationshipTo('Organization', 'OWNED_BY')
     owner = AsyncRelationshipTo('Entry', 'OWNED_BY')
 
 
