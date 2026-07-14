@@ -20,6 +20,7 @@ class EntryPatch(BaseModel):
     active: bool|None = None
     memberships: list[str]|None = None
     owners: list[str]|None = None
+    directories: list[str]|None = None
     redeemEmail: str|None = None
     access: str|None = None
 
@@ -50,5 +51,6 @@ class Entry(BaseModel):
     third_party_payer: list[str]|None = None
     memberships: list[str]|None = None
     owners: list[str]|None = None
+    directories: list[str]|None = None
     redeemEmail: str|None = None
     access: str = 'anonymous'

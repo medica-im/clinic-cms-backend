@@ -263,6 +263,40 @@ async def update_entry_owners(entry, owners: list[str]):
     return True
 
 
+async def update_entry_directories(entry, directories: list[str]):
+    if directories is None:
+        return False
+    connected_names_result, _ = await adb.cypher_query(
+        'MATCH (d:Directory)-[:HAS_ENTRY]->(a:Entry {uid: $a_uid}) RETURN d.name',
+        {'a_uid': entry.uid}
+    )
+    connected_names = [row[0] for row in connected_names_result]
+    logger.debug(f"{connected_names=}")
+    if set(connected_names) == set(directories):
+        return False
+    for name in directories:
+        if name not in connected_names:
+            try:
+                await adb.cypher_query(
+                    'MATCH (d:Directory {name: $d_name}), (a:Entry {uid: $a_uid}) '
+                    'MERGE (d)-[:HAS_ENTRY]->(a)',
+                    {'d_name': name, 'a_uid': entry.uid}
+                )
+            except Exception as e:
+                logger.error(f"Failed to connect directory {name}: {e}")
+    for name in connected_names:
+        if name not in directories:
+            try:
+                await adb.cypher_query(
+                    'MATCH (d:Directory {name: $d_name})-[r:HAS_ENTRY]->(a:Entry {uid: $a_uid}) '
+                    'DELETE r',
+                    {'d_name': name, 'a_uid': entry.uid}
+                )
+            except Exception as e:
+                logger.error(f"Failed to disconnect directory {name}: {e}")
+    return True
+
+
 async def update_entry(uid:str, update_data: EntryPatch, request: Request, jwt: dict|None = None):
     entry = await AsyncEntry.nodes.get(uid=uid)
     keys = update_data.model_fields_set
@@ -284,6 +318,17 @@ async def update_entry(uid:str, update_data: EntryPatch, request: Request, jwt: 
             should_clear_cache = True
     if 'owners' in keys and update_data.owners is not None:
         if await update_entry_owners(entry, update_data.owners):
+            should_clear_cache = True
+    if 'directories' in keys and update_data.directories is not None:
+        site = await get_site_from_request(request)
+        role = await get_neo4j_role(jwt, site) if jwt else None
+        if role not in ("administrator", "superuser"):
+            logger.error(f"Role {role} attempted to set directories")
+            raise HTTPException(
+                status_code=403,
+                detail="Only administrators and superusers can set directories"
+            )
+        if await update_entry_directories(entry, update_data.directories):
             should_clear_cache = True
     if 'redeemEmail' in keys:
         site = await get_site_from_request(request)
@@ -307,4 +352,9 @@ async def update_entry(uid:str, update_data: EntryPatch, request: Request, jwt: 
     entry_data["owners"] = [str(user.uid) for user in owner_nodes]
     membership_nodes = await entry.memberships.all()
     entry_data["memberships"] = [str(m.uid) for m in membership_nodes]
+    directory_names_result, _ = await adb.cypher_query(
+        'MATCH (d:Directory)-[:HAS_ENTRY]->(a:Entry {uid: $a_uid}) RETURN d.name',
+        {'a_uid': entry.uid}
+    )
+    entry_data["directories"] = [row[0] for row in directory_names_result]
     return Entry.model_validate(entry_data)

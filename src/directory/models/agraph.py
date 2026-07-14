@@ -419,6 +419,10 @@ class Entry(AsyncStructuredNode):
         'Tag',
         'TAGS'
     )
+    directories = AsyncRelationshipFrom(
+        'Directory',
+        'HAS_ENTRY'
+    )
 
 
 class Directory(AsyncStructuredNode):
