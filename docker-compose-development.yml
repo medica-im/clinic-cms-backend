@@ -85,6 +85,8 @@ services:
       - ./src:/app
       - ${MEDIA_ROOT}:${MEDIA_ROOT}
       - ${FASTAPI_LOG_DIR}:${FASTAPI_LOG_DIR}
+      # let testcontainers spawn throwaway containers (e.g. Neo4j) from inside the test run
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       database:
         condition: service_started

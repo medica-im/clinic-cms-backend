@@ -2,3 +2,4 @@ pytest
 pytest-asyncio
 pytest-django
 httpx
+testcontainers[neo4j]
