@@ -150,10 +150,10 @@ services:
       - NEO4J_dbms_logs_debug_level=${NEO4J_dbms_logs_debug_level:-INFO}
     healthcheck:
       test: wget -q --spider http://neo4j:7474 || exit 1
-      interval: 1s
-      timeout: 10s
-      retries: 30
-      start_period: 10s
+      interval: ${NEO4J_HEALTHCHECK_INTERVAL:-1s}
+      timeout: ${NEO4J_HEALTHCHECK_TIMEOUT:-10s}
+      retries: ${NEO4J_HEALTHCHECK_RETRIES:-30}
+      start_period: ${NEO4J_HEALTHCHECK_START_PERIOD:-10s}
 
   rabbitmq:
     image: rabbitmq:4-management-alpine
