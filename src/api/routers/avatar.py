@@ -1,7 +1,8 @@
 import logging
 from typing import Annotated
 from io import BytesIO
-from fastapi import APIRouter, status, Request, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, status, Request, Depends, HTTPException, UploadFile, File, Form
+from pydantic import BaseModel
 from PIL import Image
 from asgiref.sync import sync_to_async
 from django.core.files.uploadedfile import InMemoryUploadedFile
@@ -18,6 +19,7 @@ router = APIRouter()
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MIN_DIMENSION = 500
+AVATAR_ACCESS_LEVELS = ("anonymous", "staff", "administrator")
 
 
 @router.put(
@@ -29,6 +31,7 @@ async def upload_avatar(
     request: Request,
     jwt: Annotated[dict, Depends(JWT)],
     file: UploadFile = File(...),
+    access: str = Form('anonymous'),
 ):
     # Lookup entry and authorize
     try:
@@ -93,9 +96,51 @@ async def upload_avatar(
         charset=None,
     )
     contact.profile_image = django_file
+    if access in AVATAR_ACCESS_LEVELS:
+        contact.avatar_access = access
     await contact.asave()
 
     # Return updated avatar URLs
+    await clear_cache("v2:entries", request)
+    avatar = await async_get_avatar_url(entry=entry_node)
+    return {"avatar": avatar}
+
+
+class AvatarAccessPatch(BaseModel):
+    access: str
+
+
+@router.patch(
+    "/entries/{uid}/avatar/access",
+    status_code=status.HTTP_200_OK,
+)
+async def patch_avatar_access(
+    uid: str,
+    payload: AvatarAccessPatch,
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)],
+):
+    """Set the minimum role required to see this entry's avatar."""
+    if payload.access not in AVATAR_ACCESS_LEVELS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"access must be one of {', '.join(AVATAR_ACCESS_LEVELS)}",
+        )
+    try:
+        entry_node = await AgraphEntry.nodes.get(uid=uid)
+    except AgraphEntry.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    users = await entry_node.owner.all() or await entry_node.creator.all()
+    await authorize_api("entries_v2", request, jwt, users)
+
+    try:
+        contact = await Contact.objects.aget(neomodel_uid=uid)
+    except Contact.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    contact.avatar_access = payload.access
+    await contact.asave()
+
     await clear_cache("v2:entries", request)
     avatar = await async_get_avatar_url(entry=entry_node)
     return {"avatar": avatar}

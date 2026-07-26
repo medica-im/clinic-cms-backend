@@ -82,6 +82,14 @@ class Contact(models.Model):
         blank=True,
         null=True
     )
+    avatar_access = models.CharField(
+        max_length=20,
+        default='anonymous',
+        help_text=(
+            "Minimum role required to see the profile image: "
+            "anonymous (public), staff (team), administrator."
+        ),
+    )
     qr_image = models.ImageField(upload_to="qr_images/", blank=True, null=True)
     twitter_handle = models.CharField(max_length=15, blank=True, null=True)
     worked_with = models.ManyToManyField('self', blank=True)
@@ -101,6 +109,10 @@ class Contact(models.Model):
             update_contact_timestamp(self.neomodel_uid)
         except TypeError as e:
             logger.warning(f'uid is {self.neomodel_uid} {e}')
+        # The avatar (and its access level) is embedded in the cached entry
+        # payloads, so those must be rebuilt when it changes.
+        from directory.models.core import sync_clear_cache
+        sync_clear_cache("v2:entries")
 
 
 class AddressManager(models.Manager):

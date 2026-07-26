@@ -136,10 +136,33 @@ async def get_ttl(api_version: str, request):
     if ttl_obj:
         return ttl_obj.ttl
 
+ALLOWED_ACCESS = {
+    "administrator": {"anonymous", "registered", "staff", "administrator"},
+    "staff": {"anonymous", "registered", "staff"},
+    "anonymous": {"anonymous"},
+}
+
+def scrub_avatar(entry: dict[str, Any], role: str):
+    """Hide the avatar from viewers below its required access level.
+
+    The avatar's "access" value is the minimum role needed to see the picture;
+    viewers at that level or with higher privilege keep it, others get None so
+    the frontend falls back to the placeholder.
+    """
+    avatar = entry.get("avatar")
+    if not avatar:
+        return
+    required = avatar.get("access", "anonymous")
+    allowed = ALLOWED_ACCESS.get(role)
+    # Unknown roles (e.g. superuser) are not restricted.
+    if allowed is not None and required not in allowed:
+        entry["avatar"] = None
+
 def process(entry: dict[str, Any], role: str, attributes: list[str]):
     #logger.debug(f'process {entry["name"]=}')
     if role not in ("administrator", "superuser"):
         entry.pop("redeemEmail", None)
+    scrub_avatar(entry, role)
     for attribute in attributes:
         try:
             items: list[Any] = entry[attribute]
@@ -158,12 +181,6 @@ def process(entry: dict[str, Any], role: str, attributes: list[str]):
                 logger.debug(f"{count-new_count} item(s) removed!")
             entry[attribute] = new_items
 
-ALLOWED_ACCESS = {
-    "administrator": {"anonymous", "registered", "staff", "administrator"},
-    "staff": {"anonymous", "registered", "staff"},
-    "anonymous": {"anonymous"},
-}
-
 def filter_by_access(entries: list[dict[str, Any]], role: str) -> list[dict[str, Any]]:
     allowed = ALLOWED_ACCESS.get(role)
     if not allowed:
@@ -174,6 +191,9 @@ def scrub(entries: list[dict[str, Any]], attributes: list[str]):
     logger.debug(f"scrub: {len(entries)} entries in, access values: {[e.get('access', 'anonymous') for e in entries[:5]]}")
     superuser = copy.deepcopy(entries)
     administrator = filter_by_access(copy.deepcopy(entries), "administrator")
+    # Avatars restricted above the administrator level stay hidden for admins too.
+    for entry in administrator:
+        scrub_avatar(entry, "administrator")
     scrub_dct = {
         "superuser": superuser,
         "administrator": administrator,

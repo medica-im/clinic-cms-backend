@@ -450,7 +450,16 @@ async def async_get_fullentry(uid: str, req: Request, jwt)->FullEntry:
     entry_dct = await createFullEntryResource(entry_node_dct)
     logger.debug(f"{entry_dct=}")
     attributes = ["phones", "emails", "socialnetworks"]
+    # Owners and creators always see their own avatar, whatever its access level,
+    # so they can review and change the setting.
+    owner_avatar = entry_dct.get("avatar")
+    is_own_entry = await is_user_in_authorized_list(
+        jwt,
+        await entry.owner.all() + await entry.creator.all()
+    ) if jwt else False
     process(entry_dct, normalized_role, attributes)
+    if is_own_entry and owner_avatar and entry_dct.get("avatar") is None:
+        entry_dct["avatar"] = owner_avatar
     logger.debug(f"{entry_dct=}")
     entry_pydantic = FullEntry.model_validate(entry_dct)
     return entry_pydantic

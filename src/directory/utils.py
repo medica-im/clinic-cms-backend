@@ -550,35 +550,51 @@ async def async_get_avatar_url(
             "lg": lg,
             "raw": raw
         }
+    entry_avatar = entry_access = None
     try:
         contact = await Contact.objects.aget(neomodel_uid=entry.uid)
         entry_avatar = contact.profile_image
+        entry_access = contact.avatar_access
     except (Contact.DoesNotExist, AttributeError):
-        entry_avatar = None
+        pass
+    effector_avatar = effector_access = None
     try:
         contact = await Contact.objects.aget(neomodel_uid=e.uid)
         effector_avatar = contact.profile_image
+        effector_access = contact.avatar_access
     except (Contact.DoesNotExist, AttributeError):
-        effector_avatar = None
+        pass
+    ef_avatar = ef_access = None
     try:
         contact = await Contact.objects.aget(neomodel_uid=ef.uid)
         ef_avatar = contact.profile_image
+        ef_access = contact.avatar_access
     except (Contact.DoesNotExist, AttributeError):
-        ef_avatar = None
+        pass
+    f_avatar = f_access = None
     try:
         contact = await Contact.objects.aget(neomodel_uid=f.uid)
         f_avatar = contact.profile_image
+        f_access = contact.avatar_access
     except (Contact.DoesNotExist, AttributeError):
-        f_avatar = None
+        pass
     async_get_avatar_dict = sync_to_async(get_avatar_dict)
+
+    async def build(profile_image, access):
+        avatar = await async_get_avatar_dict(profile_image)
+        if avatar is not None:
+            # Minimum role required to see this picture. Enforced in api.utils.process()
+            avatar["access"] = access or "anonymous"
+        return avatar
+
     if (entry_avatar):
-        return await async_get_avatar_dict(entry_avatar)
+        return await build(entry_avatar, entry_access)
     if (ef_avatar):
-        return await async_get_avatar_dict(ef_avatar)
+        return await build(ef_avatar, ef_access)
     if (effector_avatar):
-        return await async_get_avatar_dict(effector_avatar)
+        return await build(effector_avatar, effector_access)
     if (f_avatar):
-        return await async_get_avatar_dict(f_avatar)
+        return await build(f_avatar, f_access)
 
 def get_address(facility: Facility, commune: Commune, country: Country):
     if facility.location:

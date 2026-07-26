@@ -49,8 +49,14 @@ def sync_clear_cache(endpoint: str, key: str|None=None, site=None):
         return
     for site in sites:
         cache_keys = [key or f"{endpoint}:{site.domain}"]
+        dir_names = list(
+            Directory.objects.filter(site=site).values_list("name", flat=True)
+        )
         for r in Role.objects.all():
             cache_keys.append(f"{endpoint}:{site.domain}:{r.name}")
+            # Directory-scoped variants, e.g. v2:entries:example.org:my-dir:staff
+            for dn in dir_names:
+                cache_keys.append(f"{endpoint}:{site.domain}:{dn}:{r.name}")
         logger.debug(f"{cache_keys}")
         for cache_key in cache_keys:
             logger.debug(f"Processing {cache_key} ...")

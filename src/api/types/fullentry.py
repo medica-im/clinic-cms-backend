@@ -43,6 +43,7 @@ class Avatar(BaseModel):
     sm: str|None = None
     lg: str|None = None
     raw: str|None = None
+    access: str = 'anonymous'
 
 
 class EffectorType(BaseModel):
