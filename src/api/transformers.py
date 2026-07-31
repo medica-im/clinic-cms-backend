@@ -5,9 +5,10 @@ logger = logging.getLogger(__name__)
 
 
 class EffectorTypeObj:
-    def __init__(self, uid, label, name, slug, synonyms, definition):
+    def __init__(self, uid, label, name, slug, synonyms, definition, raw_label=None):
         self.uid = uid
         self.label = label
+        self.raw_label = raw_label
         self.name = name
         self.slug = slug
         self.synonyms = synonyms
@@ -41,7 +42,7 @@ def createEffectorTypeResources(node):
         f'definition_{settings.LANGUAGE_CODE}',
         getattr(node, 'definition_en', None)
     )
-    return EffectorTypeObj(uid, label, name, slug, synonyms, definition)
+    return EffectorTypeObj(uid, label, name, slug, synonyms, definition, raw_label=label)
 
 
 class CommuneObj:

@@ -16,6 +16,7 @@ class Department(BaseModel):
 class EffectorType(BaseModel):
     uid: str
     label: str
+    raw_label: str|None = None
     name: str
     slug: str
     definition: str|None = None
