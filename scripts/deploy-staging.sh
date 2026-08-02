@@ -11,7 +11,9 @@ docker compose stack over SSH. Does not build the backend image.
 
 The database image is only rebuilt when the postgres:14 base image
 has actually been updated upstream, so unchanged deploys leave every
-container running untouched.
+container running untouched. If the database container does get
+recreated, the app services are restarted so they drop the database
+connections that recreation invalidated.
 
 Options:
   -h, --help       Show this help message and exit
@@ -86,6 +88,25 @@ fi
 
 echo "==> Restarting..."
 docker compose -f "$COMPOSE_FILE" up -d
+
+# A restarted database drops every open connection, and the app services keep
+# reusing the dead pooled ones ("the connection is closed"). depends_on only
+# orders startup, so restart any app service older than the database itself.
+# Comparing start times catches this whoever caused it, not just this run.
+db_started=\$(docker inspect backend-database-1 --format '{{.State.StartedAt}}' 2>/dev/null || true)
+stale=""
+
+for svc in django fastapi celery; do
+    svc_started=\$(docker inspect "backend-\${svc}-1" --format '{{.State.StartedAt}}' 2>/dev/null || true)
+    if [[ -n "\$db_started" && -n "\$svc_started" && "\$svc_started" < "\$db_started" ]]; then
+        stale="\$stale \$svc"
+    fi
+done
+
+if [[ -n "\$stale" ]]; then
+    echo "==> Database is newer, restarting stale services:\$stale"
+    docker compose -f "$COMPOSE_FILE" restart \$stale
+fi
 EOF
 
 duration=$SECONDS
