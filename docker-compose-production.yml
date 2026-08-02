@@ -8,6 +8,7 @@ services:
       args:
         USER_ID: ${USER_ID:-0}
         GROUP_ID: ${GROUP_ID:-0}
+        BASE_DIGEST: ${POSTGRES_BASE_DIGEST:-}
     shm_size: ${DATABASE_SHM_SIZE}
     command: >
       postgres
