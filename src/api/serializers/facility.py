@@ -228,6 +228,7 @@ async def create_facility(f: FacilityPost, request: Request, jwt: dict)->Facilit
         )
     facility = await async_get_facility(uid=str(node.uid))
     await clear_cache("v1:facilities", request)
+    await clear_cache("v2:public/facilities", request)
     return facility
 
 async def update_facility(uid: str, f: FacilityPut, request: Request)->FacilityPy:
@@ -261,6 +262,7 @@ async def update_facility(uid: str, f: FacilityPut, request: Request)->FacilityP
     await node.save()
     facility = await async_get_facility(uid=uid)
     await clear_cache("v1:facilities", request)
+    await clear_cache("v2:public/facilities", request)
     return facility
 
 async def delete_facility(uid: str)->dict:
