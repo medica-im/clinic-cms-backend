@@ -1,6 +1,7 @@
 import logging
 from fastapi import APIRouter, HTTPException, Request, status
 from neomodel import adb
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.core.cache import cache
 from api.utils import get_site_from_request, set_timestamp
@@ -21,6 +22,40 @@ router = APIRouter()
 
 CACHE_ENDPOINT = "v2:public/facilities"
 DEFAULT_TTL = 60
+
+
+async def _get_place_image(uid: str) -> dict | None:
+    """
+    The facility's wide photograph, or None.
+
+    Separate from async_get_avatar_url: that one reads addressbook.Contact,
+    whose renditions are square. A few facilities still have a picture there
+    (see the migrate_facility_images command); they keep being served as
+    "avatar" until they are moved over.
+    """
+    from facility.models import PlaceImage as PlaceImageModel
+
+    try:
+        place = await PlaceImageModel.objects.aget(neomodel_uid=uid)
+    except PlaceImageModel.DoesNotExist:
+        return None
+    if not place.image:
+        return None
+
+    def url(alias):
+        try:
+            return place.image[alias].url
+        except Exception as e:
+            logger.error(f"place image {alias} error: {e}")
+            return None
+
+    get_urls = sync_to_async(lambda: {
+        "sm": url("place_sm"),
+        "lg": url("place_lg"),
+        "raw": place.image.url,
+        "alt": place.alt,
+    })
+    return await get_urls()
 
 
 async def _get_ttl(site):
@@ -146,6 +181,7 @@ async def _serialize_facility(facility, commune, country) -> PublicFacility:
     websites = await async_get_websites_neomodel(f=facility)
     socialnetworks = await async_get_socialnetworks_neomodel(facility=facility)
     avatar = await async_get_avatar_url(f=facility)
+    image = await _get_place_image(facility.uid)
 
     return PublicFacility.model_validate({
         "uid": facility.uid,
@@ -160,6 +196,7 @@ async def _serialize_facility(facility, commune, country) -> PublicFacility:
         "websites": websites,
         "socialnetworks": socialnetworks,
         "avatar": avatar,
+        "image": image,
         "entries": entries,
         "ban_id": getattr(facility, 'ban_id', None),
         "ban_banId": getattr(facility, 'ban_banId', None),

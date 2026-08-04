@@ -53,6 +53,19 @@ class Avatar(BaseModel):
     raw: str | None = None
 
 
+class PlaceImage(BaseModel):
+    """
+    A wide (16:9) photograph of the place, as opposed to the square avatar.
+
+    Carries no access level: unlike a person's picture, a photograph of a
+    building is public.
+    """
+    sm: str | None = None
+    lg: str | None = None
+    raw: str | None = None
+    alt: str = ""
+
+
 class PublicFacility(BaseModel):
     uid: str
     name: str | None = None
@@ -66,6 +79,7 @@ class PublicFacility(BaseModel):
     websites: list[WebsitePublic] | None = None
     socialnetworks: list[SocialNetworkPublic] | None = None
     avatar: Avatar | None = None
+    image: PlaceImage | None = None
     entries: list[str]
     ban_id: str | None = None
     ban_banId: str | None = None
