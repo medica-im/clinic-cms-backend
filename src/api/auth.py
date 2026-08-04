@@ -90,10 +90,24 @@ async def is_user_in_authorized_list(jwt: dict, users: list[Neo4jUser]) -> bool:
             return True
     return False
 
-async def authorize_api(endpoint: str, request: Request, jwt: dict, users: list[Neo4jUser]|None=None):
+async def may_authorize_api(
+    endpoint: str,
+    request: Request,
+    jwt: dict,
+    users: list[Neo4jUser]|None=None,
+    method: str|None=None,
+) -> bool:
+    """
+    Whether this caller may perform this action — the question, not the gate.
+
+    `method` overrides the permission the request's own verb would imply, for
+    endpoints that ask about an action rather than perform it: a GET answering
+    "may this user edit?" has to be judged as a PUT, or it would check read
+    access and answer yes to everyone.
+    """
     logger.debug(f"{request.method=}")
     site = await get_site_from_request(request)
-    permission = _method_to_permission(request.method)
+    permission = _method_to_permission(method or request.method)
 
     # Object-level permission: check if the requesting user is in the authorized list
     if users and jwt:
@@ -108,30 +122,56 @@ async def authorize_api(endpoint: str, request: Request, jwt: dict, users: list[
         role = roles_dct.get(neo4j_role_name)
         if role:
             logger.debug(f"Neo4j auth: {site=} {role=}")
-            return await authorize(endpoint, role, permission)
+            return await may_authorize(endpoint, role, permission)
 
     # Django fallback (existing behavior)
     user = await get_user(jwt)
     role = await get_role(user, site)
     logger.debug(f"Django auth: {site=} {user=} {role=}")
-    return await authorize(endpoint, role, permission)
+    return await may_authorize(endpoint, role, permission)
 
-async def authorize(endpoint_name: str, role: Role, permissions: int):
+
+async def authorize_api(
+    endpoint: str,
+    request: Request,
+    jwt: dict,
+    users: list[Neo4jUser]|None=None,
+    method: str|None=None,
+):
+    """Enforcing form of may_authorize_api: raises 403 instead of returning False."""
+    if not await may_authorize_api(endpoint, request, jwt, users, method):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions"
+        )
+    return True
+
+async def may_authorize(endpoint_name: str, role: Role, permissions: int) -> bool:
+    """
+    Whether this role holds these permissions on this endpoint.
+
+    Answers with a boolean so callers that need to *ask* about a permission —
+    to decide whether to offer a control, say — do not have to catch the
+    exception raised by enforcement. Catching it would also swallow genuine
+    faults: a missing Endpoint or AccessControl row is a broken configuration,
+    not a user who lacks rights, and reporting the two the same way hides it.
+    """
     try:
         endpoint = await Endpoint.objects.aget(name=endpoint_name)
     except Endpoint.DoesNotExist:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions"
-        )
+        logger.error(f"no Endpoint row named {endpoint_name!r}; refusing")
+        return False
     try:
         ac = await AccessControl.objects.aget(endpoint=endpoint, role=role)
     except AccessControl.DoesNotExist:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions"
-        )
-    if not await ac.async_check_permission(permissions):
+        logger.error(f"no AccessControl for {endpoint_name!r} and role {role!r}; refusing")
+        return False
+    return await ac.async_check_permission(permissions)
+
+
+async def authorize(endpoint_name: str, role: Role, permissions: int):
+    """Enforcing form of may_authorize: raises 403 instead of returning False."""
+    if not await may_authorize(endpoint_name, role, permissions):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions"
