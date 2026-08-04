@@ -270,11 +270,23 @@ async def delete_facility(uid: str)->dict:
         facility_node = await Facility.nodes.get(uid=uid)
     except Facility.DoesNotExist:
         raise HTTPException(status_code=404, detail="Facility not found")
+    # Any linked entry blocks the deletion, deactivated ones included:
+    # deactivation is reversible and keeps the entry's history, so an entry that
+    # still names this address must be deleted outright before the address can
+    # go. Otherwise reactivating it would resurrect a facility that no longer
+    # exists.
+    #
+    # This is not a permission: it does not depend on who is asking, and a
+    # superuser is refused just the same. The objection is to the state of the
+    # data, so it belongs here rather than in AccessControl.
     entries = await facility_node.entries.all()
     if entries:
         raise HTTPException(
             status_code=409,
-            detail="Facility is still linked to one or more entries and cannot be deleted"
+            detail=(
+                f"Facility is still used by {len(entries)} "
+                f"{'entry' if len(entries) == 1 else 'entries'} and cannot be deleted"
+            )
         )
     await facility_node.delete()
     return {"ok": True}
