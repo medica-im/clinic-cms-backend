@@ -308,3 +308,59 @@ class LegalEntity(models.Model):
 
     class Meta:
         verbose_name_plural = "Legal entities"
+
+
+def place_image_path(instance, filename):
+    ext = filename.split('.')[-1].lower()
+    path = settings.PLACE_IMAGE_FILE_STORAGE
+    return '{0}/{1}.{2}'.format(path, instance.neomodel_uid, ext)
+
+
+class PlaceImage(models.Model):
+    """
+    A wide (16:9) photograph of a physical place.
+
+    Deliberately not stored on addressbook.Contact, even though a few facility
+    pictures ended up there historically: a Contact is a natural or a legal
+    person, and its thumbnails are square, which crops away the facade or the
+    entrance that makes a building recognizable.
+
+    Keyed by the graph uid rather than by a Facility foreign key, so any node
+    that denotes a place can own one without a schema change. The uid is not a
+    database-level reference, so rows outlive a deleted node: see the
+    prune_place_images management command.
+    """
+    neomodel_uid = models.UUIDField(unique=True)
+    image = ThumbnailerImageField(
+        upload_to=place_image_path,
+        blank=True,
+        null=True,
+    )
+    alt = models.TextField(
+        blank=True,
+        help_text="Describes the picture to people who cannot see it.",
+    )
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return str(self.neomodel_uid)
+
+    def _clear_cache(self):
+        # The picture is embedded in the cached facility payloads, so those must
+        # be rebuilt when it changes or it stays invisible until the TTL lapses.
+        from directory.models.core import sync_clear_cache
+        try:
+            sync_clear_cache("v2:public/facilities")
+        except Exception as e:
+            logger.warning(f"could not clear facility cache: {e}")
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self._clear_cache()
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        self._clear_cache()
+
+    class Meta:
+        verbose_name_plural = "Place images"

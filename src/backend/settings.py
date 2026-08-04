@@ -266,10 +266,20 @@ THUMBNAIL_ALIASES = {
     'facility.Organization.logo': {
         'avatar_sm': {'size': (256, 256), 'crop': 'smart'},
         'avatar_lg': {'size': (512, 512), 'crop': 'smart'},
-    }
+    },
+    # Photographs of a place are wide, not square: a building is recognized by
+    # its facade or its entrance, and a 1:1 crop throws away exactly that.
+    'facility.PlaceImage.image': {
+        'place_sm': {'size': (640, 360), 'crop': 'smart'},
+        'place_lg': {'size': (1280, 720), 'crop': 'smart'},
+    },
 }
 
 AVATAR_FILE_STORAGE = config('AVATAR_FILE_STORAGE', default="")
+
+# Kept apart from AVATAR_FILE_STORAGE: these are photographs of buildings, not
+# of people, and mixing them makes the media directory unreadable.
+PLACE_IMAGE_FILE_STORAGE = config('PLACE_IMAGE_FILE_STORAGE', default="place_images")
 
 # Celery
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='amqp://guest:guest@rabbitmq:5672//')
