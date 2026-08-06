@@ -20,6 +20,9 @@ Options:
   -v, --verbose    Show full image pull progress
 
 Environment variables:
+  HOST          SSH destination: an alias from ~/.ssh/config, or user@address
+                (default: staging). Whichever machine runs this script needs
+                the alias defined and a key that reaches it.
   PROJECT_DIR   Remote project directory (default: /opt/dev.medica.im/backend)
   COMPOSE_FILE  Compose file to use (default: docker-compose-production.yml)
   GIT_BRANCH    Branch to pull (default: production)
@@ -46,7 +49,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-HOST="staging"
+HOST="${HOST:-staging}"
 PROJECT_DIR="${PROJECT_DIR:-/opt/dev.medica.im/backend}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-production.yml}"
 GIT_BRANCH="${GIT_BRANCH:-production}"
