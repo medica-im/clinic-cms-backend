@@ -81,7 +81,7 @@ services:
       context: .
       dockerfile: docker/fastapi/Dockerfile
       target: dev
-    command: bash -c "fastapi run main.py --root-path /api/v2 --port 80 --reload --proxy-headers"
+    command: bash -c "fastapi run main.py --root-path /api/v2 --port 80 --reload --proxy-headers --forwarded-allow-ips=172.18.0.1"
     volumes:
       - ./src:/app
       - ${MEDIA_ROOT}:${MEDIA_ROOT}
