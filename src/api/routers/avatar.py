@@ -1,6 +1,7 @@
 import logging
 from typing import Annotated
 from io import BytesIO
+from uuid import uuid4
 from fastapi import APIRouter, status, Request, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from PIL import Image
@@ -85,7 +86,18 @@ async def upload_avatar(
     ext = (file.filename or "avatar.jpg").rsplit(".", 1)[-1].lower()
     if ext not in ("jpg", "jpeg", "png", "webp"):
         ext = "jpg"
-    filename = f"{uid}.{ext}"
+    # A distinct name per upload, not a fixed f"{uid}.{ext}".
+    #
+    # With a fixed name every replacement wrote to the same path, so the URL the
+    # API returns stayed identical while the bytes behind it changed — the one
+    # combination HTTP caching cannot cope with. Clients kept displaying the
+    # previous face until a manual reload, and the frontend could only work
+    # around it with cache-busting query strings.
+    #
+    # This keeps no history: the previous file and its thumbnails are deleted
+    # above, so an entry still holds exactly one picture. Only its name differs.
+    # The uid stays in the name so a file on disk remains traceable to its entry.
+    filename = f"{uid}-{uuid4().hex[:8]}.{ext}"
 
     django_file = InMemoryUploadedFile(
         file=BytesIO(contents),
