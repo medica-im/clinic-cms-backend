@@ -124,10 +124,23 @@ services:
       - ${NEO4J_BACKUP}:/backup
       - ${NEO4J_CERTIFICATES}:/ssl
     environment: 
-      # Raise memory limits
-      #- NEO4J_dbms_memory_pagecache_size=1G
-      #- NEO4J_dbms.memory.heap.initial_size=1G
-      #- NEO4J_dbms_memory_heap_max__size=1G
+      # Memory, sized to the store rather than to the host. Left unset, the JVM
+      # sizes the heap ergonomically at 1/4 of RAM — 4GB on a 15GB dev box, two
+      # orders of magnitude beyond a ~40MB store. That reservation is not free:
+      # the frontend's 4-worker Playwright suite runs 4 Chromiums and 4 Vite
+      # servers on the same machine, and renderers starved of memory die
+      # mid-step, reporting "Target crashed" or an assertion whose Received is
+      # `undefined` rather than a count.
+      #
+      # Initial == max on purpose: a heap that grows mid-run spikes latency
+      # exactly when the browsers are competing for what it takes.
+      #
+      # Neo4j 4.4 reads these as dbms.* settings with '.' -> '_' and a literal
+      # '_' -> '__'. The dotted form (NEO4J_dbms.memory.heap.initial_size) that
+      # stood here commented out is not recognised and is silently ignored.
+      - NEO4J_dbms_memory_heap_initial__size=${NEO4J_HEAP_INITIAL:-512m}
+      - NEO4J_dbms_memory_heap_max__size=${NEO4J_HEAP_MAX:-512m}
+      - NEO4J_dbms_memory_pagecache_size=${NEO4J_PAGECACHE:-256m}
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
       - NEO4J_dbms_logs_query_enabled=OFF
       #- NEO4J_dbms_security_auth__enabled=false
