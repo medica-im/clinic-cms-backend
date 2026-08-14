@@ -65,28 +65,37 @@ ssh "$HOST" bash -s <<EOF
 set -euo pipefail
 cd "$PROJECT_DIR"
 
-echo "==> Pulling repo ($GIT_BRANCH)..."
-git pull origin "$GIT_BRANCH"
+# Only where the deploy directory is still a checkout. The new staging server
+# holds just the compose file and the .env — nothing there is built from
+# source, so there is no repository to pull and this would abort the deploy on
+# a server that is working exactly as intended.
+if [[ -d .git ]]; then
+    echo "==> Pulling repo ($GIT_BRANCH)..."
+    git pull origin "$GIT_BRANCH"
+else
+    echo "==> No checkout here; compose file is managed by infra/"
+fi
 
 echo "==> Pulling latest image..."
 docker compose -f "$COMPOSE_FILE" pull --ignore-buildable $PULL_QUIET_FLAG
 
+# The database image is pulled with everything else now, not built here. It
+# still records the postgres:14 digest it was built from, so this reports when
+# upstream has moved — but rebuilding is a job for
+# infra/scripts/build-postgres-image.sh on a workstation, not for a server that
+# no longer has the repository to build from.
 echo "==> Checking postgres:14 base image..."
 base_digest=\$(docker buildx imagetools inspect postgres:14 --format '{{.Manifest.Digest}}' 2>/dev/null || true)
-built_digest=\$(docker image inspect postgres-non-root --format '{{index .Config.Labels "base.digest"}}' 2>/dev/null || true)
+built_digest=\$(docker image inspect ghcr.io/medica-im/postgres-non-root:14 --format '{{index .Config.Labels "base.digest"}}' 2>/dev/null || true)
+built_digest="\${built_digest##*@}"
 
-if [[ -z "\$base_digest" ]]; then
-    echo "    could not query registry, skipping database rebuild"
+if [[ -z "\$base_digest" || -z "\$built_digest" ]]; then
+    echo "    could not compare digests, skipping the check"
 elif [[ "\$base_digest" == "\$built_digest" ]]; then
-    echo "    up to date (\${base_digest:0:19}), skipping rebuild"
+    echo "    up to date (\${base_digest:0:19})"
 else
-    if [[ -z "\$built_digest" ]]; then
-        echo "    no recorded base digest, rebuilding"
-    else
-        echo "    update available: \${built_digest:0:19} -> \${base_digest:0:19}"
-    fi
-    POSTGRES_BASE_DIGEST="\$base_digest" \\
-        docker compose -f "$COMPOSE_FILE" build --pull database
+    echo "    update available: \${built_digest:0:19} -> \${base_digest:0:19}"
+    echo "    rebuild with: infra/scripts/build-postgres-image.sh"
 fi
 
 echo "==> Restarting..."

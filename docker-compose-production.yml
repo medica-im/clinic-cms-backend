@@ -1,14 +1,20 @@
 services:
   database:
     restart: always                                                                      
-    image: postgres-non-root
-    build:
-      context: .
-      dockerfile: docker/postgres/Dockerfile
-      args:
-        USER_ID: ${USER_ID:-0}
-        GROUP_ID: ${GROUP_ID:-0}
-        BASE_DIGEST: ${POSTGRES_BASE_DIGEST:-}
+    # Pulled, not built. This was the only service still built on the server,
+    # from `context: .` — the whole repository, .git included, uploaded to
+    # build a Dockerfile that copies no file from it. It was also the only
+    # reason this repository had to be cloned onto a server at all.
+    #
+    # Tagged by postgres major version rather than :latest, because the tag has
+    # to match the on-disk data directory: a tag that silently moved to 15
+    # would refuse to start against a version 14 store, and that failure reads
+    # as a corrupt database rather than a wrong image.
+    #
+    # Built and pushed by infra/scripts/build-postgres-image.sh, which bakes in
+    # USER_ID/GROUP_ID 1000 — the uid owning the postgres data on both staging
+    # and production.
+    image: ghcr.io/medica-im/postgres-non-root:14
     shm_size: ${DATABASE_SHM_SIZE}
     command: >
       postgres
