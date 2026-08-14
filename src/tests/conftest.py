@@ -64,8 +64,24 @@ class FakeNodeManager:
 # Django DB fixtures (AccessControl, Roles, Endpoints)
 # ---------------------------------------------------------------------------
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "no_db: this test asserts pure logic and must run without a database",
+    )
+
+
 @pytest.fixture(autouse=True)
-def roles(transactional_db):
+def roles(request):
+    # Autouse, so every test in this directory gets a database whether it needs
+    # one or not. Tests that assert pure logic — which constant wins, what a
+    # value means — should not need postgres to run: a rule that can only be
+    # checked against a live server is a rule nobody checks. Mark those with
+    # @pytest.mark.no_db and neither this fixture nor the database is set up.
+    if request.node.get_closest_marker("no_db"):
+        return {}
+
+    request.getfixturevalue("transactional_db")
     from access.models import Role
     result = {}
     for name in ("superuser", "administrator", "staff", "registered", "anonymous"):

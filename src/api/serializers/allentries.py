@@ -8,10 +8,12 @@ from django.conf import settings
 from api.types.allentry import Entry
 from api.neo4j_auth import get_neo4j_role, normalize_neo4j_role
 from api.utils import (
+    DEFAULT_TTL,
     generate_cache_key,
     get_directory,
     get_ttl,
     get_site_from_request,
+    resolve_ttl,
     set_timestamp,
     scrub,
     strip_slash
@@ -29,7 +31,9 @@ API_VERSION="v2"
 
 logger=logging.getLogger(__name__)
 
-TTL: int = 60
+# Re-exported so the name stays where callers expect it; the value lives in
+# api.utils, which is the one place the fallback is decided.
+TTL: int = DEFAULT_TTL
 
 class AsyncTagSerializer(Serializer):
     uid = serializers.CharField()
@@ -253,7 +257,9 @@ async def get_all_entries(request: Request, jwt, directory_name: str|None = None
     else:
         logger.warning(f"cache for key '{cache_key}' is *** EMPTY ***")
         raw = await get_object_list(request, directory_name=directory_name)
-        timeout = await get_ttl(API_VERSION, request) or TTL
+        # resolve_ttl, not `or`: a configured TTL of 0 means do not cache, and
+        # `or` would read that as "no value" and substitute the default.
+        timeout = resolve_ttl(await get_ttl(API_VERSION, request), TTL)
         logger.debug(f"{timeout=}")
 
         scrubbed_entries_dct = scrub(raw, ["phones"])

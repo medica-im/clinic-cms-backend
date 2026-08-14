@@ -4,7 +4,12 @@ from neomodel import adb
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.core.cache import cache
-from api.utils import get_site_from_request, set_timestamp
+from api.utils import (
+    DEFAULT_TTL as _DEFAULT_TTL,
+    get_site_from_request,
+    resolve_ttl,
+    set_timestamp,
+)
 from api.types.public_facility import Address, PublicFacility
 from directory.models.api import TTL, Endpoint
 from directory.utils import (
@@ -21,7 +26,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 CACHE_ENDPOINT = "v2:public/facilities"
-DEFAULT_TTL = 60
+# The fallback lives in api.utils so all three cached endpoints answer "how
+# long, when nobody has said" with the same number. This was 60.
+DEFAULT_TTL = _DEFAULT_TTL
 
 
 async def _get_place_image(uid: str) -> dict | None:
@@ -61,12 +68,23 @@ async def _get_place_image(uid: str) -> dict | None:
 async def _get_ttl(site):
     try:
         endpoint = await Endpoint.objects.aget(name=CACHE_ENDPOINT)
-        ttl_obj = await TTL.objects.filter(endpoint=endpoint, site=site).afirst()
-        if ttl_obj:
-            return ttl_obj.ttl
     except Endpoint.DoesNotExist:
-        pass
-    return DEFAULT_TTL
+        logger.warning(
+            "no Endpoint row named %s; falling back to the default TTL",
+            CACHE_ENDPOINT,
+        )
+        return DEFAULT_TTL
+
+    ttl_obj = await TTL.objects.filter(endpoint=endpoint, site=site).afirst()
+    if ttl_obj is None:
+        logger.warning(
+            "no TTL row for endpoint=%s site=%s; falling back to the default",
+            CACHE_ENDPOINT, site,
+        )
+        return DEFAULT_TTL
+    # resolve_ttl rather than a truthiness test: a configured 0 means do not
+    # cache, and `if ttl_obj:` on the value would have silently become 60.
+    return resolve_ttl(ttl_obj.ttl, DEFAULT_TTL)
 
 
 async def _get_facility_nodes(

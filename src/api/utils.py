@@ -15,6 +15,32 @@ from directory.models.agraph import Entry
 
 logger = logging.getLogger(__name__)
 
+# How long a cached response lives when no TTL row says otherwise.
+#
+# One name, because this used to be three constants in three files answering
+# the same question with different numbers: 60 in allentries, 60 in
+# public_facilities, 3600 in situations. The 60s ones were the problem. A miss
+# on v2:entries costs ~5s of regeneration on the largest site, and concurrent
+# requests arriving during that gap do not share the work — each rebuilds the
+# same dataset, so four at once took 12.5s apiece. Expiring every minute made
+# that a routine event rather than a rare one.
+#
+# An hour is not a considered cache policy, it is a floor that keeps misses
+# rare. Sites that want something else set a TTL row.
+DEFAULT_TTL = 3600
+
+
+def resolve_ttl(value: int | None, default: int = DEFAULT_TTL) -> int:
+    """Pick between a configured TTL and the fallback.
+
+    Exists because the call sites used ``await get_ttl(...) or DEFAULT``, and
+    ``0`` is falsy in Python: a row saying "do not cache this at all" was
+    silently turned into the default. Only ``None`` — no row — means "no
+    answer", and only ``None`` should fall back.
+    """
+    return default if value is None else value
+
+
 async def get_entry(entry_uid: str) -> Entry:
     try:
         return await Entry.nodes.get(uid=entry_uid)
@@ -128,13 +154,19 @@ async def get_ttl(api_version: str, request):
     endpoint = "%s:%s" % (api_version, path)
     logger.debug(f"{endpoint=}")
     site = await get_site_from_request(request)
-    try:
-        ttl_obj = await TTL.objects.filter(endpoint__name=endpoint,site=site).afirst()
-    except TTL.DoesNotExist as e:
-        logger.error(f"TTL for {endpoint=} {site=} not found: {e}")
-        return
-    if ttl_obj:
-        return ttl_obj.ttl
+    # .afirst() returns None when nothing matches — it does not raise
+    # DoesNotExist, so the except branch that used to be here could never run
+    # and a site with no row of its own left no trace at all.
+    # staging.santelyon3.fr ran on the fallback for months and nobody knew,
+    # because the one line that would have said so was unreachable.
+    ttl_obj = await TTL.objects.filter(endpoint__name=endpoint, site=site).afirst()
+    if ttl_obj is None:
+        logger.warning(
+            "no TTL row for endpoint=%s site=%s; falling back to the default",
+            endpoint, site,
+        )
+        return None
+    return ttl_obj.ttl
 
 ALLOWED_ACCESS = {
     "administrator": {"anonymous", "registered", "staff", "administrator"},
