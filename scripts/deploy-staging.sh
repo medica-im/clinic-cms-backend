@@ -23,7 +23,7 @@ Environment variables:
   HOST          SSH destination: an alias from ~/.ssh/config, or user@address
                 (default: staging). Whichever machine runs this script needs
                 the alias defined and a key that reaches it.
-  PROJECT_DIR   Remote project directory (default: /opt/dev.medica.im/backend)
+  PROJECT_DIR   Remote project directory (default: /opt/backend)
   COMPOSE_FILE  Compose file to use (default: docker-compose-production.yml)
   GIT_BRANCH    Branch to pull (default: production)
 USAGE
@@ -50,7 +50,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 HOST="${HOST:-staging}"
-PROJECT_DIR="${PROJECT_DIR:-/opt/dev.medica.im/backend}"
+# /opt/backend since the August 2026 move to a new staging server. The old path
+# was /opt/dev.medica.im/backend, named after a host that had not been called
+# dev.medica.im for years; the new server puts each deploy directory at
+# /opt/<what it is>.
+PROJECT_DIR="${PROJECT_DIR:-/opt/backend}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-production.yml}"
 GIT_BRANCH="${GIT_BRANCH:-production}"
 
