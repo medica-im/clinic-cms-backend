@@ -202,10 +202,18 @@ def process(entry: dict[str, Any], role: str, attributes: list[str]):
             logger.error(e)
             continue
         if items:
+            # Roles arrive as names ("staff"), not as objects — the serializers
+            # emit a SlugRelatedField. Older payloads nested {"id", "name",
+            # "description"} and this read role["name"]; both shapes are
+            # accepted here because a cached response written before the change
+            # outlives the deploy that made it.
             new_items = [
                 item
                 for item in items
-                if (role in [role["name"] for role in item["roles"]])
+                if role in [
+                    r["name"] if isinstance(r, dict) else r
+                    for r in item["roles"]
+                ]
             ]
             new_count=len(new_items)
             count=len(items)

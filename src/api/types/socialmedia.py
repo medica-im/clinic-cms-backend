@@ -1,7 +1,7 @@
 from typing import FrozenSet, Optional, Set
 from enum import Enum
 from pydantic import BaseModel
-from .shared import Roles, Role
+from .shared import Roles
 
 class SocialMediaTypes(str, Enum):
     TWITTER = 'T'
@@ -28,7 +28,7 @@ class SocialMedia(BaseModel):
     url: str
     type: SocialMediaTypes
     type_display: str
-    roles: list[Role]
+    roles: list[Roles]
 
 
 class SocialMediaPost(BaseModel):

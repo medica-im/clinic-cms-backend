@@ -40,6 +40,10 @@ class SocialNetworkSerializer(serializers.ModelSerializer):
         source='get_type_display'
     )
 
+    # Names, not nested objects — see AsyncPhoneNumberModelSerializer.
+    roles = serializers.SlugRelatedField(
+        slug_field='name', read_only=True, many=True
+    )
     class Meta:
         model = SocialNetwork
         fields = [
@@ -64,6 +68,10 @@ class AsyncProfileSerializer(AsyncModelSerializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    # Names, not nested objects — see AsyncPhoneNumberModelSerializer.
+    roles = serializers.SlugRelatedField(
+        slug_field='name', read_only=True, many=True
+    )
     class Meta:
         model = Profile
         fields = [
@@ -104,6 +112,10 @@ class PhoneNumberSerializer(serializers.ModelSerializer):
     type_display = serializers.CharField(
         source='get_type_display'
     )
+    # Names, not nested objects — see AsyncPhoneNumberModelSerializer.
+    roles = serializers.SlugRelatedField(
+        slug_field='name', read_only=True, many=True
+    )
     class Meta:
         model = PhoneNumber
         fields = [
@@ -121,7 +133,14 @@ class AsyncPhoneNumberModelSerializer(AsyncModelSerializer):
     type_display = serializers.CharField(
         source='get_type_display'
     )
-    roles = AsyncRoleSerializer(read_only=True, many=True)
+    # Names, not nested objects. A role's id and description are not
+    # something any client can use — the frontend renders the label from
+    # src/lib/roles.ts and authorises nothing itself — and shipping them
+    # under every phone, email and website of every entry meant a field
+    # nobody read could still 500 the response that carried it.
+    roles = serializers.SlugRelatedField(
+        slug_field='name', read_only=True, many=True
+    )
     class Meta:
         model = PhoneNumber
         fields = [
@@ -135,6 +154,10 @@ class AsyncPhoneNumberModelSerializer(AsyncModelSerializer):
 
 
 class EmailSerializer(serializers.ModelSerializer):
+    # Names, not nested objects — see AsyncPhoneNumberModelSerializer.
+    roles = serializers.SlugRelatedField(
+        slug_field='name', read_only=True, many=True
+    )
     class Meta:
         model = Email
         fields = [
@@ -146,7 +169,14 @@ class EmailSerializer(serializers.ModelSerializer):
 
 
 class AsyncEmailSerializer(AsyncModelSerializer):
-    roles = AsyncRoleSerializer(read_only=True, many=True)
+    # Names, not nested objects. A role's id and description are not
+    # something any client can use — the frontend renders the label from
+    # src/lib/roles.ts and authorises nothing itself — and shipping them
+    # under every phone, email and website of every entry meant a field
+    # nobody read could still 500 the response that carried it.
+    roles = serializers.SlugRelatedField(
+        slug_field='name', read_only=True, many=True
+    )
     class Meta:
         model = Email
         fields = [
@@ -159,6 +189,10 @@ class AsyncEmailSerializer(AsyncModelSerializer):
 
 class WebsiteSerializer(serializers.ModelSerializer):
 
+    # Names, not nested objects — see AsyncPhoneNumberModelSerializer.
+    roles = serializers.SlugRelatedField(
+        slug_field='name', read_only=True, many=True
+    )
     class Meta:
         model = Website
         fields = [
@@ -170,7 +204,14 @@ class WebsiteSerializer(serializers.ModelSerializer):
 
 
 class AsyncWebsiteSerializer(AsyncModelSerializer):
-    roles = AsyncRoleSerializer(read_only=True, many=True)
+    # Names, not nested objects. A role's id and description are not
+    # something any client can use — the frontend renders the label from
+    # src/lib/roles.ts and authorises nothing itself — and shipping them
+    # under every phone, email and website of every entry meant a field
+    # nobody read could still 500 the response that carried it.
+    roles = serializers.SlugRelatedField(
+        slug_field='name', read_only=True, many=True
+    )
     class Meta:
         model = Website
         fields = [

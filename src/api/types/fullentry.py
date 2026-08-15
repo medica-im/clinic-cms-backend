@@ -3,7 +3,7 @@ from typing import Any
 from decimal import Decimal
 from api.types.appointment import Appointment
 from api.types.convention import Convention
-from api.types.shared import Role
+from api.types.shared import Roles
 from api.types.payment_method import PaymentMethod
 from api.types.third_party_payer import ThirdPartyPayer
 from enum import Enum
@@ -59,7 +59,7 @@ class EffectorType(BaseModel):
 class Email(BaseModel):
     id: int
     email: str
-    roles: list[Role]|None = None
+    roles: list[Roles]|None = None
 
 
 class Facility(BaseModel):
@@ -102,7 +102,7 @@ class Phone(BaseModel):
     phone: str
     type: PhoneType
     type_display: str
-    roles: list[Role]|None = None
+    roles: list[Roles]|None = None
     model_config = ConfigDict(use_enum_values=True)
 
 
@@ -112,12 +112,12 @@ class SocialNetwork(BaseModel):
     url: str
     type: str
     type_display: str|None = None
-    roles: list[Role]|None = None
+    roles: list[Roles]|None = None
 
 
 class Website(BaseModel):
     id: int
-    roles: list[Role]
+    roles: list[Roles]
     url: str
 
 

@@ -1,6 +1,6 @@
 from decimal import Decimal
 from pydantic import BaseModel
-from api.types.shared import Role
+from api.types.shared import Roles
 
 
 class Address(BaseModel):
@@ -23,19 +23,19 @@ class PhonePublic(BaseModel):
     phone: str
     type: str
     type_display: str
-    roles: list[Role]
+    roles: list[Roles]
 
 
 class EmailPublic(BaseModel):
     id: int
     email: str
-    roles: list[Role]
+    roles: list[Roles]
 
 
 class WebsitePublic(BaseModel):
     id: int
     url: str
-    roles: list[Role]
+    roles: list[Roles]
 
 
 class SocialNetworkPublic(BaseModel):
@@ -44,7 +44,7 @@ class SocialNetworkPublic(BaseModel):
     type_display: str
     handle: str | None = None
     url: str
-    roles: list[Role]
+    roles: list[Roles]
 
 
 class Avatar(BaseModel):
