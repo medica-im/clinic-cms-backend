@@ -24,10 +24,12 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         for sql_role in SqlRole.objects.all():
             neo_role = NeoRole()
+            # No label_fr/label_en: role display text is the frontend's, and
+            # copying it here made a third catalogue of the same five strings —
+            # after Postgres and the message files — on nodes that nothing
+            # reads.
             for attr in [
                 "name",
-                "label_fr",
-                "label_en",
                 "description_fr",
                 "description_en",
             ]:

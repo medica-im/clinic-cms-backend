@@ -15,7 +15,6 @@ class RoleAdmin(TranslationAdmin):
     list_display = [
         'id',
         'name',
-        'label',
         'description', 
     ]
 

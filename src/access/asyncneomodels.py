@@ -24,8 +24,6 @@ logger = logging.getLogger(__name__)
 class Role(AsyncStructuredNode):
     uid = UniqueIdProperty()
     name = StringProperty(unique_index=True)
-    label_en = StringProperty()
-    label_fr = StringProperty()
     description_en = StringProperty()
     description_fr = StringProperty()
 

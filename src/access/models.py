@@ -16,8 +16,17 @@ class RoleManager(models.Manager):
 
 
 class Role(models.Model):
+    # `name` is the identifier: AccessControl keys on it and authorize_api
+    # compares against it. There is deliberately no display label here — what a
+    # role is *called* belongs to the frontend, which keeps it in
+    # messages/{fr,en}.json behind src/lib/roles.ts. A `label` field lived here
+    # until 2026-08 with no serializer, no endpoint and no reader beyond the
+    # Django admin, and drifted from the UI in both languages: "Équipe" against
+    # "Équipier", "Management" against "Administrator".
+    #
+    # `description` stays: it is admin-facing prose explaining what a role is
+    # for, not a string the UI renders, so it duplicates nothing.
     name = models.CharField(max_length=255, unique=True)
-    label = models.CharField(max_length=255, unique=True, null=True)
     description = models.TextField(
         blank=True
     )

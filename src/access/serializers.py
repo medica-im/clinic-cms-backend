@@ -8,9 +8,11 @@ class RoleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Role
+        # No 'label': role display text lives in the frontend
+        # (messages/*.json, src/lib/roles.ts). The field was dropped from the
+        # model in access/0005.
         fields = [
             'name',
-            'label',
             'description',
         ]
 
@@ -23,6 +25,5 @@ class AsyncRoleSerializer(AsyncModelSerializer):
         fields = [
             'id',
             'name',
-            'label',
             'description',
         ]
