@@ -40,6 +40,16 @@ async def get_or_create_neo4j_user(jwt: dict, site: Site) -> dict | None:
         if role:
             # Case A: user exists and already has Access for this entry
             return _build_response(user_props, role, jwt)
+
+        # A suspended user reaches here too — the role lookup withholds their
+        # role — and must stop here. Falling through would offer them the
+        # invitee and sandbox paths below, either of which would grant a fresh
+        # access carrying no suspension: the account would let itself back in
+        # simply by signing in again.
+        suspension = await _find_suspension(sub, entry_uid)
+        if suspension:
+            return _build_response(user_props, None, jwt, suspension)
+
         # Case B: user exists but has no Access for this entry — fall through
 
     # 2. Look up active Invitee by email + Entry
@@ -109,10 +119,18 @@ async def _get_entry_uid(site: Site) -> str | None:
 
 
 async def _find_user_by_sub(sub: str, entry_uid: str) -> tuple[dict, str] | None:
-    """Find an existing User via their Account sub, with role scoped to entry."""
+    """Find an existing User via their Account sub, with role scoped to entry.
+
+    A suspended access yields no role. The node stays active and keeps its role
+    so the account remains identifiable and the dashboard can say why nothing
+    works — but every authorization decision reads the role from here, so
+    returning it would leave a suspended administrator with an administrator's
+    powers and make the suspension purely cosmetic.
+    """
     query = """
     MATCH (a:Account {sub: $sub})<-[:HAS_ACCOUNT]-(u:User)
     OPTIONAL MATCH (u)-[:HAS_ACCESS]->(ac:Access {active: true})-[:ACCESS_TO]->(e:Entry {uid: $entry_uid})
+    WHERE ac.suspendedAt IS NULL
     RETURN u, ac.role
     """
     results, _ = await adb.cypher_query(
@@ -418,7 +436,33 @@ async def _claim_entries_by_redeem_email(
         )
 
 
-def _build_response(user_props: dict, role: str | None, jwt: dict) -> dict:
+async def _find_suspension(sub: str, entry_uid: str) -> dict | None:
+    """The suspension on this user's active access, if there is one.
+
+    Asked separately from the role because the role lookup deliberately
+    withholds a suspended user's role — so by the time the caller has "no
+    role", the reason is exactly what has been thrown away. Without this a
+    suspended user and a user who was never granted anything are the same
+    response, and the dashboard can only stay silent.
+    """
+    query = """
+    MATCH (a:Account {sub: $sub})<-[:HAS_ACCOUNT]-(u:User)
+          -[:HAS_ACCESS]->(ac:Access {active: true})
+          -[:ACCESS_TO]->(e:Entry {uid: $entry_uid})
+    WHERE ac.suspendedAt IS NOT NULL
+    RETURN ac.suspendedAt AS suspendedAt, ac.suspensionReason AS reason
+    """
+    results, _ = await adb.cypher_query(
+        query, {"sub": sub, "entry_uid": entry_uid}
+    )
+    if not results:
+        return None
+    return {"suspendedAt": results[0][0], "reason": results[0][1]}
+
+
+def _build_response(
+    user_props: dict, role: str | None, jwt: dict, suspension: dict | None = None
+) -> dict:
     return {
         "uid": user_props.get("uid"),
         "name": user_props.get("name"),
@@ -428,4 +472,10 @@ def _build_response(user_props: dict, role: str | None, jwt: dict) -> dict:
         "gender": None,
         "effector": None,
         "full_name": user_props.get("name"),
+        # Stated rather than inferred from a missing role: "no role" is also
+        # what a brand-new account with no access looks like, and telling
+        # somebody they are suspended when they simply have not been granted
+        # anything is its own kind of wrong.
+        "suspended": suspension is not None,
+        "suspensionReason": suspension.get("reason") if suspension else None,
     }
