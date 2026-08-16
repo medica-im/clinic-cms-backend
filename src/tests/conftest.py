@@ -132,7 +132,12 @@ def appointments_acl(transactional_db, roles):
 def _make_jwt(role_name: str, sub: str = "test-sub") -> dict:
     return {
         "email": f"{role_name}@example.com",
+        # The auth code reads providerAccountId; `sub` is the same value under
+        # the name a test uses when it seeds the caller's own Account, so a
+        # test can say "this user is me" without knowing which key the JWT
+        # happens to use.
         "providerAccountId": sub,
+        "sub": sub,
         "name": f"Test {role_name.title()}",
     }
 
@@ -150,6 +155,11 @@ def jwt_owner():
 @pytest.fixture
 def jwt_staff():
     return _make_jwt("staff", sub="staff-sub-001")
+
+
+@pytest.fixture
+def jwt_registered():
+    return _make_jwt("registered", sub="registered-sub-001")
 
 
 @pytest.fixture
