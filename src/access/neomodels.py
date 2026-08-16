@@ -62,10 +62,21 @@ class Access(StructuredNode):
     )
     createdAt = IntegerProperty(default=lambda: time_ns() // 1_000_000)
     createdBy = RelationshipTo('User', 'CREATED_BY')
+    # Kept in step with access/asyncneomodels.py, which is the copy the API
+    # actually uses; see the comments there for what each of these is for. The
+    # two definitions describe the same nodes, so a field added to one and not
+    # the other is a field that exists or not depending on which import ran —
+    # which is how label_fr survived here after being dropped everywhere else.
+    createdByRole = StringProperty(choices=ROLES)
     active = BooleanProperty(
         index=True,
         default=True
     )
+    supersededAt = IntegerProperty()
+    supersededBy = RelationshipTo('User', 'SUPERSEDED_BY')
+    suspendedAt = IntegerProperty()
+    suspendedBy = RelationshipTo('User', 'SUSPENDED_BY')
+    suspensionReason = StringProperty()
 
 
 class Invitee(StructuredNode):
