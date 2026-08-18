@@ -148,6 +148,10 @@ services:
       start_period: ${NEO4J_HEALTHCHECK_START_PERIOD:-30s}
 
   rabbitmq:
+    # Every other long-running service here restarts; without this one the
+    # broker stays down after a reboot and celery waits on a broker that is
+    # never coming back.
+    restart: always
     image: rabbitmq:4-management-alpine
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}

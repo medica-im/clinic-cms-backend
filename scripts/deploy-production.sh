@@ -11,26 +11,41 @@
 #
 # What this adds is the part that should differ: production values, and a pause
 # to confirm them before anything is touched.
+#
+# Production is two machines, not one. `production` runs the annuaire itself;
+# `annuaire.medica.im` runs the sandbox against the same production image. Both
+# want the same image at the same time, so deploying to one and remembering the
+# other later is how they drift apart. Deploying both is the default.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STAGING_SCRIPT="$HERE/deploy-staging.sh"
 
-# Overridable like deploy-staging.sh's own defaults, so a second production
-# machine needs no new script.
-HOST="${HOST:-production}"
-# Alongside the frontends, which live at /opt/annuaire.medica.im/<site>.
-PROJECT_DIR="${PROJECT_DIR:-/opt/annuaire.medica.im/backend}"
+# Each target is "host:directory". HOST/PROJECT_DIR still override, and still
+# name a single machine, so a one-off deploy to one of them needs no new script.
+TARGETS=(
+    # The annuaire. Its backend sits alongside the frontends in
+    # /opt/annuaire.medica.im/<site>.
+    "production:/opt/annuaire.medica.im/backend"
+    # The sandbox. Here the backend has a directory of its own and
+    # /opt/annuaire.medica.im is the frontend.
+    "annuaire.medica.im:/opt/backend"
+)
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-production.yml}"
 GIT_BRANCH="${GIT_BRANCH:-production}"
+
+# An explicit HOST means that machine and no other.
+if [[ -n "${HOST:-}" ]]; then
+    TARGETS=("$HOST:${PROJECT_DIR:-/opt/backend}")
+fi
 
 usage() {
     cat <<USAGE
 Usage: $(basename "$0") [-h] [-v] [-y]
 
-Deploy the backend to the production server. Pulls the latest code and image
-and restarts the stack over SSH, exactly as deploy-staging.sh does — this only
-points it at production and asks first.
+Deploy the backend to every production machine: the annuaire and the sandbox.
+Pulls the latest code and image and restarts the stack over SSH, exactly as
+deploy-staging.sh does — this only points it at production and asks first.
 
 Options:
   -h, --help       Show this help message and exit
@@ -38,8 +53,8 @@ Options:
   -y, --yes        Do not ask for confirmation
 
 Environment variables:
-  HOST          SSH destination (default: $HOST)
-  PROJECT_DIR   Remote project directory (default: $PROJECT_DIR)
+  HOST          Deploy to this one machine instead of all of them
+  PROJECT_DIR   Remote project directory for that machine (default: /opt/backend)
   COMPOSE_FILE  Compose file to use (default: $COMPOSE_FILE)
   GIT_BRANCH    Branch to pull (default: $GIT_BRANCH)
 USAGE
@@ -65,12 +80,14 @@ if [[ $ASSUME_YES -eq 0 ]]; then
     cat <<MSG
 About to deploy the backend to PRODUCTION:
 
-  host       $HOST
-  directory  $PROJECT_DIR
   branch     $GIT_BRANCH
   compose    $COMPOSE_FILE
 
 MSG
+    for target in "${TARGETS[@]}"; do
+        printf '  %s  %s\n' "${target%%:*}" "${target#*:}"
+    done
+    echo
     # From the terminal, not from the pipe a script might be feeding in: read
     # would otherwise take a line of that input as the answer.
     if [[ ! -t 0 ]]; then
@@ -84,8 +101,27 @@ MSG
     esac
 fi
 
-HOST="$HOST" \
-PROJECT_DIR="$PROJECT_DIR" \
-COMPOSE_FILE="$COMPOSE_FILE" \
-GIT_BRANCH="$GIT_BRANCH" \
-    exec "$STAGING_SCRIPT" ${PASS_THROUGH[@]+"${PASS_THROUGH[@]}"}
+# Not exec: that would replace this process and never reach the second target.
+# Nor set -e alone — a failed first host would abort before the second is even
+# attempted, leaving the two on different images with no word about it. Each
+# host is tried, and the failures are reported together at the end.
+failed=()
+for target in "${TARGETS[@]}"; do
+    host="${target%%:*}"
+    echo
+    echo "======> $host"
+    if ! HOST="$host" \
+         PROJECT_DIR="${target#*:}" \
+         COMPOSE_FILE="$COMPOSE_FILE" \
+         GIT_BRANCH="$GIT_BRANCH" \
+         "$STAGING_SCRIPT" ${PASS_THROUGH[@]+"${PASS_THROUGH[@]}"}; then
+        echo "error: deploy to $host failed" >&2
+        failed+=("$host")
+    fi
+done
+
+if [[ ${#failed[@]} -gt 0 ]]; then
+    echo >&2
+    echo "error: deploy failed on: ${failed[*]}" >&2
+    exit 1
+fi
