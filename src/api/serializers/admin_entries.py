@@ -3,7 +3,10 @@ import logging
 from neomodel import adb
 
 from api.types.admin_entry import (
+    AdminCommune,
+    AdminDepartment,
     AdminEffectorType,
+    AdminTag,
     AdminEntry,
     AdminFacility,
     AdminUser,
@@ -25,6 +28,8 @@ MATCH (d:Directory {name: $directory_name})-[:HAS_ENTRY]->(entry:Entry)
 OPTIONAL MATCH (entry)-[:HAS_EFFECTOR]->(effector:Effector)
 OPTIONAL MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
 OPTIONAL MATCH (entry)-[:HAS_FACILITY]->(f:Facility)
+OPTIONAL MATCH (f)-->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)
+OPTIONAL MATCH (entry)<-[:TAGS]-(tag:Tag)
 OPTIONAL MATCH (entry)-[:CREATED_BY]->(creator:User)
 OPTIONAL MATCH (entry)-[:OWNED_BY]->(owner:User)
 OPTIONAL MATCH (entry)<-[:HAS_ENTRY]-(dir:Directory)
@@ -33,6 +38,9 @@ RETURN
     effector,
     et,
     f,
+    commune,
+    dpt,
+    COLLECT(DISTINCT {uid: tag.uid, name: tag.name}) AS tags,
     COLLECT(DISTINCT {uid: creator.uid, name: creator.name}) AS creators,
     COLLECT(DISTINCT {uid: owner.uid, name: owner.name}) AS owners,
     COLLECT(DISTINCT dir.name) AS directories
@@ -176,8 +184,20 @@ async def get_admin_entries(directory_name: str) -> list[AdminEntry]:
 
     entries: list[AdminEntry] = []
     for row in results:
-        entry, effector, et, facility, creators, owners, directories = row
+        (
+            entry,
+            effector,
+            et,
+            facility,
+            commune,
+            department,
+            tags,
+            creators,
+            owners,
+            directories,
+        ) = row
         # resolve_objects wraps collected rows in a single-element list.
+        tags = tags[0] if tags else []
         creators = creators[0] if creators else []
         owners = owners[0] if owners else []
         directories = directories[0] if directories else []
@@ -216,6 +236,30 @@ async def get_admin_entries(directory_name: str) -> list[AdminEntry]:
                     if facility is not None
                     else None
                 ),
+                commune=(
+                    AdminCommune(
+                        uid=commune.uid,
+                        # name_fr, not name: Commune nodes carry the language
+                        # suffix, and reading "name" silently yields null.
+                        name=getattr(commune, "name_fr", None)
+                        or getattr(commune, "name_en", None),
+                    )
+                    if commune is not None
+                    else None
+                ),
+                department=(
+                    AdminDepartment(
+                        code=getattr(department, "code", None),
+                        name=getattr(department, "name", None),
+                    )
+                    if department is not None
+                    else None
+                ),
+                tags=[
+                    AdminTag(uid=t["uid"], name=t.get("name"))
+                    for t in tags
+                    if t and t.get("uid")
+                ],
                 directories=[d for d in directories if d],
                 creators=_users(creators),
                 owners=_users(owners),

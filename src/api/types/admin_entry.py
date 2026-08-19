@@ -27,6 +27,21 @@ class AdminEffectorType(BaseModel):
     slug: str | None = None
 
 
+class AdminCommune(BaseModel):
+    uid: str
+    name: str | None = None
+
+
+class AdminDepartment(BaseModel):
+    code: str | None = None
+    name: str | None = None
+
+
+class AdminTag(BaseModel):
+    uid: str
+    name: str | None = None
+
+
 class AdminEntry(BaseModel):
     """One row of the administrative entries table.
 
@@ -57,6 +72,13 @@ class AdminEntry(BaseModel):
     access: str = "anonymous"
     effector_type: AdminEffectorType | None = None
     facility: AdminFacility | None = None
+    # Carried so the administrative page can reuse the addressbook's own
+    # selectors — commune, department, type, facility and tag — over this
+    # payload. The alternative was filtering the public feed, which omits
+    # inactive entries and would silently drop the rows this page exists for.
+    commune: AdminCommune | None = None
+    department: AdminDepartment | None = None
+    tags: list[AdminTag] = []
     directories: list[str] = []
     creators: list[AdminUser] = []
     owners: list[AdminUser] = []
