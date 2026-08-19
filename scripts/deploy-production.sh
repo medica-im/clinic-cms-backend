@@ -24,11 +24,9 @@ STAGING_SCRIPT="$HERE/deploy-staging.sh"
 # Each target is "host:directory". HOST/PROJECT_DIR still override, and still
 # name a single machine, so a one-off deploy to one of them needs no new script.
 TARGETS=(
-    # The annuaire. Its backend sits alongside the frontends in
-    # /opt/annuaire.medica.im/<site>.
-    "production:/opt/annuaire.medica.im/backend"
-    # The sandbox. Here the backend has a directory of its own and
-    # /opt/annuaire.medica.im is the frontend.
+    # The annuaire.
+    "production:/opt/backend"
+    # The sandbox. Its /opt/annuaire.medica.im is the frontend, not this.
     "annuaire.medica.im:/opt/backend"
 )
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-production.yml}"
