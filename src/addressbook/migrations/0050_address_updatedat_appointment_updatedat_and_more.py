@@ -2,6 +2,38 @@
 
 from django.db import migrations, models
 
+MODELS = (
+    "Address",
+    "Appointment",
+    "Email",
+    "PhoneNumber",
+    "SocialNetwork",
+    "Website",
+)
+
+
+def clear_backfilled_stamps(apps, schema_editor):
+    """Leave the new column empty rather than stamped with this moment.
+
+    `auto_now=True` writes the field on every save, and adding it fills every
+    existing row with the timestamp of the migration itself. On this database
+    that was 849 contacts sharing one value to the second, and the
+    administrative table duly showed every entry last modified at 19/08/2026
+    17:10 -- a date describing when the column was created and nothing about
+    the entries themselves.
+
+    NULL is the honest value: the table renders it as a dash, meaning "not
+    recorded", and each row gains a real date the first time it is genuinely
+    edited. A fabricated date is worse than none, because it looks like data.
+    """
+    for model_name in MODELS:
+        model = apps.get_model("addressbook", model_name)
+        model.objects.update(updatedAt=None)
+
+
+def noop(apps, schema_editor):
+    """Nothing to undo: the column goes away with the AddField above."""
+
 
 class Migration(migrations.Migration):
 
@@ -40,4 +72,5 @@ class Migration(migrations.Migration):
             name='updatedAt',
             field=models.DateTimeField(auto_now=True, null=True),
         ),
+        migrations.RunPython(clear_backfilled_stamps, noop),
     ]
