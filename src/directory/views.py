@@ -21,6 +21,7 @@ from directory.models.core import Label
 from directory.utils import (
     get_directory,
     get_ttl,
+    resolve_ttl,
 )
 from directory.models.core import sync_set_timestamp
 
@@ -130,7 +131,7 @@ class EffectorTypeLabel(APIView):
         else:
             logger.debug(f"cache for key '{cache_key}' is *** EMPTY ***")
             value = get_effector_type_labels(language, "name")
-            timeout = get_ttl(endpoint, request) or TTL
+            timeout = resolve_ttl(get_ttl(endpoint, request), TTL)
             logger.debug(f"{timeout=}")
             cache.set(
                 cache_key,

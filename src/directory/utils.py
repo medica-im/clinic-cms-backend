@@ -108,14 +108,36 @@ def generate_cache_key(api_name, resource_name, request):
         cache_key = "%s:%s:%s" % (api_name, resource_name, domain)
         return cache_key
 
+def resolve_ttl(value: int | None, default: int) -> int:
+    """Pick between a configured TTL and the fallback.
+
+    A twin of api.utils.resolve_ttl, duplicated rather than imported: that
+    module pulls in fastapi at import time, which the Django container does not
+    install, so importing it here breaks every view in this file. Four lines of
+    duplication against an ImportError in production is the better trade.
+
+    Exists because the call sites read ``get_ttl(...) or DEFAULT``, and ``0`` is
+    falsy in Python: a row saying "do not cache this at all" was silently turned
+    into the default. Only ``None`` — no row — means "no answer".
+    """
+    return default if value is None else value
+
 def get_ttl(endpoint: str, request):
     site = get_current_site(request)
-    try:
-        ttl_obj = TTL.objects.filter(endpoint__name=endpoint,site=site).first()
-    except TTL.DoesNotExist:
-        return
-    if ttl_obj:
-        return ttl_obj.ttl
+    # .first() returns None when nothing matches — it does not raise
+    # DoesNotExist, so the try/except that used to be here could never run and
+    # a site with no row of its own left no trace at all. The async twin in
+    # api/utils.py carried the same mistake: staging.santelyon3.fr ran on the
+    # fallback for months and nobody knew, because the one line that would have
+    # said so was unreachable.
+    ttl_obj = TTL.objects.filter(endpoint__name=endpoint, site=site).first()
+    if ttl_obj is None:
+        logger.warning(
+            "no TTL row for endpoint=%s site=%s; falling back to the default",
+            endpoint, site,
+        )
+        return None
+    return ttl_obj.ttl
 
 def get_directory_for_site(site):
     """Core logic: resolve a single Directory for a given Site.

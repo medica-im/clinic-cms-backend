@@ -59,7 +59,7 @@ apps.check_models_ready()
 from fastapi import FastAPI, Request, Cookie
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers import organization, organization_types, effector_types, facilities, communes, departments, entries, effectors, auth, phones, monkeys, emails, websites, payment_methods, third_party_payers, conventions, appointment, fullentries, tags, allentries, socialmedia, situations, invitees, users, avatar, batch_emails, batch_invitees, association, organization_role, membership_category, public_facilities, carehomes, listmonk_export, directories
+from api.routers import organization, organization_types, effector_types, facilities, communes, departments, entries, effectors, auth, phones, monkeys, emails, websites, payment_methods, third_party_payers, conventions, appointment, fullentries, tags, allentries, socialmedia, situations, invitees, users, avatar, batch_emails, batch_invitees, association, organization_role, membership_category, public_facilities, carehomes, listmonk_export, directories, effector_type_labels
 from django.conf import settings
 from fastapi_nextauth_jwt.exceptions import MissingTokenError
 
@@ -104,6 +104,7 @@ app.include_router(batch_emails.router)
 app.include_router(batch_invitees.router)
 app.include_router(association.router)
 app.include_router(directories.router)
+app.include_router(effector_type_labels.router)
 app.include_router(organization_role.router)
 app.include_router(membership_category.router)
 app.include_router(public_facilities.router)

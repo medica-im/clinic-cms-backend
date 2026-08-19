@@ -3,7 +3,6 @@ from typing import Annotated
 from uuid import uuid4
 from fastapi import APIRouter, Request, Depends, status, HTTPException
 from neomodel import adb
-from asgiref.sync import sync_to_async
 from api.auth import JWT, authorize_api
 from api.types.organization_role import (
     OrganizationRolePost,
@@ -129,9 +128,12 @@ async def get_organization_role_labels(
 ) -> OrganizationRoleLabelsResponse:
     from api.utils import get_site_from_request
     from facility.models import Organization
-    from directory.views import get_effector_type_labels
+    from api.serializers.effector_type_labels import get_effector_type_labels
 
     site = await get_site_from_request(request)
     organization = await Organization.objects.select_related('site').aget(site=site)
-    labels = await sync_to_async(get_effector_type_labels)(organization.language, "officer")
-    return labels
+    # The async builder shared with /effector-type-labels, which differs only
+    # in term_type. Was the sync one in directory/views.py behind
+    # sync_to_async, until that view was retired with the v1 endpoint.
+    labels = await get_effector_type_labels(organization.language, "officer")
+    return labels.root
