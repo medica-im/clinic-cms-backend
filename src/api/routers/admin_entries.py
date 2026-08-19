@@ -63,15 +63,18 @@ async def admin_entries(
     request: Request,
     role: Annotated[str, Depends(require_admin_role)],
 ) -> list[AdminEntry]:
-    """Every entry in the site's directory, including the inactive ones.
+    """The administrative fields for every entry, keyed by uid.
 
-    Uncached, on purpose. The public /entries response is cached per role for
-    an hour, which is right for a card list read thousands of times a day and
-    wrong twice over here: an administrative payload sitting in Redis is
-    separated from an anonymous one by nothing but the correctness of a cache
-    key, and an audit table showing hour-old ownership actively misleads the
-    person reading it. Nothing in this module writes to the cache, and that
-    absence is the feature — not an optimisation waiting to be made.
+    Only what /api/v2/entries does not carry: the creation date, the contact
+    timestamp, why an entry was deactivated, and the names behind the creator
+    and owner uids. The page merges them onto the entries it already holds.
+
+    Uncached, while /entries is cached per role. Not because a cache would go
+    stale — every write invalidates it — but because caching buys nothing here:
+    two administrators and three superusers read this, against the effectively
+    unbounded anonymous traffic the /entries cache exists to absorb. That cache
+    covers administrators too, deliberately, since it is what keeps the rest of
+    the site fast for them.
     """
     directory = await get_directory(request)
     return await get_admin_entries(directory.name)

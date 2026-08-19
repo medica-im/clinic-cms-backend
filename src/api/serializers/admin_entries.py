@@ -2,49 +2,33 @@ import logging
 
 from neomodel import adb
 
-from api.types.admin_entry import (
-    AdminCommune,
-    AdminDepartment,
-    AdminEffectorType,
-    AdminTag,
-    AdminEntry,
-    AdminFacility,
-    AdminUser,
-)
+from api.types.admin_entry import AdminEntry, AdminUser
 
 logger = logging.getLogger(__name__)
 
-# Every entry in the directory, active and inactive alike, with the people and
-# timestamps an administrator needs to audit it.
+# Only what /api/v2/entries does not already carry.
 #
-# Separate from directory.utils.get_entries_query rather than a flag on it: that
-# query feeds the public addressbook and is tuned for it — it INNER-joins
-# facility, commune, department and country, so an entry missing any of them
-# vanishes. For a public card list that is right; for an audit table it is
-# exactly backwards, since a half-configured entry is the one an administrator
-# most needs to find. Everything here is OPTIONAL for that reason.
+# The public feed serves an administrator every entry — access filtering does
+# not apply above staff — with its name, slug, type, facility, commune,
+# department, tags, directories, access and active state. The page has that
+# payload in hand before this endpoint is called, because the root layout
+# fetches it on every route. Repeating it here would mean a second walk over
+# the same graph to produce data the browser already holds.
+#
+# So this query stays narrow: the entry uid to join on, the two timestamps the
+# feed lacks, why it was deactivated, and the people involved with their names
+# rather than bare uids.
 ADMIN_ENTRIES_QUERY = """
 MATCH (d:Directory {name: $directory_name})-[:HAS_ENTRY]->(entry:Entry)
-OPTIONAL MATCH (entry)-[:HAS_EFFECTOR]->(effector:Effector)
-OPTIONAL MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
-OPTIONAL MATCH (entry)-[:HAS_FACILITY]->(f:Facility)
-OPTIONAL MATCH (f)-->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)
-OPTIONAL MATCH (entry)<-[:TAGS]-(tag:Tag)
 OPTIONAL MATCH (entry)-[:CREATED_BY]->(creator:User)
 OPTIONAL MATCH (entry)-[:OWNED_BY]->(owner:User)
-OPTIONAL MATCH (entry)<-[:HAS_ENTRY]-(dir:Directory)
 RETURN
-    entry,
-    effector,
-    et,
-    f,
-    commune,
-    dpt,
-    COLLECT(DISTINCT {uid: tag.uid, name: tag.name}) AS tags,
+    entry.uid AS uid,
+    entry.createdAt AS createdAt,
+    entry.deactivation_reason AS deactivation_reason,
+    toString(entry.deactivation_datetime) AS deactivation_datetime,
     COLLECT(DISTINCT {uid: creator.uid, name: creator.name}) AS creators,
-    COLLECT(DISTINCT {uid: owner.uid, name: owner.name}) AS owners,
-    COLLECT(DISTINCT dir.name) AS directories
-ORDER BY entry.createdAt DESC
+    COLLECT(DISTINCT {uid: owner.uid, name: owner.name}) AS owners
 """
 
 
@@ -69,24 +53,20 @@ def last_modified_of(contact):
     what happened to contactUpdatedAt, wired into all eight models' save() and
     still 0 on every entry in dev.
 
-    Returns None when the contact has nothing attached: an entry with no
-    contact data has never been modified, and the column shows a dash rather
-    than a fabricated date.
+    Deletion is the case a max() over the children cannot see on its own: a
+    deleted row takes its timestamp with it, so the maximum can move backwards.
+    The contact's own updatedAt is included first for that reason, moved by the
+    post_delete receiver in addressbook.models, and it is read from the
+    database rather than from the in-memory instance because that receiver
+    writes with a queryset update.
 
-    Deletion is the case this cannot see on its own — a deleted row takes its
-    timestamp with it, so the max over the survivors can move backwards. The
-    delete routes stamp the entry itself for that reason; see
-    tests/test_entry_modification_timestamps.py::TestDeletionIsVisible.
+    contact_timestamps() below is the bulk form used by the endpoint; this is
+    the per-contact one, kept because it states the rule the bulk query
+    depends on.
     """
     if contact is None:
         return None
-    # The contact's own stamp leads, because it is the one that survives a
-    # related object being deleted — the receiver in addressbook.models moves
-    # it on every post_delete.
     stamps = []
-    # Read from the database rather than from the in-memory instance: the
-    # post_delete receiver moves this column with a queryset update, which
-    # cannot reach an object the caller is already holding.
     own = (
         type(contact)
         .objects.filter(pk=contact.pk)
@@ -104,7 +84,7 @@ def last_modified_of(contact):
             if stamp is not None:
                 stamps.append(stamp)
     # Profile carries `updated` rather than `updatedAt` — it predates this and
-    # keeps its own name; see TestProfileAlreadyHadThis.
+    # keeps its own name.
     profile = getattr(contact, "profile", None)
     if profile is not None:
         stamp = getattr(profile, "updated", None)
@@ -128,28 +108,13 @@ def _users(rows: list[dict]) -> list[AdminUser]:
     ]
 
 
-def _name_of(effector, entry) -> str | None:
-    """The entry's display name.
-
-    The Effector carries the person's name in the site's language; falling back
-    to the entry slug keeps a half-configured entry identifiable in the table
-    instead of showing a blank row.
-    """
-    if effector is not None:
-        for attribute in ("name_fr", "name_en", "name"):
-            value = getattr(effector, attribute, None)
-            if value:
-                return value
-    return getattr(entry, "slug", None)
-
-
 async def contact_timestamps(entry_uids: list[str]) -> dict[str, int]:
     """The last Postgres edit for each entry, in milliseconds.
 
-    One query for the whole table rather than one per row: at 223 entries the
-    per-row form would be 223 round trips for a column, and Contact carries the
-    answer already — its own updatedAt is moved by every related object's save
-    and by the post_delete receiver.
+    One query for the whole table rather than one per row. Contact carries the
+    answer already: its own updatedAt is moved by every related object's save
+    and by the post_delete receiver, so it covers phones, emails, websites,
+    social networks, appointments and the avatar without visiting any of them.
 
     Keyed by the entry uid in hex, matching how neomodel stores node uids.
     """
@@ -159,7 +124,6 @@ async def contact_timestamps(entry_uids: list[str]) -> dict[str, int]:
     uids = {u for u in entry_uids if u}
     if not uids:
         return stamps
-    # neomodel_uid is a UUIDField; the graph holds the same value as hex.
     async for contact in Contact.objects.filter(neomodel_uid__in=uids).only(
         "neomodel_uid", "updatedAt"
     ):
@@ -170,99 +134,32 @@ async def contact_timestamps(entry_uids: list[str]) -> dict[str, int]:
 
 
 async def get_admin_entries(directory_name: str) -> list[AdminEntry]:
-    """Every entry in one directory, with its administrative fields.
+    """The administrative fields for every entry in one directory.
 
     Not cached, by design — see the router.
     """
     results, _ = await adb.cypher_query(
-        ADMIN_ENTRIES_QUERY,
-        {"directory_name": directory_name},
-        resolve_objects=True,
+        ADMIN_ENTRIES_QUERY, {"directory_name": directory_name}
     )
 
-    stamps = await contact_timestamps([row[0].uid for row in results])
+    stamps = await contact_timestamps([row[0] for row in results])
 
-    entries: list[AdminEntry] = []
-    for row in results:
-        (
-            entry,
-            effector,
-            et,
-            facility,
-            commune,
-            department,
-            tags,
+    return [
+        AdminEntry(
+            uid=uid,
+            createdAt=createdAt,
+            contactUpdatedAt=stamps.get(uid),
+            deactivation_reason=deactivation_reason,
+            deactivation_datetime=deactivation_datetime,
+            creators=_users(creators),
+            owners=_users(owners),
+        )
+        for (
+            uid,
+            createdAt,
+            deactivation_reason,
+            deactivation_datetime,
             creators,
             owners,
-            directories,
-        ) = row
-        # resolve_objects wraps collected rows in a single-element list.
-        tags = tags[0] if tags else []
-        creators = creators[0] if creators else []
-        owners = owners[0] if owners else []
-        directories = directories[0] if directories else []
-
-        entries.append(
-            AdminEntry(
-                uid=entry.uid,
-                slug=getattr(entry, "slug", None),
-                name=_name_of(effector, entry),
-                active=bool(getattr(entry, "active", False)),
-                createdAt=getattr(entry, "createdAt", None),
-                updatedAt=getattr(entry, "updatedAt", None),
-                contactUpdatedAt=stamps.get(entry.uid),
-                deactivation_reason=getattr(entry, "deactivation_reason", None),
-                deactivation_datetime=(
-                    str(entry.deactivation_datetime)
-                    if getattr(entry, "deactivation_datetime", None)
-                    else None
-                ),
-                access=getattr(entry, "access", None) or "anonymous",
-                effector_type=(
-                    AdminEffectorType(
-                        uid=et.uid,
-                        name=getattr(et, "name_fr", None) or getattr(et, "name_en", None),
-                        slug=getattr(et, "slug_fr", None) or getattr(et, "slug_en", None),
-                    )
-                    if et is not None
-                    else None
-                ),
-                facility=(
-                    AdminFacility(
-                        uid=facility.uid,
-                        name=getattr(facility, "label", None) or getattr(facility, "name", None),
-                        slug=getattr(facility, "slug", None),
-                    )
-                    if facility is not None
-                    else None
-                ),
-                commune=(
-                    AdminCommune(
-                        uid=commune.uid,
-                        # name_fr, not name: Commune nodes carry the language
-                        # suffix, and reading "name" silently yields null.
-                        name=getattr(commune, "name_fr", None)
-                        or getattr(commune, "name_en", None),
-                    )
-                    if commune is not None
-                    else None
-                ),
-                department=(
-                    AdminDepartment(
-                        code=getattr(department, "code", None),
-                        name=getattr(department, "name", None),
-                    )
-                    if department is not None
-                    else None
-                ),
-                tags=[
-                    AdminTag(uid=t["uid"], name=t.get("name"))
-                    for t in tags
-                    if t and t.get("uid")
-                ],
-                directories=[d for d in directories if d],
-                creators=_users(creators),
-                owners=_users(owners),
-            )
-        )
-    return entries
+        ) in results
+    ]

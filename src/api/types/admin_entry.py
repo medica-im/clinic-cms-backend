@@ -15,72 +15,37 @@ class AdminUser(BaseModel):
     name: str | None = None
 
 
-class AdminFacility(BaseModel):
-    uid: str
-    name: str | None = None
-    slug: str | None = None
-
-
-class AdminEffectorType(BaseModel):
-    uid: str
-    name: str | None = None
-    slug: str | None = None
-
-
-class AdminCommune(BaseModel):
-    uid: str
-    name: str | None = None
-
-
-class AdminDepartment(BaseModel):
-    code: str | None = None
-    name: str | None = None
-
-
-class AdminTag(BaseModel):
-    uid: str
-    name: str | None = None
-
-
 class AdminEntry(BaseModel):
-    """One row of the administrative entries table.
+    """What /api/v2/entries does not carry, keyed by uid.
 
-    Everything here is either already public (name, slug, type, facility) or
-    administrative (who created it, who owns it, when, why it was deactivated).
-    The administrative half is why this type is not reachable from any
-    anonymous endpoint: see api/routers/admin_entries.py.
+    Deliberately not a whole entry. The public feed already serves the name,
+    slug, type, facility, commune, department, tags, directories, access and
+    active state — and serves all of them to an administrator, who is not
+    filtered by access level. Repeating them here would mean a second Cypher
+    walk over the same graph for a page that has already loaded the first.
+
+    So this is the difference: the four things an audit view needs that the
+    addressbook has no reason to publish. The page joins them onto the entries
+    it already has, by uid.
+
+    It stays a separate endpoint rather than four more fields on the public
+    one because `deactivation_reason` is free text an administrator wrote about
+    why a practitioner left, and creator/owner names identify the people who
+    maintain each entry. Neither belongs in a response anonymous visitors can
+    fetch, where the only thing keeping them out would be a scrub list somebody
+    has to remember to update — the mechanism that already leaked restricted
+    websites once.
     """
 
     uid: str
-    slug: str | None = None
-    name: str | None = None
-    active: bool
     # Milliseconds since the epoch, like every other timestamp in this project.
     createdAt: int | None = None
-    updatedAt: int | None = None
     # The most recent edit to the Postgres contact rows — phones, emails,
-    # websites, the avatar. Separate from updatedAt because the two stores are
-    # stamped independently: changing a phone leaves the graph node untouched
-    # and changing the access level leaves every Postgres row untouched, so
-    # neither timestamp alone says when the entry last changed.
+    # websites, the avatar. The graph node's own updatedAt is in the public
+    # feed; the later of the two is when the entry actually changed.
     contactUpdatedAt: int | None = None
-    # Free text written by an administrator, which may describe a person's
-    # circumstances — one of the reasons this endpoint is admin-only.
+    # Free text, which may describe a person's circumstances.
     deactivation_reason: str | None = None
     deactivation_datetime: str | None = None
-    # The minimum role that may see this entry in the public directory.
-    access: str = "anonymous"
-    effector_type: AdminEffectorType | None = None
-    facility: AdminFacility | None = None
-    # Carried so the administrative page can reuse the addressbook's own
-    # selectors — commune, department, type, facility and tag — over this
-    # payload rather than fetching the public feed alongside it. The public
-    # feed would serve this page's audience fine; this endpoint exists because
-    # it is uncached and because creator and owner names do not belong in a
-    # response anonymous visitors can reach.
-    commune: AdminCommune | None = None
-    department: AdminDepartment | None = None
-    tags: list[AdminTag] = []
-    directories: list[str] = []
     creators: list[AdminUser] = []
     owners: list[AdminUser] = []
