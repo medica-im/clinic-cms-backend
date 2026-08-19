@@ -74,8 +74,9 @@ class AdminEntry(BaseModel):
     facility: AdminFacility | None = None
     # Carried so the administrative page can reuse the addressbook's own
     # selectors — commune, department, type, facility and tag — over this
-    # payload. The alternative was filtering the public feed, which omits
-    # inactive entries and would silently drop the rows this page exists for.
+    # payload rather than over the public feed. The public feed scrubs each
+    # response by access level, so a caller receives only the entries at or
+    # below their own; an administrative table has to list every one.
     commune: AdminCommune | None = None
     department: AdminDepartment | None = None
     tags: list[AdminTag] = []
