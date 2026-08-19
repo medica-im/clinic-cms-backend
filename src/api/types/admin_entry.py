@@ -74,9 +74,10 @@ class AdminEntry(BaseModel):
     facility: AdminFacility | None = None
     # Carried so the administrative page can reuse the addressbook's own
     # selectors — commune, department, type, facility and tag — over this
-    # payload rather than over the public feed. The public feed scrubs each
-    # response by access level, so a caller receives only the entries at or
-    # below their own; an administrative table has to list every one.
+    # payload rather than fetching the public feed alongside it. The public
+    # feed would serve this page's audience fine; this endpoint exists because
+    # it is uncached and because creator and owner names do not belong in a
+    # response anonymous visitors can reach.
     commune: AdminCommune | None = None
     department: AdminDepartment | None = None
     tags: list[AdminTag] = []
