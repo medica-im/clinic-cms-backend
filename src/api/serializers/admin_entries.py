@@ -135,6 +135,32 @@ def _name_of(effector, entry) -> str | None:
     return getattr(entry, "slug", None)
 
 
+async def contact_timestamps(entry_uids: list[str]) -> dict[str, int]:
+    """The last Postgres edit for each entry, in milliseconds.
+
+    One query for the whole table rather than one per row: at 223 entries the
+    per-row form would be 223 round trips for a column, and Contact carries the
+    answer already — its own updatedAt is moved by every related object's save
+    and by the post_delete receiver.
+
+    Keyed by the entry uid in hex, matching how neomodel stores node uids.
+    """
+    from addressbook.models import Contact
+
+    stamps: dict[str, int] = {}
+    uids = {u for u in entry_uids if u}
+    if not uids:
+        return stamps
+    # neomodel_uid is a UUIDField; the graph holds the same value as hex.
+    async for contact in Contact.objects.filter(neomodel_uid__in=uids).only(
+        "neomodel_uid", "updatedAt"
+    ):
+        if contact.updatedAt is None:
+            continue
+        stamps[contact.neomodel_uid.hex] = int(contact.updatedAt.timestamp() * 1000)
+    return stamps
+
+
 async def get_admin_entries(directory_name: str) -> list[AdminEntry]:
     """Every entry in one directory, with its administrative fields.
 
@@ -145,6 +171,8 @@ async def get_admin_entries(directory_name: str) -> list[AdminEntry]:
         {"directory_name": directory_name},
         resolve_objects=True,
     )
+
+    stamps = await contact_timestamps([row[0].uid for row in results])
 
     entries: list[AdminEntry] = []
     for row in results:
@@ -162,6 +190,7 @@ async def get_admin_entries(directory_name: str) -> list[AdminEntry]:
                 active=bool(getattr(entry, "active", False)),
                 createdAt=getattr(entry, "createdAt", None),
                 updatedAt=getattr(entry, "updatedAt", None),
+                contactUpdatedAt=stamps.get(entry.uid),
                 deactivation_reason=getattr(entry, "deactivation_reason", None),
                 deactivation_datetime=(
                     str(entry.deactivation_datetime)

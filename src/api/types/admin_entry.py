@@ -43,6 +43,12 @@ class AdminEntry(BaseModel):
     # Milliseconds since the epoch, like every other timestamp in this project.
     createdAt: int | None = None
     updatedAt: int | None = None
+    # The most recent edit to the Postgres contact rows — phones, emails,
+    # websites, the avatar. Separate from updatedAt because the two stores are
+    # stamped independently: changing a phone leaves the graph node untouched
+    # and changing the access level leaves every Postgres row untouched, so
+    # neither timestamp alone says when the entry last changed.
+    contactUpdatedAt: int | None = None
     # Free text written by an administrator, which may describe a person's
     # circumstances — one of the reasons this endpoint is admin-only.
     deactivation_reason: str | None = None
