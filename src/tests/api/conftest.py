@@ -5,6 +5,7 @@ from httpx import AsyncClient, ASGITransport
 # Imported so pytest discovers them; the testcontainers import inside is only
 # triggered when a test actually requests the `neo4j_graph` fixture.
 from tests.api.conftest_neo4j import (  # noqa: F401
+    scratch_database,
     neo4j_container,
     neo4j_bolt_url,
     neo4j_connection,
