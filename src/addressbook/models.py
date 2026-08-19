@@ -21,6 +21,9 @@ from simple_history.models import HistoricalRecords
 from easy_thumbnails.signals import saved_file
 from easy_thumbnails.signal_handlers import generate_aliases
 from django.db.models import UniqueConstraint
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+from django.utils import timezone
 from directory.timestamp import update_contact_timestamp
 
 logger = logging.getLogger(__name__)
@@ -99,6 +102,12 @@ class Contact(models.Model):
         blank=True,
         unique=True,
     )
+
+    # The contact's own last-modified stamp, and the only one that survives a
+    # related object being deleted. A deleted phone takes its updatedAt with
+    # it, so a max() over the survivors can move backwards in time — see
+    # the post_delete receiver at the end of this module.
+    updatedAt = models.DateTimeField(auto_now=True, null=True)
 
     def natural_key(self):
         return (self.neomodel_uid,)
@@ -249,6 +258,14 @@ class Address(models.Model):
         verbose_name_plural = "Addresses"
 
 
+    # Maintained by the ORM rather than by a save() override, so a write path
+    # that bypasses save() — a queryset .update(), the Django admin, a data
+    # migration — still leaves a mark. The administrative entries table reads
+    # the max of these across an entry's objects for its "last modified"
+    # column, and the entry detail page reads them individually to say which
+    # part changed.
+    updatedAt = models.DateTimeField(auto_now=True, null=True)
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
         try:
@@ -305,6 +322,14 @@ class PhoneNumber(models.Model):
 #        'facility.organization'
 #    ]
 
+    # Maintained by the ORM rather than by a save() override, so a write path
+    # that bypasses save() — a queryset .update(), the Django admin, a data
+    # migration — still leaves a mark. The administrative entries table reads
+    # the max of these across an entry's objects for its "last modified"
+    # column, and the entry detail page reads them individually to say which
+    # part changed.
+    updatedAt = models.DateTimeField(auto_now=True, null=True)
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
         try:
@@ -344,6 +369,14 @@ class Email(models.Model):
             self.email
         )
 
+    # Maintained by the ORM rather than by a save() override, so a write path
+    # that bypasses save() — a queryset .update(), the Django admin, a data
+    # migration — still leaves a mark. The administrative entries table reads
+    # the max of these across an entry's objects for its "last modified"
+    # column, and the entry detail page reads them individually to say which
+    # part changed.
+    updatedAt = models.DateTimeField(auto_now=True, null=True)
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
         try:
@@ -379,6 +412,14 @@ class Website(models.Model):
 
     def __str__(self):
         return "%s: %s" % (self.contact.neomodel_uid, self.url)
+
+    # Maintained by the ORM rather than by a save() override, so a write path
+    # that bypasses save() — a queryset .update(), the Django admin, a data
+    # migration — still leaves a mark. The administrative entries table reads
+    # the max of these across an entry's objects for its "last modified"
+    # column, and the entry detail page reads them individually to say which
+    # part changed.
+    updatedAt = models.DateTimeField(auto_now=True, null=True)
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
@@ -428,6 +469,14 @@ class SocialNetwork(models.Model):
             f"{self.contact.formatted_name} {self.type} "
             f"{self.handle or self.url}"
         )
+
+    # Maintained by the ORM rather than by a save() override, so a write path
+    # that bypasses save() — a queryset .update(), the Django admin, a data
+    # migration — still leaves a mark. The administrative entries table reads
+    # the max of these across an entry's objects for its "last modified"
+    # column, and the entry detail page reads them individually to say which
+    # part changed.
+    updatedAt = models.DateTimeField(auto_now=True, null=True)
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
@@ -544,6 +593,14 @@ class Appointment(models.Model):
             self.phone or self.url or self.app
         )
 
+    # Maintained by the ORM rather than by a save() override, so a write path
+    # that bypasses save() — a queryset .update(), the Django admin, a data
+    # migration — still leaves a mark. The administrative entries table reads
+    # the max of these across an entry's objects for its "last modified"
+    # column, and the entry detail page reads them individually to say which
+    # part changed.
+    updatedAt = models.DateTimeField(auto_now=True, null=True)
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
         try:
@@ -591,3 +648,33 @@ class AppStore(models.Model):
 
     def __str__(self):
         return self.name
+
+
+# Deletion has to move the contact's stamp, and it cannot be done in a model's
+# delete(): every delete route in api/routers/ calls
+# `.filter(id=...).adelete()`, a queryset delete that never loads the instance.
+# post_delete fires for both forms, and for the Django admin and data
+# migrations besides.
+@receiver(post_delete, sender=Address)
+@receiver(post_delete, sender=PhoneNumber)
+@receiver(post_delete, sender=Email)
+@receiver(post_delete, sender=Website)
+@receiver(post_delete, sender=SocialNetwork)
+@receiver(post_delete, sender=Appointment)
+def touch_contact_on_delete(sender, instance, **kwargs):
+    """Stamp the contact when one of its objects is deleted.
+
+    Without this the administrative table shows an entry growing *younger*
+    after an edit: the deleted row's timestamp was the maximum, and removing it
+    leaves an older one behind.
+
+    contact_id rather than instance.contact: the related object may already be
+    gone from the session, and this only needs the key. save(update_fields=...)
+    keeps it to one column and still triggers auto_now.
+    """
+    contact_id = getattr(instance, "contact_id", None)
+    if not contact_id:
+        return
+    # update() rather than save(): auto_now does not fire on a queryset update,
+    # so the value is set explicitly, and no other field is touched.
+    Contact.objects.filter(pk=contact_id).update(updatedAt=timezone.now())
