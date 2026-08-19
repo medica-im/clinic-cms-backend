@@ -7,7 +7,7 @@ from directory.serializers import (
     display_tag_name,
 )
 from api.transformers import createEffectorTypeResources
-from api.serializers.allentries import AsyncTagSerializer
+from api.serializers.allentries import AsyncTagSerializer, entry_updated_at
 from api.utils import process, get_directory, ALLOWED_ACCESS, role_bearing_attributes
 from api.types.fullentry import FullEntry
 from fastapi import Request, HTTPException, status
@@ -127,13 +127,7 @@ def createEffectorRessource(node):
     effector_type_dict=effector_type_obj.__dict__
     effector_type_dict["labels"]=node["effector_type_labels"]
     phones = node["phones"]
-    updatedAt = max(
-        [
-            effector_node.updatedAt,
-            node["facility"].contactUpdatedAt,
-            #location.contactUpdatedAt,
-        ]
-    )
+    updatedAt = entry_updated_at(entry, effector_node, node["facility"])
     facility = {
         "uid": node["facility"].uid,
         "slug": node["facility"].slug,
@@ -287,12 +281,7 @@ async def createFullEntryResource(node) -> dict:
     # phones
     phones = node["phones"]
     # updatedAt
-    updatedAt = max(
-        [
-            effector_node.updatedAt,
-            node["facility"].contactUpdatedAt,
-        ]
-    )
+    updatedAt = entry_updated_at(entry, effector_node, node["facility"])
     # facility
     facility = {
         "uid": node["facility"].uid,

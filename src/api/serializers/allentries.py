@@ -98,6 +98,35 @@ async def flex_effector_type_label(
     effector_type.label = effector_type_label or name
     return effector_type
 
+def entry_updated_at(entry, effector, facility=None) -> int:
+    """When this entry was last changed, across every node that carries it.
+
+    The Entry's own `updatedAt` leads, because it is the thing being listed and
+    because the APOC triggers maintain it on every property *and* relationship
+    write — tags, memberships, access level, carte vitale all move it.
+
+    It was absent from this max for a long time, which left the effector's
+    stamp deciding. contactUpdatedAt is 0 on every node in the graph, so the
+    answer was simply the effector's, and 21 of 22 entries on santelyon3
+    reported a modification date earlier than their own creation date.
+
+    The effector and facility stay in the max rather than being replaced: the
+    effector carries the person's name and the facility their address, so an
+    edit to either is an edit to the entry as a reader understands it.
+
+    None is treated as 0 — a node predating one of these fields has no stamp,
+    not a stamp of zero, and either way it must not win the max.
+    """
+    stamps = [
+        getattr(entry, "updatedAt", 0) or 0,
+        getattr(entry, "contactUpdatedAt", 0) or 0,
+        getattr(effector, "updatedAt", 0) or 0,
+    ]
+    if facility is not None:
+        stamps.append(getattr(facility, "contactUpdatedAt", 0) or 0)
+    return max(stamps)
+
+
 async def createEntryResource(node):
     entry = node["entry"]
     uid = entry.uid
@@ -142,13 +171,7 @@ async def createEntryResource(node):
     type_object = await flex_effector_type_label(effector_node, type_object)
     effector_type = type_object.__dict__
     phones = await async_get_phones_neomodel(entry=entry)
-    updatedAt = max(
-        [
-            effector_node.updatedAt,
-            node["facility"].contactUpdatedAt,
-            entry.contactUpdatedAt,
-        ]
-    )
+    updatedAt = entry_updated_at(entry, effector_node, node["facility"])
     facility = {
         "uid": node["facility"].uid,
         "name": node["facility"].name,
