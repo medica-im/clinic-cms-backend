@@ -196,11 +196,13 @@ def process(entry: dict[str, Any], role: str, attributes: list[str]):
         entry.pop("redeemEmail", None)
     scrub_avatar(entry, role)
     for attribute in attributes:
-        try:
-            items: list[Any] = entry[attribute]
-        except KeyError as e:
-            logger.error(e)
+        # Absent is normal, not an error: the attribute list is derived from
+        # every role-bearing model, while each serializer emits its own subset
+        # — allentries carries phones alone. Logging a miss per attribute per
+        # entry buried the log in thousands of lines that meant nothing.
+        if attribute not in entry:
             continue
+        items: list[Any] = entry[attribute]
         if items:
             # Roles arrive as names ("staff"), not as objects — the serializers
             # emit a SlugRelatedField. Older payloads nested {"id", "name",
@@ -226,6 +228,72 @@ def filter_by_access(entries: list[dict[str, Any]], role: str) -> list[dict[str,
     if not allowed:
         return entries
     return [e for e in entries if e.get("access", "anonymous") in allowed]
+
+def role_bearing_attributes() -> list[str]:
+    """Payload keys holding a list of items that carry their own `roles`.
+
+    Derived from the models rather than hand-listed. Seven addressbook models
+    declare a `roles` M2M meaning "roles allowed so see the related object" —
+    Address, PhoneNumber, Email, Website, SocialNetwork, Profile, Appointment —
+    and every one of them was a field somebody had to remember to add to a
+    literal list at each call site. Three were missed: websites, appointments
+    and profile reached anonymous callers unfiltered because fullentry.py
+    passed only ["phones", "emails", "socialnetworks"].
+
+    Deriving it means the next role-bearing field is covered by existing to be
+    serialised, not by being noticed.
+
+    Two of the seven are deliberately excluded, and the exclusion is the reason
+    this is a function rather than a comprehension over the app registry:
+    `process` filters a *list* of items, and
+
+      address  is serialised as a single dict  (types.fullentry.Address)
+      profile  is serialised as a plain string (types.fullentry.profile: str)
+
+    Neither can be filtered item-by-item, and feeding them here would raise or
+    silently empty them. If either ever becomes a list of role-bearing rows,
+    delete it from NOT_A_LIST_OF_ITEMS and it is covered automatically.
+    """
+    from django.apps import apps
+
+    # Model class name -> the payload key, stated rather than guessed: the
+    # obvious rule (lowercase and add an s) yields "addresss" and "profiles",
+    # neither of which any serializer emits. A wrong key here is invisible —
+    # `process` logs a KeyError and moves on — so the mapping is explicit and
+    # the assertion below refuses to let one go stale.
+    PAYLOAD_KEY = {
+        "Address": None,        # a single dict, not a list of items
+        "PhoneNumber": "phones",
+        "Email": "emails",
+        "Website": "websites",
+        "SocialNetwork": "socialnetworks",
+        "Profile": None,        # serialised as a plain string
+        "Appointment": "appointments",
+    }
+
+    keys = []
+    unmapped = []
+    for model in apps.get_app_config("addressbook").get_models():
+        if not any(f.name == "roles" for f in model._meta.get_fields()):
+            continue
+        if model.__name__ not in PAYLOAD_KEY:
+            unmapped.append(model.__name__)
+            continue
+        key = PAYLOAD_KEY[model.__name__]
+        if key is not None:
+            keys.append(key)
+    if unmapped:
+        # A new role-bearing model reached the app without anyone deciding how
+        # it is served. Loud, because the failure mode of staying quiet is
+        # publishing restricted data.
+        logger.error(
+            "role-bearing model(s) %s have no payload key: their `roles` are "
+            "NOT being enforced. Add them to PAYLOAD_KEY in "
+            "api.utils.role_bearing_attributes.",
+            ", ".join(sorted(unmapped)),
+        )
+    return sorted(keys)
+
 
 def scrub(entries: list[dict[str, Any]], attributes: list[str]):
     logger.debug(f"scrub: {len(entries)} entries in, access values: {[e.get('access', 'anonymous') for e in entries[:5]]}")

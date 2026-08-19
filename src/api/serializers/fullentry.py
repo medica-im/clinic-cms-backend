@@ -8,7 +8,7 @@ from directory.serializers import (
 )
 from api.transformers import createEffectorTypeResources
 from api.serializers.allentries import AsyncTagSerializer
-from api.utils import process, get_directory, ALLOWED_ACCESS
+from api.utils import process, get_directory, ALLOWED_ACCESS, role_bearing_attributes
 from api.types.fullentry import FullEntry
 from fastapi import Request, HTTPException, status
 from api.neo4j_auth import get_neo4j_role, normalize_neo4j_role
@@ -449,7 +449,12 @@ async def async_get_fullentry(uid: str, req: Request, jwt)->FullEntry:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
     entry_dct = await createFullEntryResource(entry_node_dct)
     logger.debug(f"{entry_dct=}")
-    attributes = ["phones", "emails", "socialnetworks"]
+    # Derived, not listed. websites and appointments carry a `roles` M2M and
+    # were absent from the literal list that used to be here, so an
+    # administrator-only website was served to anonymous callers. (profile
+    # carries one too but is serialised as a plain string, so it cannot be
+    # filtered item by item — see role_bearing_attributes.)
+    attributes = role_bearing_attributes()
     # Owners and creators always see their own avatar, whatever its access level,
     # so they can review and change the setting.
     owner_avatar = entry_dct.get("avatar")

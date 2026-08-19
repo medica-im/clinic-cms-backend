@@ -8,6 +8,7 @@ from django.conf import settings
 from api.types.allentry import Entry
 from api.neo4j_auth import get_neo4j_role, normalize_neo4j_role
 from api.utils import (
+    role_bearing_attributes,
     DEFAULT_TTL,
     generate_cache_key,
     get_directory,
@@ -262,7 +263,11 @@ async def get_all_entries(request: Request, jwt, directory_name: str|None = None
         timeout = resolve_ttl(await get_ttl(API_VERSION, request), TTL)
         logger.debug(f"{timeout=}")
 
-        scrubbed_entries_dct = scrub(raw, ["phones"])
+        # Derived from the models that carry `roles`, so a field added to this
+        # serializer later is filtered without anyone remembering to widen a
+        # literal list here. Today only phones is emitted; the rest are no-ops
+        # that log nothing and cost nothing.
+        scrubbed_entries_dct = scrub(raw, role_bearing_attributes())
         #if settings.DEBUG:
         #    add_evil_twins(scrubbed_entries_dct)
         for r in scrubbed_entries_dct.keys():
