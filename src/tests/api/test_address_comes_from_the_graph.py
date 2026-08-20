@@ -271,3 +271,94 @@ class TestTheOrganizationAddress:
             return ContactSerializer(contact).data["address"]
 
         assert await serialise() is None
+
+
+class TestTheOrganizationSerializerNeedsNoContactRow:
+    """The organisation's address is reachable without a Contact.
+
+    OrganizationSerializer already walks Entry → Facility → Commune →
+    Department itself, for `commune` and `department`. The address took a
+    different route to the same nodes: through Organization.contact, a Django
+    row whose only contribution was `neomodel_uid` — the identifier the
+    serializer already holds on `obj.neomodel_uid`.
+
+    These pin the outcome of removing that detour. The payload keeps the
+    address nested under `contact`, because the frontend reads
+    `organization.contact.address` in the footer, the contact page and
+    publicHolidaysStore; only its source changes.
+    """
+
+    async def test_the_address_is_built_from_the_organizations_own_node(
+        self, addressed_entry
+    ):
+        """No Contact row exists in this test, and the address still resolves."""
+        from asgiref.sync import sync_to_async
+
+        from facility.serializers import OrganizationSerializer
+
+        @sync_to_async
+        def serialise():
+            from django.contrib.sites.models import Site
+            from facility.models import Organization
+
+            site, _ = Site.objects.get_or_create(
+                domain=f"address-{addressed_entry[:8]}.example",
+                defaults={"name": "Address Test"},
+            )
+            organization = Organization.objects.create(
+                name=f"cpts-address-{addressed_entry[:8]}",
+                formatted_name="CPTS Address Test",
+                site=site,
+                neomodel_uid=uuid.UUID(addressed_entry),
+                contact=None,
+            )
+            return OrganizationSerializer(organization).data
+
+        data = await serialise()
+        address = (data.get("contact") or {}).get("address")
+
+        assert address is not None, (
+            "the organisation has no Contact row, and the address has to come "
+            "from its own neomodel_uid"
+        )
+        assert address["street"] == STREET
+        assert address["city"] == CITY
+
+    async def test_it_keeps_the_shape_the_frontend_reads(self, addressed_entry):
+        """organization.contact.address, with every key it had before.
+
+        The footer reads street and city, publicHolidaysStore reads
+        public_holidays_zone, and the map reads latitude/longitude — so the
+        keys are the contract, not an implementation detail.
+        """
+        from asgiref.sync import sync_to_async
+
+        from facility.serializers import OrganizationSerializer
+
+        @sync_to_async
+        def serialise():
+            from django.contrib.sites.models import Site
+            from facility.models import Organization
+
+            site, _ = Site.objects.get_or_create(
+                domain=f"shape-{addressed_entry[:8]}.example",
+                defaults={"name": "Shape"},
+            )
+            organization = Organization.objects.create(
+                name=f"cpts-shape-{addressed_entry[:8]}",
+                formatted_name="CPTS Shape Test",
+                site=site,
+                neomodel_uid=uuid.UUID(addressed_entry),
+                contact=None,
+            )
+            return OrganizationSerializer(organization).data
+
+        address = (await serialise())["contact"]["address"]
+
+        for key in (
+            "building", "city", "country", "facility_uid",
+            "geographical_complement", "latitude", "longitude",
+            "public_holidays_zone", "street", "tooltip_direction",
+            "tooltip_permanent", "tooltip_text", "zip", "zoom",
+        ):
+            assert key in address, f"the payload lost {key!r}"
