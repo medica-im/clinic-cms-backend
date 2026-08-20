@@ -127,7 +127,7 @@ def createEffectorRessource(node):
     effector_type_dict=effector_type_obj.__dict__
     effector_type_dict["labels"]=node["effector_type_labels"]
     phones = node["phones"]
-    updatedAt = entry_updated_at(entry, effector_node, node["facility"])
+    updatedAt = entry_updated_at(node["entry"], effector_node, node["facility"])
     facility = {
         "uid": node["facility"].uid,
         "slug": node["facility"].slug,
@@ -281,7 +281,7 @@ async def createFullEntryResource(node) -> dict:
     # phones
     phones = node["phones"]
     # updatedAt
-    updatedAt = entry_updated_at(entry, effector_node, node["facility"])
+    updatedAt = entry_updated_at(node["entry"], effector_node, node["facility"])
     # facility
     facility = {
         "uid": node["facility"].uid,
