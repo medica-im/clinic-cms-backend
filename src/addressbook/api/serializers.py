@@ -225,7 +225,15 @@ class AsyncWebsiteSerializer(AsyncModelSerializer):
 class ContactSerializer(serializers.ModelSerializer):
     socialnetworks = SocialNetworkSerializer(read_only=True, many=True)
     emails = EmailSerializer(read_only=True, many=True)
-    address = serializers.SerializerMethodField()
+
+    # No `address` field. A facility's address lives on the Facility node —
+    # street, zip, building, geographical_complement, location — and the
+    # organisation payload reads it there, through the same Entry → Facility
+    # walk it already performs for commune and department. The method that
+    # used to sit here did that walk too, reached by way of a Contact row that
+    # supplied only the neomodel_uid; OrganizationSerializer was its one caller
+    # and now overwrites the key, so keeping it would mean two answers to the
+    # same question with nothing keeping them in step.
 
     class Meta:
         model = Contact
@@ -234,58 +242,12 @@ class ContactSerializer(serializers.ModelSerializer):
             'formatted_name',
             'formatted_name_definite_article',
             'url',
-            'address',
             'phonenumbers',
             'socialnetworks',
             'websites',
             'emails',
         ]
         depth = 3
-
-    def get_address(self, obj):
-        try:
-            entry_node_uid = obj.neomodel_uid.hex
-        except AttributeError as e:
-            logger.error(f"AttributeError {obj}: {e}")
-            return
-        logger.debug(f"{entry_node_uid=}")
-        try:
-            from directory.models.graph import Entry
-            entry = Entry.nodes.get(uid=entry_node_uid)
-        except Exception as e:
-            logger.error(e)
-            return
-        try:
-            facility = entry.facility.all()[0]
-        except Exception as e:
-            logger.error(e)
-        try:
-            city = facility.commune.all()[0].name_fr
-        except Exception as e:
-            logger.error(e)
-            city = None
-        try:
-            department = facility.commune.all()[0].department.all()[0]
-            public_holidays_zone = department.public_holiday_zone.all()[0].name
-        except:
-            public_holidays_zone = None
-        return {
-            "building": facility.building,
-            "city": city,
-            "country": None,
-            "facility_uid": facility.uid,
-            "geographical_complement": facility.geographical_complement,
-            "latitude": facility.location.latitude,
-            "longitude": facility.location.longitude,
-            "street": facility.street,
-            "zip": facility.zip,
-            "zoom": facility.zoom,
-            "tooltip_direction": facility.tooltip_direction,
-            "tooltip_permanent": facility.tooltip_permanent,
-            "tooltip_text": facility.tooltip_text,
-            "public_holidays_zone": public_holidays_zone,
-        }
-
 
 class AddressSerializer(serializers.ModelSerializer):
     facility_uid = serializers.SerializerMethodField()

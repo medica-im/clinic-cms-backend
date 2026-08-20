@@ -201,31 +201,52 @@ class TestTheEntryAddress:
 
 
 class TestTheOrganizationAddress:
-    """What /api/v2/organization serves, through ContactSerializer.
+    """What /api/v2/organization serves.
 
-    The organisation's address takes a longer route — Organization.contact, a
-    Django row, whose `neomodel_uid` names the Entry node the address is then
-    read from. The Contact supplies the identifier and none of the data, which
-    is why the table behind it can go.
+    These assertions predate the refactor and were originally aimed at
+    ContactSerializer.get_address(). The guarantees are unchanged — street,
+    city, zip and the holiday zone still have to reach the payload — so they
+    now go through OrganizationSerializer, which reads the organisation's own
+    neomodel_uid rather than borrowing a Contact's.
     """
 
-    async def test_it_reads_the_address_through_the_contacts_node_uid(
-        self, addressed_entry
-    ):
+    @staticmethod
+    async def serialise(entry_uid: str, *, with_contact: bool = False):
         from asgiref.sync import sync_to_async
 
-        from addressbook.api.serializers import ContactSerializer
-        from addressbook.models import Contact
+        from facility.serializers import OrganizationSerializer
 
         @sync_to_async
-        def serialise():
-            contact = Contact.objects.create(
-                formatted_name="CPTS Lyon 3",
-                neomodel_uid=uuid.UUID(addressed_entry),
-            )
-            return ContactSerializer(contact).data["address"]
+        def build():
+            from django.contrib.sites.models import Site
+            from addressbook.models import Contact
+            from facility.models import Organization
 
-        address = await serialise()
+            suffix = uuid.uuid4().hex[:8]
+            site, _ = Site.objects.get_or_create(
+                domain=f"org-{suffix}.example", defaults={"name": "Org"}
+            )
+            contact = (
+                Contact.objects.create(
+                    formatted_name="CPTS", neomodel_uid=uuid.UUID(entry_uid)
+                )
+                if with_contact
+                else None
+            )
+            organization = Organization.objects.create(
+                name=f"cpts-{suffix}",
+                formatted_name="CPTS",
+                site=site,
+                neomodel_uid=uuid.UUID(entry_uid),
+                contact=contact,
+            )
+            return OrganizationSerializer(organization).data
+
+        return await build()
+
+    async def test_it_reads_the_address_from_the_entry_node(self, addressed_entry):
+        data = await self.serialise(addressed_entry)
+        address = data["contact"]["address"]
 
         assert address["street"] == STREET
         assert address["city"] == CITY
@@ -237,40 +258,21 @@ class TestTheOrganizationAddress:
         The frontend's publicHolidaysStore reads this to decide which school
         holiday calendar to show, and nothing else in the suite walks it.
         """
-        from asgiref.sync import sync_to_async
+        data = await self.serialise(addressed_entry)
 
-        from addressbook.api.serializers import ContactSerializer
-        from addressbook.models import Contact
+        assert data["contact"]["address"]["public_holidays_zone"] == ZONE
 
-        @sync_to_async
-        def serialise():
-            contact = Contact.objects.create(
-                formatted_name="CPTS Lyon 3",
-                neomodel_uid=uuid.UUID(addressed_entry),
-            )
-            return ContactSerializer(contact).data["address"]
+    async def test_an_organization_whose_uid_names_nothing_does_not_raise(
+        self, neo4j_graph
+    ):
+        """No Entry node for this uid: no address, and no exception.
 
-        assert (await serialise())["public_holidays_zone"] == ZONE
-
-    async def test_a_contact_with_no_node_does_not_raise(self, neo4j_graph):
-        """A Contact whose neomodel_uid names nothing yields no address.
-
-        Not an error: contacts exist that were never linked to an entry, and
-        the organisation payload has to render without one.
+        An organisation can exist before its entry does, and the payload has to
+        render either way.
         """
-        from asgiref.sync import sync_to_async
+        data = await self.serialise(uuid.uuid4().hex)
 
-        from addressbook.api.serializers import ContactSerializer
-        from addressbook.models import Contact
-
-        @sync_to_async
-        def serialise():
-            contact = Contact.objects.create(
-                formatted_name="Orpheline", neomodel_uid=uuid.uuid4()
-            )
-            return ContactSerializer(contact).data["address"]
-
-        assert await serialise() is None
+        assert data["contact"]["address"] is None
 
 
 class TestTheOrganizationSerializerNeedsNoContactRow:
@@ -362,3 +364,79 @@ class TestTheOrganizationSerializerNeedsNoContactRow:
             "tooltip_permanent", "tooltip_text", "zip", "zoom",
         ):
             assert key in address, f"the payload lost {key!r}"
+
+
+class TestTheContactSerializerNoLongerBuildsAddresses:
+    """ContactSerializer stopped answering a question it was never the source of.
+
+    It carried a SerializerMethodField that read `contact.neomodel_uid`, walked
+    Entry → Facility, and returned an address — the same walk
+    OrganizationSerializer performs for commune and department, reached by a
+    longer route. Once the organisation payload built its own address from the
+    facility node, that method had no caller: OrganizationSerializer was the
+    only one, and it overwrites the key.
+
+    Removing it leaves the Contact serialising what is genuinely its own.
+    """
+
+    def test_it_no_longer_declares_an_address_field(self):
+        from addressbook.api.serializers import ContactSerializer
+
+        assert "address" not in ContactSerializer().fields, (
+            "ContactSerializer still builds an address; the organisation "
+            "payload overwrites it, so any value here is dead work at best "
+            "and a second, divergent answer at worst"
+        )
+
+    def test_it_still_serialises_what_belongs_to_the_contact(self):
+        """The rows that really do hang off a Contact stay.
+
+        Emails, phone numbers, websites and social networks are addressbook
+        data with no node behind them, which is why Organization.contact
+        survives this change.
+        """
+        from addressbook.api.serializers import ContactSerializer
+
+        fields = set(ContactSerializer().fields)
+        for expected in (
+            "emails", "phonenumbers", "websites", "socialnetworks",
+            "formatted_name", "url",
+        ):
+            assert expected in fields, f"ContactSerializer lost {expected!r}"
+
+    async def test_the_organization_payload_is_unaffected(self, addressed_entry):
+        """The endpoint that used to depend on it still answers in full."""
+        from asgiref.sync import sync_to_async
+
+        from facility.serializers import OrganizationSerializer
+
+        @sync_to_async
+        def serialise():
+            from django.contrib.sites.models import Site
+            from addressbook.models import Contact
+            from facility.models import Organization
+
+            site, _ = Site.objects.get_or_create(
+                domain=f"unaffected-{addressed_entry[:8]}.example",
+                defaults={"name": "Unaffected"},
+            )
+            # With a Contact this time: its emails and phones still come from
+            # the row, while the address comes from the graph.
+            contact = Contact.objects.create(
+                formatted_name="CPTS Unaffected",
+                neomodel_uid=uuid.UUID(addressed_entry),
+            )
+            organization = Organization.objects.create(
+                name=f"cpts-unaffected-{addressed_entry[:8]}",
+                formatted_name="CPTS Unaffected",
+                site=site,
+                neomodel_uid=uuid.UUID(addressed_entry),
+                contact=contact,
+            )
+            return OrganizationSerializer(organization).data
+
+        data = await serialise()
+
+        assert data["contact"]["address"]["street"] == STREET
+        assert data["contact"]["formatted_name"] == "CPTS Unaffected"
+        assert "emails" in data["contact"]
