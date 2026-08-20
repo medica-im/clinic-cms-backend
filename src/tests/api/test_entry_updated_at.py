@@ -31,14 +31,14 @@ class FakeNode:
             setattr(self, k, v)
 
 
-def compute(entry_updated, effector_updated, facility_contact=0, entry_contact=0):
+def compute(entry_updated, effector_updated, facility_updated=0, entry_contact=0):
     """The max as the serializers compute it."""
     from api.serializers.allentries import entry_updated_at
 
     return entry_updated_at(
         entry=FakeNode(updatedAt=entry_updated, contactUpdatedAt=entry_contact),
         effector=FakeNode(updatedAt=effector_updated),
-        facility=FakeNode(contactUpdatedAt=facility_contact),
+        facility=FakeNode(updatedAt=facility_updated),
     )
 
 
@@ -61,8 +61,23 @@ class TestTheEntryStampCounts:
         entry's edits too — this is a widening, not a replacement."""
         assert compute(entry_updated=1_000, effector_updated=2_000) == 2_000
 
-    def test_contact_timestamps_still_count(self):
-        assert compute(1_000, 1_000, facility_contact=5_000) == 5_000
+    def test_the_facility_counts_through_its_own_stamp(self):
+        """A facility edit is an entry edit: the address lives on that node.
+
+        Read from `updatedAt`, not `contactUpdatedAt`. The address used to be
+        an addressbook row and the facility's contact stamp recorded changes to
+        it; the address is now `street`/`zip`/`building`/`location` on the
+        Facility node itself, so there is no Django contact data behind a
+        facility for that field to describe. The APOC trigger stamps the node's
+        own updatedAt on every write to it — which is why, on this database,
+        facility.contactUpdatedAt is never later than facility.updatedAt for
+        any of the 125 nodes that still carry one.
+        """
+        assert compute(1_000, 1_000, facility_updated=5_000) == 5_000
+
+    def test_the_entry_contact_stamp_still_counts(self):
+        # Unlike the facility's, this one is still fed by the addressbook:
+        # phones, emails and websites hang off a Contact keyed to the entry.
         assert compute(1_000, 1_000, entry_contact=7_000) == 7_000
 
     def test_a_missing_stamp_is_not_an_error(self):

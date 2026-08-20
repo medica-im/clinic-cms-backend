@@ -114,6 +114,18 @@ def entry_updated_at(entry, effector, facility=None) -> int:
     effector carries the person's name and the facility their address, so an
     edit to either is an edit to the entry as a reader understands it.
 
+    The facility contributes its `updatedAt`, not its `contactUpdatedAt`. That
+    second field dates from when a facility's address was an addressbook row
+    and `update_contact_timestamp` recorded changes to it; the address is now
+    `street`/`zip`/`building`/`location` on the Facility node, so there is no
+    Django contact data behind a facility for it to describe. Every write to
+    the node stamps `updatedAt` through the APOC trigger instead — which is why
+    `contactUpdatedAt` is not later than `updatedAt` on any of the 125 facility
+    nodes that still carry one, and could never have won this max.
+
+    `entry.contactUpdatedAt` stays: phones, emails and websites are still
+    addressbook rows hanging off a Contact keyed to the entry.
+
     None is treated as 0 — a node predating one of these fields has no stamp,
     not a stamp of zero, and either way it must not win the max.
     """
@@ -123,7 +135,7 @@ def entry_updated_at(entry, effector, facility=None) -> int:
         getattr(effector, "updatedAt", 0) or 0,
     ]
     if facility is not None:
-        stamps.append(getattr(facility, "contactUpdatedAt", 0) or 0)
+        stamps.append(getattr(facility, "updatedAt", 0) or 0)
     return max(stamps)
 
 
