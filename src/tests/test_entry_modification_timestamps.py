@@ -38,7 +38,8 @@ pytestmark = pytest.mark.django_db
 # the effector's own fields — are stamped separately; see the plan in
 # test_entry_graph_timestamps.py when it lands.
 EDITABLE_MODELS = [
-    "Address",
+    # Address was here until the model was deleted: a facility's address lives
+    # on the Facility node, so there was no addressbook row left to timestamp.
     "PhoneNumber",
     "Email",
     "Website",
@@ -66,7 +67,6 @@ def make(model_name, contact):
 
     Model = getattr(models, model_name)
     required = {
-        "Address": dict(street="1 rue de Test"),
         "PhoneNumber": dict(phone="0102030405", type="W"),
         "Email": dict(email="test@example.test"),
         "Website": dict(url="https://example.test"),

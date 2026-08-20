@@ -458,29 +458,35 @@ class TestTheAddressSerializerIsGone:
         from addressbook.api import serializers
 
         assert not hasattr(serializers, "AddressSerializer"), (
-            "AddressSerializer is back; it binds addressbook.Address at import "
-            "time, so the model cannot be dropped while it exists"
+            "AddressSerializer is back; it bound addressbook.Address at import "
+            "time, which is what kept the model undroppable"
         )
 
-    def test_no_serializer_still_binds_the_address_model(self):
-        """The check that outlives this particular class name.
+    def test_no_serializer_binds_a_model_called_address(self):
+        """The check that outlives the class name — and the model.
 
-        Any ModelSerializer pointing at Address would block the drop just the
-        same, whatever it were called.
+        Written while addressbook.Address still existed, comparing against the
+        imported class. The model has since been deleted, so the comparison is
+        by name: anything reintroducing an Address model and binding a
+        serializer to it would block the same drop again.
         """
         import inspect
 
         from rest_framework import serializers as drf
         from addressbook.api import serializers
-        from addressbook.models import Address
 
         bound = [
             name
             for name, member in inspect.getmembers(serializers, inspect.isclass)
             if issubclass(member, drf.ModelSerializer)
-            and getattr(getattr(member, "Meta", None), "model", None) is Address
+            and getattr(
+                getattr(getattr(member, "Meta", None), "model", None),
+                "__name__",
+                "",
+            )
+            == "Address"
         ]
-        assert bound == [], f"these serializers still bind Address: {bound}"
+        assert bound == [], f"these serializers still bind an Address: {bound}"
 
     def test_the_serializers_module_still_imports(self):
         """Everything else in the file survives the removal.
