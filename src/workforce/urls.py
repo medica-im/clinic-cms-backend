@@ -1,17 +1,15 @@
 from django.urls import include, path, re_path
 from rest_framework import routers
 from workforce.views import (
-    WorkforceUserViewSet,
     WorkforceLabel,
     WorkforceOccupationViewSet
 )
 
+# The `user` route is retired: see tests/test_workforce_user_is_retired.py.
+# It served an empty queryset (NetworkEdge has no rows), nothing called it, and
+# its serializer was the last reader of the Postgres addressbook.Appointment
+# table, which appointments moved off when they went to the graph.
 router = routers.DefaultRouter()
-router.register(
-    r'user',
-    WorkforceUserViewSet,
-    basename="User"
-)
 router.register(
     r'occupation',
     WorkforceOccupationViewSet,

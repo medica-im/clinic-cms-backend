@@ -94,29 +94,6 @@ class WorkforceBaseViewSet(viewsets.ReadOnlyModelViewSet):
         return context
 
 
-class WorkforceUserViewSet(WorkforceBaseViewSet):
-    serializer_class = serializers.WorkforceUserSerializer
-
-    def get_queryset(self):
-        language = self.request.query_params.get('lang')
-        activate_locale(language,self.request)
-        organization = get_organization(self.request)
-        user=models.NodeSet.objects.get(name="user")
-        role=get_role(self.request)
-        organization_edge_qs_child_ids= (
-            models.NetworkEdge.objects
-            .filter(
-                organizations=organization,
-                networkedge_organizations__roles=role
-            )
-            .values_list("child_id", flat=True)
-        )
-        return models.NetworkNode.objects.filter(
-            node_set=user,
-            id__in=organization_edge_qs_child_ids
-        )
-
-
 class WorkforceOccupationViewSet(WorkforceBaseViewSet):
     serializer_class = serializers.WorkforceOccupationSerializer
 
