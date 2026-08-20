@@ -15,7 +15,7 @@ from directory.models import (
     Facility,
     DepartmentOfFrance,
 )
-from addressbook.models import Contact, Address
+from addressbook.models import Contact
 from access.models import Role
 
 from neomodel import Q

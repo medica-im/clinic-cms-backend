@@ -17,7 +17,7 @@ from directory.models import (
     Website,
     sync_clear_cache
 )
-from addressbook.models import Contact, Address
+from addressbook.models import Contact
 from access.models import Role
 
 from neomodel import Q

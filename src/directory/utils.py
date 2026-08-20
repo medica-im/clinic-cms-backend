@@ -34,7 +34,6 @@ from addressbook.api.serializers import (
     WebsiteSerializer,
     AsyncWebsiteSerializer,
     SocialNetworkSerializer,
-    AddressSerializer,
     ProfileSerializer,
     AsyncProfileSerializer,
 )
