@@ -15,6 +15,11 @@ addressbook had been showing the same wrong date for as long.
 
 The Entry is the thing being listed, so its own stamp has to be in the max.
 """
+import ast
+import importlib
+import inspect
+import textwrap
+
 import pytest
 
 pytestmark = pytest.mark.django_db
@@ -82,12 +87,8 @@ class TestTheSerializersCanActuallyCallIt:
     """
 
     @staticmethod
-    def _names_used_by(function) -> set[str]:
-        """Every bare name the function body binds or receives."""
-        import ast
-        import inspect
-        import textwrap
-
+    def _bound_names(function) -> set[str]:
+        """Every name the function receives as an argument or assigns."""
         tree = ast.parse(textwrap.dedent(inspect.getsource(function)))
         names = set()
         for node in ast.walk(tree):
@@ -98,12 +99,8 @@ class TestTheSerializersCanActuallyCallIt:
         return names
 
     @staticmethod
-    def _first_argument_of_the_call(function) -> str | None:
-        """The expression passed as `entry` to entry_updated_at."""
-        import ast
-        import inspect
-        import textwrap
-
+    def _entry_argument(function) -> ast.expr | None:
+        """The expression this function passes as `entry` to the helper."""
         tree = ast.parse(textwrap.dedent(inspect.getsource(function)))
         for node in ast.walk(tree):
             if (
@@ -111,7 +108,7 @@ class TestTheSerializersCanActuallyCallIt:
                 and getattr(node.func, "id", None) == "entry_updated_at"
                 and node.args
             ):
-                return ast.dump(node.args[0])
+                return node.args[0]
         return None
 
     @pytest.mark.parametrize(
@@ -132,18 +129,19 @@ class TestTheSerializersCanActuallyCallIt:
         `node["facility"]` satisfied — so it passed with the bug reintroduced
         and proved nothing.
         """
-        import importlib
-
         function = getattr(importlib.import_module(module_name), function_name)
-        argument = self._first_argument_of_the_call(function)
-        assert argument, f"{function_name} no longer calls entry_updated_at"
+        argument = self._entry_argument(function)
+        assert argument is not None, (
+            f"{function_name} no longer calls entry_updated_at"
+        )
 
-        # A subscript such as node["entry"] is always fine; a bare Name has to
-        # be something the function actually binds.
-        if argument.startswith("Name("):
-            name = argument.split("id='")[1].split("'")[0]
-            assert name in self._names_used_by(function), (
-                f"{function_name} passes `{name}` to entry_updated_at, but that "
-                "name is not defined in it — the call raises NameError at "
-                "runtime and every unit test of the helper still passes"
+        # A subscript such as node["entry"] resolves at runtime whatever the
+        # dict holds, so only a bare name needs checking — and it has to be one
+        # this function actually binds.
+        if isinstance(argument, ast.Name):
+            assert argument.id in self._bound_names(function), (
+                f"{function_name} passes `{argument.id}` to entry_updated_at, "
+                "but that name is not defined in it — the call raises "
+                "NameError at runtime while every unit test of the helper "
+                "still passes"
             )
