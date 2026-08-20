@@ -40,11 +40,12 @@ pytestmark = pytest.mark.django_db
 EDITABLE_MODELS = [
     # Address was here until the model was deleted: a facility's address lives
     # on the Facility node, so there was no addressbook row left to timestamp.
+    # Appointment went the same way, and for the same reason: appointments live
+    # on the graph, so there is no addressbook row to stamp.
     "PhoneNumber",
     "Email",
     "Website",
     "SocialNetwork",
-    "Appointment",
 ]
 
 # Profile already carries `created`/`updated` (and a HistoricalRecords trail),
@@ -71,7 +72,6 @@ def make(model_name, contact):
         "Email": dict(email="test@example.test"),
         "Website": dict(url="https://example.test"),
         "SocialNetwork": dict(url="https://example.test/x"),
-        "Appointment": dict(url="https://rdv.example.test"),
     }[model_name]
     return Model.objects.create(contact=contact, **required)
 

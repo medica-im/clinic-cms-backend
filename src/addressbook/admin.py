@@ -125,14 +125,10 @@ class EmailInline(admin.TabularInline):
 # nothing on the site, which is a worse failure than the field being absent.
 # Re-registering is a one-line change if a reader ever appears.
 
-# addressbook.Appointment is not registered either, for the same reason and
-# one more: nothing reads the table *and* nothing writes it. Appointments live
-# on the graph — routers/appointment.py goes through
-# directory.models.agraph.Appointment, and both read paths in directory/utils
-# call appointments_from_neomodel — so the 66 rows here are residue from before
-# the transfer, against 101 nodes in Neo4j.
-#
-# The rows are left in place; only the editing surface is withdrawn.
+# addressbook.Appointment is not registered because the model no longer
+# exists: appointments live on the graph, and the table was dropped once its
+# last reader went with the /api/v1/workforce/user/ endpoint. See
+# tests/test_appointment_table_is_dropped.py.
 
 class ProfileInline(admin.StackedInline):
     model = Profile
