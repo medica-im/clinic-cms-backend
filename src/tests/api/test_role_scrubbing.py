@@ -43,11 +43,16 @@ VIEWER_ROLES = ["anonymous", "registered", "staff", "administrator", "superuser"
 # the models that declare a `roles` M2M. Resolved lazily inside the tests
 # because it touches the Django app registry.
 #
-# `profile` is excluded there on purpose: it is serialised as a plain string,
-# not a list of role-bearing items, so `process` cannot filter it item by item.
-# It keeps its own test below.
-ROLE_BEARING = ["phones", "emails", "socialnetworks", "websites", "appointments"]
-NOT_FILTERABLE = ["profile"]
+# Two of the seven models are excluded there on purpose:
+#
+#   profile      is serialised as a plain string, not a list of items.
+#   appointments are public, and are read from the graph, so the dicts have no
+#                `roles` key. Filtering them raised KeyError: 'roles' and made
+#                every /e/{slug} a 500 in staging.
+#
+# Both keep their own tests below.
+ROLE_BEARING = ["phones", "emails", "socialnetworks", "websites"]
+NOT_FILTERABLE = ["profile", "appointments"]
 
 
 def attributes() -> list[str]:
@@ -187,13 +192,83 @@ class TestRedeemEmail:
         assert entry["redeemEmail"] == "SECRET-redeem@example.test"
 
 
+class TestTheListMatchesWhatIsActuallySerialised:
+    """Every attribute in the list must be filterable in the real payload.
+
+    This is the class that would have caught the appointments 500 before it
+    reached staging, and it exists because nothing else could have.
+
+    The fixtures in this file build items with `item()`, which always supplies
+    a `roles` key. That makes them useless for the one question that matters
+    here: does the dict the serializer *actually* emits carry `roles` at all?
+    `process` reads item["roles"] unguarded, so an attribute whose real shape
+    lacks the key is not a silent privacy hole — it is a KeyError, a 500, and
+    the entire public site down.
+
+    The `roles` M2M on a Postgres model is not evidence either way, because
+    some of these payloads are read from the graph and never touch that row.
+    So the assertions below read the pydantic types that define the response.
+    """
+
+    def payload_type_for(self, attribute: str):
+        """The pydantic model of one item of `attribute`, per the FullEntry type."""
+        import typing
+
+        from api.types.fullentry import FullEntry
+
+        annotation = FullEntry.model_fields[attribute].annotation
+        # list[X] | None -> X
+        for arg in typing.get_args(annotation):
+            for inner in typing.get_args(arg):
+                if hasattr(inner, "model_fields"):
+                    return inner
+            if hasattr(arg, "model_fields"):
+                return arg
+        return None
+
+    @pytest.mark.parametrize("attribute", ["phones", "emails", "socialnetworks", "websites"])
+    def test_every_filtered_attribute_really_carries_roles(self, attribute):
+        """An attribute is only filterable if its serialised items have `roles`.
+
+        If this fails, `process` is about to raise KeyError on a live request.
+        """
+        assert attribute in attributes(), (
+            f"{attribute} carries roles and must be filtered"
+        )
+        model = self.payload_type_for(attribute)
+        assert model is not None, f"no pydantic type found for {attribute}"
+        assert "roles" in model.model_fields, (
+            f"{attribute} is in the scrub list, but the serialised "
+            f"{model.__name__} has no `roles` field: process() will raise "
+            f"KeyError: 'roles' and return a 500 for every entry"
+        )
+
+    def test_nothing_without_roles_is_ever_filtered(self):
+        """The converse, over the whole list — no hand-maintained parametrize.
+
+        A new attribute added to the derived list whose payload has no `roles`
+        fails here without anyone remembering to extend a literal.
+        """
+        offenders = []
+        for attribute in attributes():
+            model = self.payload_type_for(attribute)
+            if model is not None and "roles" not in model.model_fields:
+                offenders.append(f"{attribute} ({model.__name__})")
+        assert not offenders, (
+            "these attributes are filtered but their serialised items have no "
+            f"`roles` field, so process() raises KeyError on them: {offenders}. "
+            "Either the serializer must emit roles, or the model needs a None "
+            "payload key in api.utils.role_bearing_attributes."
+        )
+
+
 class TestTheDerivedListCoversEveryModel:
     """The attributes that were missed, and the mechanism that stops the next one.
 
-    websites, appointments and profile each carry a `roles` M2M and were absent
-    from the literal ["phones", "emails", "socialnetworks"] that fullentry.py
-    used to pass, so an administrator-only website was served to anonymous
-    callers. The list is now derived from the models themselves.
+    websites carries a `roles` M2M and was absent from the literal
+    ["phones", "emails", "socialnetworks"] that fullentry.py used to pass, so
+    an administrator-only website was served to anonymous callers. The list is
+    now derived from the models themselves.
 
     If these assertions fail, restricted data is being published again.
     """
@@ -201,6 +276,50 @@ class TestTheDerivedListCoversEveryModel:
     def test_the_derived_list_matches_the_role_bearing_models(self):
         """Every filterable role-bearing model appears, and nothing else."""
         assert attributes() == sorted(ROLE_BEARING)
+
+    def test_appointments_are_not_filtered(self):
+        """Appointments are public, and their dicts carry no `roles` key.
+
+        The Postgres Appointment model declares a `roles` M2M, so deriving the
+        list from the models alone swept `appointments` in. But the payload is
+        built from the graph, not from that row: types.appointment.Appointment
+        is entry/url/phone/location/uid, with no `roles`. `process` then read
+        item["roles"] on the first appointment and raised KeyError, which is a
+        500 on every /e/{slug} — the whole public site.
+
+        Every other test here builds items through `item()`, which always
+        supplies `roles`, so none of them could reproduce it.
+        """
+        from api.utils import process
+
+        entry = full_entry()
+        # The real shape, straight from types.appointment.Appointment.
+        entry["appointments"] = [
+            {
+                "uid": "appointment-uid-001",
+                "entry": "entry-uid-001",
+                "url": "https://booking.example.test/maurice",
+                "phone": None,
+                "location": "office",
+            }
+        ]
+
+        process(entry, "anonymous", attributes())
+
+        assert entry["appointments"] == [
+            {
+                "uid": "appointment-uid-001",
+                "entry": "entry-uid-001",
+                "url": "https://booking.example.test/maurice",
+                "phone": None,
+                "location": "office",
+            }
+        ], "a public appointment must reach an anonymous viewer untouched"
+
+        # Checked after the call, not before: `process` raising is the actual
+        # regression, and asserting the list first would short-circuit this
+        # test into never exercising it.
+        assert "appointments" not in attributes()
 
     @pytest.mark.parametrize("kind", ROLE_BEARING)
     def test_a_restricted_item_does_not_reach_anonymous(self, kind):

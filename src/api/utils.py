@@ -243,16 +243,20 @@ def role_bearing_attributes() -> list[str]:
     Deriving it means the next role-bearing field is covered by existing to be
     serialised, not by being noticed.
 
-    Two of the seven are deliberately excluded, and the exclusion is the reason
-    this is a function rather than a comprehension over the app registry:
-    `process` filters a *list* of items, and
+    Three of the seven are deliberately excluded, and the exclusion is the
+    reason this is a function rather than a comprehension over the app
+    registry. `process` filters a *list of dicts that each carry `roles`*, and
 
-      address  is serialised as a single dict  (types.fullentry.Address)
-      profile  is serialised as a plain string (types.fullentry.profile: str)
+      address      is serialised as a single dict  (types.fullentry.Address)
+      profile      is serialised as a plain string (types.fullentry.profile)
+      appointments are public, and are read from the graph rather than from
+                   the Postgres row, so the dicts have no `roles` key at all
+                   (types.appointment.Appointment: entry, url, phone,
+                   location, uid). Including it raised KeyError: 'roles' and
+                   turned every /e/{slug} into a 500.
 
-    Neither can be filtered item-by-item, and feeding them here would raise or
-    silently empty them. If either ever becomes a list of role-bearing rows,
-    delete it from NOT_A_LIST_OF_ITEMS and it is covered automatically.
+    None of the three can be filtered item-by-item. If one ever becomes a list
+    of role-bearing rows, give it a payload key and it is covered again.
     """
     from django.apps import apps
 
@@ -268,7 +272,7 @@ def role_bearing_attributes() -> list[str]:
         "Website": "websites",
         "SocialNetwork": "socialnetworks",
         "Profile": None,        # serialised as a plain string
-        "Appointment": "appointments",
+        "Appointment": None,        # public, and built from the graph
     }
 
     keys = []
