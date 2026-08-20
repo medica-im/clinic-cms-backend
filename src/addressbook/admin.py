@@ -1,7 +1,6 @@
 import uuid
 from django.contrib import admin
 from addressbook.models import (
-    Address,
     Appointment,
     Contact,
     PhoneNumber,
@@ -112,9 +111,20 @@ class EmailInline(admin.TabularInline):
     model = Email
     extra = 0
 
-class AddressInline(admin.StackedInline):
-    model = Address
-    extra = 0
+# addressbook.Address is not registered, and AddressInline is not attached to
+# ContactAdmin.
+#
+# Nothing reads the table. A facility's address lives on the Facility node —
+# street, zip, building, geographical_complement, location — and
+# ContactSerializer.get_address() resolves it through neomodel_uid rather than
+# from here, so the footer, the contact page and the organisation payload all
+# come from the graph. The 131 remaining rows are residue from before that
+# move, plus 17 written by the retired create_organization command.
+#
+# The rows are left in place; only the editing surface is withdrawn. An
+# administrator filling in a street here would have seen it save and change
+# nothing on the site, which is a worse failure than the field being absent.
+# Re-registering is a one-line change if a reader ever appears.
 
 class AppointmentInline(admin.TabularInline):
     model = Appointment
@@ -159,7 +169,6 @@ class ContactAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ['user']
     inlines = [
-        AddressInline,
         EmailInline,
         PhoneInline,
         SocialInline,
@@ -271,22 +280,6 @@ class AppointmentAdmin(admin.ModelAdmin):
     autocomplete_fields = ['contact']
     
     
-@admin.register(Address)
-class AddressAdmin(admin.ModelAdmin):
-    list_display = (
-        "pk",
-        "contact",
-        "street",
-        "zip",
-        "city",
-        "country",
-        "latitude",
-        "longitude",
-        "public_holidays_zone",
-    )
-    autocomplete_fields = ['contact']
-
-
 @admin.register(PhoneNumber)
 class PhoneNumberAdmin(admin.ModelAdmin):
     list_display = (
