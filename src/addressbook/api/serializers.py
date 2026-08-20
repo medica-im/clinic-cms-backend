@@ -9,7 +9,6 @@ from addressbook.models import (
     PhoneNumber,
     Email,
     Website,
-    Address,
 )
 from access.serializers import AsyncRoleSerializer
 from rest_framework import serializers
@@ -248,33 +247,3 @@ class ContactSerializer(serializers.ModelSerializer):
             'emails',
         ]
         depth = 3
-
-class AddressSerializer(serializers.ModelSerializer):
-    facility_uid = serializers.SerializerMethodField()
-    tooltip_direction = serializers.CharField(
-        source='get_tooltip_direction_display'
-    )
-
-    class Meta:
-        model = Address
-        fields = [
-            'id',
-            'facility_uid',
-            'building',
-            'street',
-            'geographical_complement',
-            'city',
-            'zip',
-            'state',
-            'country',
-            'latitude',
-            'longitude',
-            'zoom',
-            'tooltip_direction',
-            'tooltip_permanent',
-            'tooltip_text',
-        ]
-        depth = 2
-
-    def get_facility_uid(self, obj):
-        return obj.contact.neomodel_uid

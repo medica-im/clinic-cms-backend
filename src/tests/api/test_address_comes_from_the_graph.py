@@ -440,3 +440,58 @@ class TestTheContactSerializerNoLongerBuildsAddresses:
         assert data["contact"]["address"]["street"] == STREET
         assert data["contact"]["formatted_name"] == "CPTS Unaffected"
         assert "emails" in data["contact"]
+
+
+class TestTheAddressSerializerIsGone:
+    """No serializer binds the addressbook Address model.
+
+    AddressSerializer had no importer — grep finds nothing, no viewset names
+    it, no router registers it and no dynamic lookup could reach it — but it
+    declared `model = Address` in its Meta, which binds the model class at
+    import time. That made it the one thing standing between the table and
+    deletion: removing the model with this class present would break
+    addressbook.api.serializers on import, and with it every module that
+    imports that file.
+    """
+
+    def test_the_module_defines_no_address_serializer(self):
+        from addressbook.api import serializers
+
+        assert not hasattr(serializers, "AddressSerializer"), (
+            "AddressSerializer is back; it binds addressbook.Address at import "
+            "time, so the model cannot be dropped while it exists"
+        )
+
+    def test_no_serializer_still_binds_the_address_model(self):
+        """The check that outlives this particular class name.
+
+        Any ModelSerializer pointing at Address would block the drop just the
+        same, whatever it were called.
+        """
+        import inspect
+
+        from rest_framework import serializers as drf
+        from addressbook.api import serializers
+        from addressbook.models import Address
+
+        bound = [
+            name
+            for name, member in inspect.getmembers(serializers, inspect.isclass)
+            if issubclass(member, drf.ModelSerializer)
+            and getattr(getattr(member, "Meta", None), "model", None) is Address
+        ]
+        assert bound == [], f"these serializers still bind Address: {bound}"
+
+    def test_the_serializers_module_still_imports(self):
+        """Everything else in the file survives the removal.
+
+        ContactSerializer, PhoneNumberSerializer and the rest are imported by
+        directory/utils.py on every request path.
+        """
+        from addressbook.api import serializers
+
+        for expected in (
+            "ContactSerializer", "PhoneNumberSerializer", "EmailSerializer",
+            "WebsiteSerializer", "SocialNetworkSerializer", "ProfileSerializer",
+        ):
+            assert hasattr(serializers, expected), f"lost {expected}"
