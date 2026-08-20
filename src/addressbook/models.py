@@ -509,7 +509,6 @@ class AppStore(models.Model):
 @receiver(post_delete, sender=Email)
 @receiver(post_delete, sender=Website)
 @receiver(post_delete, sender=SocialNetwork)
-@receiver(post_delete, sender=Appointment)
 def touch_contact_on_delete(sender, instance, **kwargs):
     """Stamp the contact when one of its objects is deleted.
 

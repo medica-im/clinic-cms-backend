@@ -1,7 +1,6 @@
 import uuid
 from django.contrib import admin
 from addressbook.models import (
-    Appointment,
     Contact,
     PhoneNumber,
     Website,
@@ -126,9 +125,14 @@ class EmailInline(admin.TabularInline):
 # nothing on the site, which is a worse failure than the field being absent.
 # Re-registering is a one-line change if a reader ever appears.
 
-class AppointmentInline(admin.TabularInline):
-    model = Appointment
-    extra = 0
+# addressbook.Appointment is not registered either, for the same reason and
+# one more: nothing reads the table *and* nothing writes it. Appointments live
+# on the graph — routers/appointment.py goes through
+# directory.models.agraph.Appointment, and both read paths in directory/utils
+# call appointments_from_neomodel — so the 66 rows here are residue from before
+# the transfer, against 101 nodes in Neo4j.
+#
+# The rows are left in place; only the editing surface is withdrawn.
 
 class ProfileInline(admin.StackedInline):
     model = Profile
@@ -173,7 +177,6 @@ class ContactAdmin(admin.ModelAdmin):
         PhoneInline,
         SocialInline,
         WebsiteInline,
-        AppointmentInline,
         ProfileInline,
     ]
     list_filter = [
@@ -275,11 +278,6 @@ class AppStoreAdmin(admin.ModelAdmin):
     pass
 
 
-@admin.register(Appointment)
-class AppointmentAdmin(admin.ModelAdmin):
-    autocomplete_fields = ['contact']
-    
-    
 @admin.register(PhoneNumber)
 class PhoneNumberAdmin(admin.ModelAdmin):
     list_display = (
