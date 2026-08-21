@@ -229,6 +229,8 @@ async def create_facility(f: FacilityPost, request: Request, jwt: dict)->Facilit
     facility = await async_get_facility(uid=str(node.uid))
     await clear_cache("v1:facilities", request)
     await clear_cache("v2:public/facilities", request)
+    # A new facility is a new pin, reached the same way as a moved one.
+    await clear_cache("v2:entries", request)
     return facility
 
 async def update_facility(uid: str, f: FacilityPut, request: Request)->FacilityPy:
@@ -263,6 +265,12 @@ async def update_facility(uid: str, f: FacilityPut, request: Request)->FacilityP
     facility = await async_get_facility(uid=uid)
     await clear_cache("v1:facilities", request)
     await clear_cache("v2:public/facilities", request)
+    # The entries payload carries each entry's address, coordinates included,
+    # and the directory map plots those rather than the facility record. Without
+    # this a facility moved in the edit modal keeps its old pin on the annuaire
+    # until the entries TTL expires, while /sites/{slug} already shows the new
+    # one. See tests/api/test_facility_edit_clears_the_entries_cache.py.
+    await clear_cache("v2:entries", request)
     return facility
 
 async def delete_facility(uid: str)->dict:
