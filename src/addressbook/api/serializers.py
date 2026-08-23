@@ -22,6 +22,15 @@ class AsyncSocialNetworkSerializer(AsyncModelSerializer):
         source='get_type_display'
     )
 
+    # Names, not nested objects — see AsyncPhoneNumberModelSerializer. Without
+    # this the `depth` below expands each Role into {"id", "name",
+    # "description"}, which api.types.socialmedia.SocialMedia rejects: the row
+    # is written, the response fails to validate, and the client sees a 500 on
+    # a request that actually succeeded.
+    roles = serializers.SlugRelatedField(
+        slug_field='name', read_only=True, many=True
+    )
+
     class Meta:
         model = SocialNetwork
         fields = [
@@ -57,6 +66,11 @@ class SocialNetworkSerializer(serializers.ModelSerializer):
 
 
 class AsyncProfileSerializer(AsyncModelSerializer):
+    # Names, not nested objects — see AsyncPhoneNumberModelSerializer.
+    roles = serializers.SlugRelatedField(
+        slug_field='name', read_only=True, many=True
+    )
+
     class Meta:
         model = Profile
         fields = [
