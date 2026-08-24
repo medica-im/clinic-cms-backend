@@ -2,7 +2,7 @@ import logging
 import json
 from django.core.cache import cache
 from decimal import Decimal
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, status
 from typing import Union, TypedDict, Any
 from pydantic import ValidationError, ConfigDict, TypeAdapter
 from api.types.facility import FacilityPost, FacilityPut, Facility as FacilityPy
@@ -179,6 +179,72 @@ async def async_get_facilities(
                 raise ValidationError(e)
     return facilities
 
+async def assert_slug_is_free(
+    slug: str | None,
+    request: Request,
+    exclude_uid: str | None = None,
+) -> None:
+    """
+    Refuse a slug another facility of the same organization already holds.
+
+    A facility is addressed by its slug — /sites/{slug}, and
+    /api/v2/public/facilities/{slug}, which returns rows[0]. Two facilities of
+    one organization sharing a slug make one of them unreachable: the graph
+    answers with whichever it finds first, every time, and the other has no
+    address at all. Twenty slugs are shared across the development graph and
+    four of those are real clashes within a single organization, "cabinet-
+    infirmier" among them, held three times over.
+
+    Scoped per organization rather than globally, and deliberately not a
+    neomodel `unique_index=True`, which cannot express the scope: "cabinet-
+    medical" and "pharmacie" are ordinary names, two unrelated organizations
+    are each entitled to one, and the public endpoint already filters by the
+    requesting site's directory so it could never confuse them.
+
+    PART_OF is the edge that attaches a facility to its organization — to an
+    Organization node, or to that organization's Entry, both of which
+    create_facility itself writes.
+
+    `exclude_uid` is the facility being edited: keeping its own slug through an
+    update is not a clash.
+    """
+    if not slug:
+        return
+
+    site = await get_site_from_request(request)
+    try:
+        org = await Organization.objects.aget(site=site)
+    except Organization.DoesNotExist:
+        # No organization for this site: nothing to scope against, so there is
+        # no clash to report. The write is the caller's business.
+        return
+    if not org.neomodel_uid:
+        return
+
+    org_uid = org.neomodel_uid.hex
+    results, _ = await adb.cypher_query(
+        """
+        MATCH (other:Facility)-[:PART_OF]->(o)
+        WHERE o.uid = $org_uid
+          AND other.slug = $slug
+          AND ($exclude IS NULL OR other.uid <> $exclude)
+        RETURN other.uid, other.name
+        LIMIT 1
+        """,
+        {"org_uid": org_uid, "slug": slug, "exclude": exclude_uid},
+    )
+    if results:
+        other_uid, other_name = results[0][0], results[0][1]
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"The slug '{slug}' is already used by the facility "
+                f"'{other_name or other_uid}'. Facility addresses must be "
+                "unique within an organization."
+            ),
+        )
+
+
 async def create_facility(f: FacilityPost, request: Request, jwt: dict)->FacilityPy:
     try:
         longitude: Decimal|None = f.longitude
@@ -191,6 +257,7 @@ async def create_facility(f: FacilityPost, request: Request, jwt: dict)->Facilit
     except Exception as e:
         logger.debug(e)
         location=None
+    await assert_slug_is_free(f.slug, request)
     node = await Facility(
         name=f.name,
         label=f.label,
@@ -250,6 +317,7 @@ async def update_facility(uid: str, f: FacilityPut, request: Request)->FacilityP
     except Exception as e:
         logger.error(e)
         raise HTTPException(status_code=404, detail=f"Facility with uid={uid} not found.")
+    await assert_slug_is_free(f.slug, request, exclude_uid=uid)
     node.name=f.name
     node.label=f.label
     node.slug=f.slug
