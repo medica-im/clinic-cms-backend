@@ -228,3 +228,40 @@ async def entry_already_here(effector_uid: str | None, effector_type_uid: str | 
         {"e": effector_uid, "t": effector_type_uid, "f": facility_uid},
     )
     return rows[0][0] if rows else None
+
+
+async def already_here(entries: list[dict]) -> dict[str, str]:
+    """Which of these source entries this instance already has.
+
+    Keyed by source uid, valued with the local entry's slug so the list can
+    link to what already exists rather than only greying a row out.
+
+    Matched on the person's name and their occupation, not on uid: uids are
+    per-deployment, so the same practitioner is a different node here. That is
+    looser than the identity rule create_entry enforces — which is
+    (effector, effector_type, facility) — and deliberately so. This runs over a
+    whole directory to decorate a list, before any facility has been resolved,
+    and its job is to stop a superuser selecting an entry that preflight would
+    only reject later. Preflight remains the authority; a row greyed out here
+    is a courtesy, not the gate.
+    """
+    wanted = [
+        {"name": (e.get("name") or "").strip().lower(),
+         "type": ((e.get("effector_type") or {}).get("name") or "").strip().lower(),
+         "uid": e.get("uid")}
+        for e in entries
+        if e.get("uid") and e.get("name")
+    ]
+    if not wanted:
+        return {}
+    rows, _ = await adb.cypher_query(
+        """
+        UNWIND $wanted AS w
+        MATCH (entry:Entry {active: true})-[:HAS_EFFECTOR]->(eff:Effector)
+        MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(t:EffectorType)
+        WHERE toLower(eff.name_fr) = w.name AND toLower(t.name_fr) = w.type
+        RETURN w.uid AS source_uid, entry.slug AS slug
+        """,
+        {"wanted": wanted},
+    )
+    return {uid: slug for uid, slug in rows if uid and slug}

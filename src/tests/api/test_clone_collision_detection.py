@@ -215,3 +215,56 @@ class TestTheEntryItself:
         assert await detect.entry_already_here(
             f"{TAG}-eff2", f"{TAG}-type", f"{TAG}-fac"
         ) is None
+
+
+class TestWhatIsAlreadyHere:
+    """Which of a source directory's entries this instance already holds.
+
+    Decorates the picker so a superuser does not select an entry that preflight
+    would only reject afterwards. Matched on the person's name and their
+    occupation, because uids are per-deployment — the same practitioner is a
+    different node here.
+
+    Deliberately looser than create_entry's identity rule, which is
+    (effector, effector_type, facility): this runs over a whole directory before
+    any facility has been resolved, and its job is a courtesy, not a gate.
+    """
+
+    async def test_an_entry_that_exists_here_is_reported(self, graph):
+        found = await detect.already_here([
+            {"uid": "src-1", "name": "Jean Test",
+             "effector_type": {"name": "testeur"}},
+        ])
+        assert found == {"src-1": f"{TAG}-entry-slug"}, (
+            "an entry the directory already holds was not reported, so the "
+            "picker would offer it and preflight would reject it later"
+        )
+
+    async def test_the_match_ignores_case(self, graph):
+        found = await detect.already_here([
+            {"uid": "src-2", "name": "JEAN TEST",
+             "effector_type": {"name": "TESTEUR"}},
+        ])
+        assert "src-2" in found
+
+    async def test_the_same_person_in_another_occupation_is_not_a_duplicate(self, graph):
+        """A practitioner may hold several jobs, and each is its own entry.
+
+        Reporting this as already-here would stop a superuser cloning a genuine
+        second listing.
+        """
+        found = await detect.already_here([
+            {"uid": "src-3", "name": "Jean Test",
+             "effector_type": {"name": "something else entirely"}},
+        ])
+        assert found == {}
+
+    async def test_an_unknown_person_is_not_reported(self, graph):
+        found = await detect.already_here([
+            {"uid": "src-4", "name": "Nobody Here",
+             "effector_type": {"name": "testeur"}},
+        ])
+        assert found == {}
+
+    async def test_an_empty_list_costs_no_query(self, graph):
+        assert await detect.already_here([]) == {}

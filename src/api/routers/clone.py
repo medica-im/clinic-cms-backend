@@ -161,19 +161,32 @@ async def _fetch(peer: PeerInstance, path: str, token: str) -> httpx.Response:
 
 @router.get("/clone/relay/entries")
 async def relay_entries(instance: str, token: str, request: Request,
-                        _: Annotated[str, Depends(require_superuser)]) -> list[dict]:
-    """The source's entries, fetched server-side.
+                        _: Annotated[str, Depends(require_superuser)]) -> dict:
+    """The source's entries, fetched server-side, marked with what is already here.
 
     Relayed rather than fetched by the browser so the token never leaves this
     origin: a cross-origin request from the page would put a bearer credential
     into a context this instance does not control.
+
+    `already_here` maps a source uid to the slug of the local entry that matches
+    it, so the picker can grey out what cloning would only reject later. It is a
+    courtesy rather than the gate — preflight is still the authority — and it is
+    computed here because only this instance can answer it.
+
+    `origin` travels so the page can resolve the avatar paths, which are
+    relative to the *source*.
     """
     peer = await _peer(instance)
     r = await _fetch(peer, "/api/v2/entries", token)
     if r.status_code != 200:
         raise HTTPException(status_code=r.status_code,
                             detail=f"{peer.display_name} refused the entry list")
-    return r.json()
+    entries = r.json()
+    return {
+        "entries": entries,
+        "already_here": await detect.already_here(entries),
+        "origin": peer.origin.rstrip("/"),
+    }
 
 
 @router.post("/clone/preflight")
