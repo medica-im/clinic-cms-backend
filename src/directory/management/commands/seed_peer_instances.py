@@ -22,6 +22,16 @@ instance does nothing.
 
     python manage.py seed_peer_instances            # show what would change
     python manage.py seed_peer_instances --write
+
+**Run it on every deployment, not just one.** Each stack has its own database
+and therefore its own registry, and the two ends of a clone check *different*
+rows: the target checks `outbound` on its own row for the source, and the source
+checks `inbound` on its own row for the target. Seeding only the target gives
+"This instance refused the request (403)" from the source, which has never heard
+of the caller — the first thing this tool did in anger.
+
+The instance running the command is skipped, so the same list is safe to apply
+everywhere: on dev the dev rows drop out as self, on staging they are created.
 """
 from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand

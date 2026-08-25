@@ -93,9 +93,17 @@ async def export_token(body: ExportTokenRequest, request: Request,
 
     allowed = [p async for p in PeerInstance.objects.filter(active=True, inbound=True).all()]
     if not any(body.target_origin.rstrip("/") == p.origin.rstrip("/") for p in allowed):
+        # Names the fix, not just the refusal. Each deployment has its own
+        # registry, and this one is the *source*: it checks its own `inbound`
+        # row for the caller. Seeding only the target leaves this end with no
+        # row at all, which is the likeliest reason to be here.
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"{body.target_origin} is not a peer allowed to read this instance",
+            detail=(
+                f"{body.target_origin} is not registered here as a peer that may "
+                f"read this instance. Add it with inbound=true on THIS deployment "
+                f"(manage.py seed_peer_instances --write), not only on the target."
+            ),
         )
     if body.entry_uids and len(body.entry_uids) > clone_token.MAX_ENTRIES:
         raise HTTPException(
