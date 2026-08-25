@@ -349,7 +349,16 @@ class Facility(AsyncStructuredNode):
     organizations = AsyncRelationshipTo('Entry', 'PART_OF')
     commune = AsyncRelationshipTo(
         'Commune',
-        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
+        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY',
+        # A building stands in one commune. Organization.commune above has said
+        # AsyncOne since it was written; this said nothing, so neomodel allowed
+        # any number and a seeder's MERGE could add a second without complaint.
+        # The damage lands far away: the entries query joins through the commune,
+        # so a facility with two emits every entry at it twice, which doubles
+        # every count a page renders and kills the team carousel on Svelte's
+        # each_key_duplicate (it keys slides on uid). See
+        # tests/test_facility_graph_model.py.
+        cardinality=AsyncOne
     )
     contactUpdatedAt = IntegerProperty(default=0)
     updated = IntegerProperty(default=0)

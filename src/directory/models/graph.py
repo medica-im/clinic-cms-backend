@@ -358,7 +358,9 @@ class Facility(StructuredNode):
     organizations = RelationshipTo('Entry', 'PART_OF')
     commune = RelationshipTo(
         'Commune',
-        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
+        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY',
+        # A building stands in one commune — see the async twin in agraph.py.
+        cardinality=One
     )
     contactUpdatedAt = IntegerProperty(default=0)
     updated = IntegerProperty(default=0)
