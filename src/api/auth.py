@@ -203,14 +203,49 @@ async def verify_user_access(jwt: dict, entry_uid: str):
 
 
 def check_cookie_jwt(request: Request):
+    """The caller's identity, from a session cookie or a clone token.
+
+    Widened for cross-instance cloning. Every read endpoint takes its identity
+    through this one dependency and everything downstream — authorize_api,
+    get_neo4j_role, _find_user_by_sub — reads only `providerAccountId` and
+    `email`. So accepting a second credential *here* lets /entries and
+    /fullentries serve another deployment's clone request with their own
+    authorization intact, and without touching a single router.
+
+    Cookie first: a browser on this instance is the ordinary case, and a request
+    carrying both should behave as the session it already has.
+    """
     https_cookie = request.cookies.get('__Secure-authjs.session-token')
     logger.debug(f"{https_cookie=}")
     http_cookie = request.cookies.get('authjs.session-token')
     logger.debug(f"{http_cookie=}")
     if  http_cookie or https_cookie:
         return JWT(request)
-    else:
-        return
+    return clone_token_jwt(request)
+
+
+def clone_token_jwt(request: Request):
+    """Identity from a clone export token, shaped like the NextAuth JWT.
+
+    Returns None when there is no token, so an anonymous request stays
+    anonymous. A token that is present but bad raises 401 rather than falling
+    through to anonymous: a caller who meant to authenticate and failed should
+    be told, not quietly served the public view.
+
+    The claims are stashed on request.state for the scope check in
+    api.routers.clone, which is the only place that needs to know *which*
+    entries this token may read.
+    """
+    from api.serializers.clone import token as clone_token
+
+    raw = clone_token.bearer(request)
+    if not raw:
+        return None
+    claims = clone_token.read(raw, request_host=request.url.hostname)
+    request.state.clone_claims = claims
+    # Only the two fields anything downstream reads. Deliberately not a full
+    # session: this identity may read, and only what the token scopes it to.
+    return {"providerAccountId": claims.sub, "email": ""}
 
 def normalize_role(roles, directory):
     for r in roles:

@@ -1,5 +1,6 @@
 from django.db import models
 import time
+from urllib.parse import urlparse
 from django.contrib.sites.models import Site
 from django.contrib.sites.requests import RequestSite
 from django.conf import settings
@@ -373,3 +374,86 @@ class Label(models.Model):
         except Label.DoesNotExist as e:
             logger.debug(f'{e} for {uid=}, {gender=}, {number=}, {language=}, {term_type=}')
             return
+
+def validate_peer_origin(value):
+    """A peer must be an https origin: scheme and host, nothing else.
+
+    Scheme, because the export carries practitioners' phone numbers and emails
+    between servers and plain http would put them on the wire in clear. Host
+    only, because the clone code appends its own paths — an origin carrying a
+    path, a query or credentials would produce URLs nobody wrote and nobody can
+    predict, and this row is the one place an operator points the server at an
+    arbitrary address.
+    """
+    parsed = urlparse(value or "")
+    if parsed.scheme != "https":
+        raise ValidationError(
+            _('%(value)s must start with https://'), params={'value': value}
+        )
+    if not parsed.hostname:
+        raise ValidationError(
+            _('%(value)s has no host'), params={'value': value}
+        )
+    if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+        raise ValidationError(
+            _('%(value)s must be an origin only, with no path or query'),
+            params={'value': value},
+        )
+    if parsed.username or parsed.password:
+        raise ValidationError(
+            _('%(value)s must not carry credentials'), params={'value': value}
+        )
+
+
+class PeerInstance(models.Model):
+    """Another deployment of this app that entries may be cloned to or from.
+
+    dev, staging and production are separate deployments with their own Postgres
+    and Neo4j, so cloning an entry between them crosses a network boundary and
+    the target has to be told where the source lives. Nothing else in the
+    project knows that: `Organization.active` and `Site` describe *this* stack
+    only, and a directory is a tenant within it, not a sibling server.
+
+    A model rather than a setting because `inbound` is a security control that
+    has to be usable in a hurry: production must be able to refuse staging by
+    flipping a row in the admin, not by editing an env var and redeploying.
+    """
+
+    name = models.SlugField(
+        max_length=64,
+        unique=True,
+        help_text="Short stable identifier, e.g. 'santelyon3-prod'.",
+    )
+    display_name = models.CharField(
+        max_length=255,
+        help_text="What the superuser sees in the instance picker.",
+    )
+    origin = models.URLField(
+        unique=True,
+        validators=[validate_peer_origin],
+        help_text="https origin only, e.g. 'https://santelyon3.fr'.",
+    )
+    active = models.BooleanField(
+        default=True,
+        help_text="Unset to retire a peer without deleting its row.",
+    )
+    outbound = models.BooleanField(
+        default=True,
+        help_text="May this instance read entries FROM that one.",
+    )
+    inbound = models.BooleanField(
+        default=True,
+        help_text="May that instance read entries FROM this one.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["display_name"]
+        verbose_name = "Peer instance"
+
+    def __str__(self):
+        return "%s (%s)" % (self.display_name, self.origin)
+
+    def clean(self):
+        validate_peer_origin(self.origin)

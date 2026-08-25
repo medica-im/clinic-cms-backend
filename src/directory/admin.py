@@ -15,6 +15,7 @@ from .models import (
     Endpoint,
     TTL,
     Timestamp,
+    PeerInstance,
 )
 from modeltranslation.admin import TranslationAdmin
 from django.utils.translation import gettext_lazy as _
@@ -191,3 +192,14 @@ class TimestampAdmin(admin.ModelAdmin):
         if obj.timestamp:
             return datetime.fromtimestamp(obj.timestamp / 1000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
         return ''
+
+@admin.register(PeerInstance)
+class PeerInstanceAdmin(admin.ModelAdmin):
+    """The peers this instance may clone entries to and from.
+
+    `inbound` is the control worth reaching for in a hurry: unsetting it stops
+    another deployment reading this one's entries, without a deploy.
+    """
+    list_display = ('display_name', 'name', 'origin', 'active', 'outbound', 'inbound')
+    list_filter = ('active', 'outbound', 'inbound')
+    search_fields = ('name', 'display_name', 'origin')
