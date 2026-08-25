@@ -75,4 +75,7 @@ def test_the_caches_are_cleared_once_for_the_batch_not_per_entry():
         "clear_cache is called inside the per-entry loop; each call fans out "
         "over every role and directory, so a batch would repeat it needlessly"
     )
-    assert clears_in(fn) == len(CLONE_CACHES)
+    # At least the payloads listed here. The occupation labels are cleared too
+    # — see test_clone_clears_the_labels_cache.py — so this is a floor rather
+    # than an exact count, and adding a cache does not fail the wrong test.
+    assert clears_in(fn) >= len(CLONE_CACHES)

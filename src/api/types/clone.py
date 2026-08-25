@@ -18,6 +18,16 @@ class ExportTokenResponse(BaseModel):
     expires_in: int
     directory: str
     source_origin: str
+    #: The source's own organization Entry uid.
+    #
+    #: Travels in the response rather than only inside the token, because the
+    #: token is opaque to the target by design — it is signed with the source's
+    #: derived key, which the target does not have and must not need. Without
+    #: this the target cannot recognise a MEMBER_OF edge pointing at the source
+    #: organization, so it cannot remap it to its own, and a cloned entry
+    #: arrives belonging to no organization: present in the API, absent from
+    #: every listing that filters on membership.
+    org_entry: str | None = None
 
 
 class CloneMatch(BaseModel):
@@ -71,6 +81,9 @@ class ExecuteRequest(BaseModel):
     instance: str
     token: str
     resolutions: list[Resolution]
+    #: The source's organization Entry uid, from the export-token response.
+    #: See ExportTokenResponse.org_entry for why it cannot come from the token.
+    source_org_entry: str | None = None
 
 
 class CloneResult(BaseModel):

@@ -28,7 +28,10 @@ from api.types.clone import (
     Blocker, EntryPreflight, ExecuteRequest, ExecuteResponse,
     ExportTokenRequest, ExportTokenResponse, PeerInstanceOut, PreflightRequest,
 )
+from asgiref.sync import sync_to_async
+
 from api.utils import clear_cache, get_directory, get_site_from_request
+from directory.models.core import sync_clear_cache
 from directory.models import PeerInstance
 from facility.models import Organization
 
@@ -115,17 +118,19 @@ async def export_token(body: ExportTokenRequest, request: Request,
     site = await get_site_from_request(request)
     directory = await get_directory(request)
 
+    org_entry = await _org_entry_uid(site)
     token, ttl = clone_token.mint(
         sub=jwt.get("providerAccountId"),
         source_host=request.url.hostname,
         target_origin=body.target_origin.rstrip("/"),
         directory=directory.name,
-        org_entry=await _org_entry_uid(site),
+        org_entry=org_entry,
         entry_uids=body.entry_uids,
     )
     return ExportTokenResponse(
         token=token, expires_in=ttl, directory=directory.name,
         source_origin=f"https://{request.url.hostname}",
+        org_entry=org_entry,
     )
 
 
@@ -238,13 +243,16 @@ async def execute_clone(body: ExecuteRequest, request: Request,
     site = await get_site_from_request(request)
     directory = await get_directory(request)
     org_uid = await _org_entry_uid(site)
-    claims = None
-    try:
-        claims = clone_token.read(body.token, request_host=peer.origin.split("//")[-1])
-    except HTTPException:
-        # The token is the source's to verify; the target only relays it. A
-        # local read failure is not a reason to refuse.
-        pass
+    # The source's organization entry, taken from the request rather than the
+    # token.
+    #
+    # The token is signed with the source's own derived key and is opaque here
+    # by design — that is what lets two deployments trust each other without
+    # sharing a secret. Reading it locally always failed, so `source_org_entry`
+    # was always None, the MEMBER_OF remap never fired, and every cloned entry
+    # arrived belonging to no organization: visible in /api/v2/entries and on
+    # its own page, absent from every listing that filters on membership.
+    source_org_entry = body.source_org_entry
 
     creator_uid = None
     from api.neo4j_auth import get_neo4j_user
@@ -263,7 +271,7 @@ async def execute_clone(body: ExecuteRequest, request: Request,
         results.append(await execute.clone_one(
             r.json(), res,
             directory_name=directory.name, org_uid=org_uid,
-            source_org_entry=claims.org_entry if claims else None,
+            source_org_entry=source_org_entry,
             creator_uid=creator_uid,
         ))
 
@@ -272,4 +280,20 @@ async def execute_clone(body: ExecuteRequest, request: Request,
         await clear_cache("v2:entries", request)
         await clear_cache("v1:facilities", request)
         await clear_cache("v2:public/facilities", request)
+        # The occupation labels, which a clone can add to.
+        #
+        # A cloned entry may bring an EffectorType this directory has never
+        # listed — the point of cloning is usually that the person is new here.
+        # The staff listing on the home page does not read the type from the
+        # entry: cardCatEntries groups entries by type and then asks
+        # genderedLabel for its name, which comes from this payload. Stale, the
+        # new profession has no label and the group is simply absent from the
+        # page, while the entry itself is present everywhere else — which is a
+        # confusing way to find out a cache was missed.
+        await clear_cache("v2:effector-type-labels", request)
+        # The v1 twin, which the DRF endpoint serves under a language key rather
+        # than a site one, so clear_cache's site fan-out does not reach it.
+        await sync_to_async(sync_clear_cache)(
+            "v1:effector_type_labels", key="v1:effector_type_labels:fr"
+        )
     return ExecuteResponse(results=results)

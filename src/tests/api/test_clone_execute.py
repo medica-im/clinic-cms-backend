@@ -155,6 +155,72 @@ class TestAHappyClone:
         assert rows[0][0] == 1
 
 
+class TestTheEntryJoinsThisSitesOrganization:
+    """A cloned entry has to belong to the organization that now publishes it.
+
+    This is what makes it *visible*. The directory, the staff listing and the
+    home page all filter on membership of the site's own organization entry —
+    `getAvatars` and `allFacilities` both check
+    `memberships.includes(organization.uid)` — so an entry with none is present
+    in /api/v2/entries and on its own /e/{slug} page while being absent from
+    every listing a reader actually browses.
+
+    The edge cannot be copied, because the organization entry has a different
+    uid on every deployment. It has to be *remapped*: the source says which of
+    its entries is its own organization, and the target swaps that one for its
+    own.
+
+    Reported from the field: an entry cloned successfully, reachable at its own
+    URL, and missing from the directory.
+    """
+
+    async def test_the_source_organization_is_remapped_to_this_one(self, graph):
+        source_org = "the-source-organization-entry-uid"
+        r = await execute.clone_one(
+            full_entry(uid="member-source", memberships=[source_org]),
+            Resolution(source_uid="member-source", effector="create", facility="create"),
+            directory_name=graph["dir"], org_uid=graph["org"],
+            source_org_entry=source_org, creator_uid=None,
+        )
+        assert r.status == "created", r.error
+        rows, _ = await adb.cypher_query(
+            "MATCH (e:Entry {uid:$uid})-[:MEMBER_OF]->(o:Entry) RETURN o.uid",
+            {"uid": r.entry_uid},
+        )
+        assert [x[0] for x in rows] == [graph["org"]], (
+            "the cloned entry did not join this site's organization, so it will "
+            "be missing from the directory and the staff listing"
+        )
+
+    async def test_without_the_source_organization_nothing_is_invented(self, graph):
+        """The bug as it actually shipped.
+
+        `source_org_entry` was read from the clone token, which the target
+        cannot decrypt — it is signed with the source's own key by design. So it
+        was always None and the remap never fired. The entry still clones; it
+        just belongs to nothing, which is the invisible failure above.
+
+        Asserted rather than fixed by inventing a membership: a clone that
+        silently attaches an entry to this organization when the source never
+        said so would be guessing about affiliation.
+        """
+        r = await execute.clone_one(
+            full_entry(uid="no-org-source", memberships=["some-other-entry"]),
+            Resolution(source_uid="no-org-source", effector="create", facility="create"),
+            directory_name=graph["dir"], org_uid=graph["org"],
+            source_org_entry=None, creator_uid=None,
+        )
+        assert r.status == "created", r.error
+        rows, _ = await adb.cypher_query(
+            "MATCH (e:Entry {uid:$uid})-[:MEMBER_OF]->() RETURN count(*)",
+            {"uid": r.entry_uid},
+        )
+        assert rows[0][0] == 0
+        assert any("does not exist here" in w for w in r.warnings), (
+            "a membership that could not be resolved was dropped silently"
+        )
+
+
 class TestRetiredOrganizationNodes:
     async def test_edges_to_them_are_left_out(self, graph):
         """An organization is an Entry now; the Organization node is retired.
@@ -215,3 +281,60 @@ async def _count_facilities() -> int:
     rows, _ = await adb.cypher_query(
         "MATCH (f:Facility) WHERE f.slug STARTS WITH $tag RETURN count(f)", {"tag": TAG})
     return rows[0][0]
+
+
+class TestTheCloneJoinsThisOrganization:
+    """A cloned entry has to belong to the organization that received it.
+
+    Every listing on the site filters on membership — `allFacilities` and
+    `getAvatars` both check `memberships.includes(organization.uid)` — so an
+    entry belonging to no organization is present in /api/v2/entries and on its
+    own page at /e/{slug}, and absent from the directory, the map and the staff
+    listing. It looks like a caching problem and is not one.
+
+    Reported from the field: an entry cloned from staging appeared at its own
+    URL and nowhere else.
+    """
+
+    async def test_the_source_organization_is_remapped_to_this_one(self, graph):
+        """The edge means "belongs to the publishing organization".
+
+        That referent differs per instance, so it is remapped rather than
+        copied: copying would point the clone at an entry on another server.
+        """
+        source_org = "source-org-entry-uid"
+        r = await execute.clone_one(
+            full_entry(uid="member-source", memberships=[source_org]),
+            Resolution(source_uid="member-source", effector="create", facility="create"),
+            directory_name=graph["dir"], org_uid=graph["org"],
+            source_org_entry=source_org, creator_uid=None,
+        )
+        assert r.status == "created", r.error
+        rows, _ = await adb.cypher_query(
+            "MATCH (e:Entry {uid:$uid})-[:MEMBER_OF]->(o:Entry) RETURN o.uid",
+            {"uid": r.entry_uid},
+        )
+        assert [row[0] for row in rows] == [graph["org"]], (
+            "the clone was not attached to this instance's organization entry, "
+            "so it will be missing from every listing that filters on membership"
+        )
+
+    async def test_without_the_source_organization_nothing_is_invented(self, graph):
+        """The failure mode that caused the bug, pinned.
+
+        When the target does not know which entry the source called its
+        organization, it must not guess — but the caller has to supply it, and
+        this is the case that proves the wiring is load-bearing rather than
+        decorative.
+        """
+        r = await execute.clone_one(
+            full_entry(uid="no-org-source", memberships=["some-remote-org"]),
+            Resolution(source_uid="no-org-source", effector="create", facility="create"),
+            directory_name=graph["dir"], org_uid=graph["org"],
+            source_org_entry=None, creator_uid=None,
+        )
+        assert r.status == "created", r.error
+        assert any("does not exist here" in w for w in r.warnings), (
+            "an unresolvable membership was silently dropped; the superuser has "
+            "no way to know the entry is not attached to anything"
+        )
