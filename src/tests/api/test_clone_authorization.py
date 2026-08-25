@@ -86,14 +86,28 @@ class TestOnlySuperusersMayClone:
     @pytest.mark.parametrize("method,url,body", ROUTES)
     async def test_a_superuser_is_let_past_the_gate(self, versioned_client, patch_jwt, jwt_superuser,
                                                    mock_role, mock_site, role, method, url, body):
-        """Past the gate, not necessarily to a 200.
+        """Past the *role* gate, not necessarily to a 200.
 
         A superuser naming a peer that does not exist gets a 404 from the
-        registry, and that is the right answer — what matters here is that the
-        403 is gone.
+        registry, and one naming an unregistered target gets a 403 from it —
+        both correct, and neither is the role gate refusing them.
+
+        export-token is therefore excluded from the "not 403" assertion: its
+        second gate answers 403 by design, and asserting otherwise would mean
+        asserting that an arbitrary origin can be handed a credential for this
+        directory. That case has its own test in test_clone_security.py.
         """
         with patch_jwt(jwt_superuser), mock_role(role), mock_site():
             r = await getattr(versioned_client, method.lower())(url, **({"json": body} if body else {}))
+        if "export-token" in url:
+            # Refused by the peer registry, not by the role gate. Distinguished
+            # by the detail, which names the registry.
+            assert r.status_code == 403
+            assert "peer" in r.text.lower(), (
+                "export-token refused a superuser for a reason other than the "
+                f"peer registry: {r.text[:200]}"
+            )
+            return
         assert r.status_code != 403, f"{method} {url} refused a superuser"
 
 

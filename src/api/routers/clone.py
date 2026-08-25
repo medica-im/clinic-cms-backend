@@ -79,6 +79,7 @@ async def instances(request: Request,
 
 @router.post("/clone/export-token")
 async def export_token(body: ExportTokenRequest, request: Request,
+                       jwt: Annotated[dict, Depends(JWT)],
                        _: Annotated[str, Depends(require_superuser)]) -> ExportTokenResponse:
     """Mint a token letting `target_origin` read this directory as this user.
 
@@ -87,10 +88,10 @@ async def export_token(body: ExportTokenRequest, request: Request,
     refuses to be read, and an arbitrary origin in the request body must not be
     able to bypass it.
     """
-    jwt = JWT(request)
-    site = await get_site_from_request(request)
-    directory = await get_directory(request)
-
+    # The peer check first, before any lookup that can fail for its own
+    # reasons. Resolving the directory ahead of it meant a misconfigured site
+    # answered a *refused* request with an unrelated error, which reads as a
+    # server fault rather than "that origin may not read this instance".
     allowed = [p async for p in PeerInstance.objects.filter(active=True, inbound=True).all()]
     if not any(body.target_origin.rstrip("/") == p.origin.rstrip("/") for p in allowed):
         # Names the fix, not just the refusal. Each deployment has its own
@@ -110,6 +111,9 @@ async def export_token(body: ExportTokenRequest, request: Request,
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"at most {clone_token.MAX_ENTRIES} entries per token",
         )
+
+    site = await get_site_from_request(request)
+    directory = await get_directory(request)
 
     token, ttl = clone_token.mint(
         sub=jwt.get("providerAccountId"),
@@ -227,6 +231,7 @@ async def preflight(body: PreflightRequest, request: Request,
 
 @router.post("/clone/execute")
 async def execute_clone(body: ExecuteRequest, request: Request,
+                        jwt: Annotated[dict, Depends(JWT)],
                         _: Annotated[str, Depends(require_superuser)]) -> ExecuteResponse:
     """Clone the entries, one at a time; one failure never aborts the batch."""
     peer = await _peer(body.instance)
@@ -241,7 +246,6 @@ async def execute_clone(body: ExecuteRequest, request: Request,
         # local read failure is not a reason to refuse.
         pass
 
-    jwt = JWT(request)
     creator_uid = None
     from api.neo4j_auth import get_neo4j_user
     user = await get_neo4j_user(jwt)
