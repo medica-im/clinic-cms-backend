@@ -11,8 +11,10 @@ phone is recoverable by hand; a half-written graph is not.
 """
 import logging
 
+from django.db import IntegrityError
 from neomodel import adb
 
+from addressbook.models import Contact
 from api.serializers.clone import detect
 from api.types.clone import CloneResult
 
@@ -199,6 +201,24 @@ async def clone_one(full: dict, resolution, *, directory_name: str, org_uid: str
         )
         entry_uid = rows[0][0]
         comp.note("Entry", entry_uid)
+
+        # An entry lives in two stores. Postgres holds a Contact row keyed by
+        # the entry's uid, and that row is what emails, phones, websites and
+        # social media links hang off — each of those endpoints fetches it with
+        # `aget(neomodel_uid=...)` and 404s without it.
+        #
+        # Writing the Entry with raw Cypher skips the ordinary creation path in
+        # serializers/entries.py, which is where that row is normally made, so
+        # it has to be made here too. Cloned entries that lacked one were
+        # complete and visible in every graph respect while refusing every
+        # attempt to give them contact details.
+        #
+        # get_or_create, not create: a uid collision is not a reason to fail a
+        # clone that has already passed the point of no rollback.
+        try:
+            await Contact.objects.aget_or_create(neomodel_uid=entry_uid)
+        except IntegrityError:
+            pass
 
         if creator_uid:
             await adb.cypher_query(
