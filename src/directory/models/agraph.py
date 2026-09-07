@@ -319,6 +319,10 @@ class DepartmentOfFrance(AsyncStructuredNode):
         'RegionOfFrance',
         'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
     )
+    public_holiday_zone = AsyncRelationshipTo(
+        'PublicHolidayZone',
+        'PART_OF'
+    )
 
 
 class RegionOfFrance(AsyncStructuredNode):
@@ -337,6 +341,25 @@ class Country(AsyncStructuredNode):
     name = StringProperty(unique_index=True)
     code = StringProperty(unique_index=True)
     slug = StringProperty(unique_index=True)
+
+
+class PublicHolidayZone(AsyncStructuredNode):
+    """School holiday zone A/B/C, hanging off the department.
+
+    The async twin of the class in graph.py. It exists here because the
+    organisation payload's `public_holidays_zone` is reached by four hops —
+    Facility → Commune → Department → PublicHolidayZone — and the frontend's
+    publicHolidaysStore picks its calendar from it. Without the async
+    definition the last hop has nothing to resolve to and the key would
+    quietly serialise as null.
+    """
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    label = StringProperty(unique_index=True)
+    departments = AsyncRelationshipFrom(
+        'DepartmentOfFrance',
+        'PART_OF'
+    )
 
 
 class MunicipalArrondissement(AdministrativeTerritorialEntityOfFrance):

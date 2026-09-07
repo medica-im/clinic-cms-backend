@@ -637,7 +637,10 @@ def get_address(facility: Facility, commune: Commune, country: Country):
        "zoom": facility.zoom,
        "tooltip_direction": facility.tooltip_direction,
        "tooltip_permanent": facility.tooltip_permanent,
-       "tooltip_direction": facility.tooltip_direction, 
+       # tooltip_text completes the trio the map reads. It was missing while
+       # tooltip_direction was listed twice — a copy/paste that silently
+       # dropped the tooltip's actual content from every address.
+       "tooltip_text": facility.tooltip_text,
     }
     return _dct
 
