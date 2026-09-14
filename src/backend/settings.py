@@ -303,8 +303,21 @@ EMAIL_PORT=config('EMAIL_PORT')
 EMAIL_HOST_USER=config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD=config('EMAIL_HOST_PASSWORD')
 EMAIL_USE_TLS=True
+# Overridable so an environment that cannot reach an SMTP server -- staging,
+# where the provider blocks outbound 587 -- can fall back to the console
+# backend instead of hanging.
+EMAIL_BACKEND=config(
+    'EMAIL_BACKEND',
+    default='django.core.mail.backends.smtp.EmailBackend',
+)
+# NEVER leave this unset. Django's AdminEmailHandler mails admins on any
+# unhandled exception, synchronously, inside the request. With no timeout a
+# blocked SMTP port makes that connect hang until gunicorn kills the worker at
+# --timeout; the worker respawns, picks up the next request, and hangs again.
+# Six workers trapped that way took every staging site down on 13 Sep 2026 --
+# an erroring endpoint became a total outage because the error REPORTING hung.
+EMAIL_TIMEOUT=config('EMAIL_TIMEOUT', default=10, cast=int)
 #EMAIL_USE_SSL
-#EMAIL_TIMEOUT
 #EMAIL_SSL_KEYFILE
 #EMAIL_SSL_CERTFILE
 
