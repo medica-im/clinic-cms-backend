@@ -346,7 +346,21 @@ ACCESS_TOKEN_EXPIRE_MINUTES=config('ACCESS_TOKEN_EXPIRE_MINUTES', cast=int, defa
 OIDC_GOOGLE_CLIENT_ID=config('OIDC_GOOGLE_CLIENT_ID')
 
 # mailer
-MAILGUN_API_URL = "https://api.eu.mailgun.net/v3/mail.medica.im/messages"
+from mailer.endpoints import build_api_url as build_mailgun_api_url
+
+# The default Mailgun identity. An organization with an active
+# mailer.MailgunAccount row sends under its own instead -- see
+# mailer.config.get_sender.
+MAILGUN_DOMAIN = config('MAILGUN_DOMAIN', default="mail.medica.im")
+MAILGUN_REGION = config('MAILGUN_REGION', default="eu")
+MAILGUN_API_URL = build_mailgun_api_url(MAILGUN_DOMAIN, region=MAILGUN_REGION)
 MAILGUN_SENDING_KEY = config('MAILGUN_SENDING_KEY')
 MAILGUN_SENDING_KEY_ID = config('MAILGUN_SENDING_KEY_ID')
+MAILGUN_FROM_EMAIL = config('MAILGUN_FROM_EMAIL', default="noreply@mail.medica.im")
+MAILGUN_FROM_NAME = config('MAILGUN_FROM_NAME', default="")
+MAILGUN_FROM_ADDRESS = (
+    f"{MAILGUN_FROM_NAME} <{MAILGUN_FROM_EMAIL}>"
+    if MAILGUN_FROM_NAME
+    else MAILGUN_FROM_EMAIL
+)
 

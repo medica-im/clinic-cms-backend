@@ -1,25 +1,31 @@
 import json
-import requests
 import logging
-from django.conf import settings
 
-import os
+import requests
 
+from mailer.config import SenderConfig
 
 logger = logging.getLogger(__name__)
 
-MAILGUN_API_URL = settings.MAILGUN_API_URL
-FROM_EMAIL_ADDRESS = "Jérôme Pinguet <noreply@mail.medica.im>"    # your domain, or Mailgun sandbox
 
-AUTH = (settings.MAILGUN_SENDING_KEY_ID, settings.MAILGUN_SENDING_KEY )
+def _resolve(sender: SenderConfig | None) -> SenderConfig:
+    """Callers with no organization in hand send under the .env identity."""
+    return sender if sender is not None else SenderConfig.default()
 
-def send_email_with_attachment(to_address: str, subject: str, message: str):
+
+def send_email_with_attachment(
+    to_address: str,
+    subject: str,
+    message: str,
+    sender: SenderConfig | None = None,
+):
+    sender = _resolve(sender)
     try:
         files = {'attachment': open('./cover-letter.txt', 'rb')}   # file you want to attach
         # files = {'inline': open('./zen-attachment.jpg', 'rb')}   # file you want to attach
 
-        resp = requests.post(MAILGUN_API_URL, auth=AUTH, files=files,
-                             data={"from": FROM_EMAIL_ADDRESS,
+        resp = requests.post(sender.api_url, auth=sender.auth, files=files,
+                             data={"from": sender.from_address,
                                    "to": to_address, "subject": subject, "html": message})
         if resp.status_code == 200:  # success
             logger.info(f"Successfully sent an email to '{to_address}' via Mailgun API.")
@@ -30,10 +36,16 @@ def send_email_with_attachment(to_address: str, subject: str, message: str):
         logging.exception(f"Mailgun error: {ex}")
 
 
-def send_single_email(to_address: str, subject: str, message: str):
+def send_single_email(
+    to_address: str,
+    subject: str,
+    message: str,
+    sender: SenderConfig | None = None,
+):
+    sender = _resolve(sender)
     try:
-        resp = requests.post(MAILGUN_API_URL, auth=AUTH,
-                     data={"from": FROM_EMAIL_ADDRESS,
+        resp = requests.post(sender.api_url, auth=sender.auth,
+                     data={"from": sender.from_address,
                            "to": to_address, "subject": subject, "text": message})
         if resp.status_code == 200:  # success
             result = resp.json()
@@ -48,14 +60,20 @@ def send_single_email(to_address: str, subject: str, message: str):
         return {"error": str(ex)}
 
 
-def send_batch_emails(recipients: dict, subject: str, message: str) -> dict:
+def send_batch_emails(
+    recipients: dict,
+    subject: str,
+    message: str,
+    sender: SenderConfig | None = None,
+) -> dict:
+    sender = _resolve(sender)
     try:
         to_address = list(recipients.keys())  # get only email addresses
         recipients_json = json.dumps(recipients)
 
         logger.info(f"Sending email to {len(to_address)} IDs...")
-        resp = requests.post(MAILGUN_API_URL, auth=AUTH,
-                             data={"from": FROM_EMAIL_ADDRESS,
+        resp = requests.post(sender.api_url, auth=sender.auth,
+                             data={"from": sender.from_address,
                                    "to": to_address, "subject": subject, "text": message,
                                    "recipient-variables": recipients_json})
         if resp.status_code == 200:  # success

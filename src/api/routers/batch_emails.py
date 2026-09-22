@@ -4,6 +4,8 @@ from fastapi import APIRouter, status, HTTPException, Depends, Request
 from access.asyncneomodels import User as Neo4jUser
 from api.types.batch_email import BatchEmailPost, BatchEmailResponse, BatchEmailMessage, BatchEmailMessageDetail
 from api.auth import JWT, authorize_api
+from api.utils import get_site_from_request
+from facility.models import Organization
 from mailer.tasks import send_batch_emails_task
 
 logger = logging.getLogger(__name__)
@@ -51,6 +53,19 @@ async def send_batch_emails_endpoint(
             detail=f"Author with uid {item.author_uid} not found",
         )
 
+    # The organization owning this site decides which Mailgun identity the
+    # mail goes out under; without one it falls back to the default
+    # credentials rather than refusing to send.
+    site = await get_site_from_request(request)
+    try:
+        organization = await Organization.objects.aget(site=site)
+    except Organization.DoesNotExist:
+        logger.warning(
+            f"No organization for site {site.domain}; sending the batch email "
+            f"with the default credentials"
+        )
+        organization = None
+
     # Dispatch Celery task (returns immediately)
     task = send_batch_emails_task.delay(
         recipients=recipients,
@@ -58,6 +73,7 @@ async def send_batch_emails_endpoint(
         message=item.body,
         author_uid=item.author_uid,
         recipient_uids=valid_uids,
+        organization_id=organization.id if organization else None,
     )
 
     return BatchEmailResponse(

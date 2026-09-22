@@ -45,4 +45,9 @@ async def notification_email(invitee: Invitee, site: Site):
         "Si vous souhaitez utiliser une autre adresse électronique pour vous connecter à notre service, contactez-nous et nous vous enverrons une nouvelle invitation."
     )
     logger.debug(f"{invitee.email=} {subject=} {message=}")
-    send_single_email_task.delay(invitee.email, subject, message)
+    send_single_email_task.delay(
+        invitee.email,
+        subject,
+        message,
+        organization_id=organization.id,
+    )

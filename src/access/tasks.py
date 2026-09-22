@@ -285,6 +285,7 @@ def _send_notification_email(email: str, name: str, site_domain: str) -> bool:
     """Reuses mailer.main.send_single_email directly (sync, already in Celery)."""
     from django.contrib.sites.models import Site
     from facility.models import Organization
+    from mailer.config import get_sender
     from mailer.main import send_single_email
 
     try:
@@ -325,7 +326,7 @@ def _send_notification_email(email: str, name: str, site_domain: str) -> bool:
     )
 
     try:
-        send_single_email(email, subject, message)
+        send_single_email(email, subject, message, sender=get_sender(organization))
         return True
     except Exception as e:
         logger.exception(f"Failed to send notification email to {email}: {e}")
