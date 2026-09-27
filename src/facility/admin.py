@@ -32,8 +32,12 @@ class OrganizationAdmin(TranslationAdmin):
         'sandbox',
     )
     raw_id_fields = ["contact"]
+    # city is a ForeignKey: searching it needs the related field (city__name),
+    # or every search crashes with a FieldError. The short name and the site's
+    # domain are what people type -- "unipa" is in neither name field.
     search_fields = [
-        'name', 'formatted_name', 'city', 'company_name', 'neomodel_uid'
+        'name', 'formatted_name', 'formatted_name_short', 'site__domain',
+        'city__name', 'company_name', 'neomodel_uid'
     ]
     autocomplete_fields = ['contact',]
     fields = (
