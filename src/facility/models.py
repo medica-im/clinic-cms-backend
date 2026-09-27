@@ -58,6 +58,15 @@ class Organization(models.Model):
     website_description = models.TextField(
         blank=True,
     )
+    public_base_url = models.URLField(
+        blank=True,
+        help_text=(
+            "Public URL of the site including any base path, e.g. "
+            "https://unipa.fr/annuaire. Leave blank for https://{domain}. "
+            "Used for links in emails: nginx strips the base path before "
+            "requests reach the backend, so it cannot be derived from the Site."
+        ),
+    )
     active = models.BooleanField(default=False)
     contact = models.OneToOneField(
         'addressbook.Contact',

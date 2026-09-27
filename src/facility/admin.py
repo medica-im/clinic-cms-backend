@@ -46,6 +46,7 @@ class OrganizationAdmin(TranslationAdmin):
         'formatted_name_definite_article',
         'website_title',
         'website_description',
+        'public_base_url',
         'active',
         'created',
         'updated',
