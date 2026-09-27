@@ -164,6 +164,27 @@ async def test_a_batch_email_queues_with_the_requesting_organization():
 # https://{domain} every root site has always used.
 
 
+@pytest.fixture(autouse=True)
+def builtin_template():
+    """Every invitation here renders the built-in text, with no database.
+
+    These tests are about links and senders, not about which template row is
+    chosen -- that is test_email_templates.py. Patched where each path looks
+    it up: the serializer imports get_template at module level, the Celery
+    task inside the function.
+    """
+    from mailer.defaults import INVITATION_FALLBACK
+
+    def lookup(organization, kind):
+        return INVITATION_FALLBACK
+
+    with (
+        patch("api.serializers.invitee.get_template", lookup),
+        patch("mailer.templating.get_template", lookup),
+    ):
+        yield
+
+
 async def _single_invitation(org) -> tuple[str, str]:
     """(subject, message) of the single invitation path."""
     from api.serializers.invitee import notification_email

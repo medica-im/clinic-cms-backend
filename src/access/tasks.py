@@ -287,7 +287,7 @@ def _send_notification_email(email: str, name: str, site_domain: str) -> bool:
     from facility.models import Organization
     from mailer.config import get_sender
     from mailer.main import send_single_email
-    from mailer.templating import organization_site_name, organization_site_url
+    from mailer.templating import get_template, invitation_context, render
 
     try:
         site = Site.objects.get(domain=site_domain)
@@ -296,37 +296,10 @@ def _send_notification_email(email: str, name: str, site_domain: str) -> bool:
         logger.error(f"Could not find site/organization for domain {site_domain}")
         return False
 
-    site_url = organization_site_url(organization, site_domain)
-    site_name = organization_site_name(organization, site_domain)
-    subject = (
-        f"{organization.formatted_name} vous invite à utiliser "
-        f"le service {site_name}"
-    )
-    message = (
-        f"Bonjour {name if name else ''}!\n\n"
-        f"{organization.formatted_name} vous invite à créer un compte sur le "
-        f"service en ligne {site_name}. Vous pouvez vous rendre à l'adresse "
-        f"suivante:\n\n"
-        f"{site_url}/signin\n\n"
-        f"et cliquer sur \"Se connecter avec Google\". Vous devez utiliser "
-        f"l'adresse mail suivante: {email} Si vous n'avez pas de compte Google "
-        f"lié à cette adresse, vous pourrez en créer un gratuitement en moins "
-        f"d'une minute. Il n'est pas nécessaire de créer une adresse Gmail! "
-        f"Votre mail habituel {email} est suffisant.\n\n"
-        f"Si vous devez créer un compte Google, lors de l'étape "
-        f"\"Méthode de connexion au compte\", ne remplissez pas le champ "
-        f"\"Nom d'utilisateur  ...@gmail.com\". Cliquez sur "
-        f"\"Utiliser l'adresse email existante\".\n\n"
-        f"Après authentification par le service \"Se connecter avec Google\", "
-        f"votre compte sur {site_name} sera créé automatiquement. Vous "
-        f"pourrez utiliser nos services et créer votre entrée dans l'annuaire "
-        f"de l'organisation.\n\n"
-        f"En cas de problème, merci de nous contacter via "
-        f"{site_url}/contact\n\n"
-        f"Si vous souhaitez utiliser une autre adresse électronique pour vous "
-        f"connecter à notre service, contactez-nous et nous vous enverrons "
-        f"une nouvelle invitation."
-    )
+    template = get_template(organization, "invitation")
+    context = invitation_context(organization, site_domain, name, email)
+    subject = render(template.subject, context)
+    message = render(template.body, context)
 
     try:
         send_single_email(email, subject, message, sender=get_sender(organization))
