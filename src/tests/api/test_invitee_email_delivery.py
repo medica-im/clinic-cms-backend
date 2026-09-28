@@ -1,7 +1,7 @@
 """The invitations API says whether each invitation's email went out.
 
 emailDelivery on every invitation: the latest attempt's status (queued,
-sent, failed, or unconfirmed when a queued email was never settled), when it
+sent, failed -- including a queued email nobody settled, marked timedOut), when it
 last changed, and the reason of a failure. null for an invitation with no
 recorded attempt -- one created before recording began, or with no email.
 How attempts are recorded is tested in tests/test_email_delivery.py.
@@ -69,6 +69,7 @@ async def test_each_invitation_says_whether_its_email_went_out(versioned_client,
     assert by_uid[SENT_UID]["error"] is None
     assert by_uid[FAILED_UID]["status"] == "failed"
     assert by_uid[FAILED_UID]["error"] == "401: Forbidden"
+    assert by_uid[FAILED_UID]["timedOut"] is False
     assert by_uid[UNKNOWN_UID] is None
 
 
@@ -79,7 +80,7 @@ async def test_the_deliveries_are_looked_up_in_one_query(versioned_client, liste
     assert set(listed.call_args.args[0]) == {SENT_UID, FAILED_UID, UNKNOWN_UID}
 
 
-async def test_an_email_queued_too_long_is_reported_unconfirmed(versioned_client, listed):
+async def test_an_email_queued_too_long_is_reported_failed_and_timed_out(versioned_client, listed):
     from mailer.delivery import QUEUED_TOO_LONG
 
     listed.return_value = {SENT_UID: _row("queued", age=QUEUED_TOO_LONG + timedelta(minutes=5))}
@@ -87,4 +88,6 @@ async def test_an_email_queued_too_long_is_reported_unconfirmed(versioned_client
     response = await versioned_client.get("/api/v2/invitees")
 
     by_uid = {i["uid"]: i["emailDelivery"] for i in response.json()}
-    assert by_uid[SENT_UID]["status"] == "unconfirmed"
+    assert by_uid[SENT_UID]["status"] == "failed"
+    assert by_uid[SENT_UID]["timedOut"] is True
+    assert by_uid[SENT_UID]["error"] is None

@@ -8,8 +8,10 @@ it) or failed (with the reason).
 
 A worker that cannot even run the task -- a stale one rejecting a new
 argument, a crash before the result is written -- leaves the row queued
-forever, so a row still queued after QUEUED_TOO_LONG is shown as
-"unconfirmed" rather than as a wait that will never end.
+forever. Only time reveals it, so a row still queued after QUEUED_TOO_LONG
+is shown as failed (timed out) rather than as a wait that will never end:
+for the administrator it is the same thing -- the invitee has nothing, and
+the answer is to send it again.
 
 "sent" means Mailgun accepted the message, not that it reached the inbox:
 that would need Mailgun's delivery webhooks.
@@ -105,8 +107,16 @@ def test_a_recent_queued_email_is_waiting():
     assert delivery_status(_row("queued")) == "queued"
 
 
-def test_a_queued_email_nobody_confirmed_is_unconfirmed():
-    assert delivery_status(_row("queued", QUEUED_TOO_LONG + timedelta(minutes=1))) == "unconfirmed"
+def test_a_queued_email_nobody_confirmed_has_failed():
+    assert delivery_status(_row("queued", QUEUED_TOO_LONG + timedelta(minutes=1))) == "failed"
+
+
+def test_it_is_told_apart_from_a_refusal_by_having_timed_out():
+    from mailer.delivery import timed_out
+
+    assert timed_out(_row("queued", QUEUED_TOO_LONG + timedelta(minutes=1)))
+    assert not timed_out(_row("queued"))
+    assert not timed_out(_row("failed", timedelta(days=1)))
 
 
 @pytest.mark.parametrize("status", ["sent", "failed"])
@@ -247,3 +257,4 @@ def test_a_batch_invitation_mailgun_refused_counts_as_a_failure():
 
     assert ok is False
     mark.assert_called_once_with(5, MAILGUN_REFUSED)
+

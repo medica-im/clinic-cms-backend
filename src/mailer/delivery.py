@@ -15,8 +15,9 @@ from mailer.models import EmailDelivery
 
 logger = logging.getLogger(__name__)
 
-# A queued email nobody confirmed after this long is reported as
-# unconfirmed: the worker may have failed before it could say so.
+# A queued email nobody settled after this long is reported as failed (timed
+# out): the worker may have failed before it could say so -- a stale worker
+# rejecting a new argument, a crash, a lost message. Only time reveals those.
 QUEUED_TOO_LONG = timedelta(minutes=15)
 ERROR_MAX_LENGTH = 1000
 
@@ -41,11 +42,15 @@ def mark_result(delivery_id: int, result: dict | None) -> None:
         logger.warning(f"EmailDelivery {delivery_id} not found; result not recorded: {fields['status']}")
 
 
+def timed_out(row) -> bool:
+    """Queued, and nobody said how it ended within QUEUED_TOO_LONG."""
+    return row.status == EmailDelivery.Status.QUEUED and timezone.now() - row.updated > QUEUED_TOO_LONG
+
+
 def delivery_status(row) -> str:
-    """queued | sent | failed | unconfirmed (queued for too long)."""
-    if row.status == EmailDelivery.Status.QUEUED and timezone.now() - row.updated > QUEUED_TOO_LONG:
-        return "unconfirmed"
-    return row.status
+    """queued | sent | failed -- an email that timed out counts as failed: for
+    the administrator it is the same thing, and the answer is to resend."""
+    return EmailDelivery.Status.FAILED.value if timed_out(row) else row.status
 
 
 def latest_deliveries(invitee_uids) -> dict[str, EmailDelivery]:
@@ -57,3 +62,4 @@ def latest_deliveries(invitee_uids) -> dict[str, EmailDelivery]:
     for row in EmailDelivery.objects.filter(invitee_uid__in=uids).order_by("invitee_uid", "-created", "-id"):
         latest.setdefault(row.invitee_uid, row)
     return latest
+

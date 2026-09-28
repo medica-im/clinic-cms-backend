@@ -13,7 +13,7 @@ from api.utils import get_site_from_request
 from facility.models import Organization
 from access.models import Role
 from api.serializers.invitee import notification_email
-from mailer.delivery import delivery_status, latest_deliveries
+from mailer.delivery import delivery_status, latest_deliveries, timed_out
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ async def with_email_delivery(invitees: list[Invitee]) -> list[Invitee]:
                 status=delivery_status(row),
                 at=row.updated,
                 error=row.error or None,
+                timedOut=timed_out(row),
             )
     return invitees
 

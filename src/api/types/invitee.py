@@ -24,11 +24,13 @@ class InviteePatch(BaseModel):
 
 class EmailDelivery(BaseModel):
     """The latest attempt at sending an invitation's email (mailer.delivery).
-    sent: Mailgun accepted it. unconfirmed: queued, and nothing settled it."""
+    sent: Mailgun accepted it. failed: refused (error says why), or queued and
+    never settled (timedOut: the page gives that reason itself)."""
 
-    status: Literal["queued", "sent", "failed", "unconfirmed"]
+    status: Literal["queued", "sent", "failed"]
     at: datetime
     error: str | None = None
+    timedOut: bool = False
 
 
 class Invitee(BaseModel):
