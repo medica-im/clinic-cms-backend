@@ -166,3 +166,25 @@ class EmailTemplate(models.Model):
     def is_usable(self) -> bool:
         """True when it can be sent: active, with a subject and a body."""
         return bool(self.active and self.subject and self.body)
+
+    PROBLEM_MESSAGES = {
+        "syntax": "Invalid template syntax: {detail}",
+        "unknown_placeholder": "Unknown placeholder(s): {names}",
+        "missing_signin_url": "The invitation must contain {{{{ signin_url }}}}",
+        "mjml_source": "This is MJML source; paste the compiled HTML instead",
+    }
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        from mailer.templating import validate_template
+
+        problems = validate_template(self.kind, self.subject, self.body, self.body_text)
+        errors: dict[str, list[str]] = {}
+        for problem in problems:
+            message = self.PROBLEM_MESSAGES[problem.code].format(
+                detail=problem.detail, names=", ".join(problem.names or [])
+            )
+            errors.setdefault(problem.field, []).append(message)
+        if errors:
+            raise ValidationError(errors)

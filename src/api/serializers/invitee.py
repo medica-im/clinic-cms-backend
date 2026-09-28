@@ -3,7 +3,7 @@ from asgiref.sync import sync_to_async
 from api.types.invitee import Invitee
 from facility.models import Organization
 from mailer.tasks import send_single_email_task
-from mailer.templating import get_template, invitation_context, render
+from mailer.templating import get_template, invitation_context, render_email
 from django.contrib.sites.models import Site
 from fastapi import status, HTTPException
 
@@ -30,12 +30,12 @@ async def notification_email(invitee: Invitee, site: Site):
         )
     template = await sync_to_async(get_template)(organization, "invitation")
     context = invitation_context(organization, site.domain, invitee.name, invitee.email)
-    subject = render(template.subject, context)
-    message = render(template.body, context)
-    logger.debug(f"{invitee.email=} {subject=} {message=}")
+    email = render_email(template, context)
+    logger.debug(f"{invitee.email=} {email.subject=} {email.text=}")
     send_single_email_task.delay(
         invitee.email,
-        subject,
-        message,
+        email.subject,
+        email.text,
         organization_id=organization.id,
+        html=email.html,
     )

@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib import admin
 
-from mailer.models import BatchEmailMessage, MailgunAccount
+from mailer.models import BatchEmailMessage, EmailTemplate, MailgunAccount
 
 
 @admin.register(BatchEmailMessage)
@@ -53,6 +53,20 @@ class MailgunAccountForm(forms.ModelForm):
         if self.instance.pk:
             return self.instance.api_key
         raise forms.ValidationError("An API key is required.")
+
+
+@admin.register(EmailTemplate)
+class EmailTemplateAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "kind", "content_type", "active", "updated")
+    list_filter = ("kind", "content_type", "active")
+    search_fields = ("organization__name", "subject")
+    autocomplete_fields = ("organization",)
+    readonly_fields = ("created", "updated")
+    fieldsets = (
+        (None, {"fields": ("organization", "kind", "active")}),
+        ("Content", {"fields": ("subject", "content_type", "body", "body_text")}),
+        ("Dates", {"fields": ("created", "updated")}),
+    )
 
 
 @admin.register(MailgunAccount)

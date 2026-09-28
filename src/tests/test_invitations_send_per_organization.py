@@ -28,6 +28,7 @@ class FakeOrganization:
     id = 42
     neomodel_uid = MagicMock(hex="org-uid")
     formatted_name = "Cabinet Example"
+    formatted_name_short = "Cab. Ex."
     public_base_url = ""
 
     def __str__(self):

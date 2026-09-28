@@ -29,10 +29,10 @@ def _sender_for(organization_id):
 
 
 @shared_task
-def send_single_email_task(to_address, subject, message, organization_id=None):
+def send_single_email_task(to_address, subject, message, organization_id=None, html=None):
     logger.info(f"Sending email to {to_address}")
     res = send_single_email(
-        to_address, subject, message, sender=_sender_for(organization_id)
+        to_address, subject, message, sender=_sender_for(organization_id), html=html
     )
     return res
 

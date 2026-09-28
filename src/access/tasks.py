@@ -287,7 +287,7 @@ def _send_notification_email(email: str, name: str, site_domain: str) -> bool:
     from facility.models import Organization
     from mailer.config import get_sender
     from mailer.main import send_single_email
-    from mailer.templating import get_template, invitation_context, render
+    from mailer.templating import get_template, invitation_context, render_email
 
     try:
         site = Site.objects.get(domain=site_domain)
@@ -298,11 +298,13 @@ def _send_notification_email(email: str, name: str, site_domain: str) -> bool:
 
     template = get_template(organization, "invitation")
     context = invitation_context(organization, site_domain, name, email)
-    subject = render(template.subject, context)
-    message = render(template.body, context)
+    rendered = render_email(template, context)
 
     try:
-        send_single_email(email, subject, message, sender=get_sender(organization))
+        send_single_email(
+            email, rendered.subject, rendered.text,
+            sender=get_sender(organization), html=rendered.html,
+        )
         return True
     except Exception as e:
         logger.exception(f"Failed to send notification email to {email}: {e}")

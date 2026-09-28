@@ -131,11 +131,22 @@ def test_the_invitation_context_names_every_placeholder():
         "invitee_name": "Who",
         "invitee_email": "who@example.org",
         "organization_name": "Cabinet Example",
+        "organization_short_name": "Cab. Ex.",
         "site_name": "example.org/annuaire",
         "site_url": "https://example.org/annuaire",
         "signin_url": "https://example.org/annuaire/signin",
         "contact_url": "https://example.org/annuaire/contact",
     }
+
+
+def test_an_organization_without_a_short_name_is_named_in_full():
+    # A blank short name would leave a gap in the sentence it was put in.
+    org = FakeOrganization()
+    org.formatted_name_short = "  "
+
+    context = invitation_context(org, "example.org", name="Who", email="who@example.org")
+
+    assert context["organization_short_name"] == "Cabinet Example"
 
 
 def test_a_missing_invitee_name_renders_empty():

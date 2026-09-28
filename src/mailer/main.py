@@ -36,17 +36,27 @@ def send_email_with_attachment(
         logging.exception(f"Mailgun error: {ex}")
 
 
+def _message_data(sender: SenderConfig, to, subject: str, text: str, html: str | None) -> dict:
+    """Mailgun form fields. The html part is only added when there is one, so
+    a text email posts exactly the fields it always did."""
+    data = {"from": sender.from_address, "to": to, "subject": subject, "text": text}
+    if html is not None:
+        data["html"] = html
+    return data
+
+
 def send_single_email(
     to_address: str,
     subject: str,
     message: str,
     sender: SenderConfig | None = None,
+    *,
+    html: str | None = None,
 ):
     sender = _resolve(sender)
     try:
         resp = requests.post(sender.api_url, auth=sender.auth,
-                     data={"from": sender.from_address,
-                           "to": to_address, "subject": subject, "text": message})
+                             data=_message_data(sender, to_address, subject, message, html))
         if resp.status_code == 200:  # success
             result = resp.json()
             logger.info(f"Successfully sent an email to '{to_address}' via Mailgun API. Response: {result}")
@@ -65,6 +75,8 @@ def send_batch_emails(
     subject: str,
     message: str,
     sender: SenderConfig | None = None,
+    *,
+    html: str | None = None,
 ) -> dict:
     sender = _resolve(sender)
     try:
@@ -73,8 +85,7 @@ def send_batch_emails(
 
         logger.info(f"Sending email to {len(to_address)} IDs...")
         resp = requests.post(sender.api_url, auth=sender.auth,
-                             data={"from": sender.from_address,
-                                   "to": to_address, "subject": subject, "text": message,
+                             data={**_message_data(sender, to_address, subject, message, html),
                                    "recipient-variables": recipients_json})
         if resp.status_code == 200:  # success
             logger.info(f"Successfully sent email to {len(recipients)} recipients via Mailgun API.")
