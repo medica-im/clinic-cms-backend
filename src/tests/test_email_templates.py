@@ -36,6 +36,7 @@ from tests.test_invitations_send_per_organization import (
     _batch_invitation,
     _single_invitation,
     builtin_template,  # noqa: F401 -- a fixture, used by name below
+    no_delivery_record,  # noqa: F401 -- autouse: the single path records its email
 )
 
 

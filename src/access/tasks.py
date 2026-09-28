@@ -118,7 +118,7 @@ def process_batch_invitees(
                     row_result["existing_invitee_uid"] = unredeemed_uid
 
             if send_emails:
-                email_ok = _send_notification_email(email, name, site_domain)
+                email_ok = _send_notification_email(email, name, site_domain, invitee_uid=invitee_uid)
                 if not email_ok:
                     job.failed_email_count += 1
                     row_result["email_error"] = True
@@ -281,10 +281,16 @@ def _update_progress(job, processed_rows: int, summary: list):
     ])
 
 
-def _send_notification_email(email: str, name: str, site_domain: str) -> bool:
-    """Reuses mailer.main.send_single_email directly (sync, already in Celery)."""
+def _send_notification_email(email: str, name: str, site_domain: str, invitee_uid: str | None = None) -> bool:
+    """Reuses mailer.main.send_single_email directly (sync, already in Celery).
+
+    True only when Mailgun accepted the message: send_single_email does not
+    raise, it answers {"error": ...}. With invitee_uid, the attempt is
+    recorded (mailer.delivery) so the invitation shows whether it went out.
+    """
     from django.contrib.sites.models import Site
     from facility.models import Organization
+    from mailer import delivery
     from mailer.config import get_sender
     from mailer.main import send_single_email
     from mailer.templating import get_template, invitation_context, render_email
@@ -300,12 +306,15 @@ def _send_notification_email(email: str, name: str, site_domain: str) -> bool:
     context = invitation_context(organization, site_domain, name, email)
     rendered = render_email(template, context)
 
+    row = delivery.record_queued(invitee_uid, email) if invitee_uid else None
     try:
-        send_single_email(
+        result = send_single_email(
             email, rendered.subject, rendered.text,
             sender=get_sender(organization), html=rendered.html,
         )
-        return True
     except Exception as e:
         logger.exception(f"Failed to send notification email to {email}: {e}")
-        return False
+        result = {"error": str(e)}
+    if row is not None:
+        delivery.mark_result(row.id, result)
+    return bool((result or {}).get("id"))

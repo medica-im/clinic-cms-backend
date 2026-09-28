@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib import admin
 
-from mailer.models import BatchEmailMessage, EmailImage, EmailTemplate, MailgunAccount
+from mailer.models import BatchEmailMessage, EmailDelivery, EmailImage, EmailTemplate, MailgunAccount
 
 
 @admin.register(BatchEmailMessage)
@@ -67,6 +67,19 @@ class EmailTemplateAdmin(admin.ModelAdmin):
         ("Content", {"fields": ("subject", "content_type", "body", "body_text")}),
         ("Dates", {"fields": ("created", "updated")}),
     )
+
+
+@admin.register(EmailDelivery)
+class EmailDeliveryAdmin(admin.ModelAdmin):
+    """What happened to each invitation email; written by mailer.delivery only."""
+
+    list_display = ("to_address", "status", "created", "updated", "invitee_uid")
+    list_filter = ("status",)
+    search_fields = ("to_address", "invitee_uid", "provider_message_id")
+    readonly_fields = [f.name for f in EmailDelivery._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
 
 
 @admin.register(EmailImage)

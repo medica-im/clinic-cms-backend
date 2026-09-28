@@ -22,6 +22,7 @@ from mailer.templating import html_to_text, invitation_context, render_email
 from tests.test_invitations_send_per_organization import (
     FakeOrganization,
     builtin_template,  # noqa: F401 -- a fixture, used by name below
+    no_delivery_record,  # noqa: F401 -- autouse: the single path records its email
 )
 
 

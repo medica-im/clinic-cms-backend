@@ -2,6 +2,7 @@ import logging
 from asgiref.sync import sync_to_async
 from api.types.invitee import Invitee
 from facility.models import Organization
+from mailer.delivery import mark_result, record_queued
 from mailer.tasks import send_single_email_task
 from mailer.templating import get_template, invitation_context, render_email
 from django.contrib.sites.models import Site
@@ -32,10 +33,19 @@ async def notification_email(invitee: Invitee, site: Site):
     context = invitation_context(organization, site.domain, invitee.name, invitee.email)
     email = render_email(template, context)
     logger.debug(f"{invitee.email=} {email.subject=} {email.text=}")
-    send_single_email_task.delay(
-        invitee.email,
-        email.subject,
-        email.text,
-        organization_id=organization.id,
-        html=email.html,
-    )
+    # Recorded before it is handed on, so an email that never goes out
+    # leaves a trace an administrator can see (mailer.delivery).
+    delivery = await sync_to_async(record_queued)(invitee.uid, invitee.email)
+    try:
+        send_single_email_task.delay(
+            invitee.email,
+            email.subject,
+            email.text,
+            organization_id=organization.id,
+            html=email.html,
+            delivery_id=delivery.id,
+        )
+    except Exception as error:
+        # The invitation exists either way; say that its email did not leave.
+        logger.exception(f"Could not queue the invitation email to {invitee.email}")
+        await sync_to_async(mark_result)(delivery.id, {"error": f"Could not queue the email: {error}"})

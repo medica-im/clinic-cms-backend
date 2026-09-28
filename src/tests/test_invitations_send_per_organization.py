@@ -40,8 +40,21 @@ class FakeSite:
 
 
 class FakeInvitee:
+    uid = "f" * 32
     email = "who@example.org"
     name = "Who"
+
+
+@pytest.fixture(autouse=True)
+def no_delivery_record():
+    """The single path records each email (mailer.delivery) before queueing it;
+    these tests are about what is sent, and run without a database. Imported
+    by the test files that reuse the helpers below, where it applies too.
+    What is recorded is tested in test_email_delivery.py."""
+    from types import SimpleNamespace
+
+    with patch("api.serializers.invitee.record_queued", return_value=SimpleNamespace(id=1)):
+        yield
 
 
 @pytest.mark.asyncio
@@ -100,7 +113,7 @@ def test_a_batch_invitation_sends_under_the_organization_identity():
         patch("django.contrib.sites.models.Site.objects.get", return_value=FakeSite()),
         patch("facility.models.Organization.objects.get", return_value=org),
         patch("mailer.config.get_sender", return_value=ORG_SENDER),
-        patch("mailer.main.send_single_email", return_value={}) as send,
+        patch("mailer.main.send_single_email", return_value={"id": "<m@example.org>"}) as send,
     ):
         ok = _send_notification_email("who@example.org", "Who", "annuaire.example.org")
 

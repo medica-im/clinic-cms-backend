@@ -2,7 +2,8 @@ import logging
 from typing import Annotated
 from fastapi import APIRouter, Request, Depends, status, HTTPException
 from neomodel import adb
-from api.types.invitee import Invitee, InviteePost, InviteePatch
+from asgiref.sync import sync_to_async
+from api.types.invitee import EmailDelivery, Invitee, InviteePost, InviteePatch
 from access.asyncneomodels import Invitee as AsyncInvitee
 from access.asyncneomodels import User as AsyncUser
 from access.asyncneomodels import Account as AsyncAccount
@@ -12,10 +13,25 @@ from api.utils import get_site_from_request
 from facility.models import Organization
 from access.models import Role
 from api.serializers.invitee import notification_email
+from mailer.delivery import delivery_status, latest_deliveries
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def with_email_delivery(invitees: list[Invitee]) -> list[Invitee]:
+    """Attach each invitation's latest email attempt, in one query."""
+    rows = await sync_to_async(latest_deliveries)([invitee.uid for invitee in invitees])
+    for invitee in invitees:
+        row = rows.get(invitee.uid)
+        if row is not None:
+            invitee.emailDelivery = EmailDelivery(
+                status=delivery_status(row),
+                at=row.updated,
+                error=row.error or None,
+            )
+    return invitees
 
 
 async def verify_invitee_ownership(request: Request, invitee_uid: str):
@@ -88,7 +104,7 @@ async def invitees(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list
             props["createdBy"] = row[1]
             invitee_list.append(Invitee.model_validate(props))
 
-    return invitee_list
+    return await with_email_delivery(invitee_list)
 
 
 @router.get("/invitees/{invitee_uid}")
@@ -112,7 +128,7 @@ async def get_invitee(
         )
     props = dict(results[0][0])
     props["createdBy"] = results[0][1]
-    return Invitee.model_validate(props)
+    return (await with_email_delivery([Invitee.model_validate(props)]))[0]
 
 
 @router.post("/invitees", status_code=status.HTTP_201_CREATED)
@@ -206,7 +222,7 @@ async def create_invitee(
         logger.error(f"Failed to connect createdBy for Invitee: {e}")
     invitee = Invitee.model_validate(new_invitee.__properties__)
     await notification_email(invitee, site)
-    return invitee
+    return (await with_email_delivery([invitee]))[0]
 
 
 @router.patch("/invitees/{invitee_uid}")
@@ -242,7 +258,7 @@ async def update_invitee(
     # Save the updated invitee
     updated_invitee = await invitee.save()
 
-    return Invitee.model_validate(updated_invitee.__properties__)
+    return (await with_email_delivery([Invitee.model_validate(updated_invitee.__properties__)]))[0]
 
 
 @router.delete("/invitees/{invitee_uid}")

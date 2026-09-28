@@ -196,6 +196,36 @@ class EmailTemplate(models.Model):
             raise ValidationError(errors)
 
 
+class EmailDelivery(models.Model):
+    """One attempt at sending one invitation email, and how it ended.
+
+    Queued when handed to the worker; sent when Mailgun accepted it; failed
+    with the reason otherwise. See mailer.delivery. The invitee is a graph
+    node, so it is referenced by uid; a new attempt is a new row, so the
+    history stays.
+    """
+
+    class Status(models.TextChoices):
+        QUEUED = "queued", "Queued"
+        SENT = "sent", "Sent (accepted by Mailgun)"
+        FAILED = "failed", "Failed"
+
+    invitee_uid = models.CharField(max_length=64, db_index=True)
+    to_address = models.EmailField()
+    status = models.CharField(max_length=8, choices=Status.choices, default=Status.QUEUED)
+    provider_message_id = models.CharField(max_length=255, blank=True)
+    error = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created", "-id"]
+        verbose_name_plural = "Email deliveries"
+
+    def __str__(self):
+        return f"{self.to_address}: {self.status}"
+
+
 def email_image_path(instance, filename):
     """email_images/<organization>/<random>.<ext>: one directory per
     organization, and a name that says nothing and never changes -- emails

@@ -1,4 +1,6 @@
 from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr
 
 
@@ -20,6 +22,15 @@ class InviteePatch(BaseModel):
     active: bool | None = None
 
 
+class EmailDelivery(BaseModel):
+    """The latest attempt at sending an invitation's email (mailer.delivery).
+    sent: Mailgun accepted it. unconfirmed: queued, and nothing settled it."""
+
+    status: Literal["queued", "sent", "failed", "unconfirmed"]
+    at: datetime
+    error: str | None = None
+
+
 class Invitee(BaseModel):
     uid: str
     email: str | None = None
@@ -29,3 +40,5 @@ class Invitee(BaseModel):
     role: str
     active: bool | None = True
     redeemedAt: int | None = None
+    # None: no recorded attempt (created before recording, or never emailed).
+    emailDelivery: EmailDelivery | None = None

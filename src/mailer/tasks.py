@@ -4,6 +4,7 @@ from celery import shared_task
 
 from facility.models import Organization
 from mailer.config import get_sender
+from mailer.delivery import mark_result
 from mailer.main import send_single_email, send_batch_emails
 
 logger = logging.getLogger(__name__)
@@ -29,11 +30,14 @@ def _sender_for(organization_id):
 
 
 @shared_task
-def send_single_email_task(to_address, subject, message, organization_id=None, html=None):
+def send_single_email_task(to_address, subject, message, organization_id=None, html=None, delivery_id=None):
+    """delivery_id: the EmailDelivery row to settle with Mailgun's answer."""
     logger.info(f"Sending email to {to_address}")
     res = send_single_email(
         to_address, subject, message, sender=_sender_for(organization_id), html=html
     )
+    if delivery_id is not None:
+        mark_result(delivery_id, res)
     return res
 
 
