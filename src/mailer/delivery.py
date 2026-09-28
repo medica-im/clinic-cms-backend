@@ -63,3 +63,19 @@ def latest_deliveries(invitee_uids) -> dict[str, EmailDelivery]:
         latest.setdefault(row.invitee_uid, row)
     return latest
 
+
+def resend_refusal(invitee, latest) -> str | None:
+    """Why an invitation's email may not be sent again, as a code, or None.
+
+    used / disabled: the invitation can no longer be redeemed, so the email
+    would invite to nothing. already_queued: the previous email is still on
+    its way -- a double click must not send two. A queued email that timed
+    out counts as failed, and may be sent again: it probably never left.
+    """
+    if getattr(invitee, "redeemedAt", None):
+        return "used"
+    if getattr(invitee, "active", True) is False:
+        return "disabled"
+    if latest is not None and delivery_status(latest) == "queued":
+        return "already_queued"
+    return None

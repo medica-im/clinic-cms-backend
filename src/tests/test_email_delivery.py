@@ -258,3 +258,58 @@ def test_a_batch_invitation_mailgun_refused_counts_as_a_failure():
     assert ok is False
     mark.assert_called_once_with(5, MAILGUN_REFUSED)
 
+
+# --- Sending again -----------------------------------------------------------------
+#
+# An administrator may send an invitation's email again -- after a failure,
+# or because the invitee lost it. Not for an invitation that can no longer be
+# used, and not while the previous email is still on its way: a double click
+# must not send two.
+
+
+def _invitee(redeemedAt=None, active=True):
+    return SimpleNamespace(redeemedAt=redeemedAt, active=active)
+
+
+def test_an_invitation_may_be_sent_again_after_a_failure():
+    from mailer.delivery import resend_refusal
+
+    assert resend_refusal(_invitee(), _row("failed")) is None
+
+
+def test_an_invitation_may_be_sent_again_when_it_was_sent():
+    from mailer.delivery import resend_refusal
+
+    assert resend_refusal(_invitee(), _row("sent")) is None
+
+
+def test_an_invitation_never_recorded_may_be_sent_again():
+    from mailer.delivery import resend_refusal
+
+    assert resend_refusal(_invitee(), None) is None
+
+
+def test_a_used_invitation_is_not_sent_again():
+    from mailer.delivery import resend_refusal
+
+    assert resend_refusal(_invitee(redeemedAt=1790000000000), None) == "used"
+
+
+def test_a_deactivated_invitation_is_not_sent_again():
+    from mailer.delivery import resend_refusal
+
+    assert resend_refusal(_invitee(active=False), None) == "disabled"
+
+
+def test_an_email_still_on_its_way_is_not_sent_twice():
+    from mailer.delivery import resend_refusal
+
+    assert resend_refusal(_invitee(), _row("queued")) == "already_queued"
+
+
+def test_an_email_queued_too_long_may_be_sent_again():
+    from mailer.delivery import resend_refusal
+
+    stale = _row("queued", QUEUED_TOO_LONG + timedelta(minutes=1))
+
+    assert resend_refusal(_invitee(), stale) is None

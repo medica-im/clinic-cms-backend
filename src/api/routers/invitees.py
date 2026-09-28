@@ -13,7 +13,7 @@ from api.utils import get_site_from_request
 from facility.models import Organization
 from access.models import Role
 from api.serializers.invitee import notification_email
-from mailer.delivery import delivery_status, latest_deliveries, timed_out
+from mailer.delivery import delivery_status, latest_deliveries, resend_refusal, timed_out
 
 logger = logging.getLogger(__name__)
 
@@ -222,6 +222,34 @@ async def create_invitee(
     except Exception as e:
         logger.error(f"Failed to connect createdBy for Invitee: {e}")
     invitee = Invitee.model_validate(new_invitee.__properties__)
+    await notification_email(invitee, site)
+    return (await with_email_delivery([invitee]))[0]
+
+
+@router.post("/invitees/{invitee_uid}/resend")
+async def resend_invitee_email(
+    invitee_uid: str,
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)]
+) -> Invitee:
+    """Send the invitation's email again, with the organization's current
+    template. A new EmailDelivery row is recorded, so an earlier failure stays
+    in the history. 409 with a code when it may not be (resend_refusal)."""
+    await authorize_api("invitees_v2", request, jwt)
+    await verify_invitee_ownership(request, invitee_uid)
+    try:
+        node = await AsyncInvitee.nodes.get(uid=invitee_uid)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invitee with uid {invitee_uid} not found"
+        )
+    invitee = Invitee.model_validate(node.__properties__)
+    latest = (await sync_to_async(latest_deliveries)([invitee_uid])).get(invitee_uid)
+    refusal = resend_refusal(invitee, latest)
+    if refusal:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": refusal})
+    site = await get_site_from_request(request)
     await notification_email(invitee, site)
     return (await with_email_delivery([invitee]))[0]
 
