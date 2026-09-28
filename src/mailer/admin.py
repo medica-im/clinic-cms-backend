@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib import admin
 
-from mailer.models import BatchEmailMessage, EmailTemplate, MailgunAccount
+from mailer.models import BatchEmailMessage, EmailImage, EmailTemplate, MailgunAccount
 
 
 @admin.register(BatchEmailMessage)
@@ -67,6 +67,17 @@ class EmailTemplateAdmin(admin.ModelAdmin):
         ("Content", {"fields": ("subject", "content_type", "body", "body_text")}),
         ("Dates", {"fields": ("created", "updated")}),
     )
+
+
+@admin.register(EmailImage)
+class EmailImageAdmin(admin.ModelAdmin):
+    list_display = ("name", "organization", "width", "height", "size", "created")
+    list_filter = ("organization",)
+    search_fields = ("name", "organization__name")
+    # The file is uploaded from the gallery page, which checks it; here it
+    # can only be relabelled or deleted.
+    readonly_fields = ("uid", "image", "width", "height", "size", "created")
+    fields = ("organization", "name", "alt") + readonly_fields
 
 
 @admin.register(MailgunAccount)

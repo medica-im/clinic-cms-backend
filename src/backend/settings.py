@@ -273,6 +273,11 @@ THUMBNAIL_ALIASES = {
         'place_sm': {'size': (640, 360), 'crop': 'smart'},
         'place_lg': {'size': (1280, 720), 'crop': 'smart'},
     },
+    # A gallery tile: the whole picture, shrunk to fit, never cropped -- a
+    # banner cropped to a square would be unrecognizable.
+    'mailer.EmailImage.image': {
+        'email_thumb': {'size': (320, 320), 'crop': False},
+    },
 }
 
 AVATAR_FILE_STORAGE = config('AVATAR_FILE_STORAGE', default="")
@@ -280,6 +285,10 @@ AVATAR_FILE_STORAGE = config('AVATAR_FILE_STORAGE', default="")
 # Kept apart from AVATAR_FILE_STORAGE: these are photographs of buildings, not
 # of people, and mixing them makes the media directory unreadable.
 PLACE_IMAGE_FILE_STORAGE = config('PLACE_IMAGE_FILE_STORAGE', default="place_images")
+
+# Pictures organizations link from their HTML emails; see mailer.gallery.
+EMAIL_IMAGE_FILE_STORAGE = config('EMAIL_IMAGE_FILE_STORAGE', default="email_images")
+EMAIL_IMAGE_MAX_BYTES = 5 * 1024 * 1024
 
 # Celery
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='amqp://guest:guest@rabbitmq:5672//')

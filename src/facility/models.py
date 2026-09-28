@@ -67,6 +67,18 @@ class Organization(models.Model):
             "requests reach the backend, so it cannot be derived from the Site."
         ),
     )
+    email_template_editor_role = models.CharField(
+        max_length=16,
+        choices=[
+            ("administrator", "Administrators and superusers"),
+            ("superuser", "Superusers only"),
+        ],
+        default="superuser",
+        help_text=(
+            "Who may change the organization's email templates and their "
+            "images. Administrators and higher may always see and preview them."
+        ),
+    )
     active = models.BooleanField(default=False)
     contact = models.OneToOneField(
         'addressbook.Contact',

@@ -1,4 +1,10 @@
+import uuid
+
+from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+from easy_thumbnails.fields import ThumbnailerImageField
 
 
 class BatchEmailMessage(models.Model):
@@ -188,3 +194,62 @@ class EmailTemplate(models.Model):
             errors.setdefault(problem.field, []).append(message)
         if errors:
             raise ValidationError(errors)
+
+
+def email_image_path(instance, filename):
+    """email_images/<organization>/<random>.<ext>: one directory per
+    organization, and a name that says nothing and never changes -- emails
+    already sent reference it."""
+    organization = instance.organization
+    owner = organization.neomodel_uid.hex if organization.neomodel_uid else f"org-{organization.id}"
+    ext = filename.rsplit(".", 1)[-1].lower()
+    return f"{settings.EMAIL_IMAGE_FILE_STORAGE}/{owner}/{uuid.uuid4().hex[:12]}.{ext}"
+
+
+class EmailImage(models.Model):
+    """A picture an organization references from its HTML email templates.
+
+    Served from the organization's own site under /media/, and linked from
+    emails by absolute URL; see mailer.gallery.
+    """
+
+    uid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    organization = models.ForeignKey(
+        "facility.Organization",
+        on_delete=models.CASCADE,
+        related_name="email_images",
+    )
+    image = ThumbnailerImageField(upload_to=email_image_path)
+    name = models.CharField(
+        max_length=255,
+        help_text="Label shown in the gallery; renaming never changes the file or its URL",
+    )
+    alt = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Describes the picture to people who cannot see it",
+    )
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    size = models.PositiveIntegerField(help_text="In bytes")
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "name"],
+                name="email_image_name_unique_per_organization",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.name} — {self.organization}"
+
+
+@receiver(post_delete, sender=EmailImage)
+def delete_email_image_file(sender, instance, **kwargs):
+    """However the row goes -- the gallery, the admin, or its organization
+    being deleted -- the file and its thumbnails go with it."""
+    if instance.image:
+        instance.image.delete(save=False)
