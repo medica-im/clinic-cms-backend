@@ -55,18 +55,14 @@ Run
 import pytest
 from neomodel import db
 
-pytestmark = pytest.mark.integration
+# One definition of the invariant, shared with the writes that check a single
+# entry before and after touching it (directory.entry_shape). MEMBER_OF is
+# deliberately absent: it is legitimately multi-valued and points at two kinds
+# of node (Organization nodes, and the organization's own Entry), so a real
+# entry commonly carries three of them.
+from directory.entry_shape import SINGLE_VALUED
 
-# Relationships an Entry has exactly one of, and what each one means.
-#
-# MEMBER_OF is deliberately absent: it is legitimately multi-valued and points
-# at two kinds of node (Organization nodes, and the organization's own Entry),
-# so a real entry commonly carries three of them.
-SINGLE_VALUED = {
-    "HAS_EFFECTOR": "the person the entry describes",
-    "HAS_EFFECTOR_TYPE": "the occupation the person is listed under",
-    "HAS_FACILITY": "the place the person works at",
-}
+pytestmark = pytest.mark.integration
 
 
 def _offenders(relationship: str) -> list[tuple[str, int]]:
