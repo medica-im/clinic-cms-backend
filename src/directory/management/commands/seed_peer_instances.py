@@ -51,6 +51,14 @@ PEERS = [
      "https://annuaire.cptsopalesud.fr", True, False),
     ("ipa-medica-prod", "IPA Médica (production)",
      "https://ipa.medica.im", True, False),
+    # The same deployment as IPA Médica, but its app is configured with the
+    # origin https://unipa.fr (served under /annuaire behind the WordPress
+    # there). SvelteKit refuses any POST from another origin -- "Cross-site
+    # POST form submissions are forbidden" -- so minting a clone token from a
+    # page opened at ipa.medica.im fails with 403. Clone UNIPA's directory
+    # through this row. Its API answers at the root, https://unipa.fr/api/v2.
+    ("unipa-prod", "UNIPA (production)",
+     "https://unipa.fr", True, False),
 
     # Staging: both directions, it is a rehearsal of production.
     ("santelyon3-staging", "Santé Lyon 3 (staging)",
@@ -69,6 +77,10 @@ PEERS = [
      "https://dev.sante-gadagne.fr", True, True),
     ("annuaire-medica-dev", "Annuaire Médica (dev)",
      "https://dev.annuaire.medica.im", True, True),
+    # UNIPA's directory ("ipa") is served on dev at dev.unipa.fr, so that is
+    # the origin a clone token names.
+    ("unipa-dev", "UNIPA (dev)",
+     "https://dev.unipa.fr", True, True),
 ]
 
 
