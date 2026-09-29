@@ -1,4 +1,5 @@
 import logging
+from asgiref.sync import sync_to_async
 from django.utils.text import slugify
 from neomodel import adb
 from directory.models.core import Label
@@ -109,8 +110,19 @@ def _build_candidates(
     return candidates
 
 
+def former_slugs_among(slugs: list[str]) -> set[str]:
+    """Which of these slugs an entry used to carry (directory.EntrySlug)."""
+    from directory.models import EntrySlug
+
+    if not slugs:
+        return set()
+    return set(EntrySlug.objects.filter(slug__in=slugs).values_list("slug", flat=True))
+
+
 async def _filter_existing_slugs(slugs: list[str]) -> list[str]:
-    """Remove slugs that already exist as Entry.slug in Neo4j."""
+    """Remove slugs an entry carries now (Entry.slug in Neo4j) or used to
+    carry (EntrySlug): a former slug redirects to its entry, so giving it to
+    another would send its old links to the wrong person."""
     if not slugs:
         return []
     results, _ = await adb.cypher_query(
@@ -118,6 +130,7 @@ async def _filter_existing_slugs(slugs: list[str]) -> list[str]:
         {"slugs": slugs},
     )
     existing = {row[0] for row in results}
+    existing |= await sync_to_async(former_slugs_among)(slugs)
     return [s for s in slugs if s not in existing]
 
 

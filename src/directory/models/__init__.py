@@ -2,6 +2,7 @@ from directory.models.core import (
     validate_slug,
     Slug,
     RejectSlug,
+    EntrySlug,
     Directory,
     Asset,
     AssetFacility,

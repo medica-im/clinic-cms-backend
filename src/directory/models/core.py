@@ -118,6 +118,28 @@ class RejectSlug(models.Model):
         return "RejectSlug %s %s" % (self.pk, self.slug)
 
 
+class EntrySlug(models.Model):
+    """A slug an entry no longer carries, and the entry it belonged to.
+
+    An entry's slug names its occupation (dupont-jean-mg-69), so changing the
+    occupation gives it a new one. The old slug has been shared, so it is kept
+    here and /e/<old slug> redirects to the entry's current slug. The slug
+    generator skips these, so a former slug never leads to another entry.
+    Also a record of who changed an entry's slug, and when.
+    """
+
+    slug = models.CharField(max_length=255, unique=True)
+    entry_uid = models.CharField(max_length=64, db_index=True, help_text="uid of the Entry node")
+    replaced_at = models.DateTimeField(auto_now_add=True)
+    replaced_by = models.CharField(max_length=64, blank=True, help_text="uid of the User who changed it")
+
+    class Meta:
+        ordering = ["-replaced_at"]
+
+    def __str__(self):
+        return f"{self.slug} -> {self.entry_uid}"
+
+
 class Directory(models.Model):
     """A directory grouping assets."""
 

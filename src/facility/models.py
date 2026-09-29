@@ -79,6 +79,23 @@ class Organization(models.Model):
             "images. Administrators and higher may always see and preview them."
         ),
     )
+    # How long after an entry's creation its effector type may still be
+    # changed from the entry page (directory.entry_type_edit). A superuser
+    # always may; past the window, the page offers to recreate the entry.
+    entry_type_edit_days_administrator = models.PositiveSmallIntegerField(
+        default=30,
+        help_text=(
+            "Days after an entry's creation during which an administrator may "
+            "change its occupation. 0: never."
+        ),
+    )
+    entry_type_edit_days_connected = models.PositiveSmallIntegerField(
+        default=7,
+        help_text=(
+            "Days after an entry's creation during which its creator or an "
+            "owner may change its occupation. 0: never."
+        ),
+    )
     active = models.BooleanField(default=False)
     contact = models.OneToOneField(
         'addressbook.Contact',

@@ -131,6 +131,22 @@ async def ensure_slug(entry_node, effector, facility, effector_type):
         raise HTTPException(status_code=500, detail="Could not generate a unique slug for this entry.")
 
 
+async def ensure_health_worker_label(effector_uid: str, effector_type) -> None:
+    """A person listed under a health-worker occupation (HCW) is labelled
+    HealthWorker. Used when an entry is created and when its type changes."""
+    if "HCW" not in await effector_type.labels():
+        return
+    rows, _ = await adb.cypher_query(
+        "MATCH (e:Effector {uid: $uid}) SET e:HealthWorker RETURN labels(e)",
+        {"uid": effector_uid},
+    )
+    if not rows or "HealthWorker" not in rows[0][0]:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Label 'HealthWorker' not applied to Effector {effector_uid} of type {effector_type.name_fr}",
+        )
+
+
 async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
     await validate_access(entry.access)
     site = await get_site_from_request(request)
@@ -191,12 +207,7 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         await Contact.objects.acreate(neomodel_uid=new_entry.uid)
     except IntegrityError:
         pass
-    if "HCW" in await effector_type.labels():
-        query = f"""MATCH (e:Effector) WHERE e.uid="{effector.uid}" SET e:HealthWorker RETURN labels(e);"""
-        result = db.cypher_query(query)
-        #logger.debug(result[0][0][0])
-        if "HealthWorker" not in result[0][0][0]:
-            raise HTTPException(status_code=500, detail=f"Label 'HealthWorker' not applied to Effector {effector.uid} of type {effector_type.name_fr}")
+    await ensure_health_worker_label(effector.uid, effector_type)
     await clear_cache("v2:entries", request)
     return await async_get_fullentry(str(new_entry.uid), request, jwt)
 
