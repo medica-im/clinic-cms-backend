@@ -306,6 +306,7 @@ async def async_get_django_organization(organization):
         "name": organization.name,
         "company_name": organization.company_name,
         "language": organization.language,
+        "timezone": organization.timezone,
         "formatted_name": organization.formatted_name,
         "formatted_name_short": organization.formatted_name_short,
         "formatted_name_definite_article": organization.formatted_name_definite_article,

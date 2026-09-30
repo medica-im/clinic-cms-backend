@@ -92,6 +92,7 @@ class Organization(BaseModel):
     name: str
     company_name: str
     language: str
+    timezone: str
     formatted_name: str
     formatted_name_short: str
     formatted_name_definite_article: str

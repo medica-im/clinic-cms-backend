@@ -56,6 +56,7 @@ class OrganizationAdmin(TranslationAdmin):
         'updated',
         'site',
         'language',
+        'timezone',
         'category',
         'city',
         'directory',

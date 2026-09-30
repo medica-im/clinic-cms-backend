@@ -15,6 +15,12 @@ from django.utils.translation import gettext_lazy as _
 
 logger = logging.getLogger(__name__)
 
+def validate_timezone(value):
+    """An IANA name the browser knows: Intl.DateTimeFormat throws on any other."""
+    from zoneinfo import available_timezones
+    if value not in available_timezones():
+        raise ValidationError(f"Unknown time zone: {value}")
+
 def logo_path(instance, filename):
     # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
     ext = filename.split('.')[-1]
@@ -132,6 +138,14 @@ class Organization(models.Model):
         max_length=3,
         blank=True,
         help_text="ISO language code",
+    )
+    # Dates are formatted in this zone on both SSR and hydration; left to
+    # each side's own clock, a post published near midnight shows two days.
+    timezone = models.CharField(
+        max_length=64,
+        default="Europe/Paris",
+        validators=[validate_timezone],
+        help_text="IANA time zone, e.g. Europe/Paris, America/Martinique",
     )
     category = models.ForeignKey(
         'facility.Category',
