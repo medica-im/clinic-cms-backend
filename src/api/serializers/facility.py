@@ -112,7 +112,6 @@ async def async_get_facilities(
         directory: str|None = None,
         uid: str|None = None,
         slug: str|None = None,
-        entry_uid: str|None = None,
         active: bool = True,
     ) -> list[FacilityPy]:
     if uid:
@@ -121,15 +120,6 @@ async def async_get_facilities(
     elif slug:
             query=(
                 f"""MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance) WHERE f.slug="{slug}" WITH f,c,dpt OPTIONAL MATCH (f)-[]-(entry:Entry), (e:Effector)-[]-(entry)-[]-(et:EffectorType) RETURN f,c,dpt,collect(e.name_fr+ " (" + et.name_fr + ")");""")
-    elif entry_uid:
-        query=(
-            f"""
-            MATCH (org_entry:Entry {{uid: "{entry_uid}"}})<-[:PART_OF]-(f:Facility)
-                  -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)
-                  -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)
-            OPTIONAL MATCH (f)<-[:HAS_FACILITY]-(entry:Entry)<-[:HAS_EFFECTOR]-(e:Effector)-[:IS_A]->(et:EffectorType)
-            RETURN DISTINCT f, c, dpt, collect(e.name_fr + " (" + et.name_fr + ")");
-            """)
     else:
         if directory:
             query=(
@@ -149,6 +139,71 @@ async def async_get_facilities(
                 RETURN DISTINCT f, c, dpt, collect(e.name_fr + " (" + et.name_fr + ")");
                 """)
     q = await adb.cypher_query(query, resolve_objects = True)
+    return _facilities_from_rows(q)
+
+
+async def async_get_organization_facilities(
+        directory: str,
+        org_entry_uid: str,
+        user_uid: str | None = None,
+        repair: bool = False,
+    ) -> list[FacilityPy]:
+    """
+    The facilities staff and administrators pick from, as a set.
+
+    Three sources, any one of which is enough:
+      * where an active entry of the site's directory is located — what the
+        /sites page shows;
+      * attached to the organization by PART_OF;
+      * created by this user — a facility just created, not yet used by any
+        entry, must still be offered.
+
+    `repair` (administrators, superusers) adds the leftovers users are known
+    for: facilities of inactive entries, and those created by anyone who ever
+    had an access to the organization — current, superseded or suspended.
+    """
+    query = """
+        CALL {
+            MATCH (:Directory {name: $directory})-[:HAS_ENTRY]->(e:Entry)
+                  -[:HAS_FACILITY]->(f:Facility)
+            WHERE e.active = true OR $repair
+            RETURN f
+            UNION
+            MATCH (f:Facility)-[:PART_OF]->(:Entry {uid: $org_entry_uid})
+            RETURN f
+            UNION
+            MATCH (f:Facility)-[:CREATED_BY]->(:User {uid: $user_uid})
+            RETURN f
+            UNION
+            MATCH (f:Facility)-[:CREATED_BY]->(:User)-[:HAS_ACCESS]->(:Access)
+                  -[:ACCESS_TO]->(:Entry {uid: $org_entry_uid})
+            WHERE $repair
+            RETURN f
+        }
+        WITH DISTINCT f
+        MATCH (f)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)
+              -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)
+        OPTIONAL MATCH (f)<-[:HAS_FACILITY]-(entry:Entry)<-[:HAS_EFFECTOR]-(e:Effector)-[:IS_A]->(et:EffectorType)
+        RETURN f, c, dpt, collect(e.name_fr + " (" + et.name_fr + ")");
+        """
+    q = await adb.cypher_query(
+        query,
+        {
+            "directory": directory, "org_entry_uid": org_entry_uid,
+            "user_uid": user_uid, "repair": repair,
+        },
+        resolve_objects=True,
+    )
+    # UNION already removes duplicates; this keeps it a set even when a
+    # facility has two communes, which would otherwise yield two rows.
+    unique: dict[str, FacilityPy] = {}
+    for facility in _facilities_from_rows(q):
+        unique.setdefault(facility.uid, facility)
+    return list(unique.values())
+
+
+def _facilities_from_rows(q) -> list[FacilityPy]:
+    """Facility, commune, department and effector labels, per row, as FacilityPy."""
     facilities: list[FacilityPy]=[]
     if q:
         for row in q[0]:
@@ -282,7 +337,10 @@ async def create_facility(f: FacilityPost, request: Request, jwt: dict)->Facilit
     if neo4j_user:
         await node.creator.connect(neo4j_user)
         await node.owner.connect(neo4j_user)
-    # Connect facility to the organization's Entry via PART_OF
+    # Connect facility to the organization's Entry via PART_OF. Not redundant
+    # with the entries: a facility created on a first attempt that was then
+    # interrupted has no entry yet, and must still be offered on the second
+    # (async_get_organization_facilities).
     site = await get_site_from_request(request)
     org = await Organization.objects.aget(site=site)
     if org.neomodel_uid:

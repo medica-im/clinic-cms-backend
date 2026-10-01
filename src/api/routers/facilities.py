@@ -1,16 +1,16 @@
 import os
 import logging
 from io import BytesIO
-from typing import Annotated, Union
+from typing import Annotated, Literal, Union
 from fastapi import APIRouter, status, Depends, Request, HTTPException, UploadFile, File, Form
 from PIL import Image
 from pydantic import BaseModel
 from asgiref.sync import sync_to_async
 from django.core.files.uploadedfile import InMemoryUploadedFile
-from api.serializers.facility import async_get_facilities, async_get_facility, create_facility, update_facility, delete_facility
+from api.serializers.facility import async_get_facilities, async_get_facility, async_get_organization_facilities, create_facility, update_facility, delete_facility
 from api.types.facility import Facility, FacilityPost, FacilityPut
 from api.auth import authorize_api, may_authorize_api, verify_user_access, JWT
-from api.neo4j_auth import get_neo4j_role, normalize_neo4j_role
+from api.neo4j_auth import get_neo4j_role, get_neo4j_user, normalize_neo4j_role
 from api.utils import get_site_from_request
 from facility.models import Organization, PlaceImage
 from directory.models.agraph import Facility as AgraphFacility
@@ -20,7 +20,25 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/facilities")
-async def facilities(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list[Facility]:
+async def facilities(
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)],
+    scope: Literal["site", "all"] = "site",
+) -> list[Facility]:
+    """
+    The facilities a signed-in member may pick from when creating an entry.
+
+      * staff: the base list (see async_get_organization_facilities);
+      * administrators and superusers: the repair list, which adds the
+        leftovers of inactive entries and of anyone linked to the organization;
+      * scope=all, superusers only: every facility in the graph — creating a
+        new project's organization entry needs another site's facilities.
+
+    A superuser gets the site's list by default, like everyone else: the whole
+    graph mixed in buried the site's own facilities, let an entry be attached
+    to another site's practice by mistake, and hid the missing unipa
+    facilities from the one role that tests everything.
+    """
     site = await get_site_from_request(request)
     raw_role = await get_neo4j_role(jwt, site) or "anonymous"
     role = normalize_neo4j_role(raw_role)
@@ -29,18 +47,31 @@ async def facilities(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> li
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Staff role or higher required"
         )
-    if role == "superuser":
+    if scope == "all":
+        if role != "superuser":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only a superuser may list every facility"
+            )
         return await async_get_facilities()
-    # staff / administrator: return only facilities from this organization
-    org = await Organization.objects.aget(site=site)
+    org = await Organization.objects.select_related("directory").aget(site=site)
     if not org.neomodel_uid:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Organization has no linked Entry"
         )
     entry_uid = org.neomodel_uid.hex
-    await verify_user_access(jwt, entry_uid)
-    return await async_get_facilities(entry_uid=entry_uid)
+    # A superuser holds no Access node to this organization; checking one
+    # would refuse them.
+    if role != "superuser":
+        await verify_user_access(jwt, entry_uid)
+    user = await get_neo4j_user(jwt)
+    return await async_get_organization_facilities(
+        directory=org.directory.name if org.directory else None,
+        org_entry_uid=entry_uid,
+        user_uid=user.uid if user else None,
+        repair=role in ("administrator", "superuser"),
+    )
 
 @router.get("/facilities/{uid}")
 async def facility(uid: str) -> Facility:
