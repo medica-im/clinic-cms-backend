@@ -79,7 +79,11 @@ services:
     env_file:
       - .env
     image: ${BACKEND_IMAGE}
-    command: bash -c "fastapi run main.py --root-path /api/v2 --port 80"
+    # FASTAPI_WORKERS processes serve /api/v2 (default 1). One process queues
+    # every request behind the one in progress; the app keeps no state in
+    # memory (caches are in Redis), so workers can share the load safely.
+    # About 320 MB of RAM each.
+    command: bash -c "fastapi run main.py --root-path /api/v2 --port 80 --workers ${FASTAPI_WORKERS:-1}"
     volumes:
       - ${MEDIA_ROOT}:${MEDIA_ROOT}
       - ${FASTAPI_LOG_DIR}:${FASTAPI_LOG_DIR}
