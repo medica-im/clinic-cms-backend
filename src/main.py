@@ -8,11 +8,18 @@ from django.db.utils import IntegrityError
 
 FASTAPI_LOG_DIR = os.environ.get('FASTAPI_LOG_DIR', str(Path(__file__).resolve().parent / 'logs'))
 FASTAPI_LOG_LEVEL = os.environ.get('FASTAPI_LOG_LEVEL', 'DEBUG')
+# One level for the console and the file. The console used to be DEBUG
+# whatever this said: production then logged every request's headers and
+# every Neo4j query's text, a large share of FastAPI's CPU on a 2-vCPU box.
+# DEBUG by default, so dev keeps its detail; production sets INFO.
+LOG_LEVEL = getattr(logging, FASTAPI_LOG_LEVEL.upper(), None)
+if not isinstance(LOG_LEVEL, int):
+    LOG_LEVEL = logging.DEBUG
 
 os.makedirs(FASTAPI_LOG_DIR, exist_ok=True)
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=LOG_LEVEL,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     stream=sys.stdout
@@ -23,7 +30,7 @@ file_handler = logging.handlers.RotatingFileHandler(
     maxBytes=10 * 1024 * 1024,  # 10 MB
     backupCount=5,
 )
-file_handler.setLevel(getattr(logging, FASTAPI_LOG_LEVEL, logging.DEBUG))
+file_handler.setLevel(LOG_LEVEL)
 file_handler.setFormatter(logging.Formatter(
     "%(levelname)s %(asctime)s %(name)s %(funcName)s %(process)d %(thread)d %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",

@@ -9,12 +9,6 @@ from api.types.effector import Effector, EffectorPost, EffectorPatch
 from pydantic import ValidationError
 from api.auth import JWT, authorize_api
 from fastapi_nextauth_jwt import NextAuthJWT
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    stream=sys.stdout
-)
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
