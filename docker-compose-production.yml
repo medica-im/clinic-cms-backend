@@ -186,7 +186,15 @@ services:
       rabbitmq:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "celery -A backend inspect ping -d celery@$$HOSTNAME"]
+      # Is the worker process alive — not `celery inspect ping`, which starts a
+      # new Python, loads Django and the whole app, every 10s: on the 2-vCPU
+      # production box that was half a core (86% per check) spent on the
+      # healthcheck while the worker itself sat idle. The worker reconnects to
+      # RabbitMQ by itself, and no service waits on this one being healthy.
+      # [c]elery, not celery: pgrep -f also reads the shell running this test,
+      # whose command line contains the pattern — it matched itself and the
+      # check passed even with no worker at all.
+      test: ["CMD-SHELL", "pgrep -f '[c]elery -A backend worker' > /dev/null"]
       interval: 10s
       timeout: 10s
       retries: 10
