@@ -165,7 +165,12 @@ services:
     ports:
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      # Does the broker accept connections on its AMQP port — not
+      # `rabbitmq-diagnostics ping`, which boots an Erlang node every 10s: on
+      # the 2-vCPU production box that read as RabbitMQ at 100% CPU, as
+      # Celery's `inspect ping` had before it. celery waits on this one, and
+      # the port opens once the broker can take its connection.
+      test: ["CMD-SHELL", "nc -z localhost 5672"]
       interval: 10s
       timeout: 10s
       retries: 5
