@@ -462,6 +462,9 @@ class Directory(AsyncStructuredNode):
     name = StringProperty(unique_index=True)
     entries = AsyncRelationshipTo('Entry', 'HAS_ENTRY')
     owner = AsyncRelationshipTo('Entry', 'OWNED_BY')
+    # Whether the owner (the organization's entry) shows in this directory's
+    # lists. Absent on older nodes: queries read coalesce(..., true).
+    list_owner_entry = BooleanProperty(default=True)
 
 
 class Monkey(AsyncStructuredNode):

@@ -13,6 +13,7 @@ from api.utils import (
 from api.types.public_facility import Address, PublicFacility
 from directory.models.api import TTL, Endpoint
 from directory.utils import (
+    owner_listed,
     async_get_directory_for_site,
     async_get_phones_neomodel,
     async_get_emails_neomodel,
@@ -115,13 +116,15 @@ async def _get_facility_nodes(
         """
         params = {"uid": uid, "directory": directory_name}
     else:
-        query = """
+        # The list obeys Directory.list_owner_entry; the facility's own page
+        # (slug, uid above) stays reachable, like the entry's.
+        query = f"""
         MATCH (d:Directory)-[:HAS_ENTRY]->(e:Entry),
               (e)-[:HAS_EFFECTOR]->(:Effector),
               (e)-[:HAS_FACILITY]->(f:Facility)
                 -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(commune:Commune)
                 -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
-        WHERE d.name = $directory AND e.active = true
+        WHERE d.name = $directory AND e.active = true AND {owner_listed('d', 'e')}
         RETURN DISTINCT f, commune, country
         """
         params = {"directory": directory_name}

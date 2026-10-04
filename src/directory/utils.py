@@ -834,6 +834,19 @@ def display(_list):
     for idx,e in enumerate(_list):
         logger.debug(f'{idx}: {e}\n')
 
+def owner_listed(directory: str, entry: str) -> str:
+    """Cypher condition: `entry` may be listed in `directory`.
+
+    False only for the directory's owner (the organization's entry) when the
+    directory says not to list it. Absent property means listed. A filter, not
+    an unlink: the HAS_ENTRY edge stays (redeem-email claiming walks it).
+    """
+    return (
+        f"(coalesce({directory}.list_owner_entry, true)"
+        f" OR NOT ({directory})-[:OWNED_BY]->({entry}))"
+    )
+
+
 def get_entries_query(
     directory: Directory,
     uid = None,
@@ -851,7 +864,8 @@ def get_entries_query(
     else:
         query=f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
         WITH d
-        MATCH (d)-[:HAS_ENTRY]->(entry:Entry) {f'WHERE entry.active={str(active)}' if active is not None else ''}
+        MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
+        WHERE {owner_listed('d', 'entry')}{f' AND entry.active={str(active)}' if active is not None else ''}
         WITH entry
         MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
         WITH entry, COLLECT(DISTINCT directory) as directories
