@@ -1,11 +1,58 @@
 import json
 import logging
+import time
 
 import requests
 
 from mailer.config import SenderConfig
 
 logger = logging.getLogger(__name__)
+
+# (connect, read) seconds. Without one, a Mailgun that stops answering held
+# the batch invitation task forever.
+TIMEOUT = (5, 30)
+MAX_ATTEMPTS = 4
+BACKOFF = 2  # seconds before the 2nd attempt, doubled each time after
+MAX_PAUSE = 60  # cap on Retry-After, so one header cannot park the worker
+
+
+def _retryable(status: int) -> bool:
+    return status == 429 or status >= 500
+
+
+def _pause(attempt: int, response=None) -> float:
+    retry_after = (response.headers or {}).get("Retry-After") if response is not None else None
+    if retry_after:
+        try:
+            return min(float(retry_after), MAX_PAUSE)
+        except ValueError:
+            pass
+    return min(BACKOFF * 2 ** (attempt - 1), MAX_PAUSE)
+
+
+def _post(sender: SenderConfig, **kwargs) -> requests.Response:
+    """POST to Mailgun with a timeout, retrying what may pass.
+
+    Retried: 429, 5xx, and a connection that never got through. Final: any
+    other answer, and a read timeout -- the request reached Mailgun, which may
+    have accepted it, and a second post would send the email twice. Raises
+    the last connection error when every attempt failed to connect. Callers
+    all run in Celery tasks, so the pause holds no web request.
+    """
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            response = requests.post(sender.api_url, auth=sender.auth, timeout=TIMEOUT, **kwargs)
+        except (requests.ConnectionError, requests.ConnectTimeout) as e:
+            if isinstance(e, requests.ReadTimeout) or attempt == MAX_ATTEMPTS:
+                raise
+            logger.warning(f"Mailgun unreachable (attempt {attempt}/{MAX_ATTEMPTS}): {e}")
+            time.sleep(_pause(attempt))
+            continue
+        if not _retryable(response.status_code) or attempt == MAX_ATTEMPTS:
+            return response
+        logger.warning(f"Mailgun answered {response.status_code} (attempt {attempt}/{MAX_ATTEMPTS}), retrying")
+        time.sleep(_pause(attempt, response))
+    raise AssertionError("unreachable")
 
 
 def _resolve(sender: SenderConfig | None) -> SenderConfig:
@@ -55,8 +102,7 @@ def send_single_email(
 ):
     sender = _resolve(sender)
     try:
-        resp = requests.post(sender.api_url, auth=sender.auth,
-                             data=_message_data(sender, to_address, subject, message, html))
+        resp = _post(sender, data=_message_data(sender, to_address, subject, message, html))
         if resp.status_code == 200:  # success
             result = resp.json()
             logger.info(f"Successfully sent an email to '{to_address}' via Mailgun API. Response: {result}")
@@ -84,8 +130,7 @@ def send_batch_emails(
         recipients_json = json.dumps(recipients)
 
         logger.info(f"Sending email to {len(to_address)} IDs...")
-        resp = requests.post(sender.api_url, auth=sender.auth,
-                             data={**_message_data(sender, to_address, subject, message, html),
+        resp = _post(sender, data={**_message_data(sender, to_address, subject, message, html),
                                    "recipient-variables": recipients_json})
         if resp.status_code == 200:  # success
             logger.info(f"Successfully sent email to {len(recipients)} recipients via Mailgun API.")
