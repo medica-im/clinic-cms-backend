@@ -49,9 +49,9 @@ def test_organization_with_an_account_sends_under_its_own_identity():
     account = make_account()
     sender = get_sender(FakeOrganization(account))
 
-    assert sender.auth == ("org-key-id", "org-key")
+    assert sender.credentials.auth == ("org-key-id", "org-key")
     assert sender.from_address == "Cabinet Example <contact@example.org>"
-    assert sender.api_url == "https://api.eu.mailgun.net/v3/mail.example.org/messages"
+    assert sender.credentials.api_url == "https://api.eu.mailgun.net/v3/mail.example.org/messages"
 
 
 def test_an_account_without_a_from_name_sends_the_bare_address():
@@ -65,17 +65,17 @@ def test_the_region_selects_the_mailgun_endpoint():
     account = make_account(region="us")
     sender = get_sender(FakeOrganization(account))
 
-    assert sender.api_url == "https://api.mailgun.net/v3/mail.example.org/messages"
+    assert sender.credentials.api_url == "https://api.mailgun.net/v3/mail.example.org/messages"
 
 
 def test_an_organization_without_an_account_falls_back_to_the_env_credentials():
     sender = get_sender(FakeOrganization(None))
 
-    assert sender.auth == (
+    assert sender.credentials.auth == (
         settings.MAILGUN_SENDING_KEY_ID,
         settings.MAILGUN_SENDING_KEY,
     )
-    assert sender.api_url == settings.MAILGUN_API_URL
+    assert sender.credentials.api_url == settings.MAILGUN_API_URL
     assert sender.from_address == settings.MAILGUN_FROM_ADDRESS
 
 
@@ -83,7 +83,7 @@ def test_an_inactive_account_falls_back_to_the_env_credentials():
     account = make_account(active=False)
     sender = get_sender(FakeOrganization(account))
 
-    assert sender.auth == (
+    assert sender.credentials.auth == (
         settings.MAILGUN_SENDING_KEY_ID,
         settings.MAILGUN_SENDING_KEY,
     )
@@ -95,7 +95,7 @@ def test_an_incomplete_account_falls_back_rather_than_sending_with_half_credenti
     account = make_account(api_key="")
     sender = get_sender(FakeOrganization(account))
 
-    assert sender.auth == (
+    assert sender.credentials.auth == (
         settings.MAILGUN_SENDING_KEY_ID,
         settings.MAILGUN_SENDING_KEY,
     )
@@ -104,5 +104,5 @@ def test_an_incomplete_account_falls_back_rather_than_sending_with_half_credenti
 def test_no_organization_at_all_falls_back_to_the_env_credentials():
     sender = get_sender(None)
 
-    assert sender.api_url == settings.MAILGUN_API_URL
+    assert sender.credentials.api_url == settings.MAILGUN_API_URL
     assert isinstance(sender, SenderConfig)

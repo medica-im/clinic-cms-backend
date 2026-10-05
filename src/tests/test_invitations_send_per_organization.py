@@ -14,12 +14,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from mailer.providers.mailgun import MailgunCredentials
 from mailer.config import SenderConfig
 
 
 ORG_SENDER = SenderConfig(
-    api_url="https://api.eu.mailgun.net/v3/mail.example.org/messages",
-    auth=("org-key-id", "org-key"),
+    credentials=MailgunCredentials(api_url="https://api.eu.mailgun.net/v3/mail.example.org/messages", auth=("org-key-id", "org-key")),
     from_address="Cabinet Example <contact@example.org>",
 )
 

@@ -26,12 +26,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
+from mailer.providers.mailgun import MailgunCredentials
 from mailer.config import SenderConfig
-from mailer.main import MAX_ATTEMPTS, send_batch_emails, send_single_email
+from mailer.providers.mailgun import MAX_ATTEMPTS
+from mailer.main import send_batch_emails, send_single_email
 
 SENDER = SenderConfig(
-    api_url="https://api.eu.mailgun.net/v3/mail.example.org/messages",
-    auth=("key-id", "key"),
+    credentials=MailgunCredentials(api_url="https://api.eu.mailgun.net/v3/mail.example.org/messages", auth=("key-id", "key")),
     from_address="Example <contact@example.org>",
 )
 
@@ -47,8 +48,8 @@ def _response(status, headers=None):
 
 def _send(*answers):
     """send_single_email against a scripted Mailgun; returns (result, post, sleep)."""
-    with patch("mailer.main.requests.post", side_effect=list(answers)) as post, \
-            patch("mailer.main.time.sleep") as sleep:
+    with patch("mailer.providers.mailgun.requests.post", side_effect=list(answers)) as post, \
+            patch("mailer.providers.mailgun.time.sleep") as sleep:
         result = send_single_email("who@example.org", "S", "t", sender=SENDER)
     return result, post, sleep
 
@@ -59,8 +60,8 @@ def test_every_post_carries_a_timeout():
 
 
 def test_a_batch_post_carries_a_timeout_too():
-    with patch("mailer.main.requests.post", return_value=_response(200)) as post, \
-            patch("mailer.main.time.sleep"):
+    with patch("mailer.providers.mailgun.requests.post", return_value=_response(200)) as post, \
+            patch("mailer.providers.mailgun.time.sleep"):
         send_batch_emails({"who@example.org": {}}, "S", "t", sender=SENDER)
     assert post.call_args.kwargs.get("timeout")
 
@@ -125,8 +126,8 @@ def test_a_read_timeout_is_not_retried():
 
 
 def test_a_batch_is_retried_like_a_single_email():
-    with patch("mailer.main.requests.post", side_effect=[_response(503), _response(200)]) as post, \
-            patch("mailer.main.time.sleep"):
+    with patch("mailer.providers.mailgun.requests.post", side_effect=[_response(503), _response(200)]) as post, \
+            patch("mailer.providers.mailgun.time.sleep"):
         result = send_batch_emails({"who@example.org": {}}, "S", "t", sender=SENDER)
     assert result["success"] is True
     assert post.call_count == 2

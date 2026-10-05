@@ -41,7 +41,7 @@ def _context(name="Who"):
 
 
 def test_a_single_email_with_html_posts_both_parts():
-    with patch("mailer.main.requests.post", return_value=_ok_response()) as post:
+    with patch("mailer.providers.mailgun.requests.post", return_value=_ok_response()) as post:
         send_single_email("who@example.org", "S", "plain", html="<p>rich</p>")
 
     data = post.call_args.kwargs["data"]
@@ -50,7 +50,7 @@ def test_a_single_email_with_html_posts_both_parts():
 
 
 def test_a_single_email_without_html_posts_no_html_key():
-    with patch("mailer.main.requests.post", return_value=_ok_response()) as post:
+    with patch("mailer.providers.mailgun.requests.post", return_value=_ok_response()) as post:
         send_single_email("who@example.org", "S", "plain")
 
     assert "html" not in post.call_args.kwargs["data"]
@@ -58,7 +58,7 @@ def test_a_single_email_without_html_posts_no_html_key():
 
 def test_a_batch_email_with_html_posts_both_parts():
     recipients = {"who@example.org": {"name": "Who", "uid": "u1"}}
-    with patch("mailer.main.requests.post", return_value=_ok_response()) as post:
+    with patch("mailer.providers.mailgun.requests.post", return_value=_ok_response()) as post:
         send_batch_emails(recipients, "S", "plain", html="<p>rich</p>")
 
     data = post.call_args.kwargs["data"]
@@ -68,7 +68,7 @@ def test_a_batch_email_with_html_posts_both_parts():
 
 def test_a_batch_email_without_html_posts_no_html_key():
     recipients = {"who@example.org": {"name": "Who", "uid": "u1"}}
-    with patch("mailer.main.requests.post", return_value=_ok_response()) as post:
+    with patch("mailer.providers.mailgun.requests.post", return_value=_ok_response()) as post:
         send_batch_emails(recipients, "S", "plain")
 
     assert "html" not in post.call_args.kwargs["data"]

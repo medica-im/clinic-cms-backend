@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from django.conf import settings
 
+from mailer.providers.mailgun import MailgunCredentials
 from mailer.config import SenderConfig, get_sender
 from mailer.main import send_batch_emails, send_single_email
 from mailer.models import MailgunAccount
@@ -76,24 +77,23 @@ class TestWhereRepliesGo:
 
 class TestTheMessageCarriesIt:
     SENDER = SenderConfig(
-        api_url="https://api.eu.mailgun.net/v3/mail.example.org/messages",
-        auth=("kid", "k"),
+        credentials=MailgunCredentials(api_url="https://api.eu.mailgun.net/v3/mail.example.org/messages", auth=("kid", "k")),
         from_address="Example <contact@example.org>",
         reply_to="secretariat@cpts.example",
     )
 
     def test_a_single_email(self):
-        with patch("mailer.main.requests.post", return_value=_ok()) as post:
+        with patch("mailer.providers.mailgun.requests.post", return_value=_ok()) as post:
             send_single_email("who@example.org", "S", "t", sender=self.SENDER)
         assert post.call_args.kwargs["data"]["h:Reply-To"] == "secretariat@cpts.example"
 
     def test_a_batch_email(self):
-        with patch("mailer.main.requests.post", return_value=_ok()) as post:
+        with patch("mailer.providers.mailgun.requests.post", return_value=_ok()) as post:
             send_batch_emails({"who@example.org": {}}, "S", "t", sender=self.SENDER)
         assert post.call_args.kwargs["data"]["h:Reply-To"] == "secretariat@cpts.example"
 
     def test_the_default_sender_sets_it_too(self):
-        with patch("mailer.main.requests.post", return_value=_ok()) as post:
+        with patch("mailer.providers.mailgun.requests.post", return_value=_ok()) as post:
             send_single_email("who@example.org", "S", "t")
         assert post.call_args.kwargs["data"]["h:Reply-To"] == settings.MAIL_DEFAULT_REPLY_TO
 
