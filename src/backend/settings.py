@@ -360,6 +360,10 @@ from mailer.endpoints import build_api_url as build_mailgun_api_url
 # The default Mailgun identity. An organization with an active
 # mailer.MailgunAccount row sends under its own instead -- see
 # mailer.config.get_sender.
+# Rows one invitation spreadsheet may hold, for an organization that has not
+# set its own (Organization.batch_invitation_max_rows).
+BATCH_INVITATION_MAX_ROWS = config('BATCH_INVITATION_MAX_ROWS', default=1000, cast=int)
+
 MAILGUN_DOMAIN = config('MAILGUN_DOMAIN', default="mail.medica.im")
 MAILGUN_REGION = config('MAILGUN_REGION', default="eu")
 MAILGUN_API_URL = build_mailgun_api_url(MAILGUN_DOMAIN, region=MAILGUN_REGION)

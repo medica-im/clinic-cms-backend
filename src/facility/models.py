@@ -73,6 +73,14 @@ class Organization(models.Model):
             "requests reach the backend, so it cannot be derived from the Site."
         ),
     )
+    batch_invitation_max_rows = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Most rows one invitation spreadsheet may hold. Blank: the "
+            "default (settings.BATCH_INVITATION_MAX_ROWS, 1000)."
+        ),
+    )
     email_template_editor_role = models.CharField(
         max_length=16,
         choices=[

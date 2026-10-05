@@ -35,8 +35,20 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-MAX_ROWS = 500
 ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".ods"}
+
+
+def batch_max_rows(organization) -> int:
+    """Rows one spreadsheet may hold: the organization's own limit, or the default."""
+    from django.conf import settings
+    own = getattr(organization, "batch_invitation_max_rows", None)
+    return own or settings.BATCH_INVITATION_MAX_ROWS
+
+
+async def _site_max_rows(request: Request) -> int:
+    site = await get_site_from_request(request)
+    organization = await Organization.objects.filter(site=site).afirst()
+    return batch_max_rows(organization)
 
 
 def _get_extension(filename: str | None) -> str:
@@ -151,6 +163,8 @@ async def parse_batch_invitees(
     return BatchInviteeParseResponse(
         columns=df.columns.tolist(),
         preview_rows=df.head(2).to_dict(orient="records"),
+        total_rows=len(df),
+        max_rows=await _site_max_rows(request),
     )
 
 
@@ -224,10 +238,11 @@ async def create_batch_invitees(
             detail="No valid rows found after applying column mapping",
         )
 
-    if len(rows) > MAX_ROWS:
+    max_rows = await _site_max_rows(request)
+    if len(rows) > max_rows:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Too many rows: {len(rows)}. Maximum is {MAX_ROWS}.",
+            detail=f"Too many rows: {len(rows)}. Maximum is {max_rows}.",
         )
 
     user_sub = jwt.get("providerAccountId", "")

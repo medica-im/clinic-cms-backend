@@ -5,6 +5,10 @@ from pydantic import BaseModel
 class BatchInviteeParseResponse(BaseModel):
     columns: list[str]
     preview_rows: list[dict]
+    # Rows in the file, and the most this organization may send at once:
+    # the page says a file is too long before it is sent.
+    total_rows: int
+    max_rows: int
 
 
 class BatchInviteeMapping(BaseModel):
