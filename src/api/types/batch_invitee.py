@@ -47,10 +47,15 @@ class BatchInviteeJobDetail(BaseModel):
     skipped_active_user_count: int
     failed_email_count: int
     percentage: float
+    # Each row may carry "email_delivery": where its email stands now
+    # (api.types.invitee.EmailDelivery), read from the delivery records.
     summary: list[dict]
     created_at: datetime
     role: str
     send_emails: bool
+    # Emails of this batch by current status, and failures by ErrorKind.
+    email_status_counts: dict[str, int] = {}
+    email_error_kind_counts: dict[str, int] = {}
 
 
 class BatchInviteeJobListItem(BaseModel):

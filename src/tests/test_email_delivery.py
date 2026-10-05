@@ -245,7 +245,7 @@ def test_a_batch_invitation_email_is_recorded():
     ok, record, mark = _batch(MAILGUN_OK)
 
     assert ok is True
-    record.assert_called_once_with(UID, "who@example.org")
+    record.assert_called_once_with(UID, "who@example.org", batch_job_uid=None)
     mark.assert_called_once_with(5, MAILGUN_OK)
 
 

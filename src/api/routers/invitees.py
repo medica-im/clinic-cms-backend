@@ -13,7 +13,7 @@ from api.utils import get_site_from_request
 from facility.models import Organization
 from access.models import Role
 from api.serializers.invitee import notification_email
-from mailer.delivery import delivery_status, latest_deliveries, resend_refusal, timed_out
+from mailer.delivery import latest_deliveries, resend_refusal
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +26,7 @@ async def with_email_delivery(invitees: list[Invitee]) -> list[Invitee]:
     for invitee in invitees:
         row = rows.get(invitee.uid)
         if row is not None:
-            invitee.emailDelivery = EmailDelivery(
-                status=delivery_status(row),
-                at=row.updated,
-                error=row.error or None,
-                timedOut=timed_out(row),
-            )
+            invitee.emailDelivery = EmailDelivery.from_row(row)
     return invitees
 
 

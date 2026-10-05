@@ -14,9 +14,12 @@ from fastapi import (
     UploadFile,
     status,
 )
+from asgiref.sync import sync_to_async
 from neomodel import adb
 
 from access.models import BatchInviteeJob
+from api.types.invitee import EmailDelivery
+from mailer.delivery import batch_report
 from access.roles import ROLES
 from access.tasks import process_batch_invitees
 from api.auth import JWT, authorize_api
@@ -413,6 +416,16 @@ async def get_batch_invitee_job(
 
     percentage = (job.processed_rows / job.total_rows * 100) if job.total_rows > 0 else 0
 
+    # Read now, not copied when the job ran: a resend, or an event from the
+    # mail service, changes where an email stands.
+    report = await sync_to_async(batch_report)(job.uid)
+    summary = []
+    for row in job.summary or []:
+        delivery = report.by_invitee.get(row.get("invitee_uid") or "")
+        summary.append(
+            {**row, "email_delivery": EmailDelivery.from_row(delivery).model_dump(mode="json") if delivery else None}
+        )
+
     return BatchInviteeJobDetail(
         uid=str(job.uid),
         status=job.status,
@@ -424,8 +437,10 @@ async def get_batch_invitee_job(
         skipped_active_user_count=job.skipped_active_user_count,
         failed_email_count=job.failed_email_count,
         percentage=round(percentage, 1),
-        summary=job.summary,
+        summary=summary,
         created_at=job.created_at,
         role=job.role,
         send_emails=job.send_emails,
+        email_status_counts=report.status_counts,
+        email_error_kind_counts=report.error_kind_counts,
     )

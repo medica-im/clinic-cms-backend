@@ -207,14 +207,33 @@ class EmailDelivery(models.Model):
 
     class Status(models.TextChoices):
         QUEUED = "queued", "Queued"
-        SENT = "sent", "Sent (accepted by Mailgun)"
+        SENT = "sent", "Sent (accepted by the mail service)"
+        # Set from the provider's events (webhooks), after acceptance.
+        DELIVERED = "delivered", "Delivered to the recipient's server"
+        DEFERRED = "deferred", "Delayed: the service is still trying"
+        BOUNCED = "bounced", "Bounced: the address does not receive mail"
+        COMPLAINED = "complained", "Reported as spam by the recipient"
+        # Not sent: the address is on the do-not-send list.
+        SUPPRESSED = "suppressed", "Not sent: address on the do-not-send list"
         FAILED = "failed", "Failed"
+
+    class ErrorKind(models.TextChoices):
+        """mailer.providers.base.ErrorKind, as stored."""
+        INVALID_REQUEST = "invalid_request", "Refused as written (address)"
+        MISCONFIGURED = "misconfigured", "Our mail configuration"
+        RATE_LIMITED = "rate_limited", "Too many messages at once"
+        PROVIDER_UNAVAILABLE = "provider_unavailable", "Mail service unavailable"
+        UNREACHABLE = "unreachable", "Mail service unreachable"
+        OUTCOME_UNKNOWN = "outcome_unknown", "No answer: outcome unknown"
 
     invitee_uid = models.CharField(max_length=64, db_index=True)
     to_address = models.EmailField()
-    status = models.CharField(max_length=8, choices=Status.choices, default=Status.QUEUED)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.QUEUED)
     provider_message_id = models.CharField(max_length=255, blank=True)
     error = models.TextField(blank=True)
+    error_kind = models.CharField(max_length=32, choices=ErrorKind.choices, blank=True)
+    # The batch job that sent it, if any: its report reads these rows.
+    batch_job_uid = models.UUIDField(null=True, blank=True, db_index=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

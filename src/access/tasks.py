@@ -118,7 +118,9 @@ def process_batch_invitees(
                     row_result["existing_invitee_uid"] = unredeemed_uid
 
             if send_emails:
-                email_ok = _send_notification_email(email, name, site_domain, invitee_uid=invitee_uid)
+                email_ok = _send_notification_email(
+                    email, name, site_domain, invitee_uid=invitee_uid, batch_job_uid=job.uid,
+                )
                 if not email_ok:
                     job.failed_email_count += 1
                     row_result["email_error"] = True
@@ -281,12 +283,15 @@ def _update_progress(job, processed_rows: int, summary: list):
     ])
 
 
-def _send_notification_email(email: str, name: str, site_domain: str, invitee_uid: str | None = None) -> bool:
+def _send_notification_email(
+    email: str, name: str, site_domain: str, invitee_uid: str | None = None, batch_job_uid=None,
+) -> bool:
     """Reuses mailer.main.send_single_email directly (sync, already in Celery).
 
-    True only when Mailgun accepted the message: send_single_email does not
-    raise, it answers {"error": ...}. With invitee_uid, the attempt is
-    recorded (mailer.delivery) so the invitation shows whether it went out.
+    True only when the mail service accepted the message: send_single_email
+    does not raise, it answers {"error": ...}. With invitee_uid, the attempt
+    is recorded (mailer.delivery) so the invitation shows whether it went out,
+    and with batch_job_uid it counts in that job's report.
     """
     from django.contrib.sites.models import Site
     from facility.models import Organization
@@ -306,7 +311,7 @@ def _send_notification_email(email: str, name: str, site_domain: str, invitee_ui
     context = invitation_context(organization, site_domain, name, email)
     rendered = render_email(template, context)
 
-    row = delivery.record_queued(invitee_uid, email) if invitee_uid else None
+    row = delivery.record_queued(invitee_uid, email, batch_job_uid=batch_job_uid) if invitee_uid else None
     try:
         result = send_single_email(
             email, rendered.subject, rendered.text,
