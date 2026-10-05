@@ -89,6 +89,8 @@ def _message_data(sender: SenderConfig, to, subject: str, text: str, html: str |
     data = {"from": sender.from_address, "to": to, "subject": subject, "text": text}
     if html is not None:
         data["html"] = html
+    if sender.reply_to:
+        data["h:Reply-To"] = sender.reply_to
     return data
 
 

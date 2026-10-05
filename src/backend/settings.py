@@ -371,6 +371,8 @@ MAILGUN_SENDING_KEY = config('MAILGUN_SENDING_KEY')
 MAILGUN_SENDING_KEY_ID = config('MAILGUN_SENDING_KEY_ID')
 MAILGUN_FROM_EMAIL = config('MAILGUN_FROM_EMAIL', default="noreply@mail.medica.im")
 MAILGUN_FROM_NAME = config('MAILGUN_FROM_NAME', default="")
+# Where replies go when the organization has not set reply_to_email.
+MAIL_DEFAULT_REPLY_TO = config('MAIL_DEFAULT_REPLY_TO', default=f"noreply@{MAILGUN_DOMAIN}")
 MAILGUN_FROM_ADDRESS = (
     f"{MAILGUN_FROM_NAME} <{MAILGUN_FROM_EMAIL}>"
     if MAILGUN_FROM_NAME

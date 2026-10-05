@@ -73,6 +73,14 @@ class Organization(models.Model):
             "requests reach the backend, so it cannot be derived from the Site."
         ),
     )
+    reply_to_email = models.EmailField(
+        blank=True,
+        help_text=(
+            "Where replies to the organization's email go. Mail is sent from a "
+            "shared domain (noreply@mail.medica.im); blank: replies go to "
+            "settings.MAIL_DEFAULT_REPLY_TO."
+        ),
+    )
     batch_invitation_max_rows = models.PositiveIntegerField(
         null=True,
         blank=True,

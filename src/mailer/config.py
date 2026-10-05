@@ -8,7 +8,7 @@ organization to keep working.
 """
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -29,6 +29,8 @@ class SenderConfig:
     api_url: str
     auth: tuple[str, str]
     from_address: str
+    # Where replies go. Not a Mailgun notion: the provider call maps it.
+    reply_to: str = ""
 
     @classmethod
     def default(cls) -> "SenderConfig":
@@ -37,10 +39,18 @@ class SenderConfig:
             api_url=settings.MAILGUN_API_URL,
             auth=(settings.MAILGUN_SENDING_KEY_ID, settings.MAILGUN_SENDING_KEY),
             from_address=settings.MAILGUN_FROM_ADDRESS,
+            reply_to=settings.MAIL_DEFAULT_REPLY_TO,
         )
 
 
 def get_sender(organization) -> SenderConfig:
+    """The identity to send this organization's mail under, replies to it."""
+    sender = _account_sender(organization)
+    reply_to = getattr(organization, "reply_to_email", "") or settings.MAIL_DEFAULT_REPLY_TO
+    return replace(sender, reply_to=reply_to)
+
+
+def _account_sender(organization) -> SenderConfig:
     """The Mailgun identity to send this organization's mail under.
 
     Falls back to the default identity when the organization is unknown, has
