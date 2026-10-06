@@ -47,6 +47,10 @@ def resend():
         ),
         patch("api.routers.invitees.latest_deliveries", MagicMock(side_effect=lambda uids: state["latest"])),
         patch("api.routers.invitees.notification_email", AsyncMock()) as send,
+        # Remembered addresses are tested in test_bad_addresses.py.
+        patch("api.routers.invitees.site_organization", AsyncMock(return_value=None)),
+        patch("api.routers.invitees.blocking", MagicMock(return_value=None)),
+        patch("api.routers.invitees.issues_for", MagicMock(return_value={})),
     ):
         state.update(authorize=authorize, ownership=ownership, send=send, queued=queued)
         try:
@@ -56,7 +60,7 @@ def resend():
 
 
 async def test_the_email_is_sent_again(versioned_client, resend):
-    async def sent(invitee, site):
+    async def sent(invitee, site, force=False):
         resend["latest"] = {UID: resend["queued"]}
 
     resend["send"].side_effect = sent

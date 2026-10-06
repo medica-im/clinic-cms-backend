@@ -49,8 +49,14 @@ def mark_result(delivery_id: int, result: dict | None) -> None:
     if not updated:
         logger.warning(f"EmailDelivery {delivery_id} not found; result not recorded: {fields['status']}")
         return
+    row = EmailDelivery.objects.get(id=delivery_id)
+    if fields.get("error_kind") == EmailDelivery.ErrorKind.INVALID_REQUEST:
+        # Refused as written: the address itself is wrong (a typo, a
+        # nonexistent domain), not the moment.
+        from mailer import suppression
+        suppression.record(row.to_address, suppression.R.REFUSED, detail=fields["error"])
     from mailer.live import publish_delivery
-    publish_delivery(EmailDelivery.objects.get(id=delivery_id))
+    publish_delivery(row)
 
 
 def timed_out(row) -> bool:
@@ -128,6 +134,54 @@ def _delivery_for(event) -> EmailDelivery | None:
     return None
 
 
+def _organization_of_delivery(delivery):
+    """The Organization a delivery's invitation belongs to, or None."""
+    import uuid
+    from facility.models import Organization
+    from mailer.live import organization_of
+
+    if delivery is None:
+        return None
+    entry_uid = organization_of(delivery.invitee_uid)
+    if not entry_uid:
+        return None
+    try:
+        return Organization.objects.filter(neomodel_uid=uuid.UUID(entry_uid)).first()
+    except ValueError:
+        return None
+
+
+def _remember(event, delivery, stored) -> None:
+    """What the event says about the address itself (mailer.suppression)."""
+    from mailer import suppression
+
+    address = event.recipient or (delivery.to_address if delivery else "")
+    kind = str(event.kind)
+    R = suppression.R
+    if kind in ("bounced", "suppressed"):
+        suppression.record(address, R.BOUNCED, detail=event.detail, event=stored)
+    elif kind in ("complained", "unsubscribed"):
+        organization = _organization_of_delivery(delivery)
+        if organization is None:
+            logger.warning(f"{kind} from {address}: no organization on record; not remembered")
+            return
+        reason = R.COMPLAINED if kind == "complained" else R.UNSUBSCRIBED
+        suppression.record(address, reason, organization=organization, detail=event.detail, event=stored)
+    elif kind == "delivered":
+        suppression.forget_dead(address)
+
+
+def mark_suppressed(delivery_id: int, row) -> None:
+    """Not sent: the address is remembered (mailer.suppression); say why."""
+    since = row.first_seen.strftime("%Y-%m-%d")
+    error = f"{row.get_reason_display()} ({since}): {row.detail}" if row.detail else f"{row.get_reason_display()} ({since})"
+    EmailDelivery.objects.filter(id=delivery_id).update(
+        status=EmailDelivery.Status.SUPPRESSED, error=error[:ERROR_MAX_LENGTH], error_kind="", updated=timezone.now(),
+    )
+    from mailer.live import publish_delivery
+    publish_delivery(EmailDelivery.objects.get(id=delivery_id))
+
+
 def apply_event(event) -> EmailDelivery | None:
     """Record a provider event (mailer.providers.base.DeliveryEvent) once, and
     move its delivery's status on. Returns the delivery it concerned, if any."""
@@ -138,7 +192,7 @@ def apply_event(event) -> EmailDelivery | None:
     delivery = _delivery_for(event)
     try:
         with transaction.atomic():
-            EmailEvent.objects.create(
+            stored = EmailEvent.objects.create(
                 delivery=delivery,
                 provider=event.provider,
                 provider_event_id=event.event_id or f"{event.message_id}:{event.kind}:{event.occurred_at}",
@@ -151,6 +205,7 @@ def apply_event(event) -> EmailDelivery | None:
     except IntegrityError:
         logger.info(f"{event.provider} event {event.event_id} already recorded")
         return delivery
+    _remember(event, delivery, stored)
     if delivery is None:
         logger.info(f"{event.provider} {event.kind} for {event.recipient}: no delivery on record")
         return None

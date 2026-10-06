@@ -286,6 +286,45 @@ class EmailEvent(models.Model):
         return f"{self.recipient}: {self.kind}"
 
 
+class EmailSuppression(models.Model):
+    """An address not to send to automatically, and why (mailer.suppression).
+
+    A bounce or a refusal as written is about the address: organization is
+    null, it applies to everyone. A spam complaint or an unsubscribe is the
+    person refusing one organization's mail: it names that organization.
+    """
+
+    class Reason(models.TextChoices):
+        BOUNCED = "bounced", "The mailbox does not exist or does not receive mail"
+        REFUSED = "refused", "Refused as written by the mail service"
+        COMPLAINED = "complained", "Reported as spam by the recipient"
+        UNSUBSCRIBED = "unsubscribed", "Unsubscribed by the recipient"
+
+    address = models.EmailField(db_index=True)
+    organization = models.ForeignKey(
+        "facility.Organization", null=True, blank=True, on_delete=models.CASCADE,
+        related_name="email_suppressions",
+    )
+    reason = models.CharField(max_length=16, choices=Reason.choices)
+    detail = models.TextField(blank=True)
+    first_seen = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(auto_now=True)
+    count = models.PositiveIntegerField(default=1)
+    event = models.ForeignKey(EmailEvent, null=True, blank=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["address", "organization"], name="unique_suppression_per_scope"),
+            models.UniqueConstraint(
+                fields=["address"], condition=models.Q(organization__isnull=True),
+                name="unique_global_suppression",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.address}: {self.reason}"
+
+
 def email_image_path(instance, filename):
     """email_images/<organization>/<random>.<ext>: one directory per
     organization, and a name that says nothing and never changes -- emails

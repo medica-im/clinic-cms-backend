@@ -20,6 +20,7 @@ from neomodel import adb
 from access.models import BatchInviteeJob
 from api.types.invitee import EmailDelivery
 from mailer.delivery import batch_report
+from mailer.suppression import issue_payload, issues_for, normalize
 from access.roles import ROLES
 from access.tasks import process_batch_invitees
 from api.auth import JWT, authorize_api
@@ -419,12 +420,17 @@ async def get_batch_invitee_job(
     # Read now, not copied when the job ran: a resend, or an event from the
     # mail service, changes where an email stands.
     report = await sync_to_async(batch_report)(job.uid)
+    # Why an address is not sent to automatically, as on the invitation pages.
+    organization = await Organization.objects.filter(neomodel_uid=job.organization_neomodel_uid).afirst()
+    issues = await sync_to_async(issues_for)([row.get("email") for row in job.summary or []], organization)
     summary = []
     for row in job.summary or []:
         delivery = report.by_invitee.get(row.get("invitee_uid") or "")
-        summary.append(
-            {**row, "email_delivery": EmailDelivery.from_row(delivery).model_dump(mode="json") if delivery else None}
-        )
+        summary.append({
+            **row,
+            "email_delivery": EmailDelivery.from_row(delivery).model_dump(mode="json") if delivery else None,
+            "addressIssue": issue_payload(issues.get(normalize(row.get("email") or ""))),
+        })
 
     return BatchInviteeJobDetail(
         uid=str(job.uid),
@@ -443,4 +449,5 @@ async def get_batch_invitee_job(
         send_emails=job.send_emails,
         email_status_counts=report.status_counts,
         email_error_kind_counts=report.error_kind_counts,
+        address_issue_count=sum(1 for row in summary if row["addressIssue"]),
     )

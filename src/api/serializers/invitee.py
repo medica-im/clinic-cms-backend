@@ -10,7 +10,9 @@ from fastapi import status, HTTPException
 
 logger = logging.getLogger(__name__)
 
-async def notification_email(invitee: Invitee, site: Site):
+async def notification_email(invitee: Invitee, site: Site, force: bool = False):
+    """Queue the invitation's email. force: send although the address is
+    remembered as dead (an administrator's checked resend)."""
     if not invitee.email:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -44,6 +46,7 @@ async def notification_email(invitee: Invitee, site: Site):
             organization_id=organization.id,
             html=email.html,
             delivery_id=delivery.id,
+            force_send=force,
         )
     except Exception as error:
         # The invitation exists either way; say that its email did not leave.

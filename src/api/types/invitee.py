@@ -44,6 +44,22 @@ class EmailDelivery(BaseModel):
         return cls(**delivery_payload(row))
 
 
+class AddressIssue(BaseModel):
+    """Why the invitation's address is not sent to automatically
+    (mailer.suppression). bounced / refused: the address does not work --
+    correct it, or resend with force after checking it. complained /
+    unsubscribed: the person refused this organization's mail."""
+
+    reason: Literal["bounced", "refused", "complained", "unsubscribed"]
+    since: datetime
+    detail: str | None = None
+
+
+class ResendRequest(BaseModel):
+    # Send although the address bounced before: the administrator checked it.
+    force: bool = False
+
+
 class Invitee(BaseModel):
     uid: str
     email: str | None = None
@@ -55,3 +71,4 @@ class Invitee(BaseModel):
     redeemedAt: int | None = None
     # None: no recorded attempt (created before recording, or never emailed).
     emailDelivery: EmailDelivery | None = None
+    addressIssue: AddressIssue | None = None

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, Depends, status, HTTPException
 from fastapi.responses import StreamingResponse
 from neomodel import adb
 from asgiref.sync import sync_to_async
-from api.types.invitee import EmailDelivery, Invitee, InviteePost, InviteePatch
+from api.types.invitee import AddressIssue, EmailDelivery, Invitee, InviteePost, InviteePatch, ResendRequest
 from access.asyncneomodels import Invitee as AsyncInvitee
 from access.asyncneomodels import User as AsyncUser
 from access.asyncneomodels import Account as AsyncAccount
@@ -15,20 +15,33 @@ from facility.models import Organization
 from access.models import Role
 from api.serializers.invitee import notification_email
 from mailer.delivery import latest_deliveries, resend_refusal
+from mailer.suppression import blocking, is_opted_out, issue_payload, issues_for, normalize
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-async def with_email_delivery(invitees: list[Invitee]) -> list[Invitee]:
-    """Attach each invitation's latest email attempt, in one query."""
+async def with_email_delivery(invitees: list[Invitee], organization=None) -> list[Invitee]:
+    """Attach each invitation's latest email attempt, and why its address is
+    not sent to automatically if it is (mailer.suppression) -- the global
+    records, plus this organization's own refusals."""
     rows = await sync_to_async(latest_deliveries)([invitee.uid for invitee in invitees])
+    scope = organization if isinstance(organization, Organization) else None
+    issues = await sync_to_async(issues_for)([invitee.email for invitee in invitees], scope)
     for invitee in invitees:
         row = rows.get(invitee.uid)
         if row is not None:
             invitee.emailDelivery = EmailDelivery.from_row(row)
+        issue = issue_payload(issues.get(normalize(invitee.email or "")))
+        if issue is not None:
+            invitee.addressIssue = AddressIssue(**issue)
     return invitees
+
+
+async def site_organization(request: Request) -> Organization | None:
+    site = await get_site_from_request(request)
+    return await Organization.objects.filter(site=site).afirst()
 
 
 async def verify_invitee_ownership(request: Request, invitee_uid: str):
@@ -101,7 +114,7 @@ async def invitees(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list
             props["createdBy"] = row[1]
             invitee_list.append(Invitee.model_validate(props))
 
-    return await with_email_delivery(invitee_list)
+    return await with_email_delivery(invitee_list, organization)
 
 
 # Before /invitees/{invitee_uid}, or "events" would be read as a uid.
@@ -167,7 +180,7 @@ async def get_invitee(
         )
     props = dict(results[0][0])
     props["createdBy"] = results[0][1]
-    return (await with_email_delivery([Invitee.model_validate(props)]))[0]
+    return (await with_email_delivery([Invitee.model_validate(props)], await site_organization(request)))[0]
 
 
 @router.post("/invitees", status_code=status.HTTP_201_CREATED)
@@ -261,18 +274,22 @@ async def create_invitee(
         logger.error(f"Failed to connect createdBy for Invitee: {e}")
     invitee = Invitee.model_validate(new_invitee.__properties__)
     await notification_email(invitee, site)
-    return (await with_email_delivery([invitee]))[0]
+    return (await with_email_delivery([invitee], await site_organization(request)))[0]
 
 
 @router.post("/invitees/{invitee_uid}/resend")
 async def resend_invitee_email(
     invitee_uid: str,
     request: Request,
-    jwt: Annotated[dict, Depends(JWT)]
+    jwt: Annotated[dict, Depends(JWT)],
+    body: ResendRequest | None = None,
 ) -> Invitee:
     """Send the invitation's email again, with the organization's current
     template. A new EmailDelivery row is recorded, so an earlier failure stays
-    in the history. 409 with a code when it may not be (resend_refusal)."""
+    in the history. 409 with a code when it may not be (resend_refusal), when
+    the address is remembered as dead (address_rejected: send with force once
+    checked) or the person refused this organization's mail
+    (address_opted_out: never)."""
     await authorize_api("invitees_v2", request, jwt)
     await verify_invitee_ownership(request, invitee_uid)
     try:
@@ -287,9 +304,15 @@ async def resend_invitee_email(
     refusal = resend_refusal(invitee, latest)
     if refusal:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": refusal})
+    organization = await site_organization(request)
+    force = bool(body and body.force)
+    blocked = await sync_to_async(blocking)(invitee.email or "", organization)
+    if blocked is not None and (is_opted_out(blocked) or not force):
+        code = "address_opted_out" if is_opted_out(blocked) else "address_rejected"
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": code, **issue_payload(blocked)})
     site = await get_site_from_request(request)
-    await notification_email(invitee, site)
-    return (await with_email_delivery([invitee]))[0]
+    await notification_email(invitee, site, force=force)
+    return (await with_email_delivery([invitee], organization))[0]
 
 
 @router.patch("/invitees/{invitee_uid}")
@@ -313,6 +336,7 @@ async def update_invitee(
         )
 
     # Update only the fields that were provided
+    address_changed = item.email is not None and normalize(item.email) != normalize(invitee.email or "")
     if item.email is not None:
         invitee.email = item.email
     if item.role is not None:
@@ -324,8 +348,16 @@ async def update_invitee(
 
     # Save the updated invitee
     updated_invitee = await invitee.save()
+    updated = Invitee.model_validate(updated_invitee.__properties__)
 
-    return (await with_email_delivery([Invitee.model_validate(updated_invitee.__properties__)]))[0]
+    # A corrected address: the invitation goes to it straight away, unless
+    # it can no longer be used. The old address may have bounced; this one
+    # is a new attempt, judged on its own.
+    usable = not updated.redeemedAt and updated.active is not False
+    if address_changed and usable:
+        await notification_email(updated, await get_site_from_request(request))
+
+    return (await with_email_delivery([updated], await site_organization(request)))[0]
 
 
 @router.delete("/invitees/{invitee_uid}")

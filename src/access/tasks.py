@@ -312,6 +312,16 @@ def _send_notification_email(
     rendered = render_email(template, context)
 
     row = delivery.record_queued(invitee_uid, email, batch_job_uid=batch_job_uid) if invitee_uid else None
+    # A remembered address (dead, or a refusal of this organization's mail)
+    # is not sent to: the batch reports it suppressed, with why. Checked for
+    # a tracked invitation, as send_single_email_task does.
+    from mailer import suppression
+    blocked = suppression.blocking(email, organization) if invitee_uid else None
+    if blocked is not None:
+        logger.info(f"Not sending to {email}: {blocked.reason}")
+        if row is not None:
+            delivery.mark_suppressed(row.id, blocked)
+        return False
     try:
         result = send_single_email(
             email, rendered.subject, rendered.text,

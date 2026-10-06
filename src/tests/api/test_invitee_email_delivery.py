@@ -54,6 +54,8 @@ def listed():
         ),
         patch("api.routers.invitees.adb.cypher_query", AsyncMock(return_value=(rows, None))),
         patch("api.routers.invitees.latest_deliveries", MagicMock(return_value=deliveries)) as lookup,
+        # Remembered addresses are tested in test_bad_addresses.py.
+        patch("api.routers.invitees.issues_for", MagicMock(return_value={})),
     ):
         try:
             yield lookup

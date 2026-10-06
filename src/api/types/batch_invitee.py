@@ -56,6 +56,8 @@ class BatchInviteeJobDetail(BaseModel):
     # Emails of this batch by current status, and failures by ErrorKind.
     email_status_counts: dict[str, int] = {}
     email_error_kind_counts: dict[str, int] = {}
+    # Rows whose address is not sent to automatically (each row's addressIssue).
+    address_issue_count: int = 0
 
 
 class BatchInviteeJobListItem(BaseModel):
