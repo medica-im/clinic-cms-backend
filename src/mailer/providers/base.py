@@ -41,6 +41,41 @@ class OutgoingMessage:
     # Several recipients, each receiving their own copy and seeing only
     # themselves; values are per-recipient data. None: one message to `to`.
     per_recipient: dict[str, dict] | None = None
+    # Our own data, returned with every event about this message: how an
+    # event finds its EmailDelivery ({"delivery_id": ...}).
+    metadata: dict[str, Any] | None = None
+    # Labels for the provider's own logs and statistics ("invitation").
+    tags: list[str] | None = None
+
+
+class EventKind(StrEnum):
+    """What the service reports about a message after accepting it."""
+
+    DELIVERED = "delivered"
+    # A temporary failure: the service is still trying.
+    DEFERRED = "deferred"
+    # A permanent failure: the address does not receive mail.
+    BOUNCED = "bounced"
+    COMPLAINED = "complained"
+    UNSUBSCRIBED = "unsubscribed"
+    # Not sent: the address is on the service's own do-not-send list.
+    SUPPRESSED = "suppressed"
+
+
+@dataclass(frozen=True)
+class DeliveryEvent:
+    provider: str
+    # The service's id for this event: the same event delivered twice is one.
+    event_id: str
+    kind: EventKind
+    recipient: str
+    occurred_at: float  # unix time
+    # What OutgoingMessage.metadata said, as returned.
+    metadata: dict[str, Any] = field(default_factory=dict)
+    # The service's id for the message, without angle brackets.
+    message_id: str = ""
+    detail: str = ""
+    raw: Any = None
 
 
 @dataclass(frozen=True)
@@ -66,3 +101,9 @@ class MailProvider(Protocol):
         """The organization's own (credentials, from address), or None."""
 
     def send(self, message: OutgoingMessage, credentials) -> SendOutcome: ...
+
+    def verify_webhook(self, payload: dict) -> bool:
+        """True when the payload really comes from the service."""
+
+    def parse_event(self, payload: dict) -> DeliveryEvent | None:
+        """The event in our terms; None for one we do not track (opened...)."""

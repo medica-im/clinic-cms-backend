@@ -32,9 +32,16 @@ def send_single_email(
     sender: SenderConfig | None = None,
     *,
     html: str | None = None,
+    metadata: dict | None = None,
+    tags: list[str] | None = None,
 ) -> dict:
-    """{"id": ...} when accepted; {"error": ..., "status_code"?, "error_kind"} otherwise."""
-    outcome = _send(_resolve(sender), to=to_address, subject=subject, text=message, html=html)
+    """{"id": ...} when accepted; {"error": ..., "status_code"?, "error_kind"} otherwise.
+
+    metadata comes back with every event about the message (delivery_id: how
+    an event finds its EmailDelivery); tags label it in the provider's logs."""
+    outcome = _send(
+        _resolve(sender), to=to_address, subject=subject, text=message, html=html, metadata=metadata, tags=tags,
+    )
     if outcome.accepted:
         logger.info(f"Email to '{to_address}' accepted: {outcome.message_id}")
         return outcome.raw if isinstance(outcome.raw, dict) else {"id": outcome.message_id}

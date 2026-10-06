@@ -72,6 +72,82 @@ def latest_deliveries(invitee_uids) -> dict[str, EmailDelivery]:
     return latest
 
 
+# What an event makes of a delivery. Final states are kept against anything
+# but a spam complaint, which comes after delivery and does replace it; a late
+# deferral never undoes a delivery.
+_FINAL = {EmailDelivery.Status.BOUNCED, EmailDelivery.Status.COMPLAINED, EmailDelivery.Status.SUPPRESSED}
+_STILL_GOING = {EmailDelivery.Status.QUEUED, EmailDelivery.Status.SENT, EmailDelivery.Status.DEFERRED}
+
+
+def _next_status(current: str, kind: str) -> str:
+    S = EmailDelivery.Status
+    if kind == "complained":
+        return S.COMPLAINED
+    if current in _FINAL:
+        return current
+    if kind == "bounced":
+        return S.BOUNCED
+    if kind == "suppressed":
+        return S.SUPPRESSED
+    if kind == "delivered":
+        return S.DELIVERED
+    if kind == "deferred" and current in _STILL_GOING:
+        return S.DEFERRED
+    return current
+
+
+def _delivery_for(event) -> EmailDelivery | None:
+    """By our own id, sent as metadata; else by the provider's message id."""
+    delivery_id = (event.metadata or {}).get("delivery_id")
+    if delivery_id:
+        try:
+            return EmailDelivery.objects.get(id=int(delivery_id))
+        except (EmailDelivery.DoesNotExist, ValueError, TypeError):
+            pass
+    if event.message_id:
+        return (
+            EmailDelivery.objects.filter(provider_message_id__in=[event.message_id, f"<{event.message_id}>"])
+            .order_by("-created").first()
+        )
+    return None
+
+
+def apply_event(event) -> EmailDelivery | None:
+    """Record a provider event (mailer.providers.base.DeliveryEvent) once, and
+    move its delivery's status on. Returns the delivery it concerned, if any."""
+    from datetime import datetime, timezone as dt_timezone
+    from django.db import IntegrityError, transaction
+    from mailer.models import EmailEvent
+
+    delivery = _delivery_for(event)
+    try:
+        with transaction.atomic():
+            EmailEvent.objects.create(
+                delivery=delivery,
+                provider=event.provider,
+                provider_event_id=event.event_id or f"{event.message_id}:{event.kind}:{event.occurred_at}",
+                kind=str(event.kind),
+                recipient=event.recipient[:254],
+                detail=event.detail[:ERROR_MAX_LENGTH],
+                occurred_at=datetime.fromtimestamp(event.occurred_at, tz=dt_timezone.utc),
+                raw=event.raw if isinstance(event.raw, dict) else {},
+            )
+    except IntegrityError:
+        logger.info(f"{event.provider} event {event.event_id} already recorded")
+        return delivery
+    if delivery is None:
+        logger.info(f"{event.provider} {event.kind} for {event.recipient}: no delivery on record")
+        return None
+    status = _next_status(delivery.status, str(event.kind))
+    if status != delivery.status:
+        fields = {"status": status, "updated": timezone.now()}
+        if status in (EmailDelivery.Status.BOUNCED, EmailDelivery.Status.DEFERRED, EmailDelivery.Status.SUPPRESSED):
+            fields["error"] = event.detail[:ERROR_MAX_LENGTH]
+        EmailDelivery.objects.filter(id=delivery.id).update(**fields)
+        delivery.refresh_from_db()
+    return delivery
+
+
 @dataclass
 class BatchReport:
     """Where each email of a batch stands now, and the totals."""

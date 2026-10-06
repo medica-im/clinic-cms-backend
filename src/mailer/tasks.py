@@ -31,10 +31,14 @@ def _sender_for(organization_id):
 
 @shared_task
 def send_single_email_task(to_address, subject, message, organization_id=None, html=None, delivery_id=None):
-    """delivery_id: the EmailDelivery row to settle with Mailgun's answer."""
+    """delivery_id: the invitation's EmailDelivery row, settled with the
+    service's answer and sent along so its later events find it."""
     logger.info(f"Sending email to {to_address}")
+    tracked = delivery_id is not None
     res = send_single_email(
-        to_address, subject, message, sender=_sender_for(organization_id), html=html
+        to_address, subject, message, sender=_sender_for(organization_id), html=html,
+        metadata={"delivery_id": delivery_id} if tracked else None,
+        tags=["invitation"] if tracked else None,
     )
     if delivery_id is not None:
         mark_result(delivery_id, res)

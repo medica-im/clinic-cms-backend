@@ -316,6 +316,8 @@ def _send_notification_email(
         result = send_single_email(
             email, rendered.subject, rendered.text,
             sender=get_sender(organization), html=rendered.html,
+            metadata={"delivery_id": row.id} if row is not None else None,
+            tags=["invitation"],
         )
     except Exception as e:
         logger.exception(f"Failed to send notification email to {email}: {e}")

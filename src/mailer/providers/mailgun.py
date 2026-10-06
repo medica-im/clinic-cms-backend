@@ -5,6 +5,8 @@ Mailgun's answer into a SendOutcome. Also where an organization's
 MailgunAccount row becomes credentials. See mailer/providers/base.py for the
 vocabulary, tests/test_mail_provider_boundary.py for the boundary.
 """
+import hashlib
+import hmac
 import json
 import logging
 import time
@@ -15,7 +17,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 
 from mailer.endpoints import build_api_url
-from mailer.providers.base import ErrorKind, OutgoingMessage, SendOutcome
+from mailer.providers.base import DeliveryEvent, ErrorKind, EventKind, OutgoingMessage, SendOutcome
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +89,53 @@ def _form(message: OutgoingMessage) -> dict:
     if message.per_recipient is not None:
         # With recipient-variables Mailgun sends each address its own copy.
         data["recipient-variables"] = json.dumps(message.per_recipient)
+    for key, value in (message.metadata or {}).items():
+        # Custom variables: returned as "user-variables" in every event.
+        data[f"v:{key}"] = str(value)
+    if message.tags:
+        data["o:tag"] = list(message.tags)
     return data
+
+
+# Mailgun's event -> ours. "failed" is split on severity and reason below.
+EVENTS = {
+    "delivered": EventKind.DELIVERED,
+    "complained": EventKind.COMPLAINED,
+    "unsubscribed": EventKind.UNSUBSCRIBED,
+}
+# A permanent failure for one of these reasons was never attempted: Mailgun
+# dropped it because the address is on the domain's own suppression lists.
+SUPPRESSION_REASONS = {"suppress-bounce", "suppress-complaint", "suppress-unsubscribe"}
+
+
+def _signing_keys() -> list[str]:
+    """The .env account's key, and every organization account's."""
+    from mailer.models import MailgunAccount
+
+    keys = [settings.MAILGUN_WEBHOOK_SIGNING_KEY] if getattr(settings, "MAILGUN_WEBHOOK_SIGNING_KEY", "") else []
+    keys += [
+        key for key in MailgunAccount.objects.filter(active=True)
+        .exclude(webhook_signing_key="").values_list("webhook_signing_key", flat=True)
+    ]
+    return keys
+
+
+def _kind(event_data: dict) -> EventKind | None:
+    name = event_data.get("event")
+    if name == "failed":
+        if event_data.get("severity") == "temporary":
+            return EventKind.DEFERRED
+        if event_data.get("reason") in SUPPRESSION_REASONS:
+            return EventKind.SUPPRESSED
+        return EventKind.BOUNCED
+    return EVENTS.get(name)
+
+
+def _detail(event_data: dict) -> str:
+    status = event_data.get("delivery-status") or {}
+    words = status.get("message") or status.get("description") or event_data.get("reason") or ""
+    code = status.get("code")
+    return f"{code} {words}".strip() if code else str(words)
 
 
 def _error_kind(status: int) -> ErrorKind:
@@ -164,3 +212,77 @@ class MailgunProvider:
             status_code=response.status_code,
             raw=body,
         )
+
+    def verify_webhook(self, payload: dict) -> bool:
+        """Mailgun signs HMAC-SHA256(signing key, timestamp + token)."""
+        signature = payload.get("signature") if isinstance(payload, dict) else None
+        if not isinstance(signature, dict):
+            return False
+        timestamp, token, given = (str(signature.get(k, "")) for k in ("timestamp", "token", "signature"))
+        if not (timestamp and token and given):
+            return False
+        message = f"{timestamp}{token}".encode()
+        return any(
+            hmac.compare_digest(hmac.new(key.encode(), message, hashlib.sha256).hexdigest(), given)
+            for key in _signing_keys()
+        )
+
+    def parse_event(self, payload: dict) -> DeliveryEvent | None:
+        data = payload.get("event-data") or {}
+        kind = _kind(data)
+        if kind is None:
+            return None  # accepted, opened, clicked...: not tracked
+        headers = (data.get("message") or {}).get("headers") or {}
+        return DeliveryEvent(
+            provider="mailgun",
+            event_id=str(data.get("id") or ""),
+            kind=kind,
+            recipient=data.get("recipient") or "",
+            occurred_at=float(data.get("timestamp") or time.time()),
+            metadata=data.get("user-variables") or {},
+            message_id=str(headers.get("message-id") or "").strip("<>"),
+            detail=_detail(data),
+            raw=data,
+        )
+
+
+# --- Webhook registration (manage.py register_mail_webhooks) -------------------
+
+# The webhooks whose events parse_event turns into ours.
+WEBHOOKS = ("delivered", "permanent_fail", "temporary_fail", "complained", "unsubscribed")
+
+
+def _webhooks_url(domain: str) -> str:
+    from mailer.endpoints import DEFAULT_REGION, REGION_HOSTS
+    host = REGION_HOSTS.get(getattr(settings, "MAILGUN_REGION", DEFAULT_REGION), REGION_HOSTS[DEFAULT_REGION])
+    return f"https://{host}/v3/domains/{domain}/webhooks"
+
+
+def _api_auth() -> tuple[str, str]:
+    """Managing webhooks needs an account API key, not a domain sending key."""
+    key = getattr(settings, "MAILGUN_API_KEY", "") or settings.MAILGUN_SENDING_KEY
+    return ("api", key)
+
+
+def webhook_targets(domain: str) -> dict[str, list[str]]:
+    """For each tracked webhook, the URLs it points at now ([] if none)."""
+    targets = {}
+    for name in WEBHOOKS:
+        response = requests.get(f"{_webhooks_url(domain)}/{name}", auth=_api_auth(), timeout=TIMEOUT)
+        if response.status_code == 404:
+            targets[name] = []
+        elif response.status_code == 200:
+            hook = response.json().get("webhook") or {}
+            targets[name] = list(hook.get("urls") or ([hook["url"]] if hook.get("url") else []))
+        else:
+            raise RuntimeError(f"Mailgun answered {response.status_code} for webhook {name}: {response.text}")
+    return targets
+
+
+def point_webhook(domain: str, name: str, url: str, exists: bool) -> None:
+    if exists:
+        response = requests.put(f"{_webhooks_url(domain)}/{name}", auth=_api_auth(), data={"url": url}, timeout=TIMEOUT)
+    else:
+        response = requests.post(_webhooks_url(domain), auth=_api_auth(), data={"id": name, "url": url}, timeout=TIMEOUT)
+    if response.status_code != 200:
+        raise RuntimeError(f"Mailgun answered {response.status_code} for webhook {name}: {response.text}")

@@ -76,6 +76,15 @@ class MailgunAccount(models.Model):
         blank=True,
         help_text="Display name shown next to the From address; optional",
     )
+    webhook_signing_key = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text=(
+            "Mailgun's HTTP webhook signing key for this account (Mailgun > "
+            "Sending > Webhooks). Lets the app trust the delivery events "
+            "(delivered, bounced...) sent for this account's domain."
+        ),
+    )
     active = models.BooleanField(
         default=True,
         help_text=(
@@ -243,6 +252,38 @@ class EmailDelivery(models.Model):
 
     def __str__(self):
         return f"{self.to_address}: {self.status}"
+
+
+class EmailEvent(models.Model):
+    """Something the mail service reported about a message after accepting it.
+
+    The history behind EmailDelivery.status: delivered, deferred, bounced...
+    One row per provider event, keyed by the provider's own event id, so a
+    webhook delivered twice is stored once. delivery is null for an event about
+    mail this deployment has no record of. See mailer.delivery.apply_event.
+    """
+
+    delivery = models.ForeignKey(
+        EmailDelivery, null=True, blank=True, on_delete=models.CASCADE, related_name="events",
+    )
+    provider = models.CharField(max_length=32)
+    provider_event_id = models.CharField(max_length=255)
+    # mailer.providers.base.EventKind
+    kind = models.CharField(max_length=16)
+    recipient = models.EmailField(blank=True)
+    detail = models.TextField(blank=True)
+    occurred_at = models.DateTimeField()
+    received_at = models.DateTimeField(auto_now_add=True)
+    raw = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["-occurred_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(fields=["provider", "provider_event_id"], name="unique_provider_event"),
+        ]
+
+    def __str__(self):
+        return f"{self.recipient}: {self.kind}"
 
 
 def email_image_path(instance, filename):

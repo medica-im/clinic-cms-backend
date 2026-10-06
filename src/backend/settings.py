@@ -371,6 +371,13 @@ MAILGUN_SENDING_KEY = config('MAILGUN_SENDING_KEY')
 MAILGUN_SENDING_KEY_ID = config('MAILGUN_SENDING_KEY_ID')
 MAILGUN_FROM_EMAIL = config('MAILGUN_FROM_EMAIL', default="noreply@mail.medica.im")
 MAILGUN_FROM_NAME = config('MAILGUN_FROM_NAME', default="")
+# Mailgun's HTTP webhook signing key for the .env account: delivery events
+# (POST /api/v2/mail/events/mailgun) signed with anything else are refused.
+MAILGUN_WEBHOOK_SIGNING_KEY = config('MAILGUN_WEBHOOK_SIGNING_KEY', default="")
+# An account API key (Mailgun > API Security), used only by
+# manage.py register_mail_webhooks: a domain sending key cannot manage
+# webhooks. Blank: the sending key is tried.
+MAILGUN_API_KEY = config('MAILGUN_API_KEY', default="")
 # Where replies go when the organization has not set reply_to_email.
 MAIL_DEFAULT_REPLY_TO = config('MAIL_DEFAULT_REPLY_TO', default=f"noreply@{MAILGUN_DOMAIN}")
 MAILGUN_FROM_ADDRESS = (
