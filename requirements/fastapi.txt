@@ -4,3 +4,4 @@ fastapi-jwt[authlib]
 google-auth
 fastapi-nextauth-jwt
 pyjwt[crypto]
+dnspython

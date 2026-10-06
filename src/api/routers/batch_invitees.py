@@ -146,6 +146,40 @@ async def _get_organization_entry_uid(request: Request) -> tuple[str, str]:
     return organization.neomodel_uid.hex, site.domain
 
 
+@router.post("/batch-invitees/check")
+async def check_batch_invitees(
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)],
+    file: UploadFile = File(...),
+    mapping_json: str = Form(...),
+) -> list[dict]:
+    """The rows whose address looks wrong, before anything is sent: a typo
+    suggestion, a domain that cannot receive mail, an address already known
+    to be bad (mailer.addresscheck). Warnings only; read the same way as
+    /create, so the row numbers match its report."""
+    from mailer.addresscheck import check
+
+    await authorize_api("invitees_v2", request, jwt)
+    try:
+        mapping = BatchInviteeMapping(**json.loads(mapping_json))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid mapping: {e}")
+    df = _read_file_to_dataframe(await file.read(), _get_extension(file.filename))
+    if mapping.email_column not in df.columns:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Email column '{mapping.email_column}' not found in file",
+        )
+    site = await get_site_from_request(request)
+    organization = await Organization.objects.filter(site=site).afirst()
+    flagged = []
+    for number, row in enumerate(_apply_mapping(df, mapping), 1):
+        result = await sync_to_async(check)(row["email"], organization)
+        if result["suggestion"] or result["problem"]:
+            flagged.append({"row": number, **result})
+    return flagged
+
+
 @router.post("/batch-invitees/parse", response_model=BatchInviteeParseResponse)
 async def parse_batch_invitees(
     request: Request,
