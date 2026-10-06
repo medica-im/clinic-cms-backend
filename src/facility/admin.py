@@ -51,6 +51,8 @@ class OrganizationAdmin(TranslationAdmin):
         'website_title',
         'website_description',
         'public_base_url',
+        'reply_to_email',
+        'batch_invitation_max_rows',
         'active',
         'created',
         'updated',
