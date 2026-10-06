@@ -23,7 +23,6 @@ urlpatterns = [
     path('api/v1/opengraph/', include('opengraph.urls', namespace='opengraph')),
     path('api/v1/directory/', include('directory.urls', namespace='directory')),
     path('api/v1/workforce/', include('workforce.urls', namespace='workforce')),
-    path('dj-rest-auth/', include('dj_rest_auth.urls')),
     path('api/v1/heatwave/', include('heatwave.urls', namespace='heatwave')),
 ]
 
