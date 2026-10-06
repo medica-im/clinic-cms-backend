@@ -305,30 +305,8 @@ CACHES = {
     }
 }
 
-#Email
-DEFAULT_FROM_EMAIL=config('DEFAULT_FROM_EMAIL', default="webmaster@localhost")
-EMAIL_HOST=config('EMAIL_HOST')
-EMAIL_PORT=config('EMAIL_PORT')
-EMAIL_HOST_USER=config('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD=config('EMAIL_HOST_PASSWORD')
-EMAIL_USE_TLS=True
-# Overridable so an environment that cannot reach an SMTP server -- staging,
-# where the provider blocks outbound 587 -- can fall back to the console
-# backend instead of hanging.
-EMAIL_BACKEND=config(
-    'EMAIL_BACKEND',
-    default='django.core.mail.backends.smtp.EmailBackend',
-)
-# NEVER leave this unset. Django's AdminEmailHandler mails admins on any
-# unhandled exception, synchronously, inside the request. With no timeout a
-# blocked SMTP port makes that connect hang until gunicorn kills the worker at
-# --timeout; the worker respawns, picks up the next request, and hangs again.
-# Six workers trapped that way took every staging site down on 13 Sep 2026 --
-# an erroring endpoint became a total outage because the error REPORTING hung.
-EMAIL_TIMEOUT=config('EMAIL_TIMEOUT', default=10, cast=int)
-#EMAIL_USE_SSL
-#EMAIL_SSL_KEYFILE
-#EMAIL_SSL_CERTFILE
+# Email: Django's own mail (error reports to ADMINS) goes through Mailgun,
+# configured after the MAILGUN_* settings below. No SMTP.
 
 # neo4j
 NEO4J_URI = config('NEO4J_URI', default="neo4j://localhost:7687")
@@ -385,4 +363,26 @@ MAILGUN_FROM_ADDRESS = (
     if MAILGUN_FROM_NAME
     else MAILGUN_FROM_EMAIL
 )
+
+# Django's own mail -- the error reports AdminEmailHandler sends to ADMINS
+# when DEBUG is off -- through django-anymail's Mailgun backend, from the same
+# domain, key and address as the app's mail. Overridable, e.g. with
+# django.core.mail.backends.console.EmailBackend on a machine that must not
+# send. See tests/test_django_mail_through_mailgun.py.
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='anymail.backends.mailgun.EmailBackend')
+DEFAULT_FROM_EMAIL = MAILGUN_FROM_ADDRESS
+SERVER_EMAIL = MAILGUN_FROM_ADDRESS
+# NEVER leave this unset. Error reports are sent synchronously, inside the
+# failing request. On 13 Sep 2026 a mail connection with no timeout hung until
+# gunicorn killed the worker; the respawned worker took the next request and
+# hung again, and six workers trapped that way took every staging site down --
+# an erroring endpoint became a total outage because the error REPORTING hung.
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)
+ANYMAIL = {
+    "MAILGUN_API_KEY": MAILGUN_SENDING_KEY,
+    "MAILGUN_SENDER_DOMAIN": MAILGUN_DOMAIN,
+    # Everything before /<domain>/messages: the region's API root.
+    "MAILGUN_API_URL": MAILGUN_API_URL.rsplit(f"/{MAILGUN_DOMAIN}/", 1)[0],
+    "REQUESTS_TIMEOUT": EMAIL_TIMEOUT,
+}
 
