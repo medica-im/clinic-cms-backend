@@ -250,3 +250,28 @@ class TestTheMessageCarriesOurId:
                 patch("mailer.delivery.mark_result"):
             await sync_to_async(_send_notification_email)("who@example.org", "Who", FakeSite.domain, invitee_uid=UID)
         assert send.call_args.kwargs["metadata"] == {"delivery_id": 7}
+
+
+class TestTheWorkerComesSecond:
+    """A bounce can come back within a second -- a mailbox the receiving
+    server rejects at once -- and so before the Celery worker has recorded
+    Mailgun's acceptance. The worker's "sent" must not overwrite it: its
+    message id is kept, the status the service reported stays."""
+
+    @sync_to_async
+    def queued(self):
+        return record_queued(UID, "test23244@medica.im")
+
+    async def test_a_bounce_before_the_acceptance_is_kept(self, versioned_client):
+        row = await self.queued()
+        await post(versioned_client, signed(event("failed", row.id, **BOUNCE)))
+        await sync_to_async(mark_result)(row.id, {"id": f"<{MESSAGE_ID}>", "message": "Queued. Thank you."})
+        row = await reload(row)
+        assert row.status == "bounced"
+        assert row.provider_message_id == f"<{MESSAGE_ID}>"
+
+    async def test_a_delivery_before_the_acceptance_is_kept(self, versioned_client):
+        row = await self.queued()
+        await post(versioned_client, signed(event("delivered", row.id)))
+        await sync_to_async(mark_result)(row.id, {"id": f"<{MESSAGE_ID}>"})
+        assert (await reload(row)).status == "delivered"

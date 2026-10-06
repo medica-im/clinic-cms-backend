@@ -27,6 +27,13 @@ def record_queued(invitee_uid: str, to_address: str, batch_job_uid=None) -> Emai
     return EmailDelivery.objects.create(invitee_uid=invitee_uid, to_address=to_address, batch_job_uid=batch_job_uid)
 
 
+# Statuses only the service's events set: later than the worker's answer.
+REPORTED_BY_SERVICE = {
+    EmailDelivery.Status.DELIVERED, EmailDelivery.Status.DEFERRED, EmailDelivery.Status.BOUNCED,
+    EmailDelivery.Status.COMPLAINED,
+}
+
+
 def mark_result(delivery_id: int, result: dict | None) -> None:
     """Settle a delivery from send_single_email's answer: a provider message
     id means accepted; anything else is a failure, with what was said and its
@@ -45,6 +52,12 @@ def mark_result(delivery_id: int, result: dict | None) -> None:
         if kind not in EmailDelivery.ErrorKind.values:
             kind = ""
         fields = {"status": EmailDelivery.Status.FAILED, "error": error[:ERROR_MAX_LENGTH], "error_kind": kind}
+    # The service may already have said what became of the email -- a mailbox
+    # rejected at once bounces before the worker gets here. Its word stands:
+    # only the message id is added, the status is not set back to "sent".
+    current = EmailDelivery.objects.filter(id=delivery_id).values_list("status", flat=True).first()
+    if current in REPORTED_BY_SERVICE:
+        fields = {k: v for k, v in fields.items() if k == "provider_message_id"}
     updated = EmailDelivery.objects.filter(id=delivery_id).update(updated=timezone.now(), **fields)
     if not updated:
         logger.warning(f"EmailDelivery {delivery_id} not found; result not recorded: {fields['status']}")
