@@ -38,14 +38,10 @@ class EmailDelivery(BaseModel):
 
     @classmethod
     def from_row(cls, row) -> "EmailDelivery":
-        from mailer.delivery import delivery_status, timed_out
-        return cls(
-            status=delivery_status(row),
-            at=row.updated,
-            errorKind=getattr(row, "error_kind", "") or None,
-            error=row.error or None,
-            timedOut=timed_out(row),
-        )
+        """From an EmailDelivery row, via mailer.delivery.delivery_payload: the
+        live stream publishes the same payload, so the two cannot drift."""
+        from mailer.delivery import delivery_payload
+        return cls(**delivery_payload(row))
 
 
 class Invitee(BaseModel):

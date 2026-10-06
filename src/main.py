@@ -70,7 +70,19 @@ from api.routers import organization, organization_types, effector_types, facili
 from django.conf import settings
 from fastapi_nextauth_jwt.exceptions import MissingTokenError
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app):
+    # After uvicorn installed its signal handlers: lets long-lived responses
+    # (the invitations' event stream) end when the server is asked to stop.
+    from api import stopping
+    stopping.install()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 origins = settings.CORS_ALLOWED_ORIGINS
 

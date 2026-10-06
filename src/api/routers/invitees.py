@@ -1,6 +1,7 @@
 import logging
 from typing import Annotated
 from fastapi import APIRouter, Request, Depends, status, HTTPException
+from fastapi.responses import StreamingResponse
 from neomodel import adb
 from asgiref.sync import sync_to_async
 from api.types.invitee import EmailDelivery, Invitee, InviteePost, InviteePatch
@@ -101,6 +102,48 @@ async def invitees(request: Request, jwt: Annotated[dict, Depends(JWT)]) -> list
             invitee_list.append(Invitee.model_validate(props))
 
     return await with_email_delivery(invitee_list)
+
+
+# Before /invitees/{invitee_uid}, or "events" would be read as a uid.
+@router.get("/invitees/events")
+async def invitee_events(request: Request, jwt: Annotated[dict, Depends(JWT)]):
+    """Where each invitation's email stands, pushed as it changes (SSE).
+
+    Guarded like the list it feeds; passes on only this organization's
+    changes, and ends when the client leaves or the server stops
+    (mailer.live.stream_changes).
+    """
+    await authorize_api("invitees_v2", request, jwt)
+    site = await get_site_from_request(request)
+    organization = await Organization.objects.filter(site=site).afirst()
+    if organization is None or not organization.neomodel_uid:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found for this site")
+    entry_uid = organization.neomodel_uid.hex
+
+    async def stream():
+        import redis.asyncio as aioredis
+        from django.conf import settings
+        from api import stopping
+        from mailer.live import CHANNEL, stream_changes
+
+        client = aioredis.Redis(host=settings.REDIS_HOST, port=int(settings.REDIS_PORT))
+        pubsub = client.pubsub()
+        await pubsub.subscribe(CHANNEL)
+        try:
+            async for frame in stream_changes(pubsub, entry_uid, request.is_disconnected, stopping.event()):
+                yield frame
+        finally:
+            await pubsub.unsubscribe(CHANNEL)
+            await pubsub.aclose()
+            await client.aclose()
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        # X-Accel-Buffering: nginx would otherwise hold the events back.
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
 
 
 @router.get("/invitees/{invitee_uid}")

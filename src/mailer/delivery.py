@@ -48,6 +48,9 @@ def mark_result(delivery_id: int, result: dict | None) -> None:
     updated = EmailDelivery.objects.filter(id=delivery_id).update(updated=timezone.now(), **fields)
     if not updated:
         logger.warning(f"EmailDelivery {delivery_id} not found; result not recorded: {fields['status']}")
+        return
+    from mailer.live import publish_delivery
+    publish_delivery(EmailDelivery.objects.get(id=delivery_id))
 
 
 def timed_out(row) -> bool:
@@ -59,6 +62,19 @@ def delivery_status(row) -> str:
     """queued | sent | failed -- an email that timed out counts as failed: for
     the administrator it is the same thing, and the answer is to resend."""
     return EmailDelivery.Status.FAILED.value if timed_out(row) else row.status
+
+
+def delivery_payload(row) -> dict:
+    """Where an invitation's email stands, as the API and the live stream say
+    it (api.types.invitee.EmailDelivery is built from this). Plain data, no
+    FastAPI: the Celery worker and the Django shell publish it too."""
+    return {
+        "status": delivery_status(row),
+        "at": row.updated.isoformat().replace("+00:00", "Z"),
+        "errorKind": getattr(row, "error_kind", "") or None,
+        "error": row.error or None,
+        "timedOut": timed_out(row),
+    }
 
 
 def latest_deliveries(invitee_uids) -> dict[str, EmailDelivery]:
@@ -145,6 +161,8 @@ def apply_event(event) -> EmailDelivery | None:
             fields["error"] = event.detail[:ERROR_MAX_LENGTH]
         EmailDelivery.objects.filter(id=delivery.id).update(**fields)
         delivery.refresh_from_db()
+        from mailer.live import publish_delivery
+        publish_delivery(delivery)
     return delivery
 
 
