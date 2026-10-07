@@ -142,6 +142,14 @@ async def async_get_facilities(
     return _facilities_from_rows(q)
 
 
+# Cypher condition on `f`: another site's facility — attached to another
+# organization, or used by an entry of another directory.
+ANOTHER_SITES = """(
+    EXISTS { MATCH (f)-[:PART_OF]->(o:Entry) WHERE o.uid <> $org_entry_uid }
+    OR EXISTS { MATCH (f)<-[:HAS_FACILITY]-(:Entry)<-[:HAS_ENTRY]-(d:Directory) WHERE d.name <> $directory }
+)"""
+
+
 async def async_get_organization_facilities(
         directory: str,
         org_entry_uid: str,
@@ -161,25 +169,32 @@ async def async_get_organization_facilities(
     `repair` (administrators, superusers) adds the leftovers users are known
     for: facilities of inactive entries, and those created by anyone who ever
     had an access to the organization — current, superseded or suspended.
+
+    The two creator rules never add another site's facility: people work on
+    several sites, and "created by" reached everything they had created
+    elsewhere — unipa.fr offered santelyon3's practices. A facility attached to
+    another organization, or used by an entry of another directory, is that
+    site's; one shared with this directory comes in by the first rule anyway.
     """
-    query = """
-        CALL {
-            MATCH (:Directory {name: $directory})-[:HAS_ENTRY]->(e:Entry)
+    query = f"""
+        CALL {{
+            MATCH (:Directory {{name: $directory}})-[:HAS_ENTRY]->(e:Entry)
                   -[:HAS_FACILITY]->(f:Facility)
             WHERE e.active = true OR $repair
             RETURN f
             UNION
-            MATCH (f:Facility)-[:PART_OF]->(:Entry {uid: $org_entry_uid})
+            MATCH (f:Facility)-[:PART_OF]->(:Entry {{uid: $org_entry_uid}})
             RETURN f
             UNION
-            MATCH (f:Facility)-[:CREATED_BY]->(:User {uid: $user_uid})
+            MATCH (f:Facility)-[:CREATED_BY]->(:User {{uid: $user_uid}})
+            WHERE NOT {ANOTHER_SITES}
             RETURN f
             UNION
             MATCH (f:Facility)-[:CREATED_BY]->(:User)-[:HAS_ACCESS]->(:Access)
-                  -[:ACCESS_TO]->(:Entry {uid: $org_entry_uid})
-            WHERE $repair
+                  -[:ACCESS_TO]->(:Entry {{uid: $org_entry_uid}})
+            WHERE $repair AND NOT {ANOTHER_SITES}
             RETURN f
-        }
+        }}
         WITH DISTINCT f
         MATCH (f)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)
               -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)

@@ -18,6 +18,14 @@ facilities of the directory's inactive entries and those created by anyone who
 ever had an access to the organization — current, superseded or suspended.
 Users leave half-finished attempts behind; the people who repair them need to
 see those, while staff are not offered other people's leftovers.
+
+**Never another site's facility,** whoever created it. People work on several
+sites — 4 of the 7 with an access to unipa's organization also have one to
+santelyon3's — so "created by this user" or "by anyone linked" reached every
+facility they had created in Lyon, and an administrator on unipa.fr could
+attach an entry to a Lyon practice (2026-10-08). A facility belongs elsewhere
+when it is attached to another organization or used by an entry of another
+directory; the creator rules only add the ones that belong nowhere else.
 """
 import uuid
 
@@ -31,6 +39,9 @@ OTHER_DIRECTORY = "test-other-dir"
 FACILITIES = (
     "at_active_entry", "part_of_only", "both", "at_inactive_entry", "other_directory",
     "created_by_me", "created_by_someone_else", "created_by_linked_user", "everything",
+    # Another site's, created by someone this site knows.
+    "other_site_created_by_me", "other_site_created_by_linked_user",
+    "other_org_created_by_linked_user",
 )
 
 
@@ -39,12 +50,16 @@ async def graph(neo4j_graph):
     """One facility per case, all in the same commune; returns their uids by name."""
     from neomodel import adb
 
-    uids = {name: uuid.uuid4().hex for name in (*FACILITIES, "org", "me", "someone_else", "linked_user")}
+    uids = {
+        name: uuid.uuid4().hex
+        for name in (*FACILITIES, "org", "other_org", "me", "someone_else", "linked_user")
+    }
     await adb.cypher_query(
         """
         CREATE (d:Directory {name: $dir})
         CREATE (od:Directory {name: $other_dir})
         CREATE (org:Entry {uid: $org, active: true})
+        CREATE (other_org:Entry {uid: $other_org, active: true})
         CREATE (:User {uid: $me})
         CREATE (:User {uid: $someone_else})
         // Had an access to the organization, since superseded: still linked.
@@ -55,7 +70,7 @@ async def graph(neo4j_graph):
         })
         CREATE (dpt:DepartmentOfFrance {uid: $duid, name: 'Rhône', code: '69', slug: 'rhone', wikidata: 'Q12724'})
         CREATE (c)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt)
-        WITH d, od, org, c
+        WITH d, od, org, other_org, c
         UNWIND [
             {uid: $at_active_entry,         dir: 'd',  active: true,  part_of: false, creator: null},
             {uid: $part_of_only,            dir: null, active: null,  part_of: true,  creator: null},
@@ -65,12 +80,18 @@ async def graph(neo4j_graph):
             {uid: $created_by_me,           dir: null, active: null,  part_of: false, creator: $me},
             {uid: $created_by_someone_else, dir: null, active: null,  part_of: false, creator: $someone_else},
             {uid: $created_by_linked_user,  dir: null, active: null,  part_of: false, creator: $linked_user},
-            {uid: $everything,              dir: 'd',  active: true,  part_of: true,  creator: $me}
+            {uid: $everything,              dir: 'd',  active: true,  part_of: true,  creator: $me},
+            {uid: $other_site_created_by_me,          dir: 'od', active: true, part_of: false, creator: $me},
+            {uid: $other_site_created_by_linked_user, dir: 'od', active: true, part_of: false, creator: $linked_user},
+            {uid: $other_org_created_by_linked_user,  dir: null, active: null, part_of: false, creator: $linked_user,
+             part_of_other: true}
         ] AS spec
         CREATE (f:Facility {uid: spec.uid, name: spec.uid, slug: spec.uid})
         CREATE (f)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c)
         FOREACH (_ IN CASE WHEN spec.part_of THEN [1] ELSE [] END |
             CREATE (f)-[:PART_OF]->(org))
+        FOREACH (_ IN CASE WHEN spec.part_of_other THEN [1] ELSE [] END |
+            CREATE (f)-[:PART_OF]->(other_org))
         FOREACH (_ IN CASE WHEN spec.dir = 'd' THEN [1] ELSE [] END |
             CREATE (d)-[:HAS_ENTRY]->(:Entry {uid: spec.uid + '-e', active: spec.active})-[:HAS_FACILITY]->(f))
         FOREACH (_ IN CASE WHEN spec.dir = 'od' THEN [1] ELSE [] END |
@@ -124,6 +145,7 @@ async def test_a_facility_the_user_created_is_listed(graph):
 
 @pytest.mark.parametrize("name", [
     "at_inactive_entry", "created_by_linked_user", "created_by_someone_else", "other_directory",
+    "other_site_created_by_me", "other_site_created_by_linked_user", "other_org_created_by_linked_user",
 ])
 async def test_the_base_list_leaves_out(graph, name):
     """No leftovers of other people's attempts, and nothing of another site."""
@@ -142,7 +164,10 @@ async def test_the_repair_list_adds_facilities_created_by_anyone_linked(graph):
     assert graph["created_by_linked_user"] in await listed(graph, repair=True)
 
 
-@pytest.mark.parametrize("name", ["created_by_someone_else", "other_directory"])
+@pytest.mark.parametrize("name", [
+    "created_by_someone_else", "other_directory",
+    "other_site_created_by_me", "other_site_created_by_linked_user", "other_org_created_by_linked_user",
+])
 async def test_the_repair_list_still_leaves_out(graph, name):
     """Never linked to the organization, or another site's: still not offered."""
     assert graph[name] not in await listed(graph, repair=True)
