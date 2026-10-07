@@ -13,7 +13,9 @@ Around the edge, what the occupation touches:
 * the person is labelled HealthWorker when the new occupation is one.
 
 Who may, and until when, is directory.entry_type_edit; the role comes from
-this site's graph, like admin_entries and email_access.
+this site's graph, like admin_entries and email_access. To which types is
+directory.offered_types: the site's directory may limit them, superusers
+excepted, the same set entry creation is held to.
 """
 
 import logging
@@ -31,6 +33,7 @@ from directory.entry_type_edit import TypeEditPermission, type_edit_permission
 from directory.models import EntrySlug
 from directory.models.agraph import Entry as AgraphEntry
 from directory.models.agraph import EffectorType as AgraphEffectorType
+from directory.offered_types import TypeNotOffered, check_type_offered, site_directory_name
 from directory.slug import generate_entry_slugs
 from facility.models import Organization
 
@@ -41,7 +44,8 @@ DEFAULT_CONNECTED_DAYS = 7
 
 
 class EntryTypeRefused(Exception):
-    """code: same_type | duplicate (slug) | malformed (problems) | unknown_type"""
+    """code: same_type | duplicate (slug) | malformed (problems) | unknown_type
+    | type_not_offered"""
 
     def __init__(self, code: str, **detail):
         super().__init__(code)
@@ -59,6 +63,9 @@ class TypeEditContext:
     created_at_ms: int | None
     caller_uid: str | None
     permission: TypeEditPermission
+    role: str | None = None
+    # The site's directory, whose offered types hold; None: no limit known.
+    directory: str | None = None
 
 
 async def _one_uid(relationship) -> str | None:
@@ -94,6 +101,8 @@ async def type_edit_context(uid: str, request, jwt: dict) -> TypeEditContext | N
         created_at_ms=entry.createdAt,
         caller_uid=user.uid if user else None,
         permission=permission,
+        role=role,
+        directory=await site_directory_name(site),
     )
 
 
@@ -134,6 +143,11 @@ async def change_entry_type(context: TypeEditContext, type_uid: str) -> dict:
     new_type = await AgraphEffectorType.nodes.get_or_none(uid=type_uid)
     if new_type is None:
         raise EntryTypeRefused("unknown_type")
+    if context.directory:
+        try:
+            await check_type_offered(context.directory, type_uid, context.role)
+        except TypeNotOffered:
+            raise EntryTypeRefused("type_not_offered")
     duplicate = await _duplicate_slug(context, type_uid)
     if duplicate is not None:
         raise EntryTypeRefused("duplicate", slug=duplicate)

@@ -1,6 +1,8 @@
 import logging
-from typing import Annotated
+from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Request, HTTPException, status
+from api.utils import get_site_from_request
+from directory.offered_types import offered_type_uids, site_directory_name
 from api.serializers.effector_type import (
     get_effector_types,
     get_effector_type,
@@ -18,8 +20,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/effector-types")
-async def get_effector_types_endpoint() -> list[EffectorType]:
-    return get_effector_types()
+async def get_effector_types_endpoint(
+    request: Request, scope: Literal["all", "directory"] = "all"
+) -> list[EffectorType]:
+    """Every type, or with scope=directory those the site's directory offers
+    (every type when it names none): the entry creation and type-change
+    pickers. See directory/offered_types.py."""
+    types = get_effector_types()
+    if scope == "directory":
+        directory = await site_directory_name(await get_site_from_request(request))
+        offered = await offered_type_uids(directory) if directory else None
+        if offered is not None:
+            types = [t for t in types if t.uid in offered]
+    return types
 
 @router.get("/effector-types/{uid}")
 async def get_effector_type_endpoint(uid: str) -> EffectorType:

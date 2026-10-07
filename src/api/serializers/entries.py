@@ -24,6 +24,7 @@ from access.asyncneomodels import User as AsyncUser
 from api.neo4j_auth import get_neo4j_user, get_neo4j_role
 from api.routers.utils import get_directory_from_hostname
 from directory.slug import generate_entry_slugs
+from directory.offered_types import TypeNotOffered, check_type_offered
 from access.models import Role
 
 logger = logging.getLogger(__name__)
@@ -156,7 +157,13 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
     else:
         directory = await get_directory_from_hostname(request.url.hostname)
         dir_name=directory.name
-    logger.debug(f"{dir_name}")  
+    logger.debug(f"{dir_name}")
+    # Before anything is written. Superusers may use any type; see
+    # directory/offered_types.py.
+    try:
+        await check_type_offered(dir_name, entry.effector_type, role)
+    except TypeNotOffered:
+        raise HTTPException(status_code=409, detail={"code": "type_not_offered"})
     neo4j_directory = await AsyncDirectory.nodes.get(name=dir_name)
     effector: Effector = await AsyncEffector.nodes.get(uid=entry.effector)
     effector_type: AsyncEffectorType = await AsyncEffectorType.nodes.get(uid=entry.effector_type)

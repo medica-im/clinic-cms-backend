@@ -190,10 +190,14 @@ async def django_directories(site, transactional_db, graph):
 
 
 REFUSED = ["administrator", "staff", "registered"]
+# Administrators read the list: the same page sets the types a directory
+# offers (test_directory_offered_effector_types.py), which they may change.
+# This switch they still may not.
+LISTING_REFUSED = ["staff", "registered"]
 
 
 class TestOnlySuperusersMayChangeIt:
-    @pytest.mark.parametrize("role", REFUSED)
+    @pytest.mark.parametrize("role", LISTING_REFUSED)
     async def test_listing_is_refused(self, client, patch_jwt, jwt_superuser, django_directories, role):
         with patch_jwt(jwt_superuser), mock_role(role):
             r = await client.get("/directories")

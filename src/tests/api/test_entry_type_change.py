@@ -76,6 +76,8 @@ def context():
         created_at_ms=None,
         caller_uid="u1",
         permission=TypeEditPermission(True, None, None, None),
+        role="administrator",
+        directory="test",  # offers no set: every type passes
     )
 
 
