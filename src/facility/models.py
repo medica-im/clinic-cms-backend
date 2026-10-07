@@ -1,5 +1,7 @@
 from datetime import timedelta
-from django.db import models
+from django.db import models, transaction
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.contrib.sites.models import Site
 from workforce.models import NodeSet
 import logging
@@ -219,6 +221,35 @@ class Organization(models.Model):
 
     def natural_key(self):
         return (self.name,)
+
+
+@receiver(post_save, sender=Organization)
+def link_directory_owner_on_save(sender, instance, raw=False, **kwargs):
+    """Write (Directory)-[:OWNED_BY]->(Entry) once the Organization says it.
+
+    Adds only, after the commit, and never fails the save: the row is already
+    in Postgres by then, and robust=True turns a Neo4j outage into a log line.
+    Raw saves are skipped, loaddata's fixtures carry their own graph. See
+    directory/owner.py.
+    """
+    if raw or not instance.directory_id or not instance.neomodel_uid:
+        return
+    directory_name = instance.directory.name
+    entry_uid = instance.neomodel_uid.hex
+
+    def link():
+        from directory.owner import Link, link_directory_owner
+        result = link_directory_owner(directory_name, entry_uid)
+        if result is Link.NO_DIRECTORY:
+            logger.warning(
+                f'Organization "{instance.name}": no Neo4j Directory "{directory_name}", owner not linked'
+            )
+        elif result is Link.NO_ENTRY:
+            logger.warning(
+                f'Organization "{instance.name}": no Neo4j Entry {entry_uid}, owner of "{directory_name}" not linked'
+            )
+
+    transaction.on_commit(link, robust=True)
 
 
 class CategoryManager(models.Manager):
