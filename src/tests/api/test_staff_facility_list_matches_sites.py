@@ -173,6 +173,22 @@ async def test_the_repair_list_still_leaves_out(graph, name):
     assert graph[name] not in await listed(graph, repair=True)
 
 
+# --- Every site's: superusers, ?scope=all ---------------------------------------
+
+
+@pytest.mark.parametrize("name", [
+    "other_directory", "other_site_created_by_me", "other_site_created_by_linked_user",
+    "other_org_created_by_linked_user",
+])
+async def test_every_sites_list_still_offers_another_sites_facility(graph, name):
+    """What the site's lists leave out, "Établissements de tous les sites" keeps:
+    creating a new project's organization entry needs another site's places.
+    The routing to this list is test_facility_list_by_role.py's."""
+    from api.serializers.facility import async_get_facilities
+
+    assert graph[name] in [f.uid for f in await async_get_facilities()]
+
+
 async def test_the_repair_list_contains_the_base_list(graph):
     assert set(await listed(graph)) <= set(await listed(graph, repair=True))
 
