@@ -54,6 +54,11 @@ class Access(AsyncStructuredNode):
         index=True,
         default=True
     )
+    # "<user uid>:<entry uid>" on the active Access only, removed when it is
+    # superseded. Unique, so the database itself refuses a second active
+    # Access for the same user and site, while the history — nodes without
+    # the key — stays unconstrained. See access/active_access.py.
+    activeKey = StringProperty(unique_index=True)
 
     # --- Supersession --------------------------------------------------------
     # A role is never edited in place: changing one deactivates this node and

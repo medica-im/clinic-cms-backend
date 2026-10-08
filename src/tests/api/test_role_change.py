@@ -27,9 +27,8 @@ The rules, and why each exists:
 A role is superseded, never overwritten: the change deactivates the current
 Access and creates a new one, so the previous role survives with the time it
 ended and who ended it. `test_the_previous_access_survives` is that invariant,
-and `test_one_active_access_per_site` is the one Neo4j 4.4 cannot express as a
-constraint — the same reason the Entry graph model is pinned by test rather
-than by the database.
+and `test_one_active_access_per_site` checks the role change keeps the other,
+which the database also enforces (see test_single_active_access.py).
 """
 import uuid
 
@@ -419,10 +418,9 @@ async def test_one_active_access_per_site(
 ):
     """At most one active Access per user per site.
 
-    Neo4j 4.4 cannot express this as a constraint, so it is pinned here — the
-    same reason the Entry graph model is a test rather than a schema rule. Two
-    active accesses would make "the user's role" ambiguous, and which one wins
-    would depend on traversal order.
+    The database refuses a second one (test_single_active_access.py); this
+    checks the role change never tries. Two active accesses would make "the
+    user's role" ambiguous, and which one wins would depend on traversal order.
     """
     target = await _seed_user(role="staff")
 

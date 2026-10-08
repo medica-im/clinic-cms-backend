@@ -11,16 +11,17 @@ Access at all, or two; a request arriving inside it sees a user who is
 momentarily nobody. Neo4j runs a single statement in one transaction, which
 closes the window without a lock.
 
-The invariant that at most one Access per user per site is active cannot be
-expressed as a Neo4j 4.4 constraint — the same reason the Entry graph model is
-pinned by test rather than by the database — so it is the writes here that have
-to keep it, and tests/api/test_role_change.py that checks they do.
+At most one Access per user per site is active, and the database enforces it:
+the active node carries a unique activeKey (access/active_access.py), which a
+superseded node gives up. tests/api/test_single_active_access.py pins it.
 """
 import logging
 from time import time_ns
 from uuid import uuid4
 
 from neomodel import adb
+
+from access.active_access import active_key
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,7 @@ async def supersede_access(
     OPTIONAL MATCH (u)-[:HAS_ACCESS]->(old:Access {active: true})-[:ACCESS_TO]->(e)
     SET old.active = false,
         old.supersededAt = $now
+    REMOVE old.activeKey
 
     WITH u, e, old
     OPTIONAL MATCH (actor:User {uid: $actor_uid})
@@ -106,6 +108,7 @@ async def supersede_access(
         uid: $access_uid,
         role: $granted,
         active: true,
+        activeKey: $active_key,
         createdAt: $now,
         createdByRole: $actor_role
     })
@@ -123,6 +126,7 @@ async def supersede_access(
         "actor_uid": actor_uid,
         "actor_role": actor_role,
         "access_uid": uuid4().hex,
+        "active_key": active_key(user_uid, entry_uid),
         "now": now,
     }
     results, meta = await adb.cypher_query(query, params)

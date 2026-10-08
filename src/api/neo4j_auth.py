@@ -64,6 +64,12 @@ async def get_or_create_neo4j_user(jwt: dict, site: Site) -> dict | None:
     try:
         invitee, entry = await _find_invitee(email, entry_uid)
     except LookupError:
+        if not result:
+            # Another request of the same sign-in may have created the user and
+            # redeemed the invitation since the first lookup.
+            result = await _find_user_by_sub(sub, entry_uid)
+            if result and result[1]:
+                return _build_response(result[0], result[1], jwt)
         if result:
             # User exists but no Invitee — sandbox auto-grant
             if await _is_sandbox(site):
@@ -168,18 +174,19 @@ async def _create_user_from_invitee(
     invitee, sub: str, iss: str, email: str, name: str,
     entry_uid: str,
 ) -> tuple[dict, str]:
-    """Atomically create Account, User, and Access nodes from an Invitee.
+    """Create Account, User, and Access nodes from an Invitee, idempotently.
 
-    Uses a single Cypher query to prevent race conditions where concurrent
-    logins could create duplicate User nodes for the same email.
+    Several requests of one first sign-in arrive together, and each may get
+    here. Every node is MERGEd on a uniquely constrained property — Account.sub,
+    User.email, Access.activeKey — so they all converge on the same nodes and
+    all succeed. A user who already holds a role on this site keeps it.
 
-    Returns (user_properties, role_name).
+    Returns (user_properties, role_name); the role is None while suspended.
     """
     now = time_ns() // 1_000_000
     query = """
     MATCH (i:Invitee {uid: $invitee_uid})
-    WHERE i.redeemedAt IS NULL
-    SET i.redeemedAt = $now
+    SET i.redeemedAt = coalesce(i.redeemedAt, $now)
 
     WITH i
 
@@ -194,12 +201,17 @@ async def _create_user_from_invitee(
 
     WITH u, i
     MATCH (e:Entry {uid: $entry_uid})
-    CREATE (ac:Access {uid: $access_uid, role: i.role, active: true, createdAt: $now})
-    CREATE (u)-[:HAS_ACCESS]->(ac)
-    CREATE (ac)-[:ACCESS_TO]->(e)
-    CREATE (ac)-[:CREATED_BY]->(u)
+    MERGE (ac:Access {activeKey: u.uid + ':' + e.uid})
+    ON CREATE SET ac.uid = $access_uid, ac.role = i.role, ac.active = true,
+                  ac.createdAt = $now
+    MERGE (u)-[:HAS_ACCESS]->(ac)
+    MERGE (ac)-[:ACCESS_TO]->(e)
+    FOREACH (_ IN CASE WHEN ac.uid = $access_uid THEN [1] ELSE [] END |
+        MERGE (ac)-[:CREATED_BY]->(u)
+    )
 
-    RETURN u {.*} AS user_props, ac.role AS role
+    RETURN u {.*} AS user_props,
+           CASE WHEN ac.suspendedAt IS NULL THEN ac.role END AS role
     """
     params = {
         "invitee_uid": invitee.uid,
@@ -216,7 +228,7 @@ async def _create_user_from_invitee(
     results, _ = await adb.cypher_query(query, params)
     if not results:
         raise RuntimeError(
-            f"Invitee {invitee.uid} was already redeemed (concurrent request)"
+            f"Invitee {invitee.uid} or Entry {entry_uid} no longer exists"
         )
 
     user_props = results[0][0]
@@ -232,10 +244,10 @@ async def _create_user_from_invitee(
 async def _add_access_to_existing_user(
     user_props: dict, invitee, entry
 ) -> tuple[dict, str]:
-    """Atomically add a new Access node to an existing User for a new entry/role.
+    """Give an existing User the invited role on this site, idempotently.
 
-    Uses a single Cypher query to prevent race conditions where concurrent
-    logins could create duplicate Access nodes for the same User+Entry.
+    The Access is MERGEd on its activeKey, so concurrent requests converge on
+    one node, and a user who already holds a role on this site keeps it.
 
     Access.createdBy is taken from the Invitee's createdBy relationship
     (i.e. the admin who issued the invitation).
@@ -243,24 +255,27 @@ async def _add_access_to_existing_user(
     now = time_ns() // 1_000_000
     query = """
     MATCH (i:Invitee {uid: $invitee_uid})
-    WHERE i.redeemedAt IS NULL
-    SET i.redeemedAt = $now
+    SET i.redeemedAt = coalesce(i.redeemedAt, $now)
 
     WITH i
     MATCH (u:User {uid: $user_uid})
     MATCH (e:Entry {uid: $entry_uid})
 
-    CREATE (ac:Access {uid: $access_uid, role: i.role, active: true, createdAt: $now})
-    CREATE (u)-[:HAS_ACCESS]->(ac)
-    CREATE (ac)-[:ACCESS_TO]->(e)
+    MERGE (ac:Access {activeKey: u.uid + ':' + e.uid})
+    ON CREATE SET ac.uid = $access_uid, ac.role = i.role, ac.active = true,
+                  ac.createdAt = $now
+    MERGE (u)-[:HAS_ACCESS]->(ac)
+    MERGE (ac)-[:ACCESS_TO]->(e)
 
     WITH u, ac, i
     OPTIONAL MATCH (i)-[:CREATED_BY]->(creator:User)
-    FOREACH (_ IN CASE WHEN creator IS NOT NULL THEN [1] ELSE [] END |
-        CREATE (ac)-[:CREATED_BY]->(creator)
+    FOREACH (_ IN CASE WHEN creator IS NOT NULL AND ac.uid = $access_uid
+                       THEN [1] ELSE [] END |
+        MERGE (ac)-[:CREATED_BY]->(creator)
     )
 
-    RETURN u {.*} AS user_props, ac.role AS role
+    RETURN u {.*} AS user_props,
+           CASE WHEN ac.suspendedAt IS NULL THEN ac.role END AS role
     """
     params = {
         "invitee_uid": invitee.uid,
@@ -272,7 +287,7 @@ async def _add_access_to_existing_user(
     results, _ = await adb.cypher_query(query, params)
     if not results:
         raise RuntimeError(
-            f"Invitee {invitee.uid} was already redeemed (concurrent request)"
+            f"Invitee {invitee.uid}, User or Entry {entry.uid} no longer exists"
         )
 
     user_props = results[0][0]
@@ -304,8 +319,11 @@ async def _ensure_sandbox_access(user_uid: str, entry_uid: str) -> str:
     query = """
     MATCH (u:User {uid: $user_uid})
     MATCH (e:Entry {uid: $entry_uid})
-    MERGE (u)-[:HAS_ACCESS]->(ac:Access {active: true})-[:ACCESS_TO]->(e)
-    ON CREATE SET ac.uid = $access_uid, ac.role = 'staff', ac.createdAt = $now
+    MERGE (ac:Access {activeKey: u.uid + ':' + e.uid})
+    ON CREATE SET ac.uid = $access_uid, ac.role = 'staff', ac.active = true,
+                  ac.createdAt = $now
+    MERGE (u)-[:HAS_ACCESS]->(ac)
+    MERGE (ac)-[:ACCESS_TO]->(e)
     RETURN ac.role AS role
     """
     params = {
@@ -339,11 +357,14 @@ async def _create_sandbox_user(
 
     WITH u
     MATCH (e:Entry {uid: $entry_uid})
-    CREATE (ac:Access {uid: $access_uid, role: 'staff', active: true, createdAt: $now})
-    CREATE (u)-[:HAS_ACCESS]->(ac)
-    CREATE (ac)-[:ACCESS_TO]->(e)
+    MERGE (ac:Access {activeKey: u.uid + ':' + e.uid})
+    ON CREATE SET ac.uid = $access_uid, ac.role = 'staff', ac.active = true,
+                  ac.createdAt = $now
+    MERGE (u)-[:HAS_ACCESS]->(ac)
+    MERGE (ac)-[:ACCESS_TO]->(e)
 
-    RETURN u {.*} AS user_props, ac.role AS role
+    RETURN u {.*} AS user_props,
+           CASE WHEN ac.suspendedAt IS NULL THEN ac.role END AS role
     """
     params = {
         "sub": sub,

@@ -4,7 +4,8 @@ from uuid import UUID
 from django.core.management.base import BaseCommand
 from neomodel import db
 
-from access.models import Role as SqlRole
+from access.active_access import active_key
+from access.roles import ROLES
 from access.neomodels import Access, User
 from directory.models.graph import Entry
 
@@ -23,9 +24,6 @@ class Command(BaseCommand):
     help = "Create a neo4j Access node linking a User to an Entry with a given role"
 
     def add_arguments(self, parser):
-        role_names = list(
-            SqlRole.objects.values_list("name", flat=True).order_by("name")
-        )
         parser.add_argument(
             "--user",
             required=True,
@@ -39,7 +37,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--role",
             required=True,
-            choices=role_names,
+            choices=list(ROLES),
             help="Role for the Access node",
         )
         parser.add_argument(
@@ -79,28 +77,26 @@ class Command(BaseCommand):
             )
             return
 
-        # Check for existing Access with same role, user and entry
         query = (
-            "MATCH (u:User {uid: $user_uid})-[:HAS_ACCESS]->(a:Access {role: $role})"
+            "MATCH (u:User {uid: $user_uid})-[:HAS_ACCESS]->(a:Access {active: true})"
             "-[:ACCESS_TO]->(e:Entry {uid: $entry_uid}) "
-            "RETURN a"
+            "RETURN a.role"
         )
         results, _ = db.cypher_query(
-            query,
-            {"user_uid": user_uid, "role": role, "entry_uid": entry_uid},
-            resolve_objects=True,
+            query, {"user_uid": user_uid, "entry_uid": entry_uid}
         )
         if results:
             self.stdout.write(
                 self.style.WARNING(
-                    f"Access node with role={role} already exists for "
-                    f"user={user_uid} on entry={entry_uid}"
+                    f"user={user_uid} already holds role={results[0][0]} on "
+                    f"entry={entry_uid}; change it from the user page instead"
                 )
             )
             return
 
-        # Create Access node and connect relationships
-        access = Access(role=role).save()
+        access = Access(
+            role=role, activeKey=active_key(user_uid, entry_uid)
+        ).save()
         user.access.connect(access)
         access.entry.connect(entry)
         access.createdBy.connect(creator)

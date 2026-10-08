@@ -72,6 +72,7 @@ class Access(StructuredNode):
         index=True,
         default=True
     )
+    activeKey = StringProperty(unique_index=True)
     supersededAt = IntegerProperty()
     supersededBy = RelationshipTo('User', 'SUPERSEDED_BY')
     suspendedAt = IntegerProperty()
