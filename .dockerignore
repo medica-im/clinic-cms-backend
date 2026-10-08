@@ -1,0 +1,4 @@
+# Live secrets: read at container start from the deploy host's .env through
+# compose's env_file, never from the image.
+**/.env
+**/.env.*
