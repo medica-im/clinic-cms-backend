@@ -87,8 +87,7 @@ ADMIN = config('ADMIN', cast=Csv(post_process=tuple))  # type: ignore[arg-type]
 ADMINS = [ADMIN]
 MANAGERS = ADMINS
 
-ALLOWED_HOSTS = ['*']
-#ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 
 # Application definition
 
