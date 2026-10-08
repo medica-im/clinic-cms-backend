@@ -76,6 +76,10 @@ LOGGING = {
             "level": "DEBUG",
             "propagate": False,
         },
+        "django.security.DisallowedHost": {
+            "handlers": ["file"],
+            "propagate": False,
+        },
     },
     "root": {
         "handlers": ["console", "file"],
