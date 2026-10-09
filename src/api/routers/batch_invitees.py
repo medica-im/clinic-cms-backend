@@ -230,14 +230,9 @@ async def create_batch_invitees(
     entry_uid, site_domain = await _get_organization_entry_uid(request)
 
     if role == "superuser":
-        from api.auth import get_neo4j_role, get_user, get_role
+        from api.auth import get_neo4j_role
         site = await get_site_from_request(request)
-        neo4j_role = await get_neo4j_role(jwt, site)
-        if not neo4j_role:
-            user = await get_user(jwt)
-            _role = await get_role(user, site)
-            neo4j_role = _role.name
-        if neo4j_role != "superuser":
+        if await get_neo4j_role(jwt, site) != "superuser":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only superusers can create superuser invitees",

@@ -9,10 +9,9 @@ from access.asyncneomodels import Invitee as AsyncInvitee
 from access.asyncneomodels import User as AsyncUser
 from access.asyncneomodels import Account as AsyncAccount
 from directory.models.agraph import Entry
-from api.auth import JWT, get_neo4j_role, authorize_api, get_user, get_role
+from api.auth import JWT, get_neo4j_role, authorize_api
 from api.utils import get_site_from_request
 from facility.models import Organization
-from access.models import Role
 from api.serializers.invitee import notification_email
 from mailer.delivery import latest_deliveries, resend_refusal
 from mailer.suppression import blocking, is_opted_out, issue_payload, issues_for, normalize
@@ -225,14 +224,7 @@ async def create_invitee(
         )
 
     role = await get_neo4j_role(jwt, site)
-    logger.debug(f"neo4j {role=}")
-    if not role:
-        user = await get_user(jwt)
-        logger.debug(f"{user=}")
-        _role: Role = await get_role(user, site)
-        role = _role.name
-        logger.debug(f"django {role=}")
-    logger.debug(f"{item.role=}")
+    logger.debug(f"{role=} {item.role=}")
     if item.role == "superuser" and role != "superuser":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

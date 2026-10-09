@@ -2,8 +2,6 @@ import logging
 import os
 from typing import TypedDict
 from access.models import AccessControl, Endpoint, Role
-from accounts.models import User, Role as AccountRole
-from django.contrib.sites.models import Site
 from fastapi import Request, HTTPException, status
 from api.utils import get_site_from_request
 from fastapi_nextauth_jwt import NextAuthJWT
@@ -20,16 +18,6 @@ if auth_secret:
         csrf_prevention_enabled=False
     )
 
-async def get_user(jwt: dict) -> User|None:
-    try:
-        email = jwt['email']
-    except (AttributeError,TypeError,):
-        return None
-    try:
-        return await User.objects.aget(email__iexact=email)
-    except User.DoesNotExist as e:
-        return None
-
 async def get_role_objs() -> dict[str, Role]:
     roles = dict()
     for role in [
@@ -42,25 +30,6 @@ async def get_role_objs() -> dict[str, Role]:
             logger.error(error_msg)
             raise Role.DoesNotExist(error_msg)
     return roles
-
-async def get_role(user: User|None, site: Site) -> Role:
-    roles_dct = await get_role_objs()
-    if not user:
-        return roles_dct["anonymous"]
-    if user.is_superuser:
-        return roles_dct["superuser"]
-    try:
-        account_role = await AccountRole.objects.prefetch_related('role').aget(user=user, site=site, active=True)
-        return account_role.role
-    except AccountRole.DoesNotExist as e:
-        logger.warning(f"No active role found for user {user} on site {site.domain}. Defaulting to anonymous.")
-        return roles_dct["anonymous"]
-    except AccountRole.MultipleObjectsReturned as e:
-        logger.error(e)
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Insufficient permissions"
-        )
 
 class RoleType(TypedDict):
     role_name: str
@@ -114,20 +83,9 @@ async def may_authorize_api(
         if await is_user_in_authorized_list(jwt, users):
             return True
 
-    # Try Neo4j first
-    neo4j_role_name = await get_neo4j_role(jwt, site)
-    logger.debug(f"{neo4j_role_name=}")
-    if neo4j_role_name:
-        roles_dct = await get_role_objs()
-        role = roles_dct.get(neo4j_role_name)
-        if role:
-            logger.debug(f"Neo4j auth: {site=} {role=}")
-            return await may_authorize(endpoint, role, permission)
-
-    # Django fallback (existing behavior)
-    user = await get_user(jwt)
-    role = await get_role(user, site)
-    logger.debug(f"Django auth: {site=} {user=} {role=}")
+    roles_dct = await get_role_objs()
+    role = roles_dct.get(await get_neo4j_role(jwt, site)) or roles_dct["anonymous"]
+    logger.debug(f"{site=} {role=}")
     return await may_authorize(endpoint, role, permission)
 
 
