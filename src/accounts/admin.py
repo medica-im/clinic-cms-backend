@@ -6,12 +6,7 @@ from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.utils.translation import gettext_lazy as _
 from modeltranslation.admin import TranslationAdmin
 
-from .models import User, GrammaticalGender, Role
-
-class RoleInline(admin.TabularInline):
-    model = Role
-    extra = 0
-    fk_name = 'user'
+from .models import User, GrammaticalGender
 
 
 class CustomUserCreationForm(UserCreationForm):
@@ -55,9 +50,6 @@ class CustomUserAdmin(UserAdmin):
         'is_active',
         'grammatical_gender',
         'site',
-    )
-    inlines = (
-        RoleInline,
     )
     fieldsets = (
         (

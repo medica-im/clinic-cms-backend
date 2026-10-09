@@ -2,11 +2,9 @@ from django.core.management.base import BaseCommand, CommandError
 from accounts.models import User
 from workforce.models import NetworkNode, NodeSet
 from django.db import DatabaseError, IntegrityError
-from django.contrib.sites.models import Site
 from directory.models import Slug
 from addressbook.models import Contact
-from accounts.models import GrammaticalGender, Role as AccountsRole
-from access.models import Role as AccessRole
+from accounts.models import GrammaticalGender
 
 import logging
 
@@ -27,12 +25,6 @@ def validate_username(username):
     else:
         return True
     
-def list_sites():
-    return [site.name for site in Site.objects.all()]
-
-def access_roles():
-    return [role.name for role in AccessRole.objects.all()]
-
 def list_genders():
     return [gg.code for gg in GrammaticalGender.objects.all()]
 
@@ -42,22 +34,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('email', type=str)
-        parser.add_argument(
-            '--site',
-            type=str,
-            choices=list_sites(),
-            help=f"site name among {list_sites()}"
-        )
         parser.add_argument('--entry', type=str, help="Entry node UID")
         parser.add_argument('--full_name', type=str)
-        parser.add_argument(
-            '--role',
-            type=str,
-            choices=access_roles(),
-            help=(
-            f"access role ({access_roles()})"
-            )
-        )
         parser.add_argument(
             '--gender',
             type=str,
@@ -72,9 +50,6 @@ class Command(BaseCommand):
             return
         if not validateEmail(email):
             raise CommandError('Email "%s" is not valid' % email)
-        site=options['site']
-        if site and site not in list_sites():
-            raise CommandError('site "%s" is not valid' % site)
         try:
             user, created = User.objects.get_or_create(
                 email=email
@@ -94,13 +69,6 @@ class Command(BaseCommand):
                 )
         except Exception as e:
             raise CommandError('User creation failed. %s' % e)
-        if site:
-            try:
-                site = Site.objects.get(name=site)
-            except Site.DoesNotExist as e:
-                raise CommandError(
-                    f'Site with domain {site} does not exist.'
-                )
         entry = options['entry']
         if entry:
             user.effector=entry
@@ -116,22 +84,4 @@ class Command(BaseCommand):
                 )
         user.grammatical_gender=gg
         user.save()
-        role_name=options["role"]
-        if role_name:
-            try:
-                role = AccessRole.objects.get(name=role_name)
-            except AccessRole.DoesNotExist:
-                raise CommandError(f'Role {role_name} does not exist.')
-        if role and site:
-            try:
-                account_role = AccountsRole(user=user,site=site,role=role)
-                account_role.save()
-            except DatabaseError as e:
-                raise CommandError(f'Error during Accounts.Role creation: {e}')
-        user.refresh_from_db()
-        self.stdout.write(
-            self.style.SUCCESS(
-                f'{user} successfully created!\n'
-                f'{[(role.role, role.site,) for role in user.roles.all()]}'
-            )
-        )
+        self.stdout.write(self.style.SUCCESS(f'{user} successfully created!'))
