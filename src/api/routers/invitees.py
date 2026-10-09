@@ -10,6 +10,7 @@ from access.asyncneomodels import User as AsyncUser
 from access.asyncneomodels import Account as AsyncAccount
 from directory.models.agraph import Entry
 from api.auth import JWT, get_neo4j_role, authorize_api
+from access.active_access import is_member
 from api.utils import get_site_from_request
 from facility.models import Organization
 from api.serializers.invitee import notification_email
@@ -221,6 +222,14 @@ async def create_invitee(
         "code": "DUPLICATE_EMAIL",
         "message": f"Une invitation adressée à {item.email} existe déjà."
     }
+        )
+    if await is_member(item.email, item.entry):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "ALREADY_MEMBER",
+                "message": f"{item.email} a déjà accès à ce site.",
+            },
         )
 
     role = await get_neo4j_role(jwt, site)

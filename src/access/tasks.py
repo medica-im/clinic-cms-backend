@@ -7,6 +7,8 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from neomodel import db
 
+from access.active_access import is_member_sync
+
 logger = logging.getLogger(__name__)
 
 
@@ -75,6 +77,14 @@ def process_batch_invitees(
                 row_result["message"] = f"Une invitation pour {email} existe déjà."
                 row_result["existing_invitee_uid"] = dup_uid
                 job.skipped_duplicate_email_count += 1
+                summary.append(row_result)
+                _update_progress(job, row_num, summary)
+                continue
+
+            if is_member_sync(email, entry_uid):
+                row_result["status"] = "skipped_active_user"
+                row_result["message"] = f"{email} a déjà accès à ce site."
+                job.skipped_active_user_count += 1
                 summary.append(row_result)
                 _update_progress(job, row_num, summary)
                 continue

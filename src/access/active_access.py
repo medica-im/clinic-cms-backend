@@ -16,6 +16,31 @@ def active_key(user_uid: str, entry_uid: str) -> str:
     return f"{user_uid}:{entry_uid}"
 
 
+# A suspended Access is still active: a suspended member is still a member.
+MEMBER_BY_EMAIL = """
+MATCH (u:User)-[:HAS_ACCESS]->(:Access {active: true})
+      -[:ACCESS_TO]->(:Entry {uid: $entry_uid})
+WHERE toLower(u.email) = toLower($email)
+RETURN u.uid LIMIT 1
+"""
+
+
+async def is_member(email: str, entry_uid: str) -> bool:
+    from neomodel import adb
+
+    rows, _ = await adb.cypher_query(
+        MEMBER_BY_EMAIL, {"email": email, "entry_uid": entry_uid}
+    )
+    return bool(rows)
+
+
+def is_member_sync(email: str, entry_uid: str) -> bool:
+    rows, _ = db.cypher_query(
+        MEMBER_BY_EMAIL, {"email": email, "entry_uid": entry_uid}
+    )
+    return bool(rows)
+
+
 def install_constraint() -> None:
     # Imported here: a migration loads this module on machines with no Neo4j.
     from access.neomodels import Access
