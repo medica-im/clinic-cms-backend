@@ -72,8 +72,9 @@ services:
       timeout: 5s
       retries: 30
       start_period: 10s
+    # Loopback only, here and below: nginx on the host is the public entry.
     ports:
-      - "${EXTERNAL_PORT_PRODUCTION}:80"
+      - "127.0.0.1:${EXTERNAL_PORT_PRODUCTION}:80"
   fastapi:
     restart: always
     env_file:
@@ -103,16 +104,13 @@ services:
       retries: 30
       start_period: 10s
     ports:
-      - "${FASTAPI_PORT}:80"
+      - "127.0.0.1:${FASTAPI_PORT}:80"
   neo4j:
     image: neo4j:4.4-enterprise
     restart: always
     ports:
-      - ${NEO4J_7474_EXTERNAL_PORT}:7474
-      - ${NEO4J_7687_EXTERNAL_PORT}:7687
-      - 5000:5000
-      - 6000:6000
-      - 7000:7000
+      - 127.0.0.1:${NEO4J_7474_EXTERNAL_PORT}:7474
+      - 127.0.0.1:${NEO4J_7687_EXTERNAL_PORT}:7687
     volumes:
       - ${NEO4J_CONF}:/conf
       - ${NEO4J_DATA}:/data
@@ -163,7 +161,9 @@ services:
     volumes:
       - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     ports:
-      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+      # Reach the management UI through an SSH tunnel:
+      #   ssh -L 15672:127.0.0.1:15672 root@<server>
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     healthcheck:
       # Does the broker accept connections on its AMQP port — not
       # `rabbitmq-diagnostics ping`, which boots an Erlang node every 10s: on
