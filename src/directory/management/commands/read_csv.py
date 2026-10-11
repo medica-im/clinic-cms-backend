@@ -19,11 +19,11 @@ class Command(BaseCommand):
     help = 'read csv'
     
     def fix(self, current_uid, correct_uid):
-        query=f"""MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
-        WHERE rel.uid="{current_uid}"
-        SET rel.uid="{correct_uid}"
+        query="""MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
+        WHERE rel.uid=$current
+        SET rel.uid=$correct
         RETURN e,rel,f;"""
-        results, cols = db.cypher_query(query)
+        results, cols = db.cypher_query(query, {"current": current_uid, "correct": correct_uid})
         if results:
             for row in results:
                 location=row[cols.index('rel')]

@@ -17,25 +17,25 @@ class Command(BaseCommand):
     help = 'Update neomodel_uid field in Contact objects to the Entry node uid.'
 
     def test_is_entry(self, neomodel_uid: str):
-        query=f"""MATCH (entry:Entry) WHERE entry.uid="{neomodel_uid}" RETURN entry;"""
-        q = db.cypher_query(query, resolve_objects = True)
+        query="""MATCH (entry:Entry) WHERE entry.uid=$uid RETURN entry;"""
+        q = db.cypher_query(query, {"uid": neomodel_uid}, resolve_objects = True)
         for row in q[0]:
             if row:
                 return True
             
     def test_is_facility(self, neomodel_uid: str):
-        query=f"""MATCH (f:Facility) WHERE f.uid="{neomodel_uid}" RETURN f;"""
-        q = db.cypher_query(query, resolve_objects = True)
+        query="""MATCH (f:Facility) WHERE f.uid=$uid RETURN f;"""
+        q = db.cypher_query(query, {"uid": neomodel_uid}, resolve_objects = True)
         for row in q[0]:
             if row:
                 return True
 
 
     def test_is_location(self, neomodel_uid: str, contact: Contact):
-        query=f"""MATCH (f:Facility)<-[:HAS_FACILITY]-(entry:Entry)-[:HAS_EFFECTOR]->(e:Effector)-[rel:LOCATION]-(f:Facility)
-        WHERE rel.uid="{neomodel_uid}"
+        query="""MATCH (f:Facility)<-[:HAS_FACILITY]-(entry:Entry)-[:HAS_EFFECTOR]->(e:Effector)-[rel:LOCATION]-(f:Facility)
+        WHERE rel.uid=$uid
         RETURN entry;"""
-        q = db.cypher_query(query, resolve_objects = True)
+        q = db.cypher_query(query, {"uid": neomodel_uid}, resolve_objects = True)
         if len(q[0])>1:
             self.warn(f"The location {neomodel_uid} corresponds to more than one Entry node. Skipping...")
             return False

@@ -71,10 +71,11 @@ class Command(BaseCommand):
             self.error(e)
             return
         results, _meta = db.cypher_query(
-            f"""MATCH (entry:Entry)
-            WHERE entry.uid = '{entry.uid}'
-            SET entry += {{active: false, deactivation_datetime: apoc.date.toISO8601(datetime().epochMillis), deactivation_reason: '{options['reason']}'}}
-            RETURN entry;"""
+            """MATCH (entry:Entry)
+            WHERE entry.uid = $uid
+            SET entry += {active: false, deactivation_datetime: apoc.date.toISO8601(datetime().epochMillis), deactivation_reason: $reason}
+            RETURN entry;""",
+            {"uid": entry.uid, "reason": options["reason"]},
         )
         if results:
             self.warn(f"{results=}")

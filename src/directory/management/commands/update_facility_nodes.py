@@ -47,7 +47,7 @@ class Command(BaseCommand):
             nodes = Facility.nodes.all(lazy=True)
         count=0
         for node_id in nodes:
-            node=neomodel.db.cypher_query(f"MATCH (f:Facility) WHERE id(f)= {node_id} return f", resolve_objects=True)[0][0][0]
+            node=neomodel.db.cypher_query("MATCH (f:Facility) WHERE id(f)= $id return f", {"id": node_id}, resolve_objects=True)[0][0][0]
             #self.warn(node)
             #if (node.building or node.street or node.geographical_complement or node.zip or node.location):
             #    continue

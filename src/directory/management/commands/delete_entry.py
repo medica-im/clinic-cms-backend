@@ -56,16 +56,18 @@ class Command(BaseCommand):
             return
         self.warn(f'Deleting {entry}...')
         results, _meta = db.cypher_query(
-            f"""MATCH (entry:Entry)-[rel]-()
-            WHERE entry.uid = '{entry.uid}'
-            DELETE rel;"""
+            """MATCH (entry:Entry)-[rel]-()
+            WHERE entry.uid = $uid
+            DELETE rel;""",
+            {"uid": entry.uid},
         )
         if results:
             self.warn(f"{results=}")
         results, _meta = db.cypher_query(
-            f"""MATCH (entry:Entry)
-            WHERE entry.uid = '{entry.uid}'
-            DETACH DELETE entry;"""
+            """MATCH (entry:Entry)
+            WHERE entry.uid = $uid
+            DETACH DELETE entry;""",
+            {"uid": entry.uid},
         )
         if results:
             self.warn(f"{results=}")
@@ -73,6 +75,5 @@ class Command(BaseCommand):
             entry=Entry.nodes.get(uid=options["uid"])
             if entry:
                 self.error(f"entry {entry.uid} still exists...")
-        except neomodel.DoesNotExist as e:
-            self.error(e)
+        except neomodel.DoesNotExist:
             self.warn(f'entry {entry.uid} was deleted!')

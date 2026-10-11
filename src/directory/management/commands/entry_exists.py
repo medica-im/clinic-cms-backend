@@ -37,14 +37,15 @@ class Command(BaseCommand):
     help = 'Check if an Entry node exists'
     
     def entry_exists(self, effector, effector_type, facility):
-        query=f"""MATCH (entry:Entry)-[:HAS_FACILITY]->(f:Facility), 
+        query="""MATCH (entry:Entry)-[:HAS_FACILITY]->(f:Facility),
         (entry)-[:HAS_EFFECTOR]->(e:Effector),
         (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
-        WHERE e.uid="{effector}"
-        AND et.uid="{effector_type}"
-        AND f.uid="{facility}"
+        WHERE e.uid=$effector
+        AND et.uid=$effector_type
+        AND f.uid=$facility
         RETURN entry;"""
-        results, meta = db.cypher_query(query, resolve_objects=True)
+        params = {"effector": effector, "effector_type": effector_type, "facility": facility}
+        results, meta = db.cypher_query(query, params, resolve_objects=True)
         self.warn(f"{results=}\n{meta=}")
         self.warn(str(bool(results)))
         return bool(results)
