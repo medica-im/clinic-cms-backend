@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from typing import TypedDict
 from asgiref.sync import sync_to_async
@@ -754,12 +755,16 @@ def directory_contacts(
     return contacts
 
 def contact_uids(directory: Directory=None, active=True, search=""):
+    params = {
+        "directory": directory.name if directory else None,
+        "pattern": f"(?i).*{re.escape(search)}.*" if search else None,
+    }
     if directory:
-        directory_query = f'WHERE d.name="{directory.name}"'
+        directory_query = 'WHERE d.name=$directory'
     else:
         directory_query = ""
     if search:
-        search_query = f'WHERE e.name_fr =~ "(?i).*{search}.*"'
+        search_query = 'WHERE e.name_fr =~ $pattern'
     else:
         search_query = ""
     query=(
@@ -778,7 +783,7 @@ def contact_uids(directory: Directory=None, active=True, search=""):
         RETURN et,e,rel,f,c;
         """
     )
-    results, cols = db.cypher_query(query)
+    results, cols = db.cypher_query(query, params)
     if results:
         contacts=[]
         for row in results:
@@ -851,9 +856,10 @@ def get_entries_query(
     directory: Directory,
     uid = None,
     active: bool|None = True,
-)->str:
+)->tuple[str, dict]:
+    params = {"uid": uid, "directory": directory.name if directory else None, "active": active}
     if uid:
-        query=f"""MATCH (entry:Entry) WHERE entry.uid="{uid}" WITH entry MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector) WITH * OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
+        query=f"""MATCH (entry:Entry) WHERE entry.uid=$uid WITH entry MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector) WITH * OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
         OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(memberships:Entry)
         OPTIONAL MATCH (entry)-[:CREATED_BY]->(creator:User)
@@ -862,10 +868,10 @@ def get_entries_query(
         WITH entry,e,et,f,rel,o,memberships,commune,dpt,country,creator_uids,COLLECT(DISTINCT owner.uid) as owner_uids
         RETURN entry,e,et,f,rel,o,memberships,commune,dpt,country,creator_uids,owner_uids;"""
     else:
-        query=f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
+        query=f"""MATCH (d:Directory) WHERE d.name=$directory
         WITH d
         MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
-        WHERE {owner_listed('d', 'entry')}{f' AND entry.active={str(active)}' if active is not None else ''}
+        WHERE {owner_listed('d', 'entry')} AND ($active IS NULL OR entry.active = $active)
         WITH entry
         MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
         WITH entry, COLLECT(DISTINCT directory) as directories
@@ -880,15 +886,15 @@ def get_entries_query(
         OPTIONAL MATCH (entry)-[:OWNED_BY]->(owner:User)
         WITH entry, directories, e, et, f, commune, dpt, country, memberships, tags, tagcats, creator_uids, COLLECT(DISTINCT owner.uid) as owner_uids
         RETURN DISTINCT entry.uid as uid, entry, directories, e, et, f, memberships, commune, dpt, country, tags, tagcats, creator_uids, owner_uids;"""
-    return query
+    return query, params
 
 def sync_get_entries(
         directory: Directory,
         uid = None,
         active: bool = True,
     ):
-    query = get_entries_query(directory, uid=uid, active=active)
-    results, _meta = db.cypher_query(query, resolve_objects = True)
+    query, params = get_entries_query(directory, uid=uid, active=active)
+    results, _meta = db.cypher_query(query, params, resolve_objects = True)
     #logger.debug(f"{results[:1]=} {len(results)=}")
     entries=[]
     for row in results:
@@ -936,8 +942,8 @@ async def get_entries(
         uid = None,
         active: bool|None=True,
     ):
-    query = get_entries_query(directory, uid=uid, active=active)
-    results, _meta = await adb.cypher_query(query, resolve_objects = True)
+    query, params = get_entries_query(directory, uid=uid, active=active)
+    results, _meta = await adb.cypher_query(query, params, resolve_objects = True)
     #logger.debug(f"{results[:1]=} {len(results)=}")
     entries=[]
     for row in results:
@@ -1050,32 +1056,33 @@ def entries_of_situation(request, situation):
 
 async def async_entries_of_situation(directory, situation):
     entries=[]
-    q1=f"""
+    params = {"situation": situation.uid, "directory": directory.name}
+    q1="""
         MATCH (s:Situation)
-        WHERE s.uid = "{situation.uid}"
+        WHERE s.uid = $situation
         MATCH (et:EffectorType)-[:MANAGES]->(s)
         MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
-        WHERE d.name = "{directory.name}"
+        WHERE d.name = $directory
         RETURN e
         """
-    q2=f"""
+    q2="""
         MATCH (s:Situation)
-        WHERE s.uid = "{situation.uid}"
+        WHERE s.uid = $situation
         MATCH (s)-[:IMPACTS]->(n:Need)<-[:MANAGES]-(et:EffectorType)
         MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
-        WHERE d.name = "{directory.name}"
+        WHERE d.name = $directory
         RETURN e
         """
-    q3=f"""
+    q3="""
         MATCH (s:Situation)
-        WHERE s.uid = "{situation.uid}"
+        WHERE s.uid = $situation
         MATCH (s)-[:IMPACTS]->(n:Need)<-[:PART_OF]-(n2:Need)<-[:MANAGES]-(et:EffectorType)
         MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
-        WHERE d.name = "{directory.name}"
+        WHERE d.name = $directory
         RETURN e
         """
     for q in [q1,q2,q3]:
-        results, _meta = await adb.cypher_query(q, resolve_objects = True)
+        results, _meta = await adb.cypher_query(q, params, resolve_objects = True)
         if results:
             for row in results:
                 (entry,)=row

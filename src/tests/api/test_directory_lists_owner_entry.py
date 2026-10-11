@@ -102,8 +102,8 @@ async def listed_entries(directory_name):
     from neomodel import adb
     from directory.utils import get_entries_query
 
-    query = get_entries_query(SimpleNamespace(name=directory_name), active=None)
-    rows, _ = await adb.cypher_query(query, resolve_objects=False)
+    query, params = get_entries_query(SimpleNamespace(name=directory_name), active=None)
+    rows, _ = await adb.cypher_query(query, params, resolve_objects=False)
     return [row[0] for row in rows]
 
 

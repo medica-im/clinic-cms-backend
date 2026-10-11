@@ -13,29 +13,29 @@ def update_contact_timestamp(uid: uuid.UUID|None):
             logger.error(f"{uid} is not a valid uuid")
             return
     # matching a node requires hex string representation of uuid4 with no dash
-    query=f"""MATCH (f:Facility) WHERE f.uid="{uid.hex}" SET f.contactUpdatedAt=timestamp() RETURN f;"""
-    results, _cols = db.cypher_query(query)
+    query="""MATCH (f:Facility) WHERE f.uid=$uid SET f.contactUpdatedAt=timestamp() RETURN f;"""
+    results, _cols = db.cypher_query(query, {"uid": uid.hex})
     if results:
         return
     # matching LOCATION relationship requires the dashed string representation
     # of uuid4
     # old graph structure
     query=(
-        f"""
+        """
         MATCH (f:Facility)-[rel:LOCATION]-(e:Effector)
-        WHERE rel.uid="{uid}"
+        WHERE rel.uid=$uid
         SET rel.contactUpdatedAt=timestamp();
     """
     )
-    results, _cols = db.cypher_query(query)
+    results, _cols = db.cypher_query(query, {"uid": str(uid)})
     if results:
         return
     # new graph structure
     query=(
-        f"""
+        """
         MATCH (entry:Entry)
-        WHERE entry.uid="{uid}"
+        WHERE entry.uid=$uid
         SET entry.contactUpdatedAt=timestamp();
         """
     )
-    results, _cols = db.cypher_query(query)
+    results, _cols = db.cypher_query(query, {"uid": str(uid)})

@@ -46,12 +46,13 @@ def get_entries(
     )->list[str]:
     if effector_type and facility and effector:
         query=(
-            f"""MATCH (entry:Entry)-[:HAS_EFFECTOR]->(effector:Effector) WHERE effector.uid="{effector}" MATCH (entry)-[:HAS_FACILITY]->(f:Facility) WHERE f.uid="{facility}" MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) WHERE et.uid="{effector_type}" RETURN DISTINCT entry.uid;"""
+            """MATCH (entry:Entry)-[:HAS_EFFECTOR]->(effector:Effector) WHERE effector.uid=$effector MATCH (entry)-[:HAS_FACILITY]->(f:Facility) WHERE f.uid=$facility MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) WHERE et.uid=$effector_type RETURN DISTINCT entry.uid;"""
         )
     elif effector_type and facility:
         query=(
-            f"""MATCH (entry:Entry)-[:HAS_FACILITY]->(f:Facility) WHERE f.uid="{facility}" MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) WHERE et.uid="{effector_type}" RETURN DISTINCT entry.uid;""")
-    q = db.cypher_query(query,resolve_objects = True)
+            """MATCH (entry:Entry)-[:HAS_FACILITY]->(f:Facility) WHERE f.uid=$facility MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) WHERE et.uid=$effector_type RETURN DISTINCT entry.uid;""")
+    params = {"effector": effector, "facility": facility, "effector_type": effector_type}
+    q = db.cypher_query(query, params, resolve_objects = True)
     uids=[]
     if q:
         results = q[0]
