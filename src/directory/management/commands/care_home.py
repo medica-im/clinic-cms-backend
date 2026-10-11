@@ -11,7 +11,6 @@ from directory.models import Effector
 from addressbook.models import Contact, PhoneNumber
 from neomodel import Q, db
 import uuid
-from directory.utils import add_label
 import argparse
 
 from django.conf import settings

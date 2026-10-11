@@ -14,7 +14,7 @@ import pytest
 from asgiref.sync import sync_to_async
 from neomodel import adb
 
-from directory.utils import async_find_entry, find_entry, get_entries, sync_get_entries
+from directory.utils import async_find_entry, find_entry, get_entries
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
@@ -128,7 +128,3 @@ LYON = SimpleNamespace(name="lyon")
 
 async def test_get_entries(entry):
     assert listed(await get_entries(LYON)) == LISTED
-
-
-async def test_sync_get_entries(entry):
-    assert listed(await sync_to_async(sync_get_entries)(LYON)) == LISTED

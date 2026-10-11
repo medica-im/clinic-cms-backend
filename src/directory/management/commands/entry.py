@@ -9,7 +9,6 @@ from directory.models.graph import (
     Directory,
 )
 import uuid
-from directory.utils import add_label
 
 logger = logging.getLogger(__name__)
 

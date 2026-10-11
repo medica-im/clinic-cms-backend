@@ -653,107 +653,6 @@ def node_uids(entries):
     except Exception as e:
         return []
 
-def get_effector_nodes(
-        directory: Directory,
-        label: str,
-        active: bool = True
-    ):
-    results, cols = db.cypher_query(
-        f"""MATCH (e:{label})-[rel:LOCATION]-(f:Facility)
-        WHERE rel.directories=["{directory.name}"] AND rel.active={str(active)}
-        RETURN e;"""
-    )
-    effectors = {
-        "CareHome": CareHome
-    }
-    if results:
-        nodes=[]
-        for row in results:
-            node=effectors.get(label).inflate(row[cols.index('e')])
-            nodes.append(node)
-        return nodes
-
-def get_facilities(
-        directory: Directory|None = None,
-        uid: str|None = None,
-        slug: str|None = None,
-        active: bool = True,
-    ):
-    if uid:
-        query=f"""MATCH (f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) WHERE f.uid="{uid}" RETURN f,commune,country;"""
-    elif slug:
-        query=f"""MATCH (d:Directory)-[:HAS_ENTRY]->(e:Entry),(e)-[:HAS_EFFECTOR]->(:Effector),(e)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) WHERE f.slug="{slug}" AND d.name="{directory.name}" AND e.active={str(active).lower()} RETURN f,commune,country;"""
-    else:
-        query=f"""MATCH (d:Directory)-[:HAS_ENTRY]->(e:Entry),
-        (e)-[:HAS_EFFECTOR]->(:Effector),
-        (e)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
-        WHERE d.name="{directory.name}"
-        AND e.active={str(active).lower()}
-        RETURN DISTINCT f,commune,country;"""
-    results, cols = db.cypher_query(query, resolve_objects = True)
-    _facilities=[]
-    try:
-        for row in results:
-            _facilities.append(
-                {
-                    "facility": row[0],
-                    "commune": row[1],
-                    "country": row[2]
-                }
-            )
-    except:
-        pass
-    return _facilities
-
-def directory_contacts(
-        directory: Directory,
-        uid = None,
-        label: str = "Effector",
-        active: bool = True,
-    ):
-    if uid:
-        query=f"""
-        MATCH (entry:Entry) WHERE entry.uid="{uid}"
-        WITH entry
-        MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
-        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)
-        RETURN entry,e,f;
-        """
-    else:
-        query=f"""
-        MATCH (d:Directory) WHERE d.name="{directory.name}"
-        WITH d
-        MATCH (d)-[:HAS_ENTRY]->(entry:Entry) WHERE entry.active={str(active)}
-        WITH entry
-        MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector)
-        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)
-        RETURN entry,e,f;
-        """ 
-    results, cols = db.cypher_query(query)
-    contacts=[]
-    if results:
-        for row in results:
-            effector=row[cols.index('e')]
-            entry=row[cols.index('entry')]
-            facility=row[cols.index('f')]
-            try:
-                timestamp = max(
-                    [
-                        effector["updatedAt"],
-                        entry["contactUpdatedAt"],
-                        facility["contactUpdatedAt"]
-                    ]
-                )
-            except Exception as e:
-                logger.warn(f'{effector.name_fr}\n{e}')
-            contacts.append(
-                {
-                    "uid": entry["uid"],
-                    "timestamp": timestamp
-                }
-            )
-    return contacts
-
 def contact_uids(directory: Directory=None, active=True, search=""):
     params = {
         "directory": directory.name if directory else None,
@@ -794,46 +693,6 @@ def contact_uids(directory: Directory=None, active=True, search=""):
             contacts.append(location.uid)
             contacts.append(facility.uid)
         return contacts
-
-def directory_effectors(
-        directory: Directory,
-        uid = None,
-        label: str = "Effector",
-        active: bool = True,
-    ):
-    if uid:
-        query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
-        WHERE rel.directories=["{directory.name}"] AND (rel.uid="{uid}")
-        RETURN e,et,rel,f,c,country;"""
-    else:
-        query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:{label})-[rel:LOCATION]-(f:Facility)-[]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
-        WHERE rel.directories=["{directory.name}"] AND rel.active={str(active)}
-        RETURN e,et,rel,f,c,country;"""
-    results, cols = db.cypher_query(query)
-    if results:
-        effectors=[]
-        for row in results:
-            effector=Effector.inflate(row[cols.index('e')])
-            location=EffectorFacility.inflate(row[cols.index('rel')])
-            facility=Facility.inflate(row[cols.index('f')])
-            commune=Commune.inflate(row[cols.index('c')])
-            country=Country.inflate(row[cols.index('country')])
-            types=EffectorType.inflate(row[cols.index('et')])
-            types = types if isinstance(types, list) else [types]
-            address = get_address(facility,commune,country)
-            avatar=get_avatar_url(effector, location, facility)
-            effectors.append(
-                {
-                    "effector": effector,
-                    "location": location,
-                    "address": address,
-                    "commune": commune,
-                    "types": types,
-                    "facility": facility,
-                    "avatar": avatar,
-                }
-            )
-        return effectors
 
 def display(_list):
     for idx,e in enumerate(_list):
@@ -887,55 +746,6 @@ def get_entries_query(
         WITH entry, directories, e, et, f, commune, dpt, country, memberships, tags, tagcats, creator_uids, COLLECT(DISTINCT owner.uid) as owner_uids
         RETURN DISTINCT entry.uid as uid, entry, directories, e, et, f, memberships, commune, dpt, country, tags, tagcats, creator_uids, owner_uids;"""
     return query, params
-
-def sync_get_entries(
-        directory: Directory,
-        uid = None,
-        active: bool = True,
-    ):
-    query, params = get_entries_query(directory, uid=uid, active=active)
-    results, _meta = db.cypher_query(query, params, resolve_objects = True)
-    #logger.debug(f"{results[:1]=} {len(results)=}")
-    entries=[]
-    for row in results:
-        (
-            _,
-            entry,
-            directories,
-            effector,
-            effector_type,
-            facility,
-            memberships,
-            commune,
-            department,
-            country,
-            tags,
-            tagcats,
-            creator_uids,
-            owner_uids,
-        ) = row
-        address = get_address(facility,commune,country)
-        avatar=get_avatar_url(entry=entry)
-        memberships_uids = node_uids(memberships) if memberships else []
-        entries.append(
-            {
-                "effector": effector,
-                "entry": entry,
-                "address": address,
-                "commune": commune,
-                "department": department,
-                "effector_type": effector_type,
-                "facility": facility,
-                "avatar": avatar,
-                "memberships": memberships_uids,
-                "tags": tags,
-                "tagcats": tagcats,
-                "directories": directories,
-                "creator_uids": creator_uids,
-                "owner_uids": owner_uids,
-            }
-        )
-    return entries
 
 async def get_entries(
         directory: Directory,
@@ -992,68 +802,6 @@ async def get_entries(
     #logger.debug(f"{len(entries)=}\n{entries[0]=}")
     return entries
 
-def get_location_uids(effector_uids):
-    results, cols = db.cypher_query(
-        f"""MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
-        WHERE e.uid IN {effector_uids}
-        RETURN rel;"""
-    )
-    if results:
-        location_uids=[]
-        for row in results:
-            location=EffectorFacility.inflate(row[cols.index('rel')])
-            location_uids.append(location.uid)
-        return location_uids
-
-def entries_of_situation(request, situation):
-    entries=[]
-    directory=get_directory(request)
-    results, _meta = db.cypher_query(
-        f"""
-        MATCH (s:Situation)
-        WHERE s.uid = "{situation.uid}"
-        MATCH (et:EffectorType)-[:MANAGES]->(s)
-        MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
-        WHERE d.name = "{directory.name}"
-        RETURN e
-        """
-    )
-    if results:
-        for e in results:
-            entry=Entry.inflate(e[0])
-            entries.append(entry)
-    results, _meta = db.cypher_query(
-        f"""
-        MATCH (s:Situation)
-        WHERE s.uid = "{situation.uid}"
-        MATCH (s)-[:IMPACTS]->(n:Need)<-[:MANAGES]-(et:EffectorType)
-        MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
-        WHERE d.name = "{directory.name}"
-        RETURN e
-        """
-    )
-    if results:
-        for e in results:
-            entry=Entry.inflate(e[0])
-            entries.append(entry)
-    results, _meta = db.cypher_query(
-        f"""
-        MATCH (s:Situation)
-        WHERE s.uid = "{situation.uid}"
-        MATCH (s)-[:IMPACTS]->(n:Need)<-[:PART_OF]-(n2:Need)<-[:MANAGES]-(et:EffectorType)
-        MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
-        WHERE d.name = "{directory.name}"
-        RETURN e
-        """
-    )
-    if results:
-        for e in results:
-            entry=Entry.inflate(e[0])
-            entries.append(entry)
-
-    entries_uids = [ e.uid for e in entries]
-    return entries_uids
-
 async def async_entries_of_situation(directory, situation):
     entries=[]
     params = {"situation": situation.uid, "directory": directory.name}
@@ -1089,36 +837,6 @@ async def async_entries_of_situation(directory, situation):
                 entries.append(entry)
     entries_uids = [e.uid for e in entries]
     return entries_uids
-
-def add_label(uid: str, label: str):
-    db.cypher_query(
-        f"""MATCH (e)
-        WHERE e.uid="{uid}"
-        SET e :{label}
-        RETURN e;"""
-    )
-
-def find_effector_uid(effector_type_slug, commune_slug, effector_slug):
-    results, cols = db.cypher_query(
-        f"""MATCH (et:EffectorType)<-[:IS_A]-(e:Effector)-[rel:LOCATION]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)
-        WHERE e.slug_fr="{effector_slug}" AND c.slug_fr="{commune_slug}" AND et.slug_fr="{effector_type_slug}"
-        RETURN rel;"""
-    )
-    #effectors=[]
-    uids=[]
-    if results:
-        for row in results:
-            #effector=Effector.inflate(row[cols.index('e')])
-            #effectors.append(effector)
-            location=EffectorFacility.inflate(row[cols.index('rel')])
-            uids.append(location.uid)
-    try:
-        return uids[0]
-    except Exception as e:
-        logger.error(
-            f"No Location relationship with {effector_type_slug=}, {commune_slug=}, "
-            f"{effector_slug=} could be found. {e}"
-        )
 
 def get_uid_query(uid: str):
     return f"""
@@ -1413,21 +1131,4 @@ async def async_find_entry(
     params = entry_query_params(directory, facility_slug, effector_type_slug, effector_slug, uid)
     results, cols = await adb.cypher_query(query, params, resolve_objects=True)
     return await async_entry_dict(results, cols)
-
-def effector_types(directory: Directory) -> list[str]:
-    query=f"""MATCH (et:EffectorType)<-[:IS_A]-(e:Effector)-[rel:LOCATION]->(f:Facility)
-        WHERE rel.directories=["{directory.name}"] AND rel.active = true
-        RETURN COLLECT(et.uid) AS uids;"""
-    results, cols = db.cypher_query(query)
-    uids1=results[0][cols.index('uids')]
-    query=f"""MATCH (d:Directory)
-        WHERE d.name="{directory.name}"
-        WITH d
-        MATCH (d)-[:HAS_ENTRY]->(e:Entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
-        WHERE e.active = true
-        RETURN COLLECT(et.uid) AS uids;"""
-    results, cols = db.cypher_query(query)
-    uids2=results[0][cols.index('uids')]
-    uids = list(set(uids1 + uids2))
-    return uids
 
