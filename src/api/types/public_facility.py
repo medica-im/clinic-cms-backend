@@ -7,6 +7,7 @@ class Address(BaseModel):
     facility_uid: str
     country: str
     city: str | None = None
+    department_code: str | None = None
     zip: str | None = None
     geographical_complement: str | None = None
     street: str | None = None

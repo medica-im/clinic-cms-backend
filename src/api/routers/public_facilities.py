@@ -151,7 +151,7 @@ async def _get_facility_orgs_and_entries(facility_uid: str):
     return organizations, entries
 
 
-def _get_address(facility, commune, country) -> Address:
+def _get_address(facility, commune, country, department_code=None) -> Address:
     if facility.location:
         longitude = facility.location.longitude
         latitude = facility.location.latitude
@@ -162,6 +162,7 @@ def _get_address(facility, commune, country) -> Address:
         facility_uid=facility.uid,
         country=country.name,
         city=getattr(commune, 'name_fr', None),
+        department_code=department_code,
         zip=facility.zip,
         geographical_complement=facility.geographical_complement,
         street=facility.street,
@@ -196,7 +197,8 @@ async def _serialize_facility(facility, commune, country) -> PublicFacility:
             name = None
 
     organizations, entries = await _get_facility_orgs_and_entries(facility.uid)
-    address = _get_address(facility, commune, country)
+    department = await commune.department.get_or_none() if commune else None
+    address = _get_address(facility, commune, country, getattr(department, 'code', None))
     phones = await async_get_phones_neomodel(facility=facility)
     emails = await async_get_emails_neomodel(f=facility)
     websites = await async_get_websites_neomodel(f=facility)

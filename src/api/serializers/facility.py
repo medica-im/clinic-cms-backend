@@ -317,18 +317,14 @@ async def assert_slug_is_free(
         )
 
 
+def location_from(f: FacilityPost|FacilityPut) -> NeomodelPoint|None:
+    if f.latitude is None or f.longitude is None:
+        return None
+    return NeomodelPoint((float(f.longitude), float(f.latitude)), crs='wgs-84')
+
+
 async def create_facility(f: FacilityPost, request: Request, jwt: dict)->FacilityPy:
-    try:
-        longitude: Decimal|None = f.longitude
-        logger.debug(longitude)
-        latitude: Decimal|None = f.latitude
-        logger.debug(latitude)
-        lng_lat = (longitude,latitude)
-        location=NeomodelPoint(lng_lat, crs='wgs-84')
-        logger.debug(location)
-    except Exception as e:
-        logger.debug(e)
-        location=None
+    location = location_from(f)
     await assert_slug_is_free(f.slug, request)
     node = await Facility(
         name=f.name,
@@ -376,17 +372,7 @@ async def create_facility(f: FacilityPost, request: Request, jwt: dict)->Facilit
     return facility
 
 async def update_facility(uid: str, f: FacilityPut, request: Request)->FacilityPy:
-    try:
-        longitude: Decimal|None = f.longitude
-        logger.debug(longitude)
-        latitude: Decimal|None = f.latitude
-        logger.debug(latitude)
-        lng_lat = (longitude,latitude)
-        location=NeomodelPoint(lng_lat, crs='wgs-84')
-        logger.debug(location)
-    except Exception as e:
-        logger.debug(e)
-        location=None
+    location = location_from(f)
     try:
         node = await Facility.nodes.get(uid=uid)
     except Exception as e:
