@@ -27,6 +27,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      # Read only when the data directory is first created: a new server starts
+      # with page checksums. Existing ones: infra playbooks/postgres-checksums.yml.
+      POSTGRES_INITDB_ARGS: --data-checksums
     volumes:
       - "${DATABASE_DATA_DIR}:/var/lib/postgresql/data:z"
       - "${DATABASE_CONF_FILE}:/etc/postgresql.conf"
