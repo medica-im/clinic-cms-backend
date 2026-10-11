@@ -2,7 +2,7 @@ from django import setup as setup_django
 from django.core.management.base import BaseCommand
 import importlib.util
 import sys
-from neomodel import install_all_labels, install_labels
+from neomodel import db
 
 class Command(BaseCommand):
     help = 'Install labels and constraints for your neo4j database'
@@ -38,7 +38,7 @@ class Command(BaseCommand):
             the_class = getattr(module, class_name)
     
             if class_name and module_name and the_class:
-                install_labels(
+                db.install_labels(
                     the_class,
                     quiet=False,
                     stdout=self.stdout
@@ -48,6 +48,6 @@ class Command(BaseCommand):
             # so install_all_labels can discover them via __subclasses__().
             import access.neomodels  # noqa: F401
             import directory.models.graph  # noqa: F401
-            install_all_labels(
+            db.install_all_labels(
                 stdout=self.stdout
             )
