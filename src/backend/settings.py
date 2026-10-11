@@ -189,6 +189,10 @@ DATABASES = {
         'USER': config('POSTGRES_USER', default='postgres'),
         'PASSWORD': config('POSTGRES_PASSWORD', default=''),
         #'PORT': config('DATABASE_PORT', cast=int, default=5432),
+        # Reused across requests, tested before reuse and replaced if Postgres
+        # closed it. FastAPI needs api/db_connections.py for either to apply.
+        'CONN_MAX_AGE': 300,
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 

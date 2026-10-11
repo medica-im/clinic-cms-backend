@@ -94,6 +94,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from api.db_connections import CloseOldConnectionsMiddleware
+app.add_middleware(CloseOldConnectionsMiddleware)
+
 app.include_router(organization.router)
 app.include_router(organization_types.router)
 app.include_router(effector_types.router)
