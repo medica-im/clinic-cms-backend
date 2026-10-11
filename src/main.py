@@ -78,8 +78,10 @@ async def lifespan(app):
     # After uvicorn installed its signal handlers: lets long-lived responses
     # (the invitations' event stream) end when the server is asked to stop.
     from api import stopping
+    from api.neo4j_drivers import close_drivers
     stopping.install()
     yield
+    await close_drivers()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -96,6 +98,9 @@ app.add_middleware(
 
 from api.db_connections import CloseOldConnectionsMiddleware
 app.add_middleware(CloseOldConnectionsMiddleware)
+
+from api.neo4j_drivers import Neo4jDriversMiddleware
+app.add_middleware(Neo4jDriversMiddleware)
 
 app.include_router(organization.router)
 app.include_router(organization_types.router)

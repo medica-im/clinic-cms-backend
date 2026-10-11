@@ -274,7 +274,7 @@ async def get_users(
     )
     user_list = []
     for row in results:
-        (user_node, [account_nodes], [access_nodes]) = row
+        (user_node, account_nodes, access_nodes) = row
         accounts = [
             AccountOut.model_validate(a.__dict__)
             for a in account_nodes
@@ -330,7 +330,7 @@ async def get_user(
             detail=f"User with uid {user_uid} not found for this site",
         )
     logger.debug(f"{results=}")
-    user_node, [account_nodes], [access_nodes] = results[0]
+    user_node, account_nodes, access_nodes = results[0]
 
     accounts = [
         AccountOut.model_validate(a.__properties__)

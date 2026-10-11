@@ -148,7 +148,9 @@ async def neo4j_connection(neo4j_bolt_url):
     """
     from asgiref.sync import sync_to_async
     from neo4j import AsyncGraphDatabase, GraphDatabase
-    from neomodel import adb, db, config as neomodel_config
+    from neomodel import adb, db, get_config
+
+    neomodel_config = get_config()
 
     # parse "bolt://neo4j:pw@host:port[/database]" into (uri, auth, database)
     scheme, rest = neo4j_bolt_url.split("://", 1)
@@ -159,21 +161,21 @@ async def neo4j_connection(neo4j_bolt_url):
         hostport, database = hostport.split("/", 1)
     uri = f"{scheme}://{hostport}"
 
-    original_url = neomodel_config.DATABASE_URL
-    original_database = getattr(neomodel_config, "DATABASE_NAME", None)
+    original_url = neomodel_config.database_url
+    original_database = neomodel_config.database_name
     driver = AsyncGraphDatabase.driver(uri, auth=(user, password))
     # The scratch database is not the server's default, so neomodel has to be
     # told which one to use; without this every query would run against the
     # dev graph.
     if database:
-        neomodel_config.DATABASE_NAME = database
+        neomodel_config.database_name = database
     # DATABASE_URL has to move as well, and not only for tidiness. neomodel's
     # `ensure_connection` re-initialises a connection from config.DATABASE_URL
     # whenever it finds no driver on it — which is exactly the state teardown
     # below leaves behind. Left pointing at the dev graph, the first sync query
     # of a *later* test silently reconnects there, which is why this only ever
     # failed in a full-directory run and never when the module ran alone.
-    neomodel_config.DATABASE_URL = f"{scheme}://{user}:{password}@{hostport}"
+    neomodel_config.database_url = f"{scheme}://{user}:{password}@{hostport}"
     await adb.set_connection(driver=driver)
     # The sync connection has to move too. `adb` and `db` are two independent
     # process-global connections, and repointing one leaves the other on the
@@ -205,11 +207,11 @@ async def neo4j_connection(neo4j_bolt_url):
         await driver.close()
         db.close_connection()
         sync_driver.close()
-        neomodel_config.DATABASE_URL = original_url
+        neomodel_config.database_url = original_url
         # Unconditionally, because set_connection copies DATABASE_NAME onto the
         # connection: leaving the scratch name behind would send a later lazy
         # reconnect to a database that no longer exists.
-        neomodel_config.DATABASE_NAME = original_database
+        neomodel_config.database_name = original_database
 
 
 @pytest_asyncio.fixture

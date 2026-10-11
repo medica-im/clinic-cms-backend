@@ -19,7 +19,7 @@ redis
 django-contact-form[akismet]
 langcodes[data]
 language_data
-neomodel==5.5.3
+neomodel==6.2.0
 shapely
 SPARQLWrapper
 pandas

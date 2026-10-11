@@ -79,7 +79,7 @@ def get_facilities(
             except:
                 location_dct=None
             facility_dct["commune"]=commune_dct
-            facility_dct["effectors"]=effectors[0]
+            facility_dct["effectors"]=effectors
             facility_dct["location"]=location_dct
             try:
                 f=FacilityPy.model_validate(facility_dct)
@@ -228,7 +228,7 @@ def _facilities_from_rows(q) -> list[FacilityPy]:
                 facility,
                 commune,
                 department,
-                [effectors],
+                effectors,
             ] = row
             logger.debug(f"{effectors=}")
             commune_dct = commune.__properties__

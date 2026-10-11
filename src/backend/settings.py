@@ -6,7 +6,7 @@ from django.utils.log import DEFAULT_LOGGING
 from pathlib import Path
 from decouple import Config, RepositoryEnv, AutoConfig, Csv
 from django.utils.translation import gettext_lazy as _
-from neomodel import config as neomodel_config
+from neomodel import get_config as get_neomodel_config
 
 logger = logging.getLogger(__name__)
 
@@ -326,7 +326,7 @@ neo4j_log = logging.getLogger("neo4j")
 neo4j_log.setLevel(logging.ERROR)
 
 #neomodel
-neomodel_config.DATABASE_URL = f"bolt://{NEO4J_USERNAME}:{NEO4J_PASSWORD}@neo4j:{NEO4J_7687_EXTERNAL_PORT}"
+get_neomodel_config().database_url = f"bolt://{NEO4J_USERNAME}:{NEO4J_PASSWORD}@neo4j:{NEO4J_7687_EXTERNAL_PORT}"
 
 #heatwave
 PUBLIC_API_METEOFRANCE = config('PUBLIC_API_METEOFRANCE')
