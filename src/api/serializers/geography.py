@@ -33,13 +33,13 @@ def get_communes(
         active: bool = True
     )->list[CommunePy]:
     if uid:
-        query=f"""MATCH (c:Commune) WHERE c.uid="{uid}" RETURN c;"""
+        query="""MATCH (c:Commune) WHERE c.uid=$uid RETURN c;"""
     else:
         if department:
-            query=f"""MATCH (c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance) WHERE dpt.code="{department}" RETURN c;"""
+            query="""MATCH (c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance) WHERE dpt.code=$department RETURN c;"""
         else:
-            query=f"""MATCH (c:Commune) RETURN c;"""
-    q = db.cypher_query(query, resolve_objects = True)
+            query="""MATCH (c:Commune) RETURN c;"""
+    q = db.cypher_query(query, {"uid": uid, "department": department}, resolve_objects = True)
     nodes: list[CommunePy]=[]
     if q:
         for row in q[0]:
@@ -69,10 +69,10 @@ def get_departments(
         active: bool = True
     )->list[DepartmentOfFrancePy]:
     if uid:
-        query=f"""MATCH (d:DepartmentOfFrance) WHERE d.uid="{uid}" RETURN d;"""
+        query="""MATCH (d:DepartmentOfFrance) WHERE d.uid=$uid RETURN d;"""
     else:
-        query=f"""MATCH (d:DepartmentOfFrance) RETURN d;"""
-    q = db.cypher_query(query, resolve_objects = True)
+        query="""MATCH (d:DepartmentOfFrance) RETURN d;"""
+    q = db.cypher_query(query, {"uid": uid}, resolve_objects = True)
     nodes: list[DepartmentOfFrancePy]=[]
     if q:
         for row in q[0]:

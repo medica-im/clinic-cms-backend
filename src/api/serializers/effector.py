@@ -45,28 +45,37 @@ def get_effectors(
         active: bool = True,
         owner: str|None = None,
     )->list[Effector]:
+    params = {
+        "uid": uid,
+        "owner": owner,
+        "effector_type": effector_type,
+        "facility": facility,
+        "commune": commune,
+        "department_of_france": department_of_france,
+        "directory": directory,
+    }
     def get_user_snippet(owner):
-        return f'(u:User {{uid: "{owner}"}})<-[:OWNED_BY]-'
+        return '(u:User {uid: $owner})<-[:OWNED_BY]-'
     def get_filter_snippet():
         filter: list = []
         if effector_type:
-            filter.append(f'et.uid="{effector_type}"')
+            filter.append('et.uid=$effector_type')
         if facility:
-            filter.append(f'f.uid="{facility}"')
+            filter.append('f.uid=$facility')
         elif commune:
-            filter.append(f'commune.uid="{commune}"')
+            filter.append('commune.uid=$commune')
         elif department_of_france:
-            filter.append(f'dof.code="{department_of_france}"')
+            filter.append('dof.code=$department_of_france')
         if directory:
-            filter.append(f'effector.creator_directory="{directory}"')
+            filter.append('effector.creator_directory=$directory')
         if filter:
             return f'WHERE {" AND ".join(filter)}'
         else:
             return ''
     if uid:
-        query = (f"""MATCH (effector:Effector) WHERE effector.uid="{uid}" RETURN effector;""")
+        query = """MATCH (effector:Effector) WHERE effector.uid=$uid RETURN effector;"""
     elif owner:
-        query = f"""MATCH (u:User {{uid: "{owner}"}})<-[:OWNED_BY]-(effector:Effector)
+        query = """MATCH (u:User {uid: $owner})<-[:OWNED_BY]-(effector:Effector)
         RETURN DISTINCT effector"""
     elif not filter and not owner:
         query=(f"""MATCH (effector:Effector) RETURN effector;""")
@@ -75,7 +84,7 @@ def get_effectors(
 ]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY
 ]->(dof:DepartmentOfFrance), {get_user_snippet(owner) if owner else ''}(effector:Effector)<-[:HAS_EFFECTOR]-(entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) {get_filter_snippet()} RETURN DISTINCT effector;""")
     logger.debug(f"{query=}")
-    q = db.cypher_query(query,resolve_objects = True)
+    q = db.cypher_query(query, params, resolve_objects = True)
     effectors: list[Effector]=[]
     if q:
         for row in q[0]:

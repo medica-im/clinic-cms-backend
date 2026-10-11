@@ -136,12 +136,12 @@ def get_organization_types(
     label: str = "OrganizationType"
     if uid:
         query=f"""MATCH (n:{label})
-        WHERE n.uid="{uid}"
+        WHERE n.uid=$uid
         RETURN n;"""
     else:
         query=f"""MATCH (n:{label})
         RETURN n;"""
-    results, cols = db.cypher_query(query)
+    results, cols = db.cypher_query(query, {"uid": uid})
     nodes: list[OrganizationTypePy]=[]
     for row in results:
         org=OrganizationType.inflate(row[cols.index('n')])

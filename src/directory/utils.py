@@ -1118,7 +1118,7 @@ def get_uid_query(uid: str):
         MATCH (entry:Entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country),
         (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
         (entry)-[:HAS_EFFECTOR]->(e:Effector)
-        WHERE entry.uid="{uid}"
+        WHERE entry.uid=$uid
         OPTIONAL MATCH (entry)-[:MEMBER_OF]->(memberships:Entry)
         WITH *, COLLECT(memberships) AS memberships
         OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
@@ -1147,16 +1147,16 @@ def get_uid_query(uid: str):
         RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats,directories,creator_uids,owner_uids;"""
 
 def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
-    return f"""MATCH (d:Directory) WHERE d.name="{directory.name}"
+    return f"""MATCH (d:Directory) WHERE d.name=$directory
         WITH d
         MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
         WITH entry
         MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country),
         (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
         (entry)-[:HAS_EFFECTOR]->(e:Effector)
-        WHERE e.slug_fr="{effector_slug}"
-        AND f.slug="{facility_slug}"
-        AND et.slug_fr="{effector_type_slug}"
+        WHERE e.slug_fr=$effector_slug
+        AND f.slug=$facility_slug
+        AND et.slug_fr=$effector_type_slug
         OPTIONAL MATCH (entry)-[:MEMBER_OF]->(memberships:Entry)
         WITH *, COLLECT(memberships) AS memberships
         OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
@@ -1367,6 +1367,16 @@ async def async_entry_dict(results, cols) -> EntryDict:
         "owner_uids": owner_uids,
     }
 
+def entry_query_params(directory, facility_slug, effector_type_slug, effector_slug, uid) -> dict:
+    """The parameters get_uid_query and get_slug_query refer to."""
+    return {
+        "uid": uid,
+        "directory": directory.name if directory else None,
+        "facility_slug": facility_slug,
+        "effector_type_slug": effector_type_slug,
+        "effector_slug": effector_slug,
+    }
+
 def find_entry(
         directory: Directory|None = None,
         facility_slug: str|None = None,
@@ -1378,7 +1388,8 @@ def find_entry(
         query = get_uid_query(uid)
     else:
         query= get_slug_query(directory, effector_slug, effector_type_slug, facility_slug)
-    results, cols = db.cypher_query(query, resolve_objects=True)
+    params = entry_query_params(directory, facility_slug, effector_type_slug, effector_slug, uid)
+    results, cols = db.cypher_query(query, params, resolve_objects=True)
     return entry_dict(results, cols)
 
 async def async_find_entry(
@@ -1392,7 +1403,8 @@ async def async_find_entry(
         query = get_uid_query(uid)
     else:
         query = get_slug_query(directory, effector_slug, effector_type_slug, facility_slug)
-    results, cols = await adb.cypher_query(query, resolve_objects=True)
+    params = entry_query_params(directory, facility_slug, effector_type_slug, effector_slug, uid)
+    results, cols = await adb.cypher_query(query, params, resolve_objects=True)
     return await async_entry_dict(results, cols)
 
 def effector_types(directory: Directory) -> list[str]:

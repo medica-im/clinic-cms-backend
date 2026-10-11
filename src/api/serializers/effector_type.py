@@ -38,10 +38,10 @@ def get_effector_types(
         active: bool = True
     )->list[EffectorTypePy]:
     if uid:
-        query=f"""MATCH (et:EffectorType) WHERE et.uid="{uid}" OPTIONAL MATCH (et)-[:MANAGES]->(s:Situation) OPTIONAL MATCH (et)-[:MANAGES]->(n:Need) OPTIONAL MATCH (et)-[:IS_A]->(et2:EffectorType) OPTIONAL MATCH (et)-[:HAS_TAG_CATEGORY]->(tc:TagCategory) RETURN DISTINCT et,collect(DISTINCT s),collect(DISTINCT n),et2,collect(DISTINCT tc);"""
+        query=f"""MATCH (et:EffectorType) WHERE et.uid=$uid OPTIONAL MATCH (et)-[:MANAGES]->(s:Situation) OPTIONAL MATCH (et)-[:MANAGES]->(n:Need) OPTIONAL MATCH (et)-[:IS_A]->(et2:EffectorType) OPTIONAL MATCH (et)-[:HAS_TAG_CATEGORY]->(tc:TagCategory) RETURN DISTINCT et,collect(DISTINCT s),collect(DISTINCT n),et2,collect(DISTINCT tc);"""
     else:
         query=f"""MATCH (et:EffectorType) OPTIONAL MATCH (et)-[:MANAGES]->(s:Situation) OPTIONAL MATCH (et)-[:MANAGES]->(n:Need) OPTIONAL MATCH (et)-[:IS_A]->(et2:EffectorType) OPTIONAL MATCH (et)-[:HAS_TAG_CATEGORY]->(tc:TagCategory) RETURN DISTINCT et,collect(DISTINCT s),collect(DISTINCT n),et2,collect(DISTINCT tc);"""
-    q = db.cypher_query(query, resolve_objects = True)
+    q = db.cypher_query(query, {"uid": uid}, resolve_objects = True)
     nodes: list[EffectorTypePy]=[]
     for row in q[0]:
         logger.debug(f"{row=}")
