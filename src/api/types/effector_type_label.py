@@ -1,4 +1,4 @@
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel, ConfigDict, RootModel
 
 
 class GenderedLabels(BaseModel):
@@ -39,3 +39,17 @@ class EffectorTypeLabels(RootModel[dict[str, NumberedLabels]]):
     Keys are the hex form of the uid (no hyphens), matching how Neo4j node uids
     are stored and how the frontend looks them up.
     """
+
+
+class TypeLabels(BaseModel):
+    """One type's whole label set, per language: what the web UI edits.
+
+    Both languages always present, every slot null where no word is authored,
+    for the same reason as GenderedLabels. The languages are those of
+    directory.models.core.Label.Languages; any other is refused.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    fr: NumberedLabels
+    en: NumberedLabels

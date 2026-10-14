@@ -1,10 +1,18 @@
 import logging
+from typing import Annotated
 
+from asgiref.sync import sync_to_async
 from django.core.cache import cache
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from api.serializers.effector_type_labels import get_effector_type_labels
-from api.types.effector_type_label import EffectorTypeLabels
+from api.auth import JWT, authorize_api
+from api.serializers.effector_type_labels import (
+    effector_type_exists,
+    get_effector_type_labels,
+    get_type_labels,
+    set_type_labels,
+)
+from api.types.effector_type_label import EffectorTypeLabels, TypeLabels
 from api.utils import (
     DEFAULT_TTL,
     generate_cache_key,
@@ -14,6 +22,7 @@ from api.utils import (
     set_timestamp,
     strip_slash,
 )
+from directory.models.core import sync_clear_cache
 from facility.models import Organization
 
 logger = logging.getLogger(__name__)
@@ -65,3 +74,29 @@ async def effector_type_labels(request: Request) -> EffectorTypeLabels:
     await set_timestamp(endpoint, site)
 
     return labels
+
+
+async def _known_type(uid: str, request: Request, jwt: dict) -> None:
+    await authorize_api("effector-types", request, jwt)
+    if not await effector_type_exists(uid):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="EffectorType not found")
+
+
+@router.get("/effector-types/{uid}/labels")
+async def get_labels(uid: str, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> TypeLabels:
+    """One type's labels in every language, for the web UI to edit."""
+    await _known_type(uid, request, jwt)
+    return await get_type_labels(uid)
+
+
+@router.put("/effector-types/{uid}/labels")
+async def put_labels(
+    uid: str, labels: TypeLabels, request: Request, jwt: Annotated[dict, Depends(JWT)]
+) -> TypeLabels:
+    """Replace one type's labels. Labels are shared by every site, so every
+    site's cache of them is cleared, the v1 one included."""
+    await _known_type(uid, request, jwt)
+    await set_type_labels(uid, labels)
+    for endpoint in ("v1:effector_type_labels", "v2:effector-type-labels"):
+        await sync_to_async(sync_clear_cache)(endpoint)
+    return await get_type_labels(uid)

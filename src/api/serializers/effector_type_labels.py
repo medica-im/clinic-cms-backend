@@ -1,9 +1,13 @@
 import logging
 
+from asgiref.sync import sync_to_async
+from django.db import transaction
+
 from api.types.effector_type_label import (
     EffectorTypeLabels,
     GenderedLabels,
     NumberedLabels,
+    TypeLabels,
 )
 from directory.models.core import Label
 
@@ -79,3 +83,59 @@ async def get_effector_type_labels(
             setattr(slot, gender.code, row.label)
 
     return EffectorTypeLabels(labels)
+
+
+LANGUAGES = ("fr", "en")
+GENDERS = ("F", "M", "N")
+
+
+async def effector_type_exists(uid: str) -> bool:
+    from directory.models.agraph import EffectorType
+
+    return await EffectorType.nodes.get_or_none(uid=uid) is not None
+
+
+@sync_to_async
+def get_type_labels(uid: str) -> TypeLabels:
+    """Every "name" label of one type, in every language."""
+    answer = {lang: {n: {g: None for g in GENDERS} for n in NUMBERS} for lang in LANGUAGES}
+    rows = Label.objects.filter(uid=uid, term_type="name", language__in=LANGUAGES).prefetch_related("gender")
+    for row in rows:
+        if row.grammatical_number not in NUMBERS:
+            continue
+        for gender in row.gender.all():
+            if gender.code in GENDERS:
+                answer[row.language][row.grammatical_number][gender.code] = row.label
+    return TypeLabels.model_validate(answer)
+
+
+@sync_to_async
+def set_type_labels(uid: str, labels: TypeLabels) -> None:
+    """Replace one type's "name" labels with these.
+
+    A word shared by several genders is one row carrying them all, as the
+    rows written by hand always were. Blank slots are no word.
+    """
+    from accounts.models import GrammaticalGender
+
+    genders = {g.code: g for g in GrammaticalGender.objects.filter(code__in=GENDERS)}
+    missing = set(GENDERS) - set(genders)
+    if missing:
+        raise RuntimeError(f"GrammaticalGender rows missing for codes {sorted(missing)}")
+
+    with transaction.atomic():
+        Label.objects.filter(uid=uid, term_type="name").delete()
+        for lang in LANGUAGES:
+            numbered = getattr(labels, lang)
+            for number in NUMBERS:
+                slot = getattr(numbered, number)
+                codes_by_word: dict[str, list[str]] = {}
+                for code in GENDERS:
+                    word = (getattr(slot, code) or "").strip()
+                    if word:
+                        codes_by_word.setdefault(word, []).append(code)
+                for word, codes in codes_by_word.items():
+                    row = Label.objects.create(
+                        uid=uid, label=word, grammatical_number=number, language=lang, term_type="name"
+                    )
+                    row.gender.add(*(genders[c] for c in codes))
