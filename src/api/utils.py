@@ -105,7 +105,7 @@ async def clear_cache(endpoint: str, request: Request|None=None, site: Site|None
         site = await get_site_from_request(request)
         sites.append(site)
     else:
-        async for org in Organization.objects.select_related('site').filter(active=True).exclude(site__is_null=True).all():
+        async for org in Organization.objects.select_related('site').filter(active=True).exclude(site__isnull=True).all():
             site = org.site
             if site:
                 sites.append(site)
