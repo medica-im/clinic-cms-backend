@@ -230,6 +230,15 @@ def get_contact_related_neomodel(
         many: bool = True,
         first_hit = False,
     ):
+    if not many:
+        # See async_get_contact_related_neomodel.
+        for neo_entity in [entry, e, ef, f]:
+            element = get_contact_related_elements(
+                neo_entity=neo_entity, attribute=attribute, many=False
+            )
+            if element is not None:
+                return Serializer(element).data
+        return None
     elements = set()
     for neo_entity in [entry, e, ef, f]:
         new_elements = get_contact_related_elements(
@@ -268,6 +277,16 @@ async def async_get_contact_related_neomodel(
         many: bool = True,
         first_hit = False,
     ):
+    if not many:
+        # A single object (a profile): the first contact that has one, in the
+        # order entry, effector, location, facility.
+        for neo_entity in [entry, e, ef, f]:
+            element = await async_get_contact_related_elements(
+                neo_entity=neo_entity, attribute=attribute, many=False
+            )
+            if element is not None:
+                return Serializer(element).data
+        return None
     elements = set()
     for neo_entity in [entry, e, ef, f]:
         new_elements = await async_get_contact_related_elements(

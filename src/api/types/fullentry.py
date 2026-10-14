@@ -162,7 +162,7 @@ class FullEntry(BaseModel):
     #memberships: Any = Field(exclude=True)
     payment_methods: list[PaymentMethod]|None = None
     phones: list[Phone]|None = None
-    profile: str|None = None
+    profile: dict|None = None
     rpps: RPPS|None = None
     slug: str
     entrySlug: str|None = None
