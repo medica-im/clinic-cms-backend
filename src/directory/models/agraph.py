@@ -465,6 +465,14 @@ class Directory(AsyncStructuredNode):
     # Whether the owner (the organization's entry) shows in this directory's
     # lists. Absent on older nodes: queries read coalesce(..., true).
     list_owner_entry = BooleanProperty(default=True)
+    # The least role that may list this directory's entries when a site
+    # reaches it as a sibling (GET /entries?directory=); lesser callers get a
+    # 403. A site's own directory is always public. Absent on older nodes:
+    # queries read coalesce(..., 'anonymous').
+    minimum_role = StringProperty(
+        default="anonymous",
+        choices={r: r for r in ("anonymous", "staff", "administrator", "superuser")},
+    )
 
 
 class Monkey(AsyncStructuredNode):

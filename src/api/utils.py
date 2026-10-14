@@ -315,6 +315,8 @@ def scrub(entries: list[dict[str, Any]], attributes: list[str]):
         for entry in entries:
             process(entry, r, attributes)
         current_entries = filter_by_access(copy.deepcopy(entries), r)
+        if r == "anonymous":
+            current_entries = [e for e in current_entries if e.get("active") is not False]
         scrub_dct[r]=current_entries
     for r, e in scrub_dct.items():
         logger.debug(f"scrub: {r} -> {len(e)} entries")

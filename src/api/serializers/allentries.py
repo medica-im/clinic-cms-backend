@@ -6,6 +6,7 @@ from fastapi import Request, HTTPException, status
 from django.core.cache import cache
 from django.conf import settings
 from api.types.allentry import Entry
+from neomodel import adb
 from api.neo4j_auth import get_neo4j_role, normalize_neo4j_role
 from api.utils import (
     role_bearing_attributes,
@@ -236,6 +237,58 @@ async def createEntryResources(nodes: list, request):
         pass
     return data
 
+ROLE_RANK = {"anonymous": 0, "staff": 1, "administrator": 2, "superuser": 3}
+
+# The site's own directory, or a sibling owned by the same organization: the
+# rule of /directories/available.
+REACHABLE_DIRECTORY = """
+MATCH (own:Directory {name: $own})
+MATCH (d:Directory {name: $name})
+WHERE d = own OR (own)-[:OWNED_BY]->(:Entry)<-[:OWNED_BY]-(d)
+RETURN coalesce(d.minimum_role, 'anonymous')
+"""
+
+
+async def directory_access(own: str, name: str) -> str | None:
+    """The minimum role of sibling directory `name` as reached from the site's
+    own directory `own`; None when it is not reachable from there.
+
+    Cached like the entries; an unreachable name is cached as "".
+    """
+    key = f"{API_VERSION}:directory-access:{own}:{name}"
+    cached = cache.get(key)
+    if cached is None:
+        rows, _ = await adb.cypher_query(REACHABLE_DIRECTORY, {"own": own, "name": name})
+        cached = rows[0][0] if rows else ""
+        cache.set(key, cached, timeout=DEFAULT_TTL)
+    return cached or None
+
+
+async def resolve_directory(request: Request, directory_name: str|None):
+    """The directory this request lists, and the minimum role it requires.
+
+    A site's own directory is public by definition and looks nothing up.
+    Anything but it or a sibling is a 404, unknown names included."""
+    from directory.models.core import Directory
+
+    own = await get_directory(request)
+    if not directory_name or directory_name == own.name:
+        return own, "anonymous"
+    minimum_role = await directory_access(own.name, directory_name)
+    if minimum_role is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Directory not found")
+    try:
+        directory = await Directory.objects.select_related("site").aget(name=directory_name)
+    except Directory.DoesNotExist:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Directory not found")
+    return directory, minimum_role
+
+
+def may_list(role: str, minimum_role: str) -> bool:
+    """An unknown minimum role locks the directory rather than opening it."""
+    return ROLE_RANK.get(role, 0) >= ROLE_RANK.get(minimum_role, ROLE_RANK["superuser"])
+
+
 async def get_object_list(request, directory_name: str|None = None):
         if directory_name:
             from directory.models.core import Directory
@@ -272,15 +325,13 @@ def add_evil_twins(scrub_dct):
         entries.insert(0, twins[r])
 
 async def get_all_entries(request: Request, jwt, directory_name: str|None = None)->list[Entry]:
-    if directory_name:
-        from directory.models.core import Directory
-        directory = await Directory.objects.select_related("site").aget(name=directory_name)
-    else:
-        directory = await get_directory(request)
+    directory, minimum_role = await resolve_directory(request, directory_name)
     dir_name = directory.name
     raw_role = await get_neo4j_role(jwt, directory.site) or "anonymous"
     role = normalize_neo4j_role(raw_role)
     logger.debug(f"normalized role: {role}")
+    if not may_list(role, minimum_role):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This directory is reserved")
     cache_key = await generate_cache_key(
         API_VERSION,
         request,

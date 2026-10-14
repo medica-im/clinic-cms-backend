@@ -351,6 +351,34 @@ class TestEntryAccessLevel:
             assert len(filter_by_access(copy.deepcopy(entries), viewer)) == 1
 
 
+class TestInactiveEntries:
+    """The anonymous payload is embedded in every page of a site, so it never
+    carries an inactive entry. The others keep them, from the same cached
+    payload: administrators list them on /web/entries, and staff reach their
+    own from their user page, so no per-person filtering is needed."""
+
+    def entries(self) -> list[dict]:
+        active, inactive = full_entry(), full_entry()
+        active["uid"], active["active"] = "active", True
+        inactive["uid"], inactive["active"] = "inactive", False
+        return [active, inactive]
+
+    def test_anonymous_gets_no_inactive_entry(self):
+        from api.utils import scrub
+
+        scrubbed = scrub(self.entries(), attributes())
+
+        assert [e["uid"] for e in scrubbed["anonymous"]] == ["active"]
+
+    @pytest.mark.parametrize("viewer", ["staff", "administrator", "superuser"])
+    def test_the_other_roles_keep_them(self, viewer):
+        from api.utils import scrub
+
+        scrubbed = scrub(self.entries(), attributes())
+
+        assert [e["uid"] for e in scrubbed[viewer]] == ["active", "inactive"]
+
+
 class TestTheCacheIsPerRole:
     """Each role's payload is cached under its own key.
 
