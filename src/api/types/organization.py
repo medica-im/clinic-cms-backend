@@ -50,7 +50,7 @@ class LegalEntity(BaseModel):
     SIREN: str|None
     SIRET: str|None
     RCS: str|None
-    SHARE_CAPITAL: str|None
+    SHARE_CAPITAL: int|None
     VAT: str|None
 
 
