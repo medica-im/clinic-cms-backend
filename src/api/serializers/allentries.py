@@ -249,13 +249,17 @@ RETURN coalesce(d.minimum_role, 'anonymous')
 """
 
 
+def directory_access_key(own: str, name: str) -> str:
+    return f"{API_VERSION}:directory-access:{own}:{name}"
+
+
 async def directory_access(own: str, name: str) -> str | None:
     """The minimum role of sibling directory `name` as reached from the site's
     own directory `own`; None when it is not reachable from there.
 
     Cached like the entries; an unreachable name is cached as "".
     """
-    key = f"{API_VERSION}:directory-access:{own}:{name}"
+    key = directory_access_key(own, name)
     cached = cache.get(key)
     if cached is None:
         rows, _ = await adb.cypher_query(REACHABLE_DIRECTORY, {"own": own, "name": name})

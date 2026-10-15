@@ -11,6 +11,8 @@ from api.types.directory import (
     OfferedEffectorTypePost,
 )
 from api.serializers.directories import get_available_directories
+from django.core.cache import cache
+from api.serializers.allentries import directory_access_key
 from api.utils import clear_cache, get_site_from_request
 from api.neo4j_auth import get_neo4j_role
 from api.auth import JWT
@@ -36,14 +38,21 @@ WITH d, head(collect({uid: o.uid, label: ef.name_fr})) AS owner
 OPTIONAL MATCH (d)-[:OFFERS_EFFECTOR_TYPE]->(t:EffectorType)
 WITH d, owner, t ORDER BY t.name_fr
 WITH d, owner, [x IN collect({uid: t.uid, label: t.name_fr}) WHERE x.uid IS NOT NULL] AS types
-RETURN d.uid, d.name, coalesce(d.list_owner_entry, true), owner, types
+RETURN d.uid, d.name, coalesce(d.list_owner_entry, true), owner, types, coalesce(d.minimum_role, 'anonymous')
 ORDER BY d.name
 """
 
-SET_LIST_OWNER_ENTRY = """
+SET_DIRECTORY = """
 MATCH (d:Directory {uid: $uid}) WHERE d.name IN $names
-SET d.list_owner_entry = $value
+SET d.list_owner_entry = CASE WHEN $listed IS NULL THEN d.list_owner_entry ELSE $listed END,
+    d.minimum_role = CASE WHEN $role IS NULL THEN d.minimum_role ELSE $role END
 RETURN d.name
+"""
+
+# The directories that can reach this one as a sibling: same owner.
+SIBLINGS = """
+MATCH (d:Directory {name: $name})-[:OWNED_BY]->(:Entry)<-[:OWNED_BY]-(s:Directory)
+RETURN DISTINCT s.name
 """
 
 SITE_DIRECTORY = """
@@ -81,7 +90,18 @@ async def _site_directories(site) -> dict[str, str]:
     return {d.name: d.display_name async for d in Directory.objects.filter(site=site)}
 
 
-async def _settings(names: dict[str, str]) -> list[DirectorySettings]:
+async def _main_name(site) -> str | None:
+    """The site's own directory, when it has one that can be told apart."""
+    from directory.models import Directory
+    from directory.utils import async_get_directory_for_site
+    try:
+        return (await async_get_directory_for_site(site)).name
+    except (Directory.DoesNotExist, Directory.MultipleObjectsReturned):
+        return None
+
+
+async def _settings(names: dict[str, str], site) -> list[DirectorySettings]:
+    main = await _main_name(site)
     rows, _ = await adb.cypher_query(DIRECTORIES_QUERY, {"names": list(names)}, resolve_objects=False)
     return [
         DirectorySettings(
@@ -91,8 +111,10 @@ async def _settings(names: dict[str, str]) -> list[DirectorySettings]:
             owner=DirectoryOwner(**owner) if owner and owner.get("uid") else None,
             list_owner_entry=listed,
             effector_types=[OfferedEffectorType(**t) for t in types],
+            main=name == main,
+            minimum_role=minimum_role,
         )
-        for uid, name, listed, owner, types in rows
+        for uid, name, listed, owner, types, minimum_role in rows
     ]
 
 
@@ -105,13 +127,13 @@ async def _one_of_this_site(uid: str, site) -> tuple[str, dict[str, str]]:
     return rows[0][0], names
 
 
-async def _settings_of(name: str, names: dict[str, str]) -> DirectorySettings:
-    return (await _settings({name: names[name]}))[0]
+async def _settings_of(name: str, names: dict[str, str], site) -> DirectorySettings:
+    return (await _settings({name: names[name]}, site))[0]
 
 
 @router.get("/directories")
 async def directories(site: Annotated[object, Depends(require_types_editor)]) -> list[DirectorySettings]:
-    return await _settings(await _site_directories(site))
+    return await _settings(await _site_directories(site), site)
 
 
 @router.patch("/directories/{uid}")
@@ -120,19 +142,25 @@ async def update_directory(
     body: DirectorySettingsUpdate,
     site: Annotated[object, Depends(require_superuser)],
 ) -> DirectorySettings:
-    names = await _site_directories(site)
-    rows, _ = await adb.cypher_query(
-        SET_LIST_OWNER_ENTRY,
-        {"uid": uid, "names": list(names), "value": body.list_owner_entry},
+    name, names = await _one_of_this_site(uid, site)
+    if body.minimum_role is not None and name == await _main_name(site):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A site's own directory is always public",
+        )
+    await adb.cypher_query(
+        SET_DIRECTORY,
+        {"uid": uid, "names": list(names), "listed": body.list_owner_entry, "role": body.minimum_role},
         resolve_objects=False,
     )
-    if not rows:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    # Both lists filter on the switch; site= always, see clear_cache.
-    await clear_cache("v2:entries", site=site)
-    await clear_cache("v2:public/facilities", site=site)
-    name = rows[0][0]
-    return await _settings_of(name, names)
+    if body.list_owner_entry is not None:
+        # Both lists filter on the switch; site= always, see clear_cache.
+        await clear_cache("v2:entries", site=site)
+        await clear_cache("v2:public/facilities", site=site)
+    if body.minimum_role is not None:
+        rows, _ = await adb.cypher_query(SIBLINGS, {"name": name}, resolve_objects=False)
+        cache.delete_many([directory_access_key(own, name) for own in {name, *(r[0] for r in rows)}])
+    return await _settings_of(name, names, site)
 
 
 # One type at a time, never "replace with this set": two administrators
@@ -147,7 +175,7 @@ async def offer_effector_type(
     name, names = await _one_of_this_site(uid, site)
     if not await offer(name, body.effector_type):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unknown effector type")
-    return await _settings_of(name, names)
+    return await _settings_of(name, names, site)
 
 
 @router.delete("/directories/{uid}/effector-types/{type_uid}")
@@ -158,7 +186,7 @@ async def withdraw_effector_type(
 ) -> DirectorySettings:
     name, names = await _one_of_this_site(uid, site)
     await withdraw(name, type_uid)
-    return await _settings_of(name, names)
+    return await _settings_of(name, names, site)
 
 
 @router.delete("/directories/{uid}/effector-types")
@@ -169,4 +197,4 @@ async def withdraw_all_effector_types(
     """Back to the default: every type offered."""
     name, names = await _one_of_this_site(uid, site)
     await withdraw_all(name)
-    return await _settings_of(name, names)
+    return await _settings_of(name, names, site)
