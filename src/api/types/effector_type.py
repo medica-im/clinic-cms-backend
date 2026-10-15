@@ -22,6 +22,8 @@ class EffectorTypePost(BaseModel):
     unique_ID: str|None = None
     isRPPS: bool = False
     effector_type_uid: str|None = None
+    # False: a category that only groups other types; entries never have it.
+    assignable: bool = True
 
 
 class EffectorTypePatch(BaseModel):
@@ -41,6 +43,7 @@ class EffectorTypePatch(BaseModel):
     unique_ID: str|None = None
     isRPPS: bool|None = None
     effector_type_uid: str|None = None
+    assignable: bool|None = None
 
 
 class EffectorType(BaseModel):
@@ -61,6 +64,7 @@ class EffectorType(BaseModel):
     effector_type_label_fr: str|None = None
     isHCW: bool = False
     isRPPS: bool = False
+    assignable: bool = True
     need: Annotated[list[NeedPy]|None, Field(exclude=True)] = None
     situation: Annotated[list[SituationPy]|None, Field(exclude=True)] = None
     concept_fr: str|None = None

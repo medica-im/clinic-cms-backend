@@ -73,6 +73,9 @@ class EffectorType(StructuredNode):
     definition_fr = StringProperty()
     definition_en = StringProperty()
     unique_ID = StringProperty(unique_index=True)
+    # False: a category that only groups other types; entries never have it.
+    # Absent on older nodes, which entries may have: read as true.
+    assignable = BooleanProperty(default=True)
     need = RelationshipTo('Need', 'MANAGES')
     situation = RelationshipTo('Situation', 'MANAGES')
     effector_type = RelationshipTo(

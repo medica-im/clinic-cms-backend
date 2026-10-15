@@ -71,6 +71,9 @@ class EffectorType(AsyncStructuredNode):
     definition_fr = StringProperty()
     definition_en = StringProperty()
     unique_ID = StringProperty(unique_index=True)
+    # False: a category that only groups other types; entries never have it.
+    # Absent on older nodes, which entries may have: read as true.
+    assignable = BooleanProperty(default=True)
     need = AsyncRelationshipTo('Need', 'MANAGES')
     situation = AsyncRelationshipTo('Situation', 'MANAGES')
     effector_type = AsyncRelationshipTo(
