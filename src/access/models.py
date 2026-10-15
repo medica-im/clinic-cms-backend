@@ -115,3 +115,31 @@ class BatchInviteeJob(models.Model):
 
     def __str__(self):
         return f"BatchInviteeJob {self.uid} ({self.status})"
+
+class ConsoleToken(models.Model):
+    """A bearer token the console presents to this backend, standing for one
+    account (the Neo4j Account `sub`). Only its SHA-256 is stored."""
+    PREFIX = "console_"
+
+    label = models.CharField(max_length=255)
+    token_hash = models.CharField(max_length=64, unique=True)
+    sub = models.CharField(max_length=255)
+    created = models.DateTimeField(auto_now_add=True)
+    last_used = models.DateTimeField(null=True, blank=True)
+    revoked = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.label} ({'revoked' if self.revoked else 'live'})"
+
+    @staticmethod
+    def digest(raw: str) -> str:
+        import hashlib
+        return hashlib.sha256(raw.encode()).hexdigest()
+
+    @classmethod
+    def issue(cls, label: str, sub: str) -> str:
+        """Create a token and return it: the only time it can be read."""
+        import secrets
+        raw = cls.PREFIX + secrets.token_urlsafe(32)
+        cls.objects.create(label=label, token_hash=cls.digest(raw), sub=sub)
+        return raw

@@ -12,8 +12,43 @@ from access.asyncneomodels import User as Neo4jUser
 logger = logging.getLogger(__name__)
 
 auth_secret=os.getenv("AUTH_SECRET")
+
+SESSION_COOKIES = ("__Secure-authjs.session-token", "authjs.session-token")
+
+
+def console_identity(request: Request) -> dict | None:
+    """The account a console token stands for; None without one.
+
+    A console token that is revoked or unknown is a 401, not anonymous: a
+    caller who meant to authenticate and failed should be told."""
+    from django.utils import timezone
+
+    from access.models import ConsoleToken
+
+    header = request.headers.get("authorization") or ""
+    scheme, _, raw = header.partition(" ")
+    if scheme.lower() != "bearer" or not raw.startswith(ConsoleToken.PREFIX):
+        return None
+    token = ConsoleToken.objects.filter(token_hash=ConsoleToken.digest(raw), revoked=False).first()
+    if token is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid console token")
+    ConsoleToken.objects.filter(pk=token.pk).update(last_used=timezone.now())
+    return {"providerAccountId": token.sub, "email": ""}
+
+
+class ConsoleAwareJWT(NextAuthJWT):
+    """The session cookie's identity, or else a console token's."""
+
+    def __call__(self, req: Request):
+        if not any(req.cookies.get(name) for name in SESSION_COOKIES):
+            identity = console_identity(req)
+            if identity:
+                return identity
+        return super().__call__(req)
+
+
 if auth_secret:
-    JWT = NextAuthJWT(
+    JWT = ConsoleAwareJWT(
         secret=auth_secret,
         csrf_prevention_enabled=False
     )
@@ -179,7 +214,7 @@ def check_cookie_jwt(request: Request):
     logger.debug(f"{http_cookie=}")
     if  http_cookie or https_cookie:
         return JWT(request)
-    return clone_token_jwt(request)
+    return console_identity(request) or clone_token_jwt(request)
 
 
 def clone_token_jwt(request: Request):
