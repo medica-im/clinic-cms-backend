@@ -71,6 +71,9 @@ class EffectorType(AsyncStructuredNode):
     definition_fr = StringProperty()
     definition_en = StringProperty()
     unique_ID = StringProperty(unique_index=True)
+    # The MeSH concept's names; any type with a MeSH id has them, not only HCW.
+    concept_en = StringProperty(unique_index=True)
+    concept_fr = StringProperty(unique_index=True)
     # False: a category that only groups other types; entries never have it.
     # Absent on older nodes, which entries may have: read as true.
     assignable = BooleanProperty(default=True)
@@ -87,8 +90,6 @@ class EffectorType(AsyncStructuredNode):
 
 
 class HCW(EffectorType):
-    concept_en = StringProperty(unique_index=True)
-    concept_fr = StringProperty(unique_index=True)
     hcw = AsyncRelationshipTo('HCW', 'IS_A')
 
 
