@@ -73,14 +73,19 @@ def make_label(uid, gender, number, label, language=LANGUAGE, term_type=TERM_TYP
     return row
 
 
+def labels_in(language=LANGUAGE, term_type=TERM_TYPE) -> dict:
+    from asgiref.sync import async_to_sync
+    from api.serializers.effector_type_labels import get_effector_type_labels
+
+    return async_to_sync(get_effector_type_labels)(language, term_type).model_dump()
+
+
 class TestTheLabelDictionary:
     def test_a_label_lands_under_its_number_and_gender(self, genders):
-        from directory.views import get_effector_type_labels
-
         uid = uuid.uuid4()
         make_label(uid, genders["feminine"], "S", "infirmière")
 
-        dictionary = get_effector_type_labels(LANGUAGE, TERM_TYPE)
+        dictionary = labels_in()
 
         assert dictionary[uid.hex]["S"]["F"] == "infirmière"
 
@@ -90,12 +95,10 @@ class TestTheLabelDictionary:
         One authored label must not leave the other five slots missing: it
         leaves them None.
         """
-        from directory.views import get_effector_type_labels
-
         uid = uuid.uuid4()
         make_label(uid, genders["feminine"], "S", "infirmière")
 
-        entry = get_effector_type_labels(LANGUAGE, TERM_TYPE)[uid.hex]
+        entry = labels_in()[uid.hex]
 
         assert set(entry) == {"S", "P"}
         for number in ("S", "P"):
@@ -104,13 +107,11 @@ class TestTheLabelDictionary:
         assert entry["P"]["F"] is None
 
     def test_singular_and_plural_are_kept_apart(self, genders):
-        from directory.views import get_effector_type_labels
-
         uid = uuid.uuid4()
         make_label(uid, genders["masculine"], "S", "infirmier")
         make_label(uid, genders["masculine"], "P", "infirmiers")
 
-        entry = get_effector_type_labels(LANGUAGE, TERM_TYPE)[uid.hex]
+        entry = labels_in()[uid.hex]
 
         assert entry["S"]["M"] == "infirmier"
         assert entry["P"]["M"] == "infirmiers"
@@ -120,12 +121,10 @@ class TestTheLabelDictionary:
 
         A UUIDField renders with hyphens under str(); the dictionary must not.
         """
-        from directory.views import get_effector_type_labels
-
         uid = uuid.uuid4()
         make_label(uid, genders["neutral"], "S", "CPTS")
 
-        keys = get_effector_type_labels(LANGUAGE, TERM_TYPE)
+        keys = labels_in()
 
         assert uid.hex in keys
         assert str(uid) not in keys
@@ -133,12 +132,10 @@ class TestTheLabelDictionary:
 
     def test_another_language_is_not_mixed_in(self, genders):
         """One dictionary is built per language; rows in another must not leak."""
-        from directory.views import get_effector_type_labels
-
         uid = uuid.uuid4()
         make_label(uid, genders["neutral"], "S", "nurse", language="en")
 
-        dictionary = get_effector_type_labels(LANGUAGE, TERM_TYPE)
+        dictionary = labels_in()
 
         # The uid still keys the dictionary — it comes from the term_type
         # filter, which ignores language — but the English label must not fill
@@ -147,136 +144,47 @@ class TestTheLabelDictionary:
 
     def test_another_term_type_is_not_listed_at_all(self, genders):
         """Unlike language, term_type decides which uids appear as keys."""
-        from directory.views import get_effector_type_labels
-
         uid = uuid.uuid4()
         make_label(uid, genders["neutral"], "S", "CPTS", term_type="label")
 
-        assert uid.hex not in get_effector_type_labels(LANGUAGE, TERM_TYPE)
-
-
-class TestTheTTLLookup:
-    def test_a_site_with_no_row_falls_back_rather_than_raising(self, site, rf):
-        """Pins the behaviour the dead `except TTL.DoesNotExist` implies.
-
-        `.first()` returns None for a site with no TTL row, so the except
-        branch that used to sit below it was unreachable and the function
-        returns None — which the caller reads as "use the default". That was
-        silent until get_ttl gained the warning its async twin already had; the
-        return value is the contract either way, and this fails if someone
-        makes the lookup raise instead.
-        """
-        from directory.utils import get_ttl
-
-        request = rf.get("/")
-        assert get_ttl("v1:effector_type_labels", request) is None
-
-    def test_a_zero_row_is_returned_as_zero(self, site, rf):
-        """0 means "do not cache", and must survive the lookup intact.
-
-        The distinction only matters because the caller has to tell it apart
-        from None; see TestZeroReachesTheCache below for the half that used to
-        get this wrong.
-        """
-        from directory.models.api import Endpoint, TTL
-        from directory.utils import get_ttl
-
-        endpoint, _ = Endpoint.objects.get_or_create(name="v1:effector_type_labels")
-        TTL.objects.update_or_create(
-            endpoint=endpoint, site=site, defaults={"ttl": 0}
-        )
-
-        request = rf.get("/")
-        assert get_ttl("v1:effector_type_labels", request) == 0
+        assert uid.hex not in labels_in()
 
 
 class TestZeroReachesTheCache:
     """A TTL of 0 must arrive at cache.set as 0, not as the default.
 
-    The endpoint read `get_ttl(...) or TTL`, and 0 is falsy in Python: a row
-    saying "never cache this" was silently rewritten to 60 seconds. The async
-    call sites already routed through resolve_ttl for exactly this reason
-    (test_cache_ttl.TestZeroIsNotMissing pins the helper itself); this one was
-    the last holdout, and nothing asserted on what the view actually passed
-    down.
-
-    So this test watches the boundary — the timeout handed to cache.set —
-    rather than the helper, because that is where the bug was visible.
+    The v1 view read `get_ttl(...) or TTL`, and 0 is falsy in Python: a row
+    saying "never cache this" was silently rewritten to 60 seconds. resolve_ttl
+    exists for exactly this (test_cache_ttl.TestZeroIsNotMissing pins the
+    helper itself); these watch the boundary — the timeout the endpoint hands
+    to cache.set — because that is where the bug was visible.
     """
 
-    def test_a_zero_ttl_is_not_replaced_by_the_default(self, site, genders, rf, monkeypatch):
+    @pytest.fixture
+    def timeouts(self, monkeypatch):
+        from django.core.cache import cache
+
+        recorded = []
+        monkeypatch.setattr(cache, "get", lambda key, default=None: None)
+        monkeypatch.setattr(cache, "set", lambda key, value, timeout=None: recorded.append(timeout))
+        return recorded
+
+    def test_a_zero_ttl_is_not_replaced_by_the_default(self, directory_site, genders, timeouts):
         from directory.models.api import Endpoint, TTL
-        from directory import views
 
-        endpoint, _ = Endpoint.objects.get_or_create(name="v1:effector_type_labels")
-        TTL.objects.update_or_create(
-            endpoint=endpoint, site=site, defaults={"ttl": 0}
-        )
+        endpoint, _ = Endpoint.objects.get_or_create(name="v2:effector-type-labels")
+        TTL.objects.update_or_create(endpoint=endpoint, site=directory_site, defaults={"ttl": 0})
 
-        recorded = {}
+        get_v2()
 
-        def fake_set(key, value, timeout=None):
-            recorded["timeout"] = timeout
+        assert timeouts == [0]
 
-        monkeypatch.setattr(views.cache, "get", lambda key: None)
-        monkeypatch.setattr(views.cache, "set", fake_set)
-        # The view resolves the language through the Directory's Organization;
-        # this test is about the timeout, so the graph walk is stubbed out.
-        monkeypatch.setattr(
-            views, "get_directory", lambda request: _FakeDirectory(site)
-        )
-        monkeypatch.setattr(views, "sync_set_timestamp", lambda endpoint, site: None)
+    def test_an_absent_row_still_falls_back_to_the_default(self, directory_site, genders, timeouts):
+        from api.routers.effector_type_labels import TTL
 
-        # DRF sets self.request during dispatch; calling get() directly means
-        # setting it here, since the view reads it for the directory lookup.
-        view = views.EffectorTypeLabel()
-        request = rf.get("/")
-        view.request = request
-        view.get(request)
+        get_v2()
 
-        assert recorded["timeout"] == 0
-
-    def test_an_absent_row_still_falls_back_to_the_default(self, site, genders, rf, monkeypatch):
-        """The other half: None must still become the module default."""
-        from directory import views
-
-        recorded = {}
-
-        def fake_set(key, value, timeout=None):
-            recorded["timeout"] = timeout
-
-        monkeypatch.setattr(views.cache, "get", lambda key: None)
-        monkeypatch.setattr(views.cache, "set", fake_set)
-        monkeypatch.setattr(
-            views, "get_directory", lambda request: _FakeDirectory(site)
-        )
-        monkeypatch.setattr(views, "sync_set_timestamp", lambda endpoint, site: None)
-
-        # DRF sets self.request during dispatch; calling get() directly means
-        # setting it here, since the view reads it for the directory lookup.
-        view = views.EffectorTypeLabel()
-        request = rf.get("/")
-        view.request = request
-        view.get(request)
-
-        assert recorded["timeout"] == views.TTL
-
-
-class _FakeOrganization:
-    language = LANGUAGE
-
-
-class _FakeSite:
-    def __init__(self, site):
-        self.organization = _FakeOrganization()
-        self._site = site
-
-
-class _FakeDirectory:
-    """Stands in for the Directory → Site → Organization walk the view makes."""
-
-    def __init__(self, site):
-        self.site = _FakeSite(site)
+        assert timeouts == [TTL]
 
 
 # ---------------------------------------------------------------------------
@@ -288,19 +196,10 @@ class _FakeDirectory:
 # builder and the response can diverge: None has to arrive as null, uid keys
 # have to survive as strings, and a caching layer sits between the two.
 #
-# The v1 Django endpoint is being replaced by a v2 FastAPI router, and the
-# whole point of the move is that the body does not change. So these tests are
-# written against an `api` fixture rather than a URL, and parametrised over
-# every implementation that claims to serve this resource: whatever passes here
-# is answering identically. When v1 is deleted, its entry in IMPLEMENTATIONS
-# goes with it and the assertions stay exactly as they are.
+# The v1 Django endpoint this replaced is gone; these assertions, written to
+# hold for both while they coexisted, now hold the v2 router to the same body.
 
-V1_URL = "/api/v1/directory/effector_type_labels/"
-# The v2 route that replaced v1. Both are listed while v1 survives, so any
-# divergence between them fails as a divergence.
 V2_URL = "/api/v2/effector-type-labels"
-
-IMPLEMENTATIONS = ["v1", "v2"]
 
 
 @pytest.fixture
@@ -342,19 +241,19 @@ def no_cache(monkeypatch):
     The view returns a cached body verbatim when one exists, so without this a
     dict cached by an earlier test would be asserted against this test's rows.
     """
-    from directory import views
+    from django.core.cache import cache
 
-    monkeypatch.setattr(views.cache, "get", lambda key: None)
-    monkeypatch.setattr(views.cache, "set", lambda key, value, timeout=None: None)
+    monkeypatch.setattr(cache, "get", lambda key, default=None: None)
+    monkeypatch.setattr(cache, "set", lambda key, value, timeout=None: None)
 
 
 class _Response:
-    """The two clients' responses, reduced to what these tests assert on."""
+    """The response, reduced to what these tests assert on."""
 
-    def __init__(self, status_code, content_type, content):
-        self.status_code = status_code
-        self.content_type = content_type
-        self.content = content
+    def __init__(self, response):
+        self.status_code = response.status_code
+        self.content_type = response.headers.get("content-type", "")
+        self.content = response.content
 
     def json(self):
         import json
@@ -362,50 +261,10 @@ class _Response:
         return json.loads(self.content)
 
 
-@pytest.fixture(params=IMPLEMENTATIONS)
-def api(request, directory_site, no_cache, genders):
-    """Fetches the label resource from one implementation.
-
-    Parametrised, so every test below runs once per implementation and any
-    difference between them fails as a difference — which is the only thing
-    that makes "the JSON response remains the same" a testable claim rather
-    than a hope.
-    """
-    if request.param == "v1":
-        django_client = request.getfixturevalue("client")
-
-        def fetch():
-            response = django_client.get(V1_URL)
-            return _Response(
-                response.status_code, response["Content-Type"], response.content
-            )
-
-        return fetch
-
-    # v2: the FastAPI app, driven in-process on the versioned path the
-    # frontend calls. Sync wrapper so these tests stay ordinary functions.
-    def fetch():
-        import asyncio
-
-        async def _get():
-            from httpx import AsyncClient
-            from tests.api.conftest import _StripPrefixTransport
-            from main import app
-
-            transport = _StripPrefixTransport(app=app)
-            async with AsyncClient(
-                transport=transport, base_url="http://testserver"
-            ) as ac:
-                return await ac.get(V2_URL)
-
-        response = asyncio.run(_get())
-        return _Response(
-            response.status_code,
-            response.headers.get("content-type", ""),
-            response.content,
-        )
-
-    return fetch
+@pytest.fixture
+def api(directory_site, no_cache, genders):
+    """Fetches the label resource from the v2 router, as the frontend does."""
+    return lambda: _Response(get_v2())
 
 
 class TestTheJSONResponse:
@@ -512,3 +371,112 @@ class TestTheJSONResponse:
         body = api().json()
 
         assert body == {}
+
+
+# ---------------------------------------------------------------------------
+# One answer per language
+# ---------------------------------------------------------------------------
+#
+# Labels belong to the whole backend; a site only decides which language it is
+# answered in. So the dictionary is built and cached once per language, and
+# `?language=` asks for one by name: the console reads each language in one
+# request instead of type by type (115 requests per backend, which staging's
+# rate limit refused). Every write to labels clears every language, in both
+# API versions.
+
+
+def get_v2(params=None):
+    import asyncio
+
+    async def _get():
+        from httpx import AsyncClient
+        from tests.api.conftest import _StripPrefixTransport
+        from main import app
+
+        async with AsyncClient(
+            transport=_StripPrefixTransport(app=app), base_url="http://testserver"
+        ) as ac:
+            return await ac.get(V2_URL, params=params)
+
+    return asyncio.run(_get())
+
+
+@pytest.fixture
+def own_cache(monkeypatch):
+    """A cache of the test's own.
+
+    The per-language keys are the dev backend's too (tests share its Redis):
+    a test must never leave its rows where the dev sites read them.
+    """
+    from django.core.cache import cache
+
+    store = {}
+    monkeypatch.setattr(cache, "get", lambda key, default=None: store.get(key, default))
+    monkeypatch.setattr(cache, "set", lambda key, value, timeout=None: store.__setitem__(key, value))
+    monkeypatch.setattr(cache, "delete", lambda key: store.pop(key, None) is not None)
+    monkeypatch.setattr(cache, "delete_many", lambda keys: [store.pop(k, None) for k in keys])
+    return store
+
+
+LABEL_CACHE_KEYS = {f"v2:effector-type-labels:{language}" for language in ("fr", "en")}
+
+
+class TestOneAnswerPerLanguage:
+    def test_a_language_asked_for_is_answered_in_it(self, directory_site, own_cache, genders):
+        uid = uuid.uuid4()
+        make_label(uid, genders["feminine"], "S", "infirmière")
+        make_label(uid, genders["feminine"], "S", "nurse", language="en")
+
+        assert get_v2({"language": "en"}).json()[uid.hex]["S"]["F"] == "nurse"
+
+    def test_a_site_is_answered_in_its_own_language(self, directory_site, own_cache, genders):
+        uid = uuid.uuid4()
+        make_label(uid, genders["feminine"], "S", "infirmière")
+        make_label(uid, genders["feminine"], "S", "nurse", language="en")
+
+        assert get_v2().json()[uid.hex]["S"]["F"] == "infirmière"
+
+    def test_it_is_cached_once_per_language_not_per_site(self, directory_site, own_cache, genders):
+        make_label(uuid.uuid4(), genders["neutral"], "S", "pharmacie")
+
+        get_v2()
+        get_v2({"language": "en"})
+
+        assert set(own_cache) == {"v2:effector-type-labels:fr", "v2:effector-type-labels:en"}
+
+    def test_a_site_and_a_language_asked_for_share_one_answer(self, directory_site, own_cache, genders):
+        make_label(uuid.uuid4(), genders["neutral"], "S", "pharmacie")
+        cached_by_the_site = get_v2().json()
+
+        assert get_v2({"language": "fr"}).json() == cached_by_the_site
+        assert list(own_cache) == ["v2:effector-type-labels:fr"]
+
+    def test_an_unknown_language_is_refused(self, directory_site, own_cache):
+        assert get_v2({"language": "xx"}).status_code == 422
+
+
+@pytest.fixture
+def every_language_cached(own_cache):
+    for key in LABEL_CACHE_KEYS:
+        own_cache[key] = {"stale": True}
+    return own_cache
+
+
+class TestEveryWriteClearsEveryLanguage:
+    def test_saving_a_label(self, every_language_cached, genders):
+        make_label(uuid.uuid4(), genders["neutral"], "S", "pharmacie")
+
+        assert not LABEL_CACHE_KEYS & set(every_language_cached)
+
+    def test_the_clear_all_cache_command(self, every_language_cached):
+        from django.core.management import call_command
+
+        call_command("clear_all_cache")
+
+        assert not LABEL_CACHE_KEYS & set(every_language_cached)
+
+    def test_the_create_effector_type_command(self):
+        import inspect
+        from directory.management.commands import create_effector_type
+
+        assert "sync_clear_effector_type_labels_cache" in inspect.getsource(create_effector_type)

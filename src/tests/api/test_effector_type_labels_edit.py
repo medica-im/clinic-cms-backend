@@ -59,8 +59,8 @@ def known_type():
 def cleared():
     calls: list[str] = []
     with patch(
-        "api.routers.effector_type_labels.sync_clear_cache",
-        lambda endpoint, **_: calls.append(endpoint),
+        "api.routers.effector_type_labels.sync_clear_effector_type_labels_cache",
+        lambda: calls.append("every language"),
     ):
         yield calls
 
@@ -132,10 +132,10 @@ class TestSaving:
 
         assert (await get_effector_type_labels("fr")).model_dump()[UID] == OSTEOPATH["fr"]
 
-    async def test_it_clears_both_label_caches(self, editing, cleared):
+    async def test_it_clears_every_languages_cached_labels(self, editing, cleared):
         await editing.put(URL, json=OSTEOPATH)
 
-        assert set(cleared) == {"v1:effector_type_labels", "v2:effector-type-labels"}
+        assert cleared == ["every language"]
 
 
 class TestRefusals:

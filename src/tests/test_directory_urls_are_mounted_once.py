@@ -12,7 +12,7 @@ from django.urls import Resolver404, resolve
 
 pytestmark = pytest.mark.no_db
 
-VIEWS = ["", "effector_type_labels/", "timestamps"]
+VIEWS = ["", "timestamps"]
 
 
 @pytest.mark.parametrize("view", VIEWS)

@@ -1,4 +1,9 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, RootModel
+
+# The languages of directory.models.core.Label.Languages.
+Language = Literal["fr", "en"]
 
 
 class GenderedLabels(BaseModel):

@@ -12,10 +12,6 @@ urlpatterns = [
         views.DirectoryView.as_view(),
     ),
     path(
-        'effector_type_labels/',
-        views.EffectorTypeLabel.as_view(),
-    ),
-    path(
         'timestamps',
         views.TimestampView.as_view(),
     ),

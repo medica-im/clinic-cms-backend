@@ -31,7 +31,7 @@ from api.types.clone import (
 from asgiref.sync import sync_to_async
 
 from api.utils import clear_cache, get_directory, get_site_from_request
-from directory.models.core import sync_clear_cache
+from directory.models.core import sync_clear_effector_type_labels_cache
 from directory.models import PeerInstance
 from facility.models import Organization
 
@@ -303,10 +303,5 @@ async def execute_clone(body: ExecuteRequest, request: Request,
         # new profession has no label and the group is simply absent from the
         # page, while the entry itself is present everywhere else — which is a
         # confusing way to find out a cache was missed.
-        await clear_cache("v2:effector-type-labels", request)
-        # The v1 twin, which the DRF endpoint serves under a language key rather
-        # than a site one, so clear_cache's site fan-out does not reach it.
-        await sync_to_async(sync_clear_cache)(
-            "v1:effector_type_labels", key="v1:effector_type_labels:fr"
-        )
+        await sync_to_async(sync_clear_effector_type_labels_cache)()
     return ExecuteResponse(results=results)

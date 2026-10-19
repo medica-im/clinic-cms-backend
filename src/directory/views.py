@@ -1,6 +1,5 @@
 import logging
 import json
-from common.utils import timeit
 from django.contrib.sites.shortcuts import get_current_site
 from rest_framework import viewsets
 from rest_framework.views import APIView
@@ -13,21 +12,10 @@ from backend.i18n import activate_locale
 from directory.models import Effector, Directory, Timestamp
 from directory import serializers
 from django.http import Http404
-from django.core.cache import cache
 
-from accounts.models import GrammaticalGender
-from directory.models.core import Label
-
-from directory.utils import (
-    get_directory,
-    get_ttl,
-    resolve_ttl,
-)
-from directory.models.core import sync_set_timestamp
+from directory.utils import get_directory
 
 logger = logging.getLogger(__name__)
-
-TTL: int = 60
 
 from rest_framework.decorators import api_view
 
@@ -71,73 +59,3 @@ class DirectoryView(RetrieveAPIView):
         except Directory.DoesNotExist:
             raise NotFound(detail="Directory not found.", code="not_found")
 
-
-def get_effector_type_labels(language: str, term_type: str):
-    dictionary = {}
-    node_label_set = set([uid.hex for uid in Label.objects.filter(term_type=term_type).values_list("uid", flat=True)])
-    for uid in node_label_set:
-        dictionary[uid] = {
-            "S": {
-                "F": None,
-                "M": None,
-                "N": None,
-            },
-            "P": {
-                "F": None,
-                "M": None,
-                "N": None,
-            }
-        }
-        try:
-            F = GrammaticalGender.objects.get(name="feminine")
-            M = GrammaticalGender.objects.get(name="masculine")
-            N = GrammaticalGender.objects.get(name="neutral")
-        except GrammaticalGender.DoesNotExist as e:
-            logger.error(f"Missing GrammaticalGender object: {e}")
-        for Num in ["S", "P"]:
-            for G in [F, M, N]:
-                try:
-                    l = Label.objects.get(
-                        uid=uid,
-                        gender=G,
-                        grammatical_number=Num,
-                        language=language,
-                        term_type=term_type,
-                    )
-                    dictionary[uid][Num][G.code]=l.label
-                except Label.DoesNotExist:
-                    continue
-    return dictionary
-
-
-class EffectorTypeLabel(APIView):
-    """
-    Return a dictionary of all labels.
-    """
-    @timeit
-    def get(self, request, format=None):
-        """
-        Return a dictionary of all labels.
-        """
-        logger.debug(f"EffectorTypeLabel get {self.request=}")
-        directory = get_directory(self.request)
-        language = directory.site.organization.language
-        endpoint = f"v1:effector_type_labels"
-        cache_key= f"{endpoint}:{language}"
-        cached = cache.get(cache_key)
-        if cached:
-            logger.debug(f"*** Using cache with key {cache_key} ***")
-            return Response(cached)
-        else:
-            logger.debug(f"cache for key '{cache_key}' is *** EMPTY ***")
-            value = get_effector_type_labels(language, "name")
-            timeout = resolve_ttl(get_ttl(endpoint, request), TTL)
-            logger.debug(f"{timeout=}")
-            cache.set(
-                cache_key,
-                value,
-                timeout=timeout
-            )
-            site=get_current_site(request)
-            sync_set_timestamp(endpoint, site)
-            return Response(value)

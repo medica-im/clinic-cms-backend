@@ -15,8 +15,8 @@ from directory.models import (
     OrganizationType,
     Facility,
     Website,
-    sync_clear_cache
 )
+from directory.models.core import sync_clear_effector_type_labels_cache
 from addressbook.models import Contact
 from access.models import Role
 
@@ -139,4 +139,4 @@ class Command(BaseCommand):
         self.warn(
             msg
         )
-        sync_clear_cache("v1:effector_type_labels", key="v1:effector_type_labels:fr")
+        sync_clear_effector_type_labels_cache()

@@ -36,6 +36,16 @@ def sync_clear_all_cache():
         endpoints.add(ts.endpoint.name)
     for endpoint in endpoints:
         sync_clear_cache(endpoint)
+    sync_clear_effector_type_labels_cache()
+
+
+def effector_type_labels_cache_key(language: str) -> str:
+    """Labels belong to the whole backend: one cached answer per language."""
+    return f"v2:effector-type-labels:{language}"
+
+
+def sync_clear_effector_type_labels_cache():
+    cache.delete_many([effector_type_labels_cache_key(language) for language in Label.Languages.values])
 
 def sync_clear_cache(endpoint: str, key: str|None=None, site=None):
     sites: list[Site|RequestSite] = []
@@ -349,7 +359,7 @@ class Label(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        sync_clear_cache("v1:effector_type_labels", key="v1:effector_type_labels:fr")
+        sync_clear_effector_type_labels_cache()
 
     class Meta:
         constraints = [

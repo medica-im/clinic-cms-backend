@@ -12,17 +12,18 @@ from api.serializers.effector_type_labels import (
     get_type_labels,
     set_type_labels,
 )
-from api.types.effector_type_label import EffectorTypeLabels, TypeLabels
+from api.types.effector_type_label import EffectorTypeLabels, Language, TypeLabels
 from api.utils import (
     DEFAULT_TTL,
-    generate_cache_key,
     get_site_from_request,
     get_ttl,
     resolve_ttl,
     set_timestamp,
-    strip_slash,
 )
-from directory.models.core import sync_clear_cache
+from directory.models.core import (
+    effector_type_labels_cache_key,
+    sync_clear_effector_type_labels_cache,
+)
 from facility.models import Organization
 
 logger = logging.getLogger(__name__)
@@ -33,46 +34,48 @@ API_VERSION = "v2"
 TTL = DEFAULT_TTL
 
 
+ENDPOINT = f"{API_VERSION}:effector-type-labels"
+
+
+async def site_language(request: Request) -> str:
+    try:
+        organization = await Organization.objects.only("language").aget(
+            site__domain=request.url.hostname
+        )
+    except Organization.DoesNotExist:
+        logger.error(f"No organization for the site {request.url.hostname}.")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    return organization.language
+
+
 @router.get("/effector-type-labels")
-async def effector_type_labels(request: Request) -> EffectorTypeLabels:
-    """Effector-type labels for the requesting site's language.
+async def effector_type_labels(request: Request, language: Language | None = None) -> EffectorTypeLabels:
+    """Effector-type labels in one language: the one asked for, else the
+    requesting site's.
 
-    The v2 home of /api/v1/directory/effector_type_labels/, which this replaces
-    rather than supplements: the body is identical, so the frontend moves by
-    changing the URL alone. Kept bare of an envelope for that reason.
+    The body is a bare uid -> labels object, with no envelope, as the v1
+    endpoint it replaced served it.
 
-    The language is the requesting site's, resolved through its Directory's
-    Organization — this is a per-site response, and the cache key carries the
-    domain to match.
+    Labels belong to the whole backend, so the answer is cached once per
+    language, whichever site asks; every write to labels clears every language
+    (sync_clear_effector_type_labels_cache).
     """
-    cache_key = await generate_cache_key(API_VERSION, request)
+    if language is None:
+        language = await site_language(request)
+    cache_key = effector_type_labels_cache_key(language)
     data = cache.get(cache_key)
     if data is not None:
-        logger.debug(f"*** Using cache with key {cache_key} ***")
         # Cached as a plain dict: the response model revalidates it on the way
         # out, so a stale entry whose shape no longer matches fails here rather
         # than reaching the frontend.
         return EffectorTypeLabels(data)
 
-    logger.debug(f"cache for key '{cache_key}' is *** EMPTY ***")
-    site = await get_site_from_request(request)
-    # The Organization is fetched against the Site rather than walked to from
-    # the Directory: `directory.site.organization` is a lazy reverse accessor,
-    # and touching it here raises SynchronousOnlyOperation. Same approach as
-    # the sibling /organization-role-labels endpoint.
-    organization = await Organization.objects.select_related("site").aget(site=site)
-    labels = await get_effector_type_labels(organization.language)
-
+    labels = await get_effector_type_labels(language)
     timeout = resolve_ttl(await get_ttl(API_VERSION, request), TTL)
     # model_dump() rather than the model itself: the cache backend has to
     # serialise this, and a pydantic instance is not JSON.
     cache.set(cache_key, labels.model_dump(), timeout=timeout)
-
-    path = strip_slash(request.scope["route"].path)
-    endpoint = "%s:%s" % (API_VERSION, path)
-    site = await get_site_from_request(request)
-    await set_timestamp(endpoint, site)
-
+    await set_timestamp(ENDPOINT, await get_site_from_request(request))
     return labels
 
 
@@ -93,10 +96,8 @@ async def get_labels(uid: str, request: Request, jwt: Annotated[dict, Depends(JW
 async def put_labels(
     uid: str, labels: TypeLabels, request: Request, jwt: Annotated[dict, Depends(JWT)]
 ) -> TypeLabels:
-    """Replace one type's labels. Labels are shared by every site, so every
-    site's cache of them is cleared, the v1 one included."""
+    """Replace one type's labels, and clear every language's cached answer."""
     await _known_type(uid, request, jwt)
     await set_type_labels(uid, labels)
-    for endpoint in ("v1:effector_type_labels", "v2:effector-type-labels"):
-        await sync_to_async(sync_clear_cache)(endpoint)
+    await sync_to_async(sync_clear_effector_type_labels_cache)()
     return await get_type_labels(uid)
