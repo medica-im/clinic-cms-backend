@@ -8,6 +8,7 @@ from api.types.payment_method import PaymentMethod
 from api.types.third_party_payer import ThirdPartyPayer
 from enum import Enum
 from api.types.effector import RPPS
+from api.types.effector_type import Nature
 
 class EntryPost(BaseModel):
     effector: str
@@ -54,6 +55,7 @@ class EffectorType(BaseModel):
     slug: str
     synonyms: list[str]|None = None
     uid: str
+    nature: Nature|None = None
 
 
 class Email(BaseModel):

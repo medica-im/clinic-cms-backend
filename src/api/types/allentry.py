@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Any
 from api.types.fullentry import Address, Avatar
 from api.types.shared import Roles
+from api.types.effector_type import Nature
 
 class Commune(BaseModel):
     uid: str
@@ -22,6 +23,7 @@ class EffectorType(BaseModel):
     slug: str
     definition: str|None = None
     synonyms: list[str]|None = None
+    nature: Nature|None = None
 
 
 class Facility(BaseModel):
