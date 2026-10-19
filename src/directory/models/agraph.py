@@ -77,6 +77,8 @@ class EffectorType(AsyncStructuredNode):
     # False: a category that only groups other types; entries never have it.
     # Absent on older nodes, which entries may have: read as true.
     assignable = BooleanProperty(default=True)
+    # What its entries do; api.types.effector_type.Nature says what each means.
+    nature = StringProperty(choices={n: n for n in ("profession", "service", "activity")})
     need = AsyncRelationshipTo('Need', 'MANAGES')
     situation = AsyncRelationshipTo('Situation', 'MANAGES')
     effector_type = AsyncRelationshipTo(

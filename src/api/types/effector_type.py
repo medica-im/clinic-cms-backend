@@ -1,8 +1,13 @@
 from __future__ import annotations
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 from pydantic import BaseModel, Field
 from api.types.need import NeedPy
 from api.types.situation import SituationPy
+
+# What an entry of the type does: a profession is practised by a person, so its
+# label agrees with that person's grammatical gender; a service or an activity
+# has one form whoever the effector is.
+Nature = Literal["profession", "service", "activity"]
 
 
 class EffectorTypePost(BaseModel):
@@ -24,6 +29,7 @@ class EffectorTypePost(BaseModel):
     effector_type_uid: str|None = None
     # False: a category that only groups other types; entries never have it.
     assignable: bool = True
+    nature: Nature|None = None
 
 
 class EffectorTypePatch(BaseModel):
@@ -44,6 +50,7 @@ class EffectorTypePatch(BaseModel):
     isRPPS: bool|None = None
     effector_type_uid: str|None = None
     assignable: bool|None = None
+    nature: Nature|None = None
 
 
 class EffectorType(BaseModel):
@@ -65,6 +72,7 @@ class EffectorType(BaseModel):
     isHCW: bool = False
     isRPPS: bool = False
     assignable: bool = True
+    nature: Nature|None = None
     need: Annotated[list[NeedPy]|None, Field(exclude=True)] = None
     situation: Annotated[list[SituationPy]|None, Field(exclude=True)] = None
     concept_fr: str|None = None
