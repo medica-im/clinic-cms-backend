@@ -1,4 +1,5 @@
 from datetime import timedelta
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -89,6 +90,15 @@ class Organization(models.Model):
         help_text=(
             "Most rows one invitation spreadsheet may hold. Blank: the "
             "default (settings.BATCH_INVITATION_MAX_ROWS, 1000)."
+        ),
+    )
+    invitation_resend_after_days = models.PositiveSmallIntegerField(
+        default=30,
+        validators=[MinValueValidator(1), MaxValueValidator(365)],
+        help_text=(
+            "A pending invitation is preselected for a reminder once its last "
+            "email is this many days old, so someone just reached by a batch "
+            "is not mailed again by reflex."
         ),
     )
     email_template_editor_role = models.CharField(

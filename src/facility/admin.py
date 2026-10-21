@@ -53,6 +53,7 @@ class OrganizationAdmin(TranslationAdmin):
         'public_base_url',
         'reply_to_email',
         'batch_invitation_max_rows',
+        'invitation_resend_after_days',
         'active',
         'created',
         'updated',
