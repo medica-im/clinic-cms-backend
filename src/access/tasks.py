@@ -1,5 +1,6 @@
 import logging
 from time import time_ns
+from types import SimpleNamespace
 from uuid import uuid4
 
 from celery import shared_task
@@ -23,29 +24,111 @@ def process_batch_invitees(
     send_emails: bool,
     site_domain: str,
 ):
+    """Create a spreadsheet's invitations, then send their emails.
+
+    Two steps, in this order: the sending step is the one a resend job runs on
+    its own, and a cancel while sending leaves invitations that exist.
+    """
+    from access.models import BatchInviteeJob
+
+    job = _start_job(self, job_id)
+    if job is None:
+        return
+
+    created = _create_invitees(job, rows, entry_uid, _resolve_user_uid(user_sub), role)
+    if created is None:
+        return
+    if send_emails and not _send_invitations(job, created, site_domain):
+        return
+
+    job.status = BatchInviteeJob.Status.COMPLETED
+    job.save(update_fields=["status", "summary"])
+    logger.info(
+        f"BatchInviteeJob {job.uid} completed: "
+        f"{job.successful_count} created, "
+        f"{job.failed_count} failed, "
+        f"{job.skipped_duplicate_email_count} skipped (dup email), "
+        f"{job.skipped_active_user_count} skipped (active user), "
+        f"{job.failed_email_count} email failures"
+    )
+
+
+@shared_task(bind=True)
+def process_batch_resend(self, job_id: int, invitee_uids: list[str], site_domain: str):
+    """Send existing invitations' emails again: the sending step alone.
+
+    One summary row per invitation, in the order chosen, written before the
+    first email, so the report lists them all even when the job is cancelled.
+    """
+    from access.models import BatchInviteeJob
+
+    job = _start_job(self, job_id)
+    if job is None:
+        return
+
+    invitees = _load_invitees(invitee_uids)
+    job.summary = [
+        {
+            "row": idx + 1,
+            "invitee_uid": uid,
+            "email": getattr(invitees.get(uid), "email", None),
+            "name": getattr(invitees.get(uid), "name", None) or "",
+            "status": "resend",
+            "message": "",
+        }
+        for idx, uid in enumerate(invitee_uids)
+    ]
+    job.save(update_fields=["summary"])
+
+    if not _send_invitations(job, invitee_uids, site_domain):
+        return
+
+    job.status = BatchInviteeJob.Status.COMPLETED
+    job.save(update_fields=["status", "summary"])
+    logger.info(
+        f"BatchInviteeJob {job.uid} completed: "
+        f"{job.emails_processed} reminders, "
+        f"{job.email_skipped_count} skipped, "
+        f"{job.failed_email_count} email failures"
+    )
+
+
+def _start_job(task, job_id: int):
     from access.models import BatchInviteeJob
 
     try:
         job = BatchInviteeJob.objects.get(id=job_id)
     except BatchInviteeJob.DoesNotExist:
         logger.error(f"BatchInviteeJob {job_id} not found")
-        return
+        return None
 
-    job.celery_task_id = self.request.id or ""
+    job.celery_task_id = task.request.id or ""
     job.status = BatchInviteeJob.Status.PROCESSING
     job.save(update_fields=["celery_task_id", "status"])
+    return job
 
-    user_uid = _resolve_user_uid(user_sub)
+
+def _cancelled(job) -> bool:
+    from access.models import BatchInviteeJob
+
+    job.refresh_from_db(fields=["status"])
+    return job.status == BatchInviteeJob.Status.CANCELLED
+
+
+def _create_invitees(job, rows: list[dict], entry_uid: str, user_uid: str | None, role: str) -> list[str] | None:
+    """The creation step: one summary row per spreadsheet row, no email.
+
+    The uids created, in row order; None when the job was cancelled.
+    """
     summary = []
+    created = []
 
     for idx, row in enumerate(rows):
-        if idx % 10 == 0:
-            job.refresh_from_db(fields=["status"])
-            if job.status == BatchInviteeJob.Status.CANCELLED:
-                job.summary = summary
-                job.save(update_fields=["summary"])
-                logger.info(f"BatchInviteeJob {job.uid} cancelled at row {idx + 1}")
-                return
+        if idx % 10 == 0 and _cancelled(job):
+            job.summary = summary
+            job.save(update_fields=["summary"])
+            logger.info(f"BatchInviteeJob {job.uid} cancelled at row {idx + 1}")
+            return None
 
         email = (row.get("email") or "").strip().lower()
         name = (row.get("name") or "").strip()
@@ -127,13 +210,7 @@ def process_batch_invitees(
                     )
                     row_result["existing_invitee_uid"] = unredeemed_uid
 
-            if send_emails:
-                email_ok = _send_notification_email(
-                    email, name, site_domain, invitee_uid=invitee_uid, batch_job_uid=job.uid,
-                )
-                if not email_ok:
-                    job.failed_email_count += 1
-                    row_result["email_error"] = True
+            created.append(invitee_uid)
 
         except Exception as e:
             logger.exception(f"Error processing row {row_num}: {e}")
@@ -144,17 +221,66 @@ def process_batch_invitees(
         summary.append(row_result)
         _update_progress(job, row_num, summary)
 
-    job.status = BatchInviteeJob.Status.COMPLETED
-    job.summary = summary
-    job.save(update_fields=["status", "summary"])
-    logger.info(
-        f"BatchInviteeJob {job.uid} completed: "
-        f"{job.successful_count} created, "
-        f"{job.failed_count} failed, "
-        f"{job.skipped_duplicate_email_count} skipped (dup email), "
-        f"{job.skipped_active_user_count} skipped (active user), "
-        f"{job.failed_email_count} email failures"
-    )
+    return created
+
+
+def _send_invitations(job, invitee_uids: list[str], site_domain: str) -> bool:
+    """The sending step: each invitation's email, in order, on its summary row.
+
+    An invitation resend_refusal turns down (used, disabled, its previous
+    email still on its way) is not sent; its row says why. False when the job
+    was cancelled before the end.
+    """
+    from access.models import BatchInviteeJob
+    from mailer.delivery import latest_deliveries, resend_refusal
+
+    job.phase = BatchInviteeJob.Phase.SENDING
+    job.emails_total = len(invitee_uids)
+    job.emails_processed = 0
+    job.save(update_fields=["phase", "emails_total", "emails_processed"])
+
+    invitees = _load_invitees(invitee_uids)
+    latest = latest_deliveries(invitee_uids)
+    rows = {row["invitee_uid"]: row for row in job.summary if row.get("invitee_uid")}
+
+    for uid in invitee_uids:
+        if _cancelled(job):
+            logger.info(f"BatchInviteeJob {job.uid} cancelled at email {job.emails_processed + 1}")
+            return False
+
+        invitee = invitees.get(uid)
+        refusal = "missing" if invitee is None else resend_refusal(invitee, latest.get(uid))
+        row_changed = True
+        if refusal:
+            job.email_skipped_count += 1
+            rows[uid]["email_skipped"] = refusal
+        elif not _send_notification_email(
+            invitee.email, invitee.name or "", site_domain, invitee_uid=uid, batch_job_uid=job.uid,
+        ):
+            job.failed_email_count += 1
+            rows[uid]["email_error"] = True
+        else:
+            row_changed = False
+
+        job.emails_processed += 1
+        fields = ["emails_processed", "failed_email_count", "email_skipped_count"]
+        if row_changed:
+            fields.append("summary")
+        job.save(update_fields=fields)
+
+    return True
+
+
+def _load_invitees(uids: list[str]) -> dict[str, SimpleNamespace]:
+    query = """
+    MATCH (i:Invitee) WHERE i.uid IN $uids
+    RETURN i.uid, i.email, i.name, i.active, i.redeemedAt
+    """
+    results, _ = db.cypher_query(query, {"uids": uids})
+    return {
+        uid: SimpleNamespace(email=email, name=name, active=active, redeemedAt=redeemed_at)
+        for uid, email, name, active, redeemed_at in results
+    }
 
 
 def _resolve_user_uid(sub: str) -> str | None:
@@ -317,21 +443,23 @@ def _send_notification_email(
         logger.error(f"Could not find site/organization for domain {site_domain}")
         return False
 
+    # A remembered address (dead, or a refusal of this organization's mail)
+    # is not sent to: the batch reports it suppressed, with why. Checked for
+    # a tracked invitation, as send_single_email_task does, and before the
+    # email is written.
+    from mailer import suppression
+    blocked = suppression.blocking(email, organization) if invitee_uid else None
+    if blocked is not None:
+        logger.info(f"Not sending to {email}: {blocked.reason}")
+        row = delivery.record_queued(invitee_uid, email, batch_job_uid=batch_job_uid)
+        delivery.mark_suppressed(row.id, blocked)
+        return False
+
     template = get_template(organization, "invitation")
     context = invitation_context(organization, site_domain, name, email)
     rendered = render_email(template, context)
 
     row = delivery.record_queued(invitee_uid, email, batch_job_uid=batch_job_uid) if invitee_uid else None
-    # A remembered address (dead, or a refusal of this organization's mail)
-    # is not sent to: the batch reports it suppressed, with why. Checked for
-    # a tracked invitation, as send_single_email_task does.
-    from mailer import suppression
-    blocked = suppression.blocking(email, organization) if invitee_uid else None
-    if blocked is not None:
-        logger.info(f"Not sending to {email}: {blocked.reason}")
-        if row is not None:
-            delivery.mark_suppressed(row.id, blocked)
-        return False
     try:
         result = send_single_email(
             email, rendered.subject, rendered.text,

@@ -186,6 +186,22 @@ class TestAutomaticSendsSkipIt:
         row = await sync_to_async(lambda: EmailDelivery.objects.filter(invitee_uid=UID).latest("id"))()
         assert row.status == "suppressed"
 
+    async def test_a_batch_checks_the_address_before_writing_the_email(self, organizations, site):
+        """A template that fails to render must not report an error for an
+        email that was never going to leave."""
+        from access.tasks import _send_notification_email
+
+        await remember()
+        with (
+            patch("mailer.templating.render_email") as render,
+            patch("mailer.main.send_single_email") as send,
+        ):
+            await sync_to_async(_send_notification_email)(ADDRESS, "", site.domain, invitee_uid=UID)
+        render.assert_not_called()
+        send.assert_not_called()
+        row = await sync_to_async(lambda: EmailDelivery.objects.filter(invitee_uid=UID).latest("id"))()
+        assert row.status == "suppressed"
+
 
 # --- The administrator's resend ------------------------------------------------------
 

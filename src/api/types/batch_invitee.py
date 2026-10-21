@@ -1,5 +1,9 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+# The most invitations one reminder may cover: not an organization's
+# spreadsheet limit, since a reminder spans invitations from several imports.
+MAX_RESEND = 5000
 
 
 class BatchInviteeParseResponse(BaseModel):
@@ -23,6 +27,10 @@ class BatchInviteeCreateResponse(BaseModel):
     status: str
 
 
+class BatchResendRequest(BaseModel):
+    uids: list[str] = Field(min_length=1, max_length=MAX_RESEND)
+
+
 class BatchInviteeProgress(BaseModel):
     uid: str
     status: str
@@ -33,6 +41,11 @@ class BatchInviteeProgress(BaseModel):
     skipped_duplicate_email_count: int
     skipped_active_user_count: int
     failed_email_count: int
+    kind: str
+    phase: str
+    emails_total: int
+    emails_processed: int
+    email_skipped_count: int
     percentage: float
 
 
@@ -46,6 +59,8 @@ class BatchInviteeJobDetail(BaseModel):
     skipped_duplicate_email_count: int
     skipped_active_user_count: int
     failed_email_count: int
+    kind: str
+    email_skipped_count: int
     percentage: float
     # Each row may carry "email_delivery": where its email stands now
     # (api.types.invitee.EmailDelivery), read from the delivery records.
@@ -71,3 +86,8 @@ class BatchInviteeJobListItem(BaseModel):
     skipped_active_user_count: int
     failed_email_count: int
     role: str
+    kind: str
+    phase: str
+    emails_total: int
+    emails_processed: int
+    email_skipped_count: int

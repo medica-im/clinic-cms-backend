@@ -85,6 +85,14 @@ class BatchInviteeJob(models.Model):
         CANCELLED = "cancelled", "Cancelled"
         FAILED = "failed", "Failed"
 
+    class Phase(models.TextChoices):
+        CREATING = "creating", "Creating the invitations"
+        SENDING = "sending", "Sending the emails"
+
+    class Kind(models.TextChoices):
+        CREATE = "create", "Import from a spreadsheet"
+        RESEND = "resend", "Reminder to existing invitations"
+
     uid = models.UUIDField(
         default=uuid.uuid4,
         unique=True,
@@ -105,7 +113,20 @@ class BatchInviteeJob(models.Model):
     skipped_duplicate_email_count = models.PositiveIntegerField(default=0)
     skipped_active_user_count = models.PositiveIntegerField(default=0)
     failed_email_count = models.PositiveIntegerField(default=0)
-    role = models.CharField(max_length=50)
+    phase = models.CharField(
+        max_length=20,
+        choices=Phase.choices,
+        default=Phase.CREATING,
+    )
+    emails_total = models.PositiveIntegerField(default=0)
+    emails_processed = models.PositiveIntegerField(default=0)
+    email_skipped_count = models.PositiveIntegerField(default=0)
+    kind = models.CharField(
+        max_length=20,
+        choices=Kind.choices,
+        default=Kind.CREATE,
+    )
+    role = models.CharField(max_length=50, blank=True)
     send_emails = models.BooleanField(default=True)
     summary = models.JSONField(default=list)
     celery_task_id = models.CharField(max_length=255, blank=True, default="")

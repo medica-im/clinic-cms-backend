@@ -137,6 +137,29 @@ async def test_the_job_detail_says_how_each_email_went(versioned_client, patch_j
 
 @pytest.mark.asyncio
 @pytest.mark.django_db(transaction=True)
+async def test_the_progress_follows_the_emails_once_they_are_being_sent(versioned_client, patch_jwt, jwt_administrator):
+    """Every row is created before the first email goes, so a bar counting
+    rows would sit at 100% for the whole sending."""
+    from access.models import BatchInviteeJob
+
+    entry_uid = uuid.uuid4().hex
+    job = await BatchInviteeJob.objects.acreate(
+        organization_neomodel_uid=entry_uid, user_uid="u", total_rows=4, processed_rows=4,
+        role="staff", send_emails=True, status=BatchInviteeJob.Status.PROCESSING,
+        phase=BatchInviteeJob.Phase.SENDING, emails_total=4, emails_processed=1,
+    )
+
+    with patch_jwt(jwt_administrator), authorized(entry_uid):
+        r = await versioned_client.get(f"/api/v2/batch-invitees/{job.uid}/progress")
+
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert (body["phase"], body["emails_total"], body["emails_processed"]) == ("sending", 4, 1)
+    assert body["percentage"] == 25.0
+
+
+@pytest.mark.asyncio
+@pytest.mark.django_db(transaction=True)
 async def test_an_invitations_delivery_says_why_it_failed():
     from api.routers.invitees import with_email_delivery
     from api.types.invitee import Invitee

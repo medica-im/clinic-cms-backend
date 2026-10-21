@@ -10,6 +10,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     Request,
     UploadFile,
     status,
@@ -22,7 +23,7 @@ from api.types.invitee import EmailDelivery
 from mailer.delivery import batch_report
 from mailer.suppression import issue_payload, issues_for, normalize
 from access.roles import ROLES
-from access.tasks import process_batch_invitees
+from access.tasks import process_batch_invitees, process_batch_resend
 from api.auth import JWT, authorize_api
 from api.types.batch_invitee import (
     BatchInviteeCreateResponse,
@@ -31,6 +32,7 @@ from api.types.batch_invitee import (
     BatchInviteeMapping,
     BatchInviteeParseResponse,
     BatchInviteeProgress,
+    BatchResendRequest,
 )
 from api.utils import get_site_from_request
 from facility.models import Organization
@@ -144,6 +146,15 @@ async def _get_organization_entry_uid(request: Request) -> tuple[str, str]:
             detail="Organization does not have a neomodel_uid",
         )
     return organization.neomodel_uid.hex, site.domain
+
+
+async def _user_uid_of(sub: str) -> str:
+    query = """
+    MATCH (a:Account {sub: $sub})<-[:HAS_ACCOUNT]-(u:User)
+    RETURN u.uid AS uid
+    """
+    results, _ = await adb.cypher_query(query, {"sub": sub})
+    return results[0][0] if results else ""
 
 
 @router.post("/batch-invitees/check")
@@ -285,12 +296,7 @@ async def create_batch_invitees(
             detail="No providerAccountId in JWT",
         )
 
-    user_uid_query = """
-    MATCH (a:Account {sub: $sub})<-[:HAS_ACCOUNT]-(u:User)
-    RETURN u.uid AS uid
-    """
-    results, _ = await adb.cypher_query(user_uid_query, {"sub": user_sub})
-    user_uid = results[0][0] if results else ""
+    user_uid = await _user_uid_of(user_sub)
 
     job = await BatchInviteeJob.objects.acreate(
         organization_neomodel_uid=entry_uid,
@@ -320,6 +326,72 @@ async def create_batch_invitees(
     )
 
 
+@router.post(
+    "/batch-invitees/resend",
+    response_model=BatchInviteeCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def resend_batch_invitees(
+    body: BatchResendRequest,
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)],
+):
+    """Send the chosen invitations' emails again, as a batch job of kind resend.
+
+    409 batch_running while any batch of the organization is pending or
+    processing: an import's invitations have no email until its sending step
+    reaches them, and a reminder beside it would mail them twice. 403 when one
+    of the invitations is not this organization's.
+    """
+    await authorize_api("invitees_v2", request, jwt)
+    entry_uid, site_domain = await _get_organization_entry_uid(request)
+
+    running = await BatchInviteeJob.objects.filter(
+        organization_neomodel_uid=entry_uid,
+        status__in=[BatchInviteeJob.Status.PENDING, BatchInviteeJob.Status.PROCESSING],
+    ).aexists()
+    if running:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "batch_running"})
+
+    uids = list(dict.fromkeys(body.uids))
+    results, _ = await adb.cypher_query(
+        """
+        MATCH (:Entry {uid: $entry_uid})<-[:INVITED_TO]-(i:Invitee)
+        WHERE i.uid IN $uids
+        RETURN count(i)
+        """,
+        {"entry_uid": entry_uid, "uids": uids},
+    )
+    if results[0][0] != len(uids):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Some invitations do not belong to this organization",
+        )
+
+    job = await BatchInviteeJob.objects.acreate(
+        organization_neomodel_uid=entry_uid,
+        user_uid=await _user_uid_of(jwt.get("providerAccountId", "")),
+        total_rows=len(uids),
+        role="",
+        send_emails=True,
+        kind=BatchInviteeJob.Kind.RESEND,
+        status=BatchInviteeJob.Status.PENDING,
+    )
+    task = process_batch_resend.delay(job_id=job.id, invitee_uids=uids, site_domain=site_domain)
+    job.celery_task_id = task.id
+    await job.asave(update_fields=["celery_task_id"])
+
+    return BatchInviteeCreateResponse(job_uid=str(job.uid), status=job.status)
+
+
+def _progress_percentage(job: BatchInviteeJob) -> float:
+    if job.phase == BatchInviteeJob.Phase.SENDING:
+        done, total = job.emails_processed, job.emails_total
+    else:
+        done, total = job.processed_rows, job.total_rows
+    return (done / total * 100) if total > 0 else 0
+
+
 @router.get("/batch-invitees/{job_uid}/progress", response_model=BatchInviteeProgress)
 async def get_batch_invitees_progress(
     job_uid: str,
@@ -340,7 +412,7 @@ async def get_batch_invitees_progress(
             detail="Batch job not found",
         )
 
-    percentage = (job.processed_rows / job.total_rows * 100) if job.total_rows > 0 else 0
+    percentage = _progress_percentage(job)
 
     return BatchInviteeProgress(
         uid=str(job.uid),
@@ -352,6 +424,11 @@ async def get_batch_invitees_progress(
         skipped_duplicate_email_count=job.skipped_duplicate_email_count,
         skipped_active_user_count=job.skipped_active_user_count,
         failed_email_count=job.failed_email_count,
+        kind=job.kind,
+        phase=job.phase,
+        emails_total=job.emails_total,
+        emails_processed=job.emails_processed,
+        email_skipped_count=job.email_skipped_count,
         percentage=round(percentage, 1),
     )
 
@@ -399,14 +476,22 @@ async def cancel_batch_invitees(
 async def list_batch_invitees(
     request: Request,
     jwt: Annotated[dict, Depends(JWT)],
+    kind: BatchInviteeJob.Kind | None = None,
+    limit: Annotated[int | None, Query(ge=1)] = None,
 ):
+    """The organization's batch jobs, newest first; ?kind=resend&limit=1 is
+    the latest reminder, which the invitation list shows."""
     await authorize_api("invitees_v2", request, jwt)
     entry_uid, _ = await _get_organization_entry_uid(request)
 
+    queryset = BatchInviteeJob.objects.filter(organization_neomodel_uid=entry_uid)
+    if kind:
+        queryset = queryset.filter(kind=kind)
+    if limit:
+        queryset = queryset[:limit]
+
     jobs = []
-    async for job in BatchInviteeJob.objects.filter(
-        organization_neomodel_uid=entry_uid
-    ).values(
+    async for job in queryset.values(
         "uid",
         "created_at",
         "status",
@@ -417,6 +502,11 @@ async def list_batch_invitees(
         "skipped_active_user_count",
         "failed_email_count",
         "role",
+        "kind",
+        "phase",
+        "emails_total",
+        "emails_processed",
+        "email_skipped_count",
     ):
         job["uid"] = str(job["uid"])
         jobs.append(BatchInviteeJobListItem(**job))
@@ -444,7 +534,7 @@ async def get_batch_invitee_job(
             detail="Batch job not found",
         )
 
-    percentage = (job.processed_rows / job.total_rows * 100) if job.total_rows > 0 else 0
+    percentage = _progress_percentage(job)
 
     # Read now, not copied when the job ran: a resend, or an event from the
     # mail service, changes where an email stands.
@@ -471,6 +561,8 @@ async def get_batch_invitee_job(
         skipped_duplicate_email_count=job.skipped_duplicate_email_count,
         skipped_active_user_count=job.skipped_active_user_count,
         failed_email_count=job.failed_email_count,
+        kind=job.kind,
+        email_skipped_count=job.email_skipped_count,
         percentage=round(percentage, 1),
         summary=summary,
         created_at=job.created_at,
