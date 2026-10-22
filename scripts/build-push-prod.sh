@@ -7,10 +7,22 @@ TARGET="${TARGET:-prod}"
 
 cd "$(git rev-parse --show-toplevel)"
 
-TAG="$(git rev-parse --short HEAD)"
+# Named after the last commit that changed what the image is built from
+# (scripts/image-inputs), not HEAD: a commit to a script alone builds the same
+# image, under the same name. The label says it too, so the commit can still
+# be read from a running image once no local tag is left (skcms versions.sh).
+mapfile -t INPUTS < <(grep -Ev '^[[:space:]]*(#|$)' scripts/image-inputs)
+CODE_SHA="$(git rev-list -1 HEAD -- "${INPUTS[@]}")"
+TAG="${CODE_SHA:0:7}"
+if [[ -n "$(git status --porcelain -- "${INPUTS[@]}")" ]]; then
+  echo "==> WARNING: building with uncommitted changes to the image's files:" >&2
+  git status --short -- "${INPUTS[@]}" >&2
+  echo "    $IMAGE:$TAG names a commit that does not contain what is in this image." >&2
+fi
 
 echo "==> Building $IMAGE:$TAG (target=$TARGET)..."
 docker build -f "$DOCKERFILE" --target "$TARGET" \
+  --label "git.sha=$CODE_SHA" \
   -t "$IMAGE:latest" \
   -t "$IMAGE:$TAG" \
   .

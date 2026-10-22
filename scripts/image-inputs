@@ -1,0 +1,7 @@
+# What the backend image is built from (docker/backend/Dockerfile), one git
+# pathspec per line. A commit that touches none of these builds the same image:
+# build-push-prod.sh names the image after the last commit that did, and
+# skcms's versions.sh counts only those as waiting to be deployed.
+docker/backend
+requirements
+src
