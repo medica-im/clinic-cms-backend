@@ -21,7 +21,10 @@ if [[ -n "$(git status --porcelain -- "${INPUTS[@]}")" ]]; then
 fi
 
 echo "==> Building $IMAGE:$TAG (target=$TARGET)..."
-docker build -f "$DOCKERFILE" --target "$TARGET" \
+# --pull: a fresh base image brings current ca-certificates and pip, and
+# invalidates the pip layer so certifi is re-resolved, so a revoked CA cannot
+# survive in a cached image. certifi is transitive (via requests), not pinned.
+docker build --pull -f "$DOCKERFILE" --target "$TARGET" \
   --label "git.sha=$CODE_SHA" \
   -t "$IMAGE:latest" \
   -t "$IMAGE:$TAG" \
