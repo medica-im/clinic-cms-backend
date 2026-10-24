@@ -5,6 +5,8 @@ occupation becomes, how many entries a person gets, at which facility, which
 entry inherits the old public slug, and whether it is shown. Reading the
 graph and writing it come after, and are found-or-created by natural keys.
 """
+import pytest
+
 from directory.management.commands.import_entries import plan_entries
 
 
@@ -66,6 +68,20 @@ def test_one_entry_per_facility():
 def test_hidden_from_the_public_means_inactive():
     planned, _ = plan(worker([occupation("pharmacist")], visible_to=("superuser",)))
     assert planned[0].active is False
+
+
+@pytest.mark.parametrize("old, specialty, type_slug", [
+    # The msp.medica.im demo's cast: the old data's spelling, capitals and
+    # space included, has to match exactly.
+    ("physician", "Emergency Medicine", "urgentiste"),
+    ("physician", "pediatrician", "pediatre"),
+    ("physician", "psychiatrist", "psychiatre"),
+    ("midwife", None, "sage-femme"),
+])
+def test_the_demo_cast_has_its_types(old, specialty, type_slug):
+    planned, problems = plan(worker([occupation(old, specialty=specialty)]))
+    assert problems == []
+    assert [p.type_slug for p in planned] == [type_slug]
 
 
 def test_an_unmapped_occupation_is_a_problem_not_a_guess():
