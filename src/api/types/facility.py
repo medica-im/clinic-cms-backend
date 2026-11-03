@@ -51,7 +51,16 @@ class Coordinates(BaseModel):
 
 class FacilityPost(FacilityBase, Coordinates):
     commune: str
+    #: Generated from the name and the address when not sent.
+    slug: str|None = None
 
 
 class FacilityPut(FacilityBase, Coordinates):
     pass
+
+
+class FacilitySlugCheck(BaseModel):
+    slug: str|None
+    free: bool
+    reason: str|None    # "invalid" | "taken"
+    suggestions: list[str]

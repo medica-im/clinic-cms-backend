@@ -13,6 +13,7 @@ from neomodel import db
 from neomodel import adb
 from neomodel.contrib.spatial_properties import NeomodelPoint, PointProperty
 from directory.models.agraph import Commune, Facility, Entry
+from directory.facility_slug import slug_for_new_facility
 from api.utils import get_site_from_request, clear_cache
 from api.neo4j_auth import get_neo4j_user
 from api.auth import verify_user_access
@@ -325,11 +326,12 @@ def location_from(f: FacilityPost|FacilityPut) -> NeomodelPoint|None:
 
 async def create_facility(f: FacilityPost, request: Request, jwt: dict)->FacilityPy:
     location = location_from(f)
-    await assert_slug_is_free(f.slug, request)
+    slug = await slug_for_new_facility(f.slug, f.name, f.commune, f.street, f.zip)
+    await assert_slug_is_free(slug, request)
     node = await Facility(
         name=f.name,
         label=f.label,
-        slug=f.slug,
+        slug=slug,
         zoom=f.zoom,
         building=f.building,
         street=f.street,

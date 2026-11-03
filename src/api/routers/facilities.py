@@ -8,7 +8,8 @@ from pydantic import BaseModel
 from asgiref.sync import sync_to_async
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from api.serializers.facility import async_get_facilities, async_get_facility, async_get_organization_facilities, create_facility, update_facility, delete_facility
-from api.types.facility import Facility, FacilityPost, FacilityPut
+from api.types.facility import Facility, FacilityPost, FacilityPut, FacilitySlugCheck
+from directory.facility_slug import check_facility_slug
 from api.auth import authorize_api, may_authorize_api, verify_user_access, JWT
 from api.neo4j_auth import get_neo4j_role, get_neo4j_user, normalize_neo4j_role
 from api.utils import get_site_from_request
@@ -80,6 +81,20 @@ async def facility(uid: str) -> Facility:
 @router.get("/facilities-slug/{slug}")
 async def facility_by_slug(slug: str) -> Facility:
     return await async_get_facility(slug=slug)
+
+@router.get("/facility-slugs")
+async def facility_slug_check(
+    name: str,
+    commune: str | None = None,
+    street: str | None = None,
+    zip: str | None = None,
+    slug: str | None = None,
+    exclude: str | None = None,
+) -> FacilitySlugCheck:
+    """The slug a facility would get, or whether a chosen one is free."""
+    return FacilitySlugCheck(**await check_facility_slug(
+        name, commune, street, zip, slug=slug, exclude_uid=exclude
+    ))
 
 @router.post("/facilities/", status_code=status.HTTP_201_CREATED)
 async def post_facility(facility: FacilityPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> Facility:

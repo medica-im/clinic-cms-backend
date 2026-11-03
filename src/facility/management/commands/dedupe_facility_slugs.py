@@ -1,197 +1,75 @@
-"""Give each facility of an organization its own slug.
+"""Give every facility a slug of its own.
 
-A facility is addressed by its slug — /sites/{slug}, and
-/api/v2/public/facilities/{slug}, which returns rows[0]. Two facilities of one
-organization sharing a slug make one of them unreachable: the graph answers
-with whichever it finds first, every time.
+A facility is addressed by its slug (/sites/{slug}, and
+/api/v2/public/facilities/{slug}, which returns rows[0]). Two facilities sharing
+a slug make one of them unreachable, and a facility with none has only its uid.
 
-api.serializers.facility.assert_slug_is_free now refuses to create such a pair,
-but it cannot repair the ones already in the graph. This does that, by
-appending the street to the name — the thing that actually distinguishes two
-cabinets infirmiers of the same organization.
+Two repairs, in this order:
 
-Scoped per organization, like the guard: two unrelated organizations are each
-entitled to a "cabinet-medical", and only clashes *within* one are a problem.
+  merge   facilities with one slug, one name and one address are one place
+          recorded several times: their entries and owners move to the one with
+          the most active entries, and the duplicates are deleted. One with
+          contacts or images, or whose entries would collide with the kept
+          one's, is only reported, for a person to merge by hand.
+  rename  different places sharing a slug, and facilities with none, get the slug
+          the creation form would now generate (directory/facility_slug.py).
+          A new slug is free only when no facility anywhere holds it.
 
-Dry run by default. Nothing is written without --write.
+Dry run by default. Nothing is written without --write. A renamed facility's old
+address stops working; facilities have no redirects.
 """
-
-import re
-
+from asgiref.sync import async_to_sync
 from django.core.management.base import BaseCommand
-from django.utils.text import slugify
-from neomodel import db
+from neomodel import adb
 
-
-HOUSE_NUMBER = re.compile(r"^\s*\d+\s*(bis|ter|quater)?\s*,?\s*", re.I)
-
-
-def street_name(street: str | None) -> str:
-    """The street without its house number: '10 Rue Paul Bert' -> 'Rue Paul Bert'.
-
-    The number is what distinguishes two addresses on one street, but it makes
-    a poor slug: '10' says nothing to a reader, and the resulting URL reads as
-    a house rather than a place. The name alone is enough wherever an
-    organization's facilities are on different streets, which is the usual
-    case. Where it is not, the number comes back — see full_address below.
-    """
-    return HOUSE_NUMBER.sub("", street or "").strip()
-
-
-def full_address(street: str | None) -> str:
-    """The street as written, number included.
-
-    The fallback for facilities on the *same* street, where the name alone
-    cannot tell them apart: '1 Rue des Arènes' and '2 Rue des Arènes' are
-    genuinely different places and the number is the only thing that says so.
-    """
-    return (street or "").strip()
-
-
-CLASHES = """
-MATCH (f:Facility)-[:PART_OF]->(o)
-WHERE f.slug IS NOT NULL
-WITH o.uid AS org, f.slug AS slug,
-     collect({uid: f.uid, name: f.name, street: f.street}) AS facilities
-WHERE size(facilities) > 1
-RETURN org, slug, facilities
-ORDER BY org, slug
-"""
-
-TAKEN = """
-MATCH (x:Facility)-[:PART_OF]->(o)
-WHERE o.uid = $org AND x.slug = $slug AND x.uid <> $uid
-RETURN count(x)
-"""
+from directory.facility_slug import merge_facility, plan_facility_merges, plan_slug_repairs
 
 RENAME = "MATCH (f:Facility {uid: $uid}) SET f.slug = $slug"
 
 
 class Command(BaseCommand):
-    help = "Rename facilities that share a slug within one organization."
+    help = "Merge duplicate facilities, then give every facility its own slug."
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            "--write",
-            action="store_true",
-            help="Apply the renames. Without it nothing is written.",
-        )
-        parser.add_argument(
-            "--slug",
-            help="Only touch this slug (e.g. cabinet-infirmier).",
-        )
+        parser.add_argument("--write", action="store_true", help="Apply the plan. Without it nothing is written.")
+
+    async def run(self, write: bool):
+        merges = await plan_facility_merges()
+        renames = await plan_slug_repairs()
+        for m in merges:
+            if m.blocked:
+                self.stdout.write(self.style.WARNING(
+                    f"BLOCKED  {m.drop_uid}  {m.name or ''}  duplicate of {m.keep_uid}: {m.blocked}"
+                ))
+                continue
+            self.stdout.write(f"merge    {m.drop_uid}  {m.name or ''}  into {m.keep_uid}  ({m.entries} entries)")
+            if write:
+                await merge_facility(m.keep_uid, m.drop_uid)
+        for r in renames:
+            self.stdout.write(f"rename   {r.uid}  {r.name or ''}  {r.old or '(none)'} -> {r.new}  [{r.reason}]")
+            if write:
+                await adb.cypher_query(RENAME, {"uid": r.uid, "slug": r.new})
+        return merges, renames
 
     def handle(self, *args, **options):
+        # One coroutine, so one event loop: the async Neo4j connection belongs to
+        # the loop that opened it.
+        merges, renames = async_to_sync(self.run)(options["write"])
         write = options["write"]
-        only = options.get("slug")
-
-        # Plain maps rather than resolve_objects: that wraps each node in a
-        # list, and only three properties are needed here.
-        rows, _ = db.cypher_query(CLASHES)
-        planned = 0
-        skipped = 0
-
-        for org, slug, facilities in rows:
-            if only and slug != only:
-                continue
-
-            self.stdout.write(f"\norganization {org}  slug '{slug}'  ×{len(facilities)}")
-
-            # Every one of them is renamed, the bare slug left to nobody: a
-            # slug that still answers for one arbitrary facility is the same
-            # ambiguity, just quieter.
-            #
-            # Planned before anything is written, so a set that cannot be told
-            # apart by street name leaves the graph untouched rather than
-            # half-renamed.
-            plan = []
-            blocked = False
-            for facility in sorted(facilities, key=lambda f: f["uid"]):
-                street = street_name(facility["street"])
-                if not street:
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f"  BLOCKED {facility['uid']}  no street to name it by"
-                        )
-                    )
-                    blocked = True
-                    continue
-                plan.append(
-                    (
-                        facility["uid"],
-                        slugify(f"{facility['name'] or slug} {street}"),
-                        facility["street"],
-                    )
-                )
-
-            # Two facilities on the same street need the house number after all:
-            # '1 Rue des Arènes' and '2 Rue des Arènes' are different places and
-            # the number is the only thing that says so. Applied only to the
-            # ones that actually collide, so the readable form is kept wherever
-            # it works.
-            proposed = [new for _, new, _ in plan]
-            clashing = {n for n in proposed if proposed.count(n) > 1}
-            if clashing:
-                self.stdout.write(
-                    f"  same street name ×{len(clashing)}: adding the number"
-                )
-                plan = [
-                    (
-                        uid,
-                        slugify(f"{slug} {full_address(raw)}") if new in clashing else new,
-                        raw,
-                    )
-                    for uid, new, raw in plan
-                ]
-                # Identical addresses cannot be told apart by any address at
-                # all. That is a data problem, not a naming one.
-                proposed = [new for _, new, _ in plan]
-                still = {n for n in proposed if proposed.count(n) > 1}
-                if still:
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f"  BLOCKED identical addresses: {', '.join(sorted(still))}"
-                            " — these are duplicate records, not a naming problem"
-                        )
-                    )
-                    blocked = True
-
-            for uid, new_slug, _ in plan:
-                taken, _ = db.cypher_query(
-                    TAKEN, {"org": org, "slug": new_slug, "uid": uid}
-                )
-                if taken and taken[0][0]:
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f"  BLOCKED {uid}  '{new_slug}' is already taken"
-                        )
-                    )
-                    blocked = True
-
-            if blocked:
-                self.stdout.write(
-                    self.style.WARNING("  -> left untouched, nothing written for this slug")
-                )
-                skipped += len(facilities)
-                continue
-
-            for uid, new_slug, _ in plan:
-                self.stdout.write(f"  rename {uid}  -> {new_slug}")
-                planned += 1
-                if write:
-                    db.cypher_query(RENAME, {"uid": uid, "slug": new_slug})
+        blocked = sum(1 for m in merges if m.blocked)
+        merged = len(merges) - blocked
 
         self.stdout.write("")
-        if write:
-            self.stdout.write(self.style.SUCCESS(f"renamed {planned}, skipped {skipped}"))
-            self.stdout.write(
-                self.style.WARNING(
-                    "the facility caches still hold the old slugs; clear "
-                    "v1:facilities, v2:public/facilities and v2:entries"
-                )
-            )
+        if not (merges or renames):
+            self.stdout.write(self.style.SUCCESS("every facility already has a slug of its own"))
+        elif write:
+            self.stdout.write(self.style.SUCCESS(f"merged {merged}, renamed {len(renames)}, left {blocked}"))
+            self.stdout.write(self.style.WARNING(
+                "the facility caches still hold the old slugs; clear v1:facilities, "
+                "v2:public/facilities and v2:entries"
+            ))
         else:
             self.stdout.write(
-                f"dry run: {planned} would be renamed, {skipped} skipped. "
+                f"dry run: {merged} would be merged, {len(renames)} renamed, {blocked} left for a person. "
                 "Re-run with --write to apply."
             )
