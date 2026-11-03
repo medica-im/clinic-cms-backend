@@ -19,6 +19,10 @@ makes a slug unreachable, and unlike a person a place has no national
 identifier, so a superuser confirms anything short of an exact BAN match.
 """
 import logging
+import re
+import unicodedata
+from dataclasses import dataclass, field
+from itertools import permutations
 
 from neomodel import adb
 
@@ -31,6 +35,100 @@ COMPARED = (
     "name", "label", "slug", "building", "street",
     "geographical_complement", "zip", "ban_id", "ban_banId",
 )
+
+
+def name_tokens(name: str | None) -> list[str]:
+    """The words of a name: accents and case folded, any punctuation a separator."""
+    folded = "".join(
+        c for c in unicodedata.normalize("NFD", name or "") if not unicodedata.combining(c)
+    ).lower()
+    return re.findall(r"[^\W_]+", folded)
+
+
+def _token_match(a: str, b: str) -> str | None:
+    if a == b:
+        return "equal"
+    if (len(a) == 1 and b.startswith(a)) or (len(b) == 1 and a.startswith(b)):
+        return "initial"
+    return None
+
+
+def _pairing(shorter: list[str], longer: list[str]) -> str | None:
+    """How `shorter`'s words map onto distinct words of `longer`: "equal" when
+    every pair is the same word, "initial" when one stands for a given name,
+    None when no mapping works."""
+    best = None
+    for chosen in permutations(range(len(longer)), len(shorter)):
+        kinds = [_token_match(shorter[i], longer[j]) for i, j in enumerate(chosen)]
+        if None in kinds:
+            continue
+        if "initial" not in kinds:
+            return "equal"
+        best = "initial"
+    return best
+
+
+def compare_names(a: str | None, b: str | None) -> str | None:
+    """Whether two spellings could be one person: "same", "initials", "partial"
+    (one has fewer given names), or None. A candidate, never a proof."""
+    x, y = name_tokens(a), name_tokens(b)
+    if not x or not y:
+        return None
+    shorter, longer = sorted((x, y), key=len)
+    pairing = _pairing(shorter, longer)
+    if pairing is None:
+        return None
+    if len(x) == len(y):
+        return "same" if pairing == "equal" else "initials"
+    return "partial" if len(shorter) >= 2 else None
+
+
+@dataclass
+class SimilarEffector:
+    uid: str
+    name: str
+    gender: str | None
+    match: str
+    #: "type @ place" for each of their active entries, so the choice is informed.
+    entries: list[str] = field(default_factory=list)
+
+
+_STRENGTH = {"same": 0, "initials": 1, "partial": 2}
+
+
+async def similar_effectors(name: str, gender: str | None = None) -> list[SimilarEffector]:
+    """People whose name could be this one's, strongest match first.
+
+    Compared in Python over every Effector's name rather than prefiltered in
+    Cypher: Cypher's toLower does not fold accents, so a prefilter would miss
+    "Éric" for "Eric". Fine for a preview that runs a handful of times; it reads
+    one short row per person. A known gender that differs rules a candidate out;
+    an unknown one rules nobody out.
+    """
+    rows, _ = await adb.cypher_query("MATCH (e:Effector) RETURN e.uid, e.name_fr, e.gender")
+    found: list[SimilarEffector] = []
+    for uid, local_name, local_gender in rows:
+        if gender and local_gender and gender != local_gender:
+            continue
+        match = compare_names(name, local_name)
+        if match:
+            found.append(SimilarEffector(uid, local_name, local_gender, match))
+    found.sort(key=lambda c: (_STRENGTH[c.match], c.name))
+    if found:
+        entry_rows, _ = await adb.cypher_query(
+            """
+            UNWIND $uids AS u
+            MATCH (e:Effector {uid: u})<-[:HAS_EFFECTOR]-(en:Entry {active: true})
+            OPTIONAL MATCH (en)-[:HAS_EFFECTOR_TYPE]->(t:EffectorType)
+            OPTIONAL MATCH (en)-[:HAS_FACILITY]->(f:Facility)
+            RETURN u, t.name_fr, coalesce(f.label, f.name)
+            """,
+            {"uids": [c.uid for c in found]},
+        )
+        by_uid = {c.uid: c for c in found}
+        for uid, type_name, place in entry_rows:
+            by_uid[uid].entries.append(f"{type_name or '?'} @ {place or '?'}")
+    return found
 
 
 async def resolve_effector_type(et: dict) -> str | None:
@@ -55,19 +153,24 @@ async def resolve_effector_type(et: dict) -> str | None:
     return None
 
 
-async def resolve_commune(address: dict) -> str | None:
-    """The local Commune for an incoming address, by name and postcode."""
+async def resolve_commune(address: dict, department: str | None = None) -> str | None:
+    """The local Commune for an incoming address, by name.
+
+    `department` is a department code ("69"). Without it the first commune of
+    that name wins, which is what a clone does; with it the code picks between
+    namesakes, which a request must do: 1450 names exist in several departments.
+    """
     city = (address or {}).get("city")
     if not city:
         return None
     rows, _ = await adb.cypher_query(
         """
         MATCH (c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]
-              ->(:DepartmentOfFrance)
-        WHERE c.name_fr = $city
+              ->(d:DepartmentOfFrance)
+        WHERE c.name_fr = $city AND ($department IS NULL OR d.code = $department)
         RETURN c.uid LIMIT 1
         """,
-        {"city": city},
+        {"city": city, "department": department},
     )
     return rows[0][0] if rows else None
 

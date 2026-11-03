@@ -268,3 +268,70 @@ class TestWhatIsAlreadyHere:
 
     async def test_an_empty_list_costs_no_query(self, graph):
         assert await detect.already_here([]) == {}
+
+
+class TestCommuneByDepartment:
+    """Many commune names exist in several departments (1450 on dev), so a
+    request names the department, whose `code` picks between them."""
+
+    @pytest_asyncio.fixture(loop_scope="session")
+    async def namesakes(self, graph):
+        await adb.cypher_query(
+            "MATCH (n) WHERE n.uid IN [$tag+'-d98', $tag+'-d97', $tag+'-twin98', $tag+'-twin97'] "
+            "DETACH DELETE n",
+            {"tag": TAG},
+        )
+        await adb.cypher_query(
+            """
+            CREATE (d1:DepartmentOfFrance {uid:$tag+'-d98', code:'98'})
+            CREATE (d2:DepartmentOfFrance {uid:$tag+'-d97', code:'97'})
+            CREATE (c1:Commune {uid:$tag+'-twin98', name_fr:'Twinville'})
+            CREATE (c2:Commune {uid:$tag+'-twin97', name_fr:'Twinville'})
+            CREATE (c1)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d1)
+            CREATE (c2)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d2)
+            """,
+            {"tag": TAG},
+        )
+
+    async def test_the_department_code_picks_between_namesakes(self, namesakes):
+        address = {"city": "Twinville"}
+        assert await detect.resolve_commune(address, department="98") == f"{TAG}-twin98"
+        assert await detect.resolve_commune(address, department="97") == f"{TAG}-twin97"
+
+    async def test_a_department_without_that_commune_resolves_to_nothing(self, namesakes):
+        assert await detect.resolve_commune({"city": "Twinville"}, department="96") is None
+
+    async def test_without_a_department_the_clone_lookup_is_unchanged(self, graph):
+        assert await detect.resolve_commune({"city": "Testville"}) == f"{TAG}-commune"
+
+
+class TestSimilarPeople:
+    """Candidates for the same person under another spelling, never auto-reused.
+
+    The graph holds "Jean Test" (M) with one entry, and "Marie Test" (F) with none.
+    """
+
+    async def test_the_same_words_in_another_order_are_found_with_their_entries(self, graph):
+        found = await detect.similar_effectors("Test Jean", "M")
+        assert [(c.uid, c.match) for c in found] == [(f"{TAG}-eff", "same")]
+        assert found[0].entries == ["testeur @ Cabinet Test"]
+
+    async def test_an_initial_is_a_weaker_match_than_the_same_words(self, graph):
+        found = await detect.similar_effectors("J. Test", None)
+        assert [(c.uid, c.match) for c in found] == [(f"{TAG}-eff", "initials")]
+
+    async def test_a_known_gender_that_differs_rules_a_candidate_out(self, graph):
+        assert await detect.similar_effectors("J. Test", "F") == []
+
+    async def test_an_unknown_gender_rules_nobody_out(self, graph):
+        found = await detect.similar_effectors("Test", None)
+        assert found == [], "a lone surname is too weak to suggest anyone"
+        found = await detect.similar_effectors("M. Test", None)
+        assert [c.uid for c in found] == [f"{TAG}-eff2"]
+
+    async def test_the_strongest_match_comes_first(self, graph):
+        found = await detect.similar_effectors("Jean Test", None)
+        assert found and found[0].match == "same"
+
+    async def test_nobody_similar_is_an_empty_list(self, graph):
+        assert await detect.similar_effectors("Nobody Here", "F") == []
