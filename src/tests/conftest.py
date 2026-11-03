@@ -125,6 +125,35 @@ def appointments_acl(transactional_db, roles):
     return acls
 
 
+@pytest.fixture
+def schedules_acl(transactional_db, roles):
+    """AccessControl for the schedules_v2 endpoint.
+
+    Opening hours are public, so every role may read (1). Writing is left to
+    administrators and superusers (15) and, through the object-level check, to
+    the people connected to the entry: staff hold 1 here, not 4 or 8, so a
+    random staff member cannot edit a random entry's hours.
+    """
+    from access.models import Endpoint, AccessControl
+    endpoint, _ = Endpoint.objects.get_or_create(name="schedules_v2")
+    permissions = {
+        "superuser": 15,
+        "administrator": 15,
+        "staff": 1,
+        "registered": 1,
+        "anonymous": 1,
+    }
+    acls = {}
+    for role_name, perm in permissions.items():
+        acl, _ = AccessControl.objects.get_or_create(
+            endpoint=endpoint,
+            role=roles[role_name],
+            defaults={"permissions": perm},
+        )
+        acls[role_name] = acl
+    return acls
+
+
 # ---------------------------------------------------------------------------
 # JWT fixtures per role
 # ---------------------------------------------------------------------------

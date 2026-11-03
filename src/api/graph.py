@@ -21,3 +21,14 @@ async def read(query: LiteralString, **params: Any) -> list[dict[str, Any]]:
 
     async with async_driver().session(database=_target()[2]) as session:
         return await session.execute_read(work)
+
+
+async def write(query: LiteralString, **params: Any) -> list[dict[str, Any]]:
+    """Every row `query` returns, run in a write transaction on the configured database."""
+
+    async def work(tx: AsyncManagedTransaction) -> list[dict[str, Any]]:
+        result = await tx.run(query, params)
+        return [record.data() async for record in result]
+
+    async with async_driver().session(database=_target()[2]) as session:
+        return await session.execute_write(work)
