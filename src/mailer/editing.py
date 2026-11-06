@@ -20,8 +20,8 @@ from mailer.defaults import TemplateText
 
 # Who a preview is addressed to unless the administrator names someone.
 # Visibly made up, and at a domain reserved for examples.
-SAMPLE_INVITEE_NAME = "Camille Exemple"
-SAMPLE_INVITEE_EMAIL = "camille.exemple@example.org"
+SAMPLE_INVITEE_NAME = "Camille Fontaine"
+SAMPLE_INVITEE_EMAIL = "camille.fontaine@example.org"
 
 
 class TemplateInvalid(Exception):
