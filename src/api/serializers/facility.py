@@ -252,6 +252,20 @@ def _facilities_from_rows(q) -> list[FacilityPy]:
                 raise ValidationError(e)
     return facilities
 
+def assert_facility_stays_put(stored_zip: str | None, sent_zip: str | None) -> None:
+    """An edit corrects a facility; a different postal code would move it.
+
+    Moving is a separate process still to come, so this refuses whoever asks.
+    A facility that has no postal code yet may be given one.
+    """
+    stored = (stored_zip or "").strip()
+    if stored and stored != (sent_zip or "").strip():
+        raise HTTPException(
+            status_code=409,
+            detail="A facility cannot be moved by editing it: its postal code stays as it is.",
+        )
+
+
 async def assert_slug_is_free(
     slug: str | None,
     request: Request,
@@ -380,6 +394,7 @@ async def update_facility(uid: str, f: FacilityPut, request: Request)->FacilityP
     except Exception as e:
         logger.error(e)
         raise HTTPException(status_code=404, detail=f"Facility with uid={uid} not found.")
+    assert_facility_stays_put(node.zip, f.zip)
     await assert_slug_is_free(f.slug, request, exclude_uid=uid)
     node.name=f.name
     node.label=f.label
