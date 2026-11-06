@@ -61,7 +61,7 @@ async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(
     data = await serializer.adata
     return SocialMedia.model_validate(data)
 
-@router.post("/socialmedia/", response_model=SocialMedia)
+@router.post("/socialmedia", response_model=SocialMedia)
 async def create_item(item: SocialMediaPost, request: Request, jwt: Annotated[dict, Depends(JWT)])->SocialMedia:
     logger.debug(f"{item=}")
     entry = await get_entry(item.entry)

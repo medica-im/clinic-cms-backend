@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/payment_methods/")
+@router.get("/payment_methods")
 async def entries() -> list[PaymentMethod]:
     methods = await AsyncPaymentMethod.nodes
     return [PaymentMethod.model_validate(method.__properties__) for method in methods]

@@ -53,7 +53,7 @@ async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(
         raise HTTPException(status_code=404, detail=f"Object not found")
     return obj
 
-@router.post("/websites/", response_model=Website)
+@router.post("/websites", response_model=Website)
 async def create_item(item: WebsitePost, request: Request, jwt: Annotated[dict, Depends(JWT)]):
     entry = await get_entry(item.entry)
     users = await get_entry_users(entry)

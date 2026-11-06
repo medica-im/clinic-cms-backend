@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.post("/appointments/", response_model=Appointment)
+@router.post("/appointments", response_model=Appointment)
 async def create_item(item: AppointmentPost, request: Request, jwt: Annotated[dict, Depends(JWT)]):
     entry = await get_entry(item.entry)
     users = await get_entry_users(entry)

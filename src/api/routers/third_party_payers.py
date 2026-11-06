@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/third_party_payers/")
+@router.get("/third_party_payers")
 async def entries() -> list[ThirdPartyPayer]:
     items = await AsyncThirdPartyPayer.nodes
     return [ThirdPartyPayer.model_validate(item.__properties__) for item in items]

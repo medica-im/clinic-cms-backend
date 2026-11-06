@@ -56,7 +56,7 @@ async def get_item(item_id: str, request: Request, jwt: Annotated[dict, Depends(
     return email
 
 
-@router.post("/emails/", response_model=Email)
+@router.post("/emails", response_model=Email)
 async def create_item(item: EmailPost, request: Request, jwt: Annotated[dict, Depends(JWT)]):
     entry = await get_entry(item.entry)
     users = await get_entry_users(entry)

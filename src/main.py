@@ -85,7 +85,7 @@ async def lifespan(app):
     await close_drivers()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, redirect_slashes=False)
 
 origins = settings.CORS_ALLOWED_ORIGINS
 

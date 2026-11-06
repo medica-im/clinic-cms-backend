@@ -1,4 +1,4 @@
-"""Tests for POST /appointments/ endpoint.
+"""Tests for POST /appointments endpoint.
 
 Covers:
 - Role-based access: anonymous, staff (non-owner), owner, administrator, superuser
@@ -111,7 +111,7 @@ def _enter_all(stack, patch_jwt_fn, jwt, mock_neo4j_role_fn, role, mock_get_site
 @pytest.mark.asyncio
 async def test_create_appointment_anonymous_returns_401(client):
     """No JWT cookie → 401."""
-    response = await client.post("/appointments/", json=URL_OFFICE_PAYLOAD)
+    response = await client.post("/appointments",json=URL_OFFICE_PAYLOAD)
     assert response.status_code == 401
 
 
@@ -125,7 +125,7 @@ async def test_create_appointment_as_owner_returns_200(
     with ExitStack() as stack:
         _enter_all(stack, patch_jwt, jwt_owner, mock_neo4j_role, None, mock_get_site, mocks)
         stack.enter_context(patch("api.auth.is_user_in_authorized_list", new_callable=AsyncMock, return_value=True))
-        response = await client.post("/appointments/", json=URL_OFFICE_PAYLOAD)
+        response = await client.post("/appointments",json=URL_OFFICE_PAYLOAD)
     assert response.status_code == 200
     data = response.json()
     assert data["entry"] == "entry-uid-001"
@@ -146,7 +146,7 @@ async def test_create_appointment_as_staff_non_owner_returns_403(
         stack.enter_context(patch("api.routers.appointment.get_entry", new_callable=AsyncMock, return_value=fake_entry))
         stack.enter_context(patch("api.routers.appointment.get_entry_users", new_callable=AsyncMock, return_value=fake_entry.owner._nodes))
         stack.enter_context(patch("api.auth.is_user_in_authorized_list", new_callable=AsyncMock, return_value=False))
-        response = await client.post("/appointments/", json=URL_OFFICE_PAYLOAD)
+        response = await client.post("/appointments",json=URL_OFFICE_PAYLOAD)
     assert response.status_code == 403
 
 
@@ -159,7 +159,7 @@ async def test_create_appointment_as_administrator_returns_200(
     mocks = _neo4j_create_mocks(fake_entry, "Office", "office", url="https://rdv.example.com")
     with ExitStack() as stack:
         _enter_all(stack, patch_jwt, jwt_administrator, mock_neo4j_role, "administrator", mock_get_site, mocks)
-        response = await client.post("/appointments/", json=URL_OFFICE_PAYLOAD)
+        response = await client.post("/appointments",json=URL_OFFICE_PAYLOAD)
     assert response.status_code == 200
 
 
@@ -172,7 +172,7 @@ async def test_create_appointment_as_superuser_returns_200(
     mocks = _neo4j_create_mocks(fake_entry, "Office", "office", url="https://rdv.example.com")
     with ExitStack() as stack:
         _enter_all(stack, patch_jwt, jwt_superuser, mock_neo4j_role, "superuser", mock_get_site, mocks)
-        response = await client.post("/appointments/", json=URL_OFFICE_PAYLOAD)
+        response = await client.post("/appointments",json=URL_OFFICE_PAYLOAD)
     assert response.status_code == 200
 
 
@@ -189,7 +189,7 @@ async def test_create_appointment_url_office(
     mocks = _neo4j_create_mocks(fake_entry, "Office", "office", url="https://rdv.example.com")
     with ExitStack() as stack:
         _enter_all(stack, patch_jwt, jwt_superuser, mock_neo4j_role, "superuser", mock_get_site, mocks)
-        response = await client.post("/appointments/", json=URL_OFFICE_PAYLOAD)
+        response = await client.post("/appointments",json=URL_OFFICE_PAYLOAD)
     assert response.status_code == 200
     data = response.json()
     assert data["url"] == "https://rdv.example.com"
@@ -206,7 +206,7 @@ async def test_create_appointment_phone_office(
     mocks = _neo4j_create_mocks(fake_entry, "Office", "office", phone="+33412345678")
     with ExitStack() as stack:
         _enter_all(stack, patch_jwt, jwt_superuser, mock_neo4j_role, "superuser", mock_get_site, mocks)
-        response = await client.post("/appointments/", json=PHONE_OFFICE_PAYLOAD)
+        response = await client.post("/appointments",json=PHONE_OFFICE_PAYLOAD)
     assert response.status_code == 200
     data = response.json()
     assert data["phone"] == "+33412345678"
@@ -223,7 +223,7 @@ async def test_create_appointment_url_house_call(
     mocks = _neo4j_create_mocks(fake_entry, "HouseCall", "house_call", url="https://rdv.example.com/domicile")
     with ExitStack() as stack:
         _enter_all(stack, patch_jwt, jwt_superuser, mock_neo4j_role, "superuser", mock_get_site, mocks)
-        response = await client.post("/appointments/", json=URL_HOUSE_CALL_PAYLOAD)
+        response = await client.post("/appointments",json=URL_HOUSE_CALL_PAYLOAD)
     assert response.status_code == 200
     data = response.json()
     assert data["url"] == "https://rdv.example.com/domicile"
@@ -239,7 +239,7 @@ async def test_create_appointment_phone_house_call(
     mocks = _neo4j_create_mocks(fake_entry, "HouseCall", "house_call", phone="+33412345678")
     with ExitStack() as stack:
         _enter_all(stack, patch_jwt, jwt_superuser, mock_neo4j_role, "superuser", mock_get_site, mocks)
-        response = await client.post("/appointments/", json=PHONE_HOUSE_CALL_PAYLOAD)
+        response = await client.post("/appointments",json=PHONE_HOUSE_CALL_PAYLOAD)
     assert response.status_code == 200
     data = response.json()
     assert data["phone"] == "+33412345678"
@@ -255,7 +255,7 @@ async def test_create_appointment_url_no_location(
     mocks = _neo4j_create_mocks(fake_entry, "Appointment", None, url="https://rdv.example.com")
     with ExitStack() as stack:
         _enter_all(stack, patch_jwt, jwt_superuser, mock_neo4j_role, "superuser", mock_get_site, mocks)
-        response = await client.post("/appointments/", json=URL_NO_LOCATION_PAYLOAD)
+        response = await client.post("/appointments",json=URL_NO_LOCATION_PAYLOAD)
     assert response.status_code == 200
     data = response.json()
     assert data["url"] == "https://rdv.example.com"
@@ -271,7 +271,7 @@ async def test_create_appointment_phone_no_location(
     mocks = _neo4j_create_mocks(fake_entry, "Appointment", None, phone="+33412345678")
     with ExitStack() as stack:
         _enter_all(stack, patch_jwt, jwt_superuser, mock_neo4j_role, "superuser", mock_get_site, mocks)
-        response = await client.post("/appointments/", json=PHONE_NO_LOCATION_PAYLOAD)
+        response = await client.post("/appointments",json=PHONE_NO_LOCATION_PAYLOAD)
     assert response.status_code == 200
     data = response.json()
     assert data["phone"] == "+33412345678"
@@ -294,7 +294,7 @@ async def test_create_appointment_both_url_and_phone_returns_422(
         "location": "office",
     }
     with patch_jwt(jwt_superuser):
-        response = await client.post("/appointments/", json=payload)
+        response = await client.post("/appointments",json=payload)
     assert response.status_code == 422
 
 
@@ -310,5 +310,5 @@ async def test_create_appointment_neither_url_nor_phone_returns_422(
         "location": "office",
     }
     with patch_jwt(jwt_superuser):
-        response = await client.post("/appointments/", json=payload)
+        response = await client.post("/appointments",json=payload)
     assert response.status_code == 422

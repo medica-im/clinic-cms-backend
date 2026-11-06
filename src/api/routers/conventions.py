@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/conventions/")
+@router.get("/conventions")
 async def entries() -> list[Convention]:
     items = await AsyncConvention.nodes
     return [Convention.model_validate(item.__properties__) for item in items]
