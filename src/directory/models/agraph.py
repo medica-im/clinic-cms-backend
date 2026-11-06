@@ -79,6 +79,7 @@ class EffectorType(AsyncStructuredNode):
     assignable = BooleanProperty(default=True)
     # What its entries do; api.types.effector_type.Nature says what each means.
     nature = StringProperty(choices={n: n for n in ("profession", "service", "activity")})
+    facility_noun_fr = StringProperty()
     need = AsyncRelationshipTo('Need', 'MANAGES')
     situation = AsyncRelationshipTo('Situation', 'MANAGES')
     effector_type = AsyncRelationshipTo(

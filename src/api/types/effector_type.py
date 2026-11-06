@@ -30,6 +30,7 @@ class EffectorTypePost(BaseModel):
     # False: a category that only groups other types; entries never have it.
     assignable: bool = True
     nature: Nature|None = None
+    facility_noun_fr: str|None = None
 
 
 class EffectorTypePatch(BaseModel):
@@ -51,6 +52,7 @@ class EffectorTypePatch(BaseModel):
     effector_type_uid: str|None = None
     assignable: bool|None = None
     nature: Nature|None = None
+    facility_noun_fr: str|None = None
 
 
 class EffectorType(BaseModel):
@@ -73,6 +75,7 @@ class EffectorType(BaseModel):
     isRPPS: bool = False
     assignable: bool = True
     nature: Nature|None = None
+    facility_noun_fr: str|None = None
     need: Annotated[list[NeedPy]|None, Field(exclude=True)] = None
     situation: Annotated[list[SituationPy]|None, Field(exclude=True)] = None
     concept_fr: str|None = None

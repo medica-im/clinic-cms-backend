@@ -81,6 +81,9 @@ class EffectorType(StructuredNode):
     assignable = BooleanProperty(default=True)
     # What its entries do; api.types.effector_type.Nature says what each means.
     nature = StringProperty(choices={n: n for n in ("profession", "service", "activity")})
+    # The kind of place a profession is practised in ("cabinet médical"); a
+    # type without one takes its nearest ancestor's (directory.facility_slug.slug_base).
+    facility_noun_fr = StringProperty()
     need = RelationshipTo('Need', 'MANAGES')
     situation = RelationshipTo('Situation', 'MANAGES')
     effector_type = RelationshipTo(
