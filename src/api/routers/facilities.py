@@ -84,16 +84,20 @@ async def facility_by_slug(slug: str) -> Facility:
 
 @router.get("/facility-slugs")
 async def facility_slug_check(
-    name: str,
+    name: str | None = None,
     commune: str | None = None,
     street: str | None = None,
     zip: str | None = None,
     slug: str | None = None,
     exclude: str | None = None,
+    effector_type: str | None = None,
+    effector: str | None = None,
 ) -> FacilitySlugCheck:
-    """The slug a facility would get, or whether a chosen one is free."""
+    """The slug a facility would get, or whether a chosen one is free. A
+    facility with no name is named by its type and its person when given."""
     return FacilitySlugCheck(**await check_facility_slug(
-        name, commune, street, zip, slug=slug, exclude_uid=exclude
+        name, commune, street, zip, slug=slug, exclude_uid=exclude,
+        effector_type_uid=effector_type, effector_uid=effector,
     ))
 
 @router.post("/facilities", status_code=status.HTTP_201_CREATED)

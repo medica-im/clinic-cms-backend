@@ -51,7 +51,8 @@ class Coordinates(BaseModel):
 
 class FacilityPost(FacilityBase, Coordinates):
     commune: str
-    #: Generated from the name and the address when not sent.
+    #: None when not sent: the entry wizard sets it with the first entry, once
+    #: the occupation and the person that name it best are known.
     slug: str|None = None
 
 

@@ -340,7 +340,7 @@ def location_from(f: FacilityPost|FacilityPut) -> NeomodelPoint|None:
 
 async def create_facility(f: FacilityPost, request: Request, jwt: dict)->FacilityPy:
     location = location_from(f)
-    slug = await slug_for_new_facility(f.slug, f.name, f.commune, f.street, f.zip)
+    slug = slug_for_new_facility(f.slug)
     await assert_slug_is_free(slug, request)
     node = await Facility(
         name=f.name,

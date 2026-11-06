@@ -10,6 +10,8 @@ class EntryPost(BaseModel):
     isOwner: bool = True
     redeemEmail: str|None = None
     access: str = 'anonymous'
+    #: The address of a facility that has none yet; see assign_facility_slug.
+    facility_slug: str|None = None
 
 
 class EntryPatch(BaseModel):

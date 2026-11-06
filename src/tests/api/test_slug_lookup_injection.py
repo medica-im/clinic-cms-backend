@@ -88,9 +88,18 @@ class TestQueryFindEntry:
         assert_not_found(exc_info)
 
 
-@pytest.mark.no_db
-def test_the_unused_query_route_is_gone():
-    """/queryfullentries took the same three values from the query string; nothing called it."""
+@pytest.mark.django_db
+async def test_the_unused_query_route_is_gone(client):
+    """/queryfullentries took the same three values from the query string; nothing called it.
+
+    Asked of the schema and of the server rather than of app.routes, which
+    FastAPI 0.137 turned from a flat list into a tree of included routers.
+
+    Not no_db: a request goes through CloseOldConnectionsMiddleware, which checks
+    any Postgres connection an earlier test left open on the thread.
+    """
     from main import app
 
-    assert "/queryfullentries/" not in {route.path for route in app.routes}
+    assert not [path for path in app.openapi()["paths"] if path.startswith("/queryfullentries")]
+    response = await client.get("/queryfullentries/?effector=a&facility=b&type=c")
+    assert response.status_code == 404

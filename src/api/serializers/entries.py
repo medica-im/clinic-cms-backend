@@ -24,6 +24,7 @@ from access.asyncneomodels import User as AsyncUser
 from api.neo4j_auth import get_neo4j_user, get_neo4j_role
 from api.routers.utils import get_directory_from_hostname
 from directory.slug import generate_entry_slugs
+from directory.facility_slug import assign_facility_slug
 from directory.offered_types import TypeNotOffered, check_type_offered
 from access.models import Role
 
@@ -169,6 +170,9 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
     effector: Effector = await AsyncEffector.nodes.get(uid=entry.effector)
     effector_type: AsyncEffectorType = await AsyncEffectorType.nodes.get(uid=entry.effector_type)
     facility: Facility = await AsyncFacility.nodes.get(uid=entry.facility)
+    if await assign_facility_slug(str(facility.uid), entry.facility_slug):
+        await clear_cache("v1:facilities", request)
+        await clear_cache("v2:public/facilities", request)
     entry_uids: list[str] = get_entries(
         effector=effector.uid,
         effector_type=str(effector_type.uid),

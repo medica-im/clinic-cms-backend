@@ -54,5 +54,35 @@ async def test_a_facility_being_edited_may_keep_its_slug(client, taken):
     assert body["free"] is True
 
 
-async def test_a_name_is_needed(client, taken):
-    assert (await client.get(URL, params={"commune": "Lyon"})).status_code == 422
+@pytest.fixture
+async def kinds(neo4j_graph):
+    await neo4j_graph.cypher_query(
+        "CREATE (:EffectorType {uid: 'zz-kine', name_fr: 'zzkiné', label_fr: 'zzkiné', nature: 'profession',"
+        " facility_noun_fr: 'cabinet de kinésithérapie'})"
+        " CREATE (:EffectorType {uid: 'zz-svc', name_fr: 'zzservice', label_fr: 'zzservice', nature: 'service'})"
+        " CREATE (:Effector {uid: 'zz-urps', name_fr: 'URPS médecins libéraux'})"
+    )
+
+
+NO_NAME = {"commune": "Lyon", "street": "1 rue Test"}
+
+
+async def test_a_nameless_office_is_named_by_its_occupation_and_street(client, kinds):
+    body = (await client.get(URL, params={**NO_NAME, "effector_type": "zz-kine"})).json()
+    assert body["slug"] == "cabinet-de-kinesitherapie-rue-test-lyon"
+    assert "cabinet-de-kinesitherapie" not in body["suggestions"]
+
+
+async def test_a_service_is_named_by_its_organisation(client, kinds):
+    body = (await client.get(URL, params={**NO_NAME, "effector_type": "zz-svc", "effector": "zz-urps"})).json()
+    assert body["slug"] == "urps-medecins-liberaux"
+
+
+async def test_a_name_the_person_typed_beats_the_occupation(client, kinds):
+    body = (await client.get(URL, params={**NO_NAME, "name": "Zzcab", "effector_type": "zz-kine"})).json()
+    assert body["slug"] == "zzcab"
+
+
+async def test_nothing_to_build_a_slug_from_proposes_none(client, kinds):
+    body = (await client.get(URL, params={"commune": "Lyon"})).json()
+    assert body["slug"] is None and body["free"] is False and body["reason"] == "invalid"

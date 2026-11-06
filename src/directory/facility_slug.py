@@ -4,6 +4,7 @@ import secrets
 from dataclasses import dataclass
 
 from django.utils.text import slugify
+from fastapi import HTTPException
 from neomodel import adb
 
 
@@ -25,10 +26,16 @@ def facility_slug_candidates(
     commune: str | None = None,
     street: str | None = None,
     zip: str | None = None,
+    *,
+    generic: bool = False,
 ) -> list[str]:
     """The slugs a facility could have, most readable first: the name, then
     the commune, the street (without, then with its number) and the postcode
-    added in turn."""
+    added in turn.
+
+    A `generic` base is a place word ("cabinet de kinésithérapie") that dozens
+    of facilities in one commune share: it never stands alone nor with only the
+    commune, and without a street there is nothing to tell them apart."""
     base = slugify(name or "")
     if base:
         named = street_name(street)
@@ -40,6 +47,8 @@ def facility_slug_candidates(
             [commune, zip],
             [street, commune, zip],
         ]
+        if generic:
+            variants = [variants[2], variants[3], variants[5]] if named else []
     else:
         # A plain address has no name: it is named by its street, number included,
         # which is all that tells two of them on one street apart.
@@ -77,11 +86,12 @@ async def generate_facility_slugs(
     *,
     count: int = 1,
     exclude_uid: str | None = None,
+    generic: bool = False,
 ) -> list[str]:
     """Up to `count` free slugs, most readable first. When every readable one is
     taken, the most specific gets a short random suffix. `exclude_uid` is the
     facility being edited, which may keep its own slug."""
-    candidates = facility_slug_candidates(name, commune, street, zip)
+    candidates = facility_slug_candidates(name, commune, street, zip, generic=generic)
     if not candidates:
         return []
     taken = await taken_facility_slugs(candidates, exclude_uid)
@@ -98,20 +108,28 @@ SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 async def check_facility_slug(
-    name: str,
+    name: str | None = None,
     commune: str | None = None,
     street: str | None = None,
     zip: str | None = None,
     *,
     slug: str | None = None,
     exclude_uid: str | None = None,
+    effector_type_uid: str | None = None,
+    effector_uid: str | None = None,
 ) -> dict:
     """Without `slug`, the most readable free slug and two alternatives. With
     one, whether it is free ("invalid" or "taken" if not) and, if not, three
-    free ones to pick instead."""
-    place = (name, commune, street, zip)
+    free ones to pick instead. The type and the person, when known, name a
+    facility that has no name of its own (slug_base)."""
+    base = await slug_base(name, effector_type_uid, effector_uid)
+    place = (base.name, commune, street, zip)
+
+    def propose():
+        return generate_facility_slugs(*place, count=3, exclude_uid=exclude_uid, generic=base.generic)
+
     if slug is None:
-        free = await generate_facility_slugs(*place, count=3, exclude_uid=exclude_uid)
+        free = await propose()
         return {"slug": free[0] if free else None, "free": bool(free),
                 "reason": None if free else "invalid", "suggestions": free[1:]}
     if not SLUG.match(slug):
@@ -120,29 +138,85 @@ async def check_facility_slug(
         reason = "taken"
     else:
         reason = None
-    suggestions = [] if reason is None else await generate_facility_slugs(*place, count=3, exclude_uid=exclude_uid)
+    suggestions = [] if reason is None else await propose()
     return {"slug": slug, "free": reason is None, "reason": reason, "suggestions": suggestions}
 
 
-async def slug_for_new_facility(
-    slug: str | None,
+@dataclass
+class SlugBase:
+    #: What the slug is built from; empty when the street has to name the facility.
+    name: str
+    #: A word every facility of the kind shares ("cabinet médical"): see
+    #: facility_slug_candidates.
+    generic: bool
+
+
+PLACE_WORD = """
+MATCH (t:EffectorType {uid: $uid})
+OPTIONAL MATCH p = (t)-[:IS_A*0..6]->(a:EffectorType)
+WHERE a.facility_noun_fr IS NOT NULL
+WITH t, a, p ORDER BY length(p)
+RETURN t.nature, t.label_fr, head(collect(a.facility_noun_fr))
+"""
+
+
+async def slug_base(
     name: str | None,
-    commune_uid: str | None,
-    street: str | None,
-    zip: str | None,
-) -> str | None:
+    effector_type_uid: str | None,
+    effector_uid: str | None,
+) -> SlugBase:
+    """What a facility is called in its address, from the most meaningful thing
+    known: the name a person gave it, then, for a profession, the word for its
+    kind of place (the nearest ancestor type that has one, else the type's own
+    label), then, for a service or an activity, the organisation's own name.
+    Empty when none is known: the street names it."""
+    if name and name.strip():
+        return SlugBase(name.strip(), False)
+    if effector_type_uid:
+        rows, _ = await adb.cypher_query(PLACE_WORD, {"uid": effector_type_uid})
+        if rows and rows[0][0] == "profession":
+            _, label, noun = rows[0]
+            word = noun or label
+            if word:
+                return SlugBase(word, True)
+        if effector_uid:
+            rows, _ = await adb.cypher_query(
+                "MATCH (e:Effector {uid: $uid}) RETURN e.name_fr", {"uid": effector_uid}
+            )
+            if rows and rows[0][0] and rows[0][0].strip():
+                return SlugBase(rows[0][0].strip(), False)
+    return SlugBase("", False)
+
+
+def slug_for_new_facility(slug: str | None) -> str | None:
     """The slug to store for a facility being created: the one the person
-    chose, else the most readable free one."""
-    if slug and slug.strip():
-        return slug.strip()
-    commune = None
-    if commune_uid:
-        rows, _ = await adb.cypher_query(
-            "MATCH (c:Commune {uid: $uid}) RETURN c.name_fr", {"uid": commune_uid}
-        )
-        commune = rows[0][0] if rows else None
-    generated = await generate_facility_slugs(name, commune, street, zip, count=1)
-    return generated[0] if generated else None
+    chose, else none. Never "": it is a value, and two facilities holding it
+    would collide where two without a slug do not."""
+    return slug.strip() or None if slug else None
+
+
+async def assign_facility_slug(facility_uid: str, slug: str | None) -> bool:
+    """Give a facility without an address the one sent with its first entry;
+    whether it was written.
+
+    A facility that has one keeps it: a slug never changes through an entry.
+    Refused, with nothing written, when it is not lowercase words and hyphens
+    (422) or another facility holds it (409): a rule about the data, so it
+    holds whoever asks."""
+    slug = slug_for_new_facility(slug)
+    if slug is None:
+        return False
+    if not SLUG.match(slug):
+        raise HTTPException(status_code=422, detail=f"'{slug}' is not a valid facility address.")
+    rows, _ = await adb.cypher_query(
+        "MATCH (f:Facility {uid: $uid}) WHERE f.slug IS NULL OR f.slug = '' RETURN f.uid", {"uid": facility_uid}
+    )
+    if not rows:
+        return False
+    if await taken_facility_slugs([slug], exclude_uid=facility_uid):
+        raise HTTPException(status_code=409, detail=f"The address '{slug}' is already used by another facility.")
+    await adb.cypher_query("MATCH (f:Facility {uid: $uid}) SET f.slug = $slug", {"uid": facility_uid, "slug": slug})
+    return True
 
 
 @dataclass
