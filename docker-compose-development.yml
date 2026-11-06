@@ -72,7 +72,7 @@ services:
       retries: 30
       start_period: 10s
     ports:
-      - "${EXTERNAL_PORT_DEVELOPMENT}:80"
+      - "127.0.0.1:${EXTERNAL_PORT_DEVELOPMENT}:80"
   fastapi:
     restart: always
     env_file:
@@ -105,16 +105,16 @@ services:
       retries: 30
       start_period: 10s
     ports:
-      - "${FASTAPI_PORT}:80"
+      - "127.0.0.1:${FASTAPI_PORT}:80"
   neo4j:
     image: neo4j:4.4-enterprise
     restart: always
     ports:
-      - ${NEO4J_7474_EXTERNAL_PORT}:7474
-      - ${NEO4J_7687_EXTERNAL_PORT}:7687
-      - 5001:5000
-      - 6001:6000
-      - 7001:7000
+      - 127.0.0.1:${NEO4J_7474_EXTERNAL_PORT}:7474
+      - 127.0.0.1:${NEO4J_7687_EXTERNAL_PORT}:7687
+      - 127.0.0.1:5001:5000
+      - 127.0.0.1:6001:6000
+      - 127.0.0.1:7001:7000
     volumes:
       - ${NEO4J_CONF}:/conf
       - ${NEO4J_DATA}:/data
@@ -181,7 +181,7 @@ services:
     volumes:
       - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     ports:
-      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
