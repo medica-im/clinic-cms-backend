@@ -126,6 +126,34 @@ def appointments_acl(transactional_db, roles):
 
 
 @pytest.fixture
+def conditions_acl(transactional_db, roles):
+    """AccessControl for the conditions_v2 endpoint.
+
+    The mental health tree is reference data the console writes: every role may
+    read it (1), only superusers write (15). An administrator or a staff member
+    must not edit what every directory's selector is built from.
+    """
+    from access.models import Endpoint, AccessControl
+    endpoint, _ = Endpoint.objects.get_or_create(name="conditions_v2")
+    permissions = {
+        "superuser": 15,
+        "administrator": 1,
+        "staff": 1,
+        "registered": 1,
+        "anonymous": 1,
+    }
+    acls = {}
+    for role_name, perm in permissions.items():
+        acl, _ = AccessControl.objects.get_or_create(
+            endpoint=endpoint,
+            role=roles[role_name],
+            defaults={"permissions": perm},
+        )
+        acls[role_name] = acl
+    return acls
+
+
+@pytest.fixture
 def schedules_acl(transactional_db, roles):
     """AccessControl for the schedules_v2 endpoint.
 
