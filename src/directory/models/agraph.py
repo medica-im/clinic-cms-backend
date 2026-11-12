@@ -51,6 +51,8 @@ class Convention(AsyncStructuredNode):
 
 class Need(AsyncStructuredNode):
     uid = UniqueIdProperty()
+    #: The key the console and entry-level MANAGES use: a uid differs per Neo4j server.
+    slug = StringProperty()
     name_fr = StringProperty(unique_index=True)
     name_en = StringProperty(unique_index=True)
     definition_fr = StringProperty()
@@ -79,6 +81,9 @@ class EffectorType(AsyncStructuredNode):
     assignable = BooleanProperty(default=True)
     # What its entries do; api.types.effector_type.Nature says what each means.
     nature = StringProperty(choices={n: n for n in ("profession", "service", "activity")})
+    # True: its entries have no premises of their own (a help line); orthogonal to nature.
+    # Absent on older nodes: read as false.
+    immaterial = BooleanProperty(default=False)
     facility_noun_fr = StringProperty()
     need = AsyncRelationshipTo('Need', 'MANAGES')
     situation = AsyncRelationshipTo('Situation', 'MANAGES')
@@ -116,12 +121,17 @@ class MESH(AsyncStructuredNode):
 
 class Situation(AsyncStructuredNode):
     uid = UniqueIdProperty()
+    #: The key the console and entry-level MANAGES use: a uid differs per Neo4j server.
+    slug = StringProperty()
     name_en = StringProperty(unique_index=True)
     name_fr = StringProperty(unique_index=True)
     definition_en = StringProperty()
     definition_fr = StringProperty()
     ICD_11 = ArrayProperty(StringProperty())
+    synonyms_fr = ArrayProperty(base_property=StringProperty())
+    synonyms_en = ArrayProperty(base_property=StringProperty())
     impacts_need = AsyncRelationshipTo('Need', 'IMPACTS')
+    situation = AsyncRelationshipTo('Situation', 'PART_OF')
 
 
 class OrganizationType(AsyncStructuredNode):
@@ -414,6 +424,8 @@ class Facility(AsyncStructuredNode):
     tooltip_direction = StringProperty(choices=DIRECTIONS)
     ban_id = StringProperty()
     ban_banId = StringProperty()
+    #: The SIRET of the establishment this facility is; see directory/siret_rule.py.
+    siret = StringProperty()
 
 
 class Entry(AsyncStructuredNode):
@@ -444,6 +456,17 @@ class Entry(AsyncStructuredNode):
     third_party_payer = ArrayProperty(base_property=StringProperty())
     convention = StringProperty()
     access = StringProperty(default='anonymous')
+    #: The SIREN of the legal unit this entry is (a porteur's); see directory/siret_rule.py.
+    siren = StringProperty()
+    #: Who the entry is for and how to reach it; null is unknown. See directory/facets.py.
+    age_min = IntegerProperty()
+    age_max = IntegerProperty()
+    care_levels = ArrayProperty(base_property=StringProperty())
+    who_can_contact = StringProperty()
+    access_modes = ArrayProperty(base_property=StringProperty())
+    audiences = ArrayProperty(base_property=StringProperty())
+    free = BooleanProperty()
+    anonymous_care = BooleanProperty()
     appointments = AsyncRelationshipTo(
         'Appointment',
         'HAS_APPOINTMENT',

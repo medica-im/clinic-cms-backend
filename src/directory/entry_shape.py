@@ -22,22 +22,31 @@ SINGLE_VALUED = {
     "HAS_FACILITY": "the place the person works at",
 }
 
+# Relationships an Entry has at most one of. RUN_BY points at the porteur, the
+# entry of the organization that runs this one (a service, an establishment): none
+# is fine, a second one is not, and a chain of porteurs may never loop back.
+AT_MOST_ONE = {
+    "RUN_BY": "the entry of the organization that runs this one",
+}
+
 # Pattern comprehensions rather than COUNT {} subqueries: the graph runs
 # Neo4j 4.4, and these read the same on 5.
 SHAPE_QUERY = (
     "MATCH (e:Entry {uid: $uid}) RETURN "
-    + ", ".join(f"size([(e)-[:{rel}]->(x) | x]) AS {rel}" for rel in SINGLE_VALUED)
+    + ", ".join(f"size([(e)-[:{rel}]->(x) | x]) AS {rel}" for rel in (*SINGLE_VALUED, *AT_MOST_ONE))
     + ", size([(d:Directory)-[:HAS_ENTRY]->(e) | d]) AS directories"
 )
 
 
 def shape_problems(counts: dict[str, int], *, directories: int) -> list[str]:
     """Problem codes for one entry's edge counts, in a stable order:
-    "HAS_EFFECTOR_TYPE:2" for a single-valued edge not present exactly once,
+    "HAS_EFFECTOR_TYPE:2" for a single-valued edge not present exactly once or
+    "RUN_BY:2" for one present more than once,
     "NO_DIRECTORY" for an entry no directory lists. Empty when well formed."""
     problems = [
         f"{rel}:{counts.get(rel, 0)}" for rel in SINGLE_VALUED if counts.get(rel, 0) != 1
     ]
+    problems += [f"{rel}:{counts[rel]}" for rel in AT_MOST_ONE if counts.get(rel, 0) > 1]
     if directories < 1:
         problems.append("NO_DIRECTORY")
     return problems
@@ -47,7 +56,7 @@ def _problems_from_rows(rows) -> list[str] | None:
     if not rows:
         return None
     *counts, directories = rows[0]
-    return shape_problems(dict(zip(SINGLE_VALUED, counts)), directories=directories)
+    return shape_problems(dict(zip((*SINGLE_VALUED, *AT_MOST_ONE), counts)), directories=directories)
 
 
 async def entry_shape_problems(uid: str) -> list[str] | None:

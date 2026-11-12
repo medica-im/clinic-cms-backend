@@ -17,7 +17,7 @@ so the API can report them and a log line says exactly what is wrong.
 
 import pytest
 
-from directory.entry_shape import SINGLE_VALUED, shape_problems
+from directory.entry_shape import AT_MOST_ONE, SINGLE_VALUED, shape_problems
 
 pytestmark = pytest.mark.no_db
 
@@ -56,3 +56,26 @@ def test_every_problem_is_listed_in_a_stable_order():
     counts = {"HAS_EFFECTOR": 0, "HAS_EFFECTOR_TYPE": 2, "HAS_FACILITY": 1}
 
     assert shape_problems(counts, directories=0) == ["HAS_EFFECTOR:0", "HAS_EFFECTOR_TYPE:2", "NO_DIRECTORY"]
+
+
+def test_run_by_is_the_one_edge_an_entry_has_at_most_once():
+    assert set(AT_MOST_ONE) == {"RUN_BY"}
+    assert not set(AT_MOST_ONE) & set(SINGLE_VALUED)
+
+
+@pytest.mark.parametrize("count", [0, 1])
+def test_an_entry_run_by_nobody_or_by_one_porteur_is_well_formed(count):
+    assert shape_problems({**WELL_FORMED, "RUN_BY": count}, directories=1) == []
+
+
+def test_a_second_porteur_is_named_with_its_count():
+    assert shape_problems({**WELL_FORMED, "RUN_BY": 2}, directories=1) == ["RUN_BY:2"]
+
+
+def test_run_by_absent_from_the_counts_is_nobody():
+    assert shape_problems(WELL_FORMED, directories=1) == []
+
+
+def test_problems_keep_the_edges_in_a_stable_order():
+    counts = {"HAS_EFFECTOR": 0, "HAS_EFFECTOR_TYPE": 2, "HAS_FACILITY": 1, "RUN_BY": 3}
+    assert shape_problems(counts, directories=0) == ["HAS_EFFECTOR:0", "HAS_EFFECTOR_TYPE:2", "RUN_BY:3", "NO_DIRECTORY"]

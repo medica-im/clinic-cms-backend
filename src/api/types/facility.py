@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from api.types.geography import Commune
 from pydantic_extra_types.coordinate import Coordinate
 from decimal import Decimal
+from directory.identifiers import is_siret, normalize
 
 class FacilityBase(BaseModel):
     updated: int|None = 0
@@ -15,6 +16,17 @@ class FacilityBase(BaseModel):
     zip: str|None
     ban_id: str|None
     ban_banId: str|None
+    #: The SIRET of the establishment this facility is (14 digits, check digit included).
+    #: Administrators and superusers set it; see directory/siret_rule.py.
+    siret: str|None = None
+
+    @field_validator("siret")
+    @classmethod
+    def a_siret_or_nothing(cls, value: str|None) -> str|None:
+        siret = normalize(value)
+        if siret is not None and not is_siret(siret):
+            raise ValueError("not a SIRET: 14 digits, ending in the right check digit")
+        return siret
 
     @field_validator("ban_id", "ban_banId")
     @classmethod

@@ -53,6 +53,8 @@ class Convention(StructuredNode):
 
 class Need(StructuredNode):
     uid = UniqueIdProperty()
+    #: The key the console and entry-level MANAGES use: a uid differs per Neo4j server.
+    slug = StringProperty()
     name_fr = StringProperty(unique_index=True)
     name_en = StringProperty(unique_index=True)
     definition_fr = StringProperty()
@@ -81,6 +83,7 @@ class EffectorType(StructuredNode):
     assignable = BooleanProperty(default=True)
     # What its entries do; api.types.effector_type.Nature says what each means.
     nature = StringProperty(choices={n: n for n in ("profession", "service", "activity")})
+    immaterial = BooleanProperty(default=False)
     # The kind of place a profession is practised in ("cabinet médical"); a
     # type without one takes its nearest ancestor's (directory.facility_slug.slug_base).
     facility_noun_fr = StringProperty()
@@ -120,12 +123,17 @@ class MESH(StructuredNode):
 
 class Situation(StructuredNode):
     uid = UniqueIdProperty()
+    #: The key the console and entry-level MANAGES use: a uid differs per Neo4j server.
+    slug = StringProperty()
     name_en = StringProperty(unique_index=True)
     name_fr = StringProperty(unique_index=True)
     definition_en = StringProperty()
     definition_fr = StringProperty()
     ICD_11 = ArrayProperty(StringProperty())
+    synonyms_fr = ArrayProperty(base_property=StringProperty())
+    synonyms_en = ArrayProperty(base_property=StringProperty())
     impacts_need = RelationshipTo('Need', 'IMPACTS')
+    situation = RelationshipTo('Situation', 'PART_OF')
 
 
 class OrganizationType(StructuredNode):
@@ -394,6 +402,8 @@ class Facility(StructuredNode):
     tooltip_direction = StringProperty(choices=DIRECTIONS)
     ban_id = StringProperty()
     ban_banId = StringProperty()
+    #: The SIRET of the establishment this facility is; see directory/siret_rule.py.
+    siret = StringProperty()
 
 
 class Entry(StructuredNode):
@@ -424,6 +434,17 @@ class Entry(StructuredNode):
     third_party_payer = ArrayProperty(base_property=StringProperty())
     convention = StringProperty()
     access = StringProperty(default='anonymous')
+    #: The SIREN of the legal unit this entry is (a porteur's); see directory/siret_rule.py.
+    siren = StringProperty()
+    #: Who the entry is for and how to reach it; null is unknown. See directory/facets.py.
+    age_min = IntegerProperty()
+    age_max = IntegerProperty()
+    care_levels = ArrayProperty(base_property=StringProperty())
+    who_can_contact = StringProperty()
+    access_modes = ArrayProperty(base_property=StringProperty())
+    audiences = ArrayProperty(base_property=StringProperty())
+    free = BooleanProperty()
+    anonymous_care = BooleanProperty()
     appointments = RelationshipTo(
         'Appointment',
         'HAS_APPOINTMENT',

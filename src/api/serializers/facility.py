@@ -17,6 +17,9 @@ from directory.facility_slug import slug_for_new_facility
 from api.utils import get_site_from_request, clear_cache
 from api.neo4j_auth import get_neo4j_user
 from api.auth import verify_user_access
+from api.graph import read
+from api.identity_rights import check_identity_role
+from directory.siret_rule import SiretMismatch, check_facility_siret
 from facility.models import Organization
 
 logger = logging.getLogger(__name__)
@@ -338,6 +341,33 @@ def location_from(f: FacilityPost|FacilityPut) -> NeomodelPoint|None:
     return NeomodelPoint((float(f.longitude), float(f.latitude)), crs='wgs-84')
 
 
+async def check_siret_write(uid: str | None, f, role: str | None) -> None:
+    """Refuse a SIRET the role may not set, or one that disagrees with the SIREN of
+    the porteur of an entry at the facility. A body that does not mention the SIRET,
+    or sends the one the facility has, changes nothing and asks for no role: the
+    edit forms that exist do not know the SIRET."""
+    if "siret" not in f.model_fields_set:
+        return
+    current = None
+    if uid:
+        rows = await read("MATCH (f:Facility {uid: $uid}) RETURN f.siret AS siret", uid=uid)
+        current = rows[0]["siret"] if rows else None
+    if f.siret == current:
+        return
+    check_identity_role(role, "siret")
+    if uid:
+        try:
+            await check_facility_siret(uid, f.siret)
+        except SiretMismatch:
+            raise HTTPException(status_code=409, detail={"code": "siret_mismatch"})
+
+
+def set_siret_if_sent(node, f) -> None:
+    """Write the SIRET to the node only when the body sent it (null removes it)."""
+    if "siret" in f.model_fields_set:
+        node.siret = f.siret
+
+
 async def create_facility(f: FacilityPost, request: Request, jwt: dict)->FacilityPy:
     location = location_from(f)
     slug = slug_for_new_facility(f.slug)
@@ -353,6 +383,7 @@ async def create_facility(f: FacilityPost, request: Request, jwt: dict)->Facilit
         zip=f.zip,
         ban_id=f.ban_id,
         ban_banId=f.ban_banId,
+        siret=f.siret,
         location=location
     ).save()
     commune=f.commune
@@ -406,6 +437,7 @@ async def update_facility(uid: str, f: FacilityPut, request: Request)->FacilityP
     node.zip=f.zip
     node.ban_id=f.ban_id
     node.ban_banId=f.ban_banId
+    set_siret_if_sent(node, f)
     node.location=location
     await node.save()
     facility = await async_get_facility(uid=uid)
