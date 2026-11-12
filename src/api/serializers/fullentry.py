@@ -1,5 +1,9 @@
 import logging
 from django.conf import settings
+from directory.facets import ENTRY_FACETS
+from directory.coverage import get_coverage
+from directory.manages import get_manages
+from directory.run_by import related_entries, visible_around
 from directory.utils import find_entry, async_find_entry
 from directory.serializers import (
     ConventionSerializer,
@@ -401,7 +405,19 @@ async def createFullEntryResource(node) -> dict:
         "owner": node.get("owner_uids"),
         "redeemEmail": entry_node.redeemEmail,
         "access": getattr(entry_node, 'access', 'anonymous'),
+        "siren": getattr(entry_node, 'siren', None),
+        **{facet: getattr(entry_node, facet, None) for facet in ENTRY_FACETS},
     }
+
+async def add_entries_around(entry_dct: dict, uid: str, role: str) -> None:
+    """Put the entry's porteur and its services in the payload, minus those the
+    viewer's role may not see (the access level of an entry is a minimum role)."""
+    around = visible_around(await related_entries(uid, LANGUAGE), ALLOWED_ACCESS.get(role))
+    entry_dct["run_by"] = around["run_by"]
+    entry_dct["services"] = around["services"]
+    entry_dct["manages"] = await get_manages(uid)
+    entry_dct["coverage"] = await get_coverage(uid)
+
 
 async def async_get_fullentry(uid: str, req: Request, jwt)->FullEntry:
     logger.debug(f"{jwt=}")
@@ -452,6 +468,7 @@ async def async_get_fullentry(uid: str, req: Request, jwt)->FullEntry:
         await entry.owner.all() + await entry.creator.all()
     ) if jwt else False
     process(entry_dct, normalized_role, attributes)
+    await add_entries_around(entry_dct, uid, normalized_role)
     if is_own_entry and owner_avatar and entry_dct.get("avatar") is None:
         entry_dct["avatar"] = owner_avatar
     logger.debug(f"{entry_dct=}")

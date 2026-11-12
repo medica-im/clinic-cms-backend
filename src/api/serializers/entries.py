@@ -26,6 +26,12 @@ from api.routers.utils import get_directory_from_hostname
 from directory.slug import generate_entry_slugs
 from directory.facility_slug import assign_facility_slug
 from directory.offered_types import TypeNotOffered, check_type_offered
+from api.identity_rights import check_identity_role
+from directory.facets import ENTRY_FACETS, check_age_range
+from directory.coverage import CoverageRefused, get_coverage, set_coverage, unknown_places
+from directory.manages import ManagesRefused, get_manages, set_manages, unknown_slugs
+from directory.run_by import RunByRefused, set_run_by
+from directory.siret_rule import SiretMismatch, check_siren
 from access.models import Role
 
 logger = logging.getLogger(__name__)
@@ -150,10 +156,75 @@ async def ensure_health_worker_label(effector_uid: str, effector_type) -> None:
         )
 
 
+RUN_BY_REFUSALS = {"unknown_entry": 404, "unknown_porteur": 422, "cycle": 409, "siret_mismatch": 409}
+
+
+def check_run_by_role(role: str | None, what: str = "run_by") -> None:
+    check_identity_role(role, what)
+
+
+async def check_siren_write(entry_uid: str, siren: str | None, role: str | None) -> None:
+    """Refuse a SIREN the role may not set, or one that disagrees with a service's SIRET."""
+    check_run_by_role(role, "siren")
+    try:
+        await check_siren(entry_uid, siren)
+    except SiretMismatch:
+        raise HTTPException(status_code=409, detail={"code": "siret_mismatch"})
+
+
+async def apply_run_by(entry_uid: str, porteur_uid: str | None, role: str | None) -> None:
+    """Set or detach an entry's porteur, for those who may."""
+    check_run_by_role(role)
+    try:
+        await set_run_by(entry_uid, porteur_uid)
+    except RunByRefused as refused:
+        raise HTTPException(status_code=RUN_BY_REFUSALS[refused.code], detail={"code": refused.code})
+
+
+async def apply_manages(entry_uid: str, slugs: list[str] | None) -> None:
+    """Make `slugs` what the entry manages; None or empty clears it."""
+    try:
+        await set_manages(entry_uid, slugs or [])
+    except ManagesRefused as refused:
+        status = 404 if refused.code == "unknown_entry" else 422
+        detail = {"code": refused.code}
+        if refused.slugs:
+            detail["slugs"] = refused.slugs
+        raise HTTPException(status_code=status, detail=detail)
+
+
+async def apply_coverage(entry_uid: str, uids: list[str] | None) -> None:
+    """Make `uids` the places the entry answers for; None or empty clears them."""
+    try:
+        await set_coverage(entry_uid, uids or [])
+    except CoverageRefused as refused:
+        status = 404 if refused.code == "unknown_entry" else 422
+        detail = {"code": refused.code}
+        if refused.uids:
+            detail["uids"] = refused.uids
+        raise HTTPException(status_code=status, detail=detail)
+
+
+async def covered_uids(entry_uid: str) -> list[str]:
+    return [place["uid"] for place in await get_coverage(entry_uid)]
+
+
 async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
     await validate_access(entry.access)
     site = await get_site_from_request(request)
     role = await get_neo4j_role(jwt, site)
+    if entry.run_by is not None:
+        check_run_by_role(role)
+    if entry.siren is not None:
+        check_run_by_role(role, "siren")
+    if entry.manages:
+        unknown = await unknown_slugs(entry.manages)
+        if unknown:
+            raise HTTPException(status_code=422, detail={"code": "unknown_target", "slugs": unknown})
+    if entry.coverage:
+        unknown = await unknown_places(entry.coverage)
+        if unknown:
+            raise HTTPException(status_code=422, detail={"code": "unknown_place", "uids": unknown})
     if entry.directory and role == "superuser":
         dir_name=entry.directory
     else:
@@ -213,6 +284,19 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         await new_entry.save()
     if entry.memberships:
         await connect_member_of(new_entry, entry)
+    facets = {name: getattr(entry, name) for name in ENTRY_FACETS if getattr(entry, name) is not None}
+    if entry.siren is not None or facets:
+        if entry.siren is not None:
+            new_entry.siren = entry.siren
+        for name, value in facets.items():
+            setattr(new_entry, name, value)
+        await new_entry.save()
+    if entry.run_by is not None:
+        await apply_run_by(str(new_entry.uid), entry.run_by, role)
+    if entry.manages:
+        await apply_manages(str(new_entry.uid), entry.manages)
+    if entry.coverage:
+        await apply_coverage(str(new_entry.uid), entry.coverage)
     await ensure_slug(new_entry, effector, facility, effector_type)
     await neo4j_directory.entries.connect(new_entry)
     try:
@@ -324,6 +408,14 @@ async def update_entry(uid:str, update_data: EntryPatch, request: Request, jwt: 
     entry = await AsyncEntry.nodes.get(uid=uid)
     keys = update_data.model_fields_set
     logger.debug(f"{keys=}")
+    if {'age_min', 'age_max'} & keys:
+        try:
+            check_age_range(
+                update_data.age_min if 'age_min' in keys else entry.age_min,
+                update_data.age_max if 'age_max' in keys else entry.age_max,
+            )
+        except ValueError:
+            raise HTTPException(status_code=422, detail={"code": "age_range"})
     if 'carte_vitale' in keys:
         entry.carte_vitale = update_data.carte_vitale
     if 'payment' in keys:
@@ -363,6 +455,27 @@ async def update_entry(uid:str, update_data: EntryPatch, request: Request, jwt: 
                 detail="Only administrators and superusers can set redeemEmail"
             )
         entry.redeemEmail = update_data.redeemEmail
+    if 'run_by' in keys:
+        site = await get_site_from_request(request)
+        role = await get_neo4j_role(jwt, site) if jwt else None
+        await apply_run_by(str(entry.uid), update_data.run_by, role)
+        should_clear_cache = True
+    if 'siren' in keys:
+        site = await get_site_from_request(request)
+        role = await get_neo4j_role(jwt, site) if jwt else None
+        await check_siren_write(str(entry.uid), update_data.siren, role)
+        entry.siren = update_data.siren
+        should_clear_cache = True
+    for facet in ENTRY_FACETS:
+        if facet in keys:
+            setattr(entry, facet, getattr(update_data, facet))
+            should_clear_cache = True
+    if 'manages' in keys:
+        await apply_manages(str(entry.uid), update_data.manages)
+        should_clear_cache = True
+    if 'coverage' in keys:
+        await apply_coverage(str(entry.uid), update_data.coverage)
+        should_clear_cache = True
     if 'access' in keys:
         await validate_access(update_data.access)
         entry.access = update_data.access
@@ -380,4 +493,11 @@ async def update_entry(uid:str, update_data: EntryPatch, request: Request, jwt: 
         {'a_uid': entry.uid}
     )
     entry_data["directories"] = [row[0] for row in directory_names_result]
+    porteur_result, _ = await adb.cypher_query(
+        'MATCH (:Entry {uid: $uid})-[:RUN_BY]->(p:Entry) RETURN p.uid',
+        {'uid': entry.uid}
+    )
+    entry_data["run_by"] = porteur_result[0][0] if porteur_result else None
+    entry_data["manages"] = await get_manages(str(entry.uid))
+    entry_data["coverage"] = await covered_uids(str(entry.uid))
     return Entry.model_validate(entry_data)

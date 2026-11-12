@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
-from typing import Any
+from typing import Any, Literal
 from decimal import Decimal
 from api.types.appointment import Appointment
 from api.types.convention import Convention
@@ -47,6 +47,12 @@ class Avatar(BaseModel):
     access: str = 'anonymous'
 
 
+class CoverageItem(BaseModel):
+    uid: str
+    name: str|None = None
+    kind: Literal["country", "region", "department", "commune"]
+
+
 class EffectorType(BaseModel):
     definition: str|None = None
     label: str
@@ -56,6 +62,7 @@ class EffectorType(BaseModel):
     synonyms: list[str]|None = None
     uid: str
     nature: Nature|None = None
+    immaterial: bool = False
 
 
 class Email(BaseModel):
@@ -143,6 +150,17 @@ class Tag(BaseModel):
     effector_types: list[str]|None
 
 
+class RelatedEntry(BaseModel):
+    """An entry around another: its porteur, or a service it runs. Enough to link to it."""
+    uid: str
+    slug: str|None = None
+    name: str|None = None
+    label: str|None = None
+    effector_type: str|None = None
+    #: The legal unit's SIREN when it has one: what a page shows to explain the link.
+    siren: str|None = None
+
+
 class FullEntry(BaseModel):
     active: bool
     address: Address
@@ -182,3 +200,21 @@ class FullEntry(BaseModel):
     owner: list[str]|None = None
     redeemEmail: str|None = None
     access: str = 'anonymous'
+    #: The entry of the organization that runs this one, if any (RUN_BY).
+    run_by: RelatedEntry|None = None
+    #: The entries this one runs, by name (RUN_BY, the other way).
+    services: list[RelatedEntry]|None = None
+    #: The SIREN of the legal unit this entry is, if it is one.
+    siren: str|None = None
+    #: The slugs of what this entry handles, as set on the entry itself (MANAGES).
+    manages: list[str] = []
+    #: Where the entry answers (COVERS), widest first; what an immaterial entry shows in place of an address.
+    coverage: list[CoverageItem] = []
+    age_min: int|None = None
+    age_max: int|None = None
+    care_levels: list[str]|None = None
+    who_can_contact: str|None = None
+    access_modes: list[str]|None = None
+    audiences: list[str]|None = None
+    free: bool|None = None
+    anonymous_care: bool|None = None

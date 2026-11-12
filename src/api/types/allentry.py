@@ -24,6 +24,7 @@ class EffectorType(BaseModel):
     definition: str|None = None
     synonyms: list[str]|None = None
     nature: Nature|None = None
+    immaterial: bool = False
 
 
 class Facility(BaseModel):
@@ -81,3 +82,12 @@ class Entry(BaseModel):
     owner: list[str]|None = None
     creator: list[str]|None = None
     access: str = 'anonymous'
+    #: Who the entry is for and how to reach it (directory/facets.py); null is unknown.
+    age_min: int|None = None
+    age_max: int|None = None
+    care_levels: list[str]|None = None
+    who_can_contact: str|None = None
+    access_modes: list[str]|None = None
+    audiences: list[str]|None = None
+    free: bool|None = None
+    anonymous_care: bool|None = None

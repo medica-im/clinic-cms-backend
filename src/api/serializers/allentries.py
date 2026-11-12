@@ -26,6 +26,7 @@ from directory.utils import (
 )
 from adrf.serializers import Serializer
 from rest_framework import serializers
+from directory.facets import facets_of
 from directory.models.core import Label
 from api.transformers import createCommuneResources, createEffectorTypeResources
 
@@ -224,6 +225,7 @@ async def createEntryResource(node):
         "creator": node.get("creator_uids"),
         "owner": node.get("owner_uids"),
         "access": getattr(entry, 'access', 'anonymous'),
+        **facets_of(entry),
     }
 
 async def createEntryResources(nodes: list, request):
