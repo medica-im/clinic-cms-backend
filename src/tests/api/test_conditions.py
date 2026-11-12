@@ -272,3 +272,52 @@ async def test_patching_the_parent_to_an_unknown_slug_is_a_422(
     )
     assert response.status_code == 422
     assert await edges(tree, "addiction-alcool") == [["addiction-alcool", CHAPTER]]
+
+
+async def labels(adb, slug):
+    rows, _ = await adb.cypher_query("MATCH (c:Condition {slug: $slug}) RETURN labels(c)", {"slug": slug})
+    return sorted(rows[0][0])
+
+
+async def test_a_chapter_also_carries_the_chapter_label_and_a_condition_does_not(tree):
+    assert await labels(tree, CHAPTER) == ["Chapter", "Condition"]
+    assert await labels(tree, "addiction-alcool") == ["Condition"]
+
+
+async def test_the_chapter_label_follows_the_kind_when_it_changes(
+    client, patch_jwt, jwt_superuser, mock_neo4j_role, mock_get_site, tree
+):
+    response = await patch(
+        client, "addiction-alcool", {"kind": "chapter", "chapter": 16, "parent": None}, patch_jwt, mock_neo4j_role,
+        mock_get_site, jwt_superuser,
+    )
+    assert response.status_code == 200, response.text
+    assert await labels(tree, "addiction-alcool") == ["Chapter", "Condition"]
+    response = await patch(
+        client, "addiction-alcool", {"kind": "condition"}, patch_jwt, mock_neo4j_role, mock_get_site, jwt_superuser
+    )
+    assert response.status_code == 200
+    assert await labels(tree, "addiction-alcool") == ["Condition"]
+
+
+async def test_a_condition_with_a_parent_cannot_become_a_chapter(
+    client, patch_jwt, jwt_superuser, mock_neo4j_role, mock_get_site, tree
+):
+    response = await patch(
+        client, "addiction-alcool", {"kind": "chapter", "chapter": 16}, patch_jwt, mock_neo4j_role, mock_get_site,
+        jwt_superuser,
+    )
+    assert response.status_code == 409
+    assert await labels(tree, "addiction-alcool") == ["Condition"]
+
+
+async def test_a_chapter_cannot_be_given_a_parent(
+    client, patch_jwt, jwt_superuser, mock_neo4j_role, mock_get_site, tree
+):
+    other = {"slug": "troubles-depressifs", "name_fr": "Troubles dépressifs", "kind": "chapter", "chapter": 4}
+    assert (await post(client, other, patch_jwt, mock_neo4j_role, mock_get_site, jwt_superuser)).status_code == 201
+    response = await patch(
+        client, CHAPTER, {"parent": "troubles-depressifs"}, patch_jwt, mock_neo4j_role, mock_get_site, jwt_superuser
+    )
+    assert response.status_code == 409
+    assert await edges(tree, CHAPTER) == []

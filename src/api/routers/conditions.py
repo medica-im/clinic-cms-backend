@@ -64,6 +64,7 @@ async def create_item(item: ConditionPost, request: Request, jwt: Annotated[dict
         """
         CREATE (c:Condition {uid: $uid})
         SET c += $props
+        FOREACH (_ IN CASE WHEN c.kind = 'chapter' THEN [1] ELSE [] END | SET c:Chapter)
         WITH c
         OPTIONAL MATCH (p:Condition {slug: $parent})
         FOREACH (_ IN CASE WHEN p IS NULL THEN [] ELSE [1] END | CREATE (c)-[:PART_OF]->(p))
@@ -79,10 +80,18 @@ async def create_item(item: ConditionPost, request: Request, jwt: Annotated[dict
 @router.patch("/conditions/{slug}", response_model=Condition)
 async def patch_item(slug: str, item: ConditionPatch, request: Request, jwt: Annotated[dict, Depends(JWT)]):
     await authorize_api(ENDPOINT, request, jwt)
-    if not await exists(slug):
+    current = await read(
+        "MATCH (c:Condition {slug: $slug}) OPTIONAL MATCH (c)-[:PART_OF]->(p:Condition) RETURN c.kind AS kind, p.slug AS parent",
+        slug=slug,
+    )
+    if not current:
         raise HTTPException(status_code=404, detail="Condition not found")
     sent = item.model_fields_set
     change_parent = "parent" in sent
+    kind = item.kind if "kind" in sent else current[0]["kind"]
+    parent = item.parent if change_parent else current[0]["parent"]
+    if kind == "chapter" and parent is not None:
+        raise HTTPException(status_code=409, detail="A chapter has no parent")
     if change_parent and item.parent is not None:
         if not await exists(item.parent):
             raise HTTPException(status_code=422, detail=f"Unknown parent: {item.parent}")
@@ -97,6 +106,8 @@ async def patch_item(slug: str, item: ConditionPatch, request: Request, jwt: Ann
         """
         MATCH (c:Condition {slug: $slug})
         SET c += $props
+        FOREACH (_ IN CASE WHEN c.kind = 'chapter' THEN [1] ELSE [] END | SET c:Chapter)
+        FOREACH (_ IN CASE WHEN c.kind = 'chapter' THEN [] ELSE [1] END | REMOVE c:Chapter)
         WITH c
         OPTIONAL MATCH (c)-[old:PART_OF]->(:Condition)
         FOREACH (_ IN CASE WHEN $change_parent THEN [1] ELSE [] END | DELETE old)
