@@ -11,8 +11,10 @@ from api.utils import (
     set_timestamp,
 )
 from api.types.public_facility import Address, PublicFacility
+from directory.models import Directory
 from directory.models.api import TTL, Endpoint
 from directory.utils import (
+    lists_need,
     owner_listed,
     async_get_directory_for_site,
     async_get_phones_neomodel,
@@ -92,7 +94,12 @@ async def _get_facility_nodes(
     directory_name: str,
     slug: str | None = None,
     uid: str | None = None,
+    site_directories: list[str] | None = None,
 ):
+    """The facilities a request reaches. The list is the directory's own, under its listing
+    rules; a page, by slug or uid, is looked up in every directory of the site (the default
+    one alone when `site_directories` is not given)."""
+    directories = site_directories or [directory_name]
     if slug:
         query = """
         MATCH (d:Directory)-[:HAS_ENTRY]->(e:Entry),
@@ -100,10 +107,10 @@ async def _get_facility_nodes(
               (e)-[:HAS_FACILITY]->(f:Facility)
                 -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(commune:Commune)
                 -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
-        WHERE f.slug = $slug AND d.name = $directory AND e.active = true
-        RETURN f, commune, country
+        WHERE f.slug = $slug AND d.name IN $directories AND e.active = true
+        RETURN DISTINCT f, commune, country
         """
-        params = {"slug": slug, "directory": directory_name}
+        params = {"slug": slug, "directories": directories}
     elif uid:
         query = """
         MATCH (d:Directory)-[:HAS_ENTRY]->(e:Entry),
@@ -111,10 +118,10 @@ async def _get_facility_nodes(
               (e)-[:HAS_FACILITY]->(f:Facility)
                 -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(commune:Commune)
                 -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
-        WHERE f.uid = $uid AND d.name = $directory AND e.active = true
-        RETURN f, commune, country
+        WHERE f.uid = $uid AND d.name IN $directories AND e.active = true
+        RETURN DISTINCT f, commune, country
         """
-        params = {"uid": uid, "directory": directory_name}
+        params = {"uid": uid, "directories": directories}
     else:
         # The list obeys Directory.list_owner_entry; the facility's own page
         # (slug, uid above) stays reachable, like the entry's.
@@ -124,7 +131,7 @@ async def _get_facility_nodes(
               (e)-[:HAS_FACILITY]->(f:Facility)
                 -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(commune:Commune)
                 -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country)
-        WHERE d.name = $directory AND e.active = true AND {owner_listed('d', 'e')}
+        WHERE d.name = $directory AND e.active = true AND {owner_listed('d', 'e')} AND {lists_need('d', 'e')}
         RETURN DISTINCT f, commune, country
         """
         params = {"directory": directory_name}
@@ -245,11 +252,19 @@ async def public_facilities(request: Request) -> list[PublicFacility]:
     return results
 
 
+async def _site_directory_names(site, default: str) -> list[str]:
+    """Every directory of the site, the default one first."""
+    names = [d.name async for d in Directory.objects.filter(site=site)]
+    return [default] + [name for name in names if name != default]
+
+
 @router.get("/public/facilities/{slug}")
 async def public_facility(slug: str, request: Request) -> PublicFacility:
     site = await get_site_from_request(request)
     directory = await async_get_directory_for_site(site)
-    rows = await _get_facility_nodes(directory.name, slug=slug)
+    rows = await _get_facility_nodes(
+        directory.name, slug=slug, site_directories=await _site_directory_names(site, directory.name)
+    )
     if not rows:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -263,7 +278,9 @@ async def public_facility(slug: str, request: Request) -> PublicFacility:
 async def public_facility_by_uid(uid: str, request: Request) -> PublicFacility:
     site = await get_site_from_request(request)
     directory = await async_get_directory_for_site(site)
-    rows = await _get_facility_nodes(directory.name, uid=uid)
+    rows = await _get_facility_nodes(
+        directory.name, uid=uid, site_directories=await _site_directory_names(site, directory.name)
+    )
     if not rows:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

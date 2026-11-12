@@ -7,13 +7,14 @@ from PIL import Image
 from pydantic import BaseModel
 from asgiref.sync import sync_to_async
 from django.core.files.uploadedfile import InMemoryUploadedFile
-from api.serializers.facility import async_get_facilities, async_get_facility, async_get_organization_facilities, create_facility, update_facility, delete_facility
+from api.serializers.facility import async_get_facilities, async_get_facility, async_get_organization_facilities, check_siret_write, create_facility, update_facility, delete_facility
 from api.types.facility import Facility, FacilityPost, FacilityPut, FacilitySlugCheck
 from directory.facility_slug import check_facility_slug
 from api.auth import authorize_api, may_authorize_api, verify_user_access, JWT
 from api.neo4j_auth import get_neo4j_role, get_neo4j_user, normalize_neo4j_role
 from api.utils import get_site_from_request
 from facility.models import Organization, PlaceImage
+from neomodel import adb
 from directory.models.agraph import Facility as AgraphFacility
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,7 @@ async def facility_slug_check(
 async def post_facility(facility: FacilityPost, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> Facility:
     logger.debug(f'${facility=}')
     await authorize_api("facilities_v2", request, jwt)
+    await check_siret_write(None, facility, await get_neo4j_role(jwt, await get_site_from_request(request)))
     return await create_facility(facility, request, jwt)
 
 async def get_facility_users(uid: str):
@@ -128,9 +130,22 @@ async def get_facility_users(uid: str):
     users = []
     users.extend(await facility_node.owner.all())
     users.extend(await facility_node.creator.all())
-    for entry_node in await facility_node.entries.all():
-        users.extend(await entry_node.owner.all())
-        users.extend(await entry_node.creator.all())
+    # An entry of an immaterial type (a help line on its porteur's address) is not
+    # located here in any sense that gives rights over the place.
+    rows, _ = await adb.cypher_query(
+        """
+        MATCH (:Facility {uid: $uid})<-[:HAS_FACILITY]-(e:Entry)
+        WHERE NOT EXISTS {
+            MATCH (e)-[:HAS_EFFECTOR_TYPE]->(:EffectorType)-[:IS_A*0..]->(t:EffectorType)
+            WHERE coalesce(t.immaterial, false)
+        }
+        MATCH (e)-[:OWNED_BY|CREATED_BY]->(u:User)
+        RETURN DISTINCT u
+        """,
+        {"uid": uid},
+        resolve_objects=True,
+    )
+    users.extend(row[0] for row in rows)
 
     # The same person can be reached by several of those paths.
     unique = {}
@@ -142,6 +157,7 @@ async def get_facility_users(uid: str):
 async def put_facility(uid: str, facility: FacilityPut, request: Request, jwt: Annotated[dict, Depends(JWT)]) -> Facility:
     users = await get_facility_users(uid)
     await authorize_api("facilities_v2", request, jwt, users)
+    await check_siret_write(uid, facility, await get_neo4j_role(jwt, await get_site_from_request(request)))
     return await update_facility(uid, facility, request)
 
 @router.delete("/facilities/{uid}")

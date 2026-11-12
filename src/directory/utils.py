@@ -698,6 +698,29 @@ def owner_listed(directory: str, entry: str) -> str:
     )
 
 
+def lists_need(directory: str, entry: str) -> str:
+    """Cypher condition: `entry` is one `directory` lists.
+
+    A directory with no LISTS_NEED edge lists all its entries. One with the edge lists
+    only the entries that manage the Need or a descendant Need, or a Condition or
+    Situation that IMPACTS it, directly or through its PART_OF parents; on the entry
+    itself or on its type, subtypes included. A filter, not an unlink: the entry stays
+    in the directory, so a service can still name its porteur and its page answers.
+    """
+    reached = (
+        "(x:Need AND (x)-[:PART_OF*0..]->(n))"
+        " OR ((x:Condition OR x:Situation)"
+        " AND (x)-[:PART_OF*0..]->()-[:IMPACTS]->(:Need)-[:PART_OF*0..]->(n))"
+    )
+    return (
+        f"(NOT ({directory})-[:LISTS_NEED]->(:Need)"
+        f" OR EXISTS {{ MATCH ({directory})-[:LISTS_NEED]->(n:Need), ({entry})-[:MANAGES]->(x) WHERE {reached} }}"
+        f" OR EXISTS {{ MATCH ({directory})-[:LISTS_NEED]->(n:Need),"
+        f" ({entry})-[:HAS_EFFECTOR_TYPE]->(:EffectorType)-[:IS_A*0..]->(:EffectorType)-[:MANAGES]->(x)"
+        f" WHERE {reached} }})"
+    )
+
+
 def get_entries_query(
     directory: Directory,
     uid = None,
@@ -717,7 +740,7 @@ def get_entries_query(
         query=f"""MATCH (d:Directory) WHERE d.name=$directory
         WITH d
         MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
-        WHERE {owner_listed('d', 'entry')} AND ($active IS NULL OR entry.active = $active)
+        WHERE {owner_listed('d', 'entry')} AND {lists_need('d', 'entry')} AND ($active IS NULL OR entry.active = $active)
         WITH entry
         MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
         WITH entry, COLLECT(DISTINCT directory) as directories

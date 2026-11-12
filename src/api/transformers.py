@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 
 
 class EffectorTypeObj:
-    def __init__(self, uid, label, name, slug, synonyms, definition, raw_label=None, nature=None):
+    def __init__(self, uid, label, name, slug, synonyms, definition, raw_label=None, nature=None, immaterial=False):
         self.uid = uid
         self.label = label
         self.raw_label = raw_label
@@ -14,6 +14,7 @@ class EffectorTypeObj:
         self.synonyms = synonyms
         self.definition = definition
         self.nature = nature
+        self.immaterial = immaterial
 
 
 def createEffectorTypeResources(node):
@@ -46,6 +47,7 @@ def createEffectorTypeResources(node):
     return EffectorTypeObj(
         uid, label, name, slug, synonyms, definition,
         raw_label=label, nature=getattr(node, 'nature', None),
+        immaterial=bool(getattr(node, 'immaterial', None)),
     )
 
 
