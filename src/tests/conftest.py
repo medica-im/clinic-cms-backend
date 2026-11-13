@@ -154,6 +154,47 @@ def conditions_acl(transactional_db, roles):
 
 
 @pytest.fixture
+def situations_acl(transactional_db, roles):
+    """AccessControl for the situations_v2 endpoint: the situations tree is
+    reference data like the conditions tree, read by all, written by superusers."""
+    from access.models import Endpoint, AccessControl
+    endpoint, _ = Endpoint.objects.get_or_create(name="situations_v2")
+    permissions = {
+        "superuser": 15,
+        "administrator": 1,
+        "staff": 1,
+        "registered": 1,
+        "anonymous": 1,
+    }
+    return {
+        role_name: AccessControl.objects.get_or_create(
+            endpoint=endpoint, role=roles[role_name], defaults={"permissions": perm}
+        )[0]
+        for role_name, perm in permissions.items()
+    }
+
+
+@pytest.fixture
+def needs_acl(transactional_db, roles):
+    """AccessControl for the needs_v2 endpoint: read by all, written by superusers."""
+    from access.models import Endpoint, AccessControl
+    endpoint, _ = Endpoint.objects.get_or_create(name="needs_v2")
+    permissions = {
+        "superuser": 15,
+        "administrator": 1,
+        "staff": 1,
+        "registered": 1,
+        "anonymous": 1,
+    }
+    return {
+        role_name: AccessControl.objects.get_or_create(
+            endpoint=endpoint, role=roles[role_name], defaults={"permissions": perm}
+        )[0]
+        for role_name, perm in permissions.items()
+    }
+
+
+@pytest.fixture
 def schedules_acl(transactional_db, roles):
     """AccessControl for the schedules_v2 endpoint.
 

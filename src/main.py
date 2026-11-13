@@ -67,7 +67,7 @@ apps.check_models_ready()
 from fastapi import FastAPI, Request, Cookie
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers import organization, organization_types, effector_types, facilities, communes, departments, entries, effectors, auth, phones, monkeys, emails, websites, payment_methods, third_party_payers, conventions, appointment, schedule, fullentries, tags, allentries, socialmedia, situations, conditions, concerns, invitees, users, avatar, batch_emails, batch_invitees, association, organization_role, membership_category, public_facilities, carehomes, listmonk_export, directories, effector_type_labels, admin_entries, clone, email_templates, email_images, entry_slugs, entry_credits, entry_type, mail_events, mail_checks, invitation_settings, opengraph
+from api.routers import organization, organization_types, effector_types, facilities, communes, departments, entries, effectors, auth, phones, monkeys, emails, websites, payment_methods, third_party_payers, conventions, appointment, schedule, fullentries, tags, allentries, socialmedia, situations, situation_tree, needs, conditions, concerns, invitees, users, avatar, batch_emails, batch_invitees, association, organization_role, membership_category, public_facilities, carehomes, listmonk_export, directories, effector_type_labels, admin_entries, clone, email_templates, email_images, entry_slugs, entry_credits, entry_type, mail_events, mail_checks, invitation_settings, opengraph
 from django.conf import settings
 from fastapi_nextauth_jwt.exceptions import MissingTokenError
 
@@ -126,6 +126,8 @@ app.include_router(tags.router)
 app.include_router(allentries.router)
 app.include_router(socialmedia.router)
 app.include_router(situations.router)
+app.include_router(situation_tree.router)
+app.include_router(needs.router)
 app.include_router(conditions.router)
 app.include_router(concerns.router)
 app.include_router(invitees.router)
