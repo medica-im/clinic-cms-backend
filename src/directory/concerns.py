@@ -6,7 +6,7 @@ walking up would return everything for everything. An entry manages something
 through its own MANAGES or through its type's (the type's subtypes included). Only
 the directory's own, active entries count, and a node no entry reaches is not
 offered, so empty chapters never show. "Voir aussi" follows MAY_LEAD_TO to the
-situations a condition can lead to, when those are offered too.
+situations or conditions a condition can lead to, when those are offered too.
 
 Selection never follows RUN_BY, and never the Need a node IMPACTS: the Need decides
 what a directory lists, not what a professional picks.
@@ -29,7 +29,7 @@ OFFERED = """
     MATCH (m)-[:PART_OF*0..]->(a) WHERE a:Condition OR a:Situation
     WITH a, collect(DISTINCT e.uid) AS entries
     OPTIONAL MATCH (a)-[:PART_OF]->(p) WHERE p:Condition OR p:Situation
-    OPTIONAL MATCH (a)-[:MAY_LEAD_TO]->(s:Situation)
+    OPTIONAL MATCH (a)-[:MAY_LEAD_TO]->(s) WHERE s:Situation OR s:Condition
     RETURN properties(a) AS node, labels(a) AS labels, entries,
            head(collect(DISTINCT p.uid)) AS parent, collect(DISTINCT s.uid) AS leads_to
 """

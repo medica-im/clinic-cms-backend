@@ -5,8 +5,8 @@ in a mental health directory everything relates to mental health, so walking up
 would return everything for everything. An entry manages something through its
 own MANAGES or its type's. Only the directory's own, active entries count, and a
 node nobody manages (an empty chapter) is not offered. "Voir aussi" follows
-MAY_LEAD_TO to the situations a condition can lead to, when those are offered too.
-Real Neo4j: the semantics live in the Cypher.
+MAY_LEAD_TO to the situations or conditions a condition can lead to, when those are
+offered too. Real Neo4j: the semantics live in the Cypher.
 """
 import pytest
 
@@ -109,6 +109,23 @@ async def test_voir_aussi_lists_the_offered_situations_a_condition_can_lead_to(g
     found = await offered()
     assert found["depression"]["see_also"] == ["s-cri"]
     assert found["crise-suicidaire"]["see_also"] == []
+
+
+async def test_voir_aussi_also_follows_a_condition_to_a_condition(graph):
+    """Bipolar disorder may lead to suicidal ideation, which ICD-11 codes as a
+    condition (MB26.A), not a situation: its entries belong in "voir aussi" too."""
+    await graph.cypher_query(
+        """
+        MATCH (d:Directory {name: 'sm'})
+        CREATE (bipolaire:Condition {uid: 'c-bip', slug: 'bipolaire', name_fr: 'Troubles bipolaires', kind: 'condition'})
+        CREATE (idees:Condition {uid: 'c-ide', slug: 'idees-suicidaires', name_fr: 'Idées suicidaires', kind: 'condition'})
+        CREATE (bipolaire)-[:MAY_LEAD_TO]->(idees)
+        CREATE (d)-[:HAS_ENTRY]->(:Entry {uid: 'e-bip', active: true})-[:MANAGES]->(bipolaire)
+        CREATE (d)-[:HAS_ENTRY]->(:Entry {uid: 'e-ide', active: true})-[:MANAGES]->(idees)
+        """
+    )
+    found = await offered()
+    assert found["bipolaire"]["see_also"] == ["c-ide"]
 
 
 async def test_an_entry_with_two_paths_to_a_node_is_listed_once(graph):
