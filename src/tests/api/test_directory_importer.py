@@ -55,8 +55,15 @@ async def graph(neo4j_graph):
         CREATE (:EffectorType {uid: 't-hop', slug_fr: 'hopitaux', name_fr: 'hôpital'})
         CREATE (:EffectorType {uid: 't-line', slug_fr: 'ligne-ecoute', name_fr: "ligne d'écoute"})
         CREATE (:EffectorType {uid: 't-res', slug_fr: 'centre-ressource', name_fr: 'centre ressource'})
-        CREATE (:Commune:AdministrativeTerritorialEntityOfFrance {uid: 'c-bron', name_fr: 'Bron', slug_fr: 'bron'})
-        CREATE (:DepartmentOfFrance {uid: 'd-69', code: '69', name: 'Rhône'})
+        CREATE (d69:DepartmentOfFrance {uid: 'd-69', code: '69', name: 'Rhône'})
+        CREATE (d94:DepartmentOfFrance {uid: 'd-94', code: '94', name: 'Val-de-Marne'})
+        CREATE (d52:DepartmentOfFrance {uid: 'd-52', code: '52', name: 'Haute-Marne'})
+        CREATE (bron:Commune:AdministrativeTerritorialEntityOfFrance {uid: 'c-bron', name_fr: 'Bron', slug_fr: 'bron'})
+        CREATE (bron)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d69)
+        CREATE (sm94:Commune:AdministrativeTerritorialEntityOfFrance {uid: 'c-sm-94', name_fr: 'Saint-Maurice', slug_fr: 'saint-maurice'})
+        CREATE (sm94)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d94)
+        CREATE (sm52:Commune:AdministrativeTerritorialEntityOfFrance {uid: 'c-sm-52', name_fr: 'Saint-Maurice', slug_fr: 'saint-maurice'})
+        CREATE (sm52)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d52)
         CREATE (:Country {uid: 'fr', code: 'FR', name: 'France'})
         CREATE (:Condition {uid: 'c-ide', slug: 'idees-suicidaires', name_fr: 'Idées suicidaires'})
         CREATE (:Situation {uid: 's-cri', slug: 'crise-suicidaire', name_fr: 'Crise suicidaire'})
@@ -116,6 +123,27 @@ async def test_an_entry_already_there_is_reused_by_its_slug_and_given_its_porteu
     assert run_by == [["Centre hospitalier Le Vinatier"]]
 
 
+async def test_a_commune_name_several_departments_share_is_told_apart_by_the_citycode(graph):
+    """Six communes are called Saint-Maurice: the BAN's commune code names the département."""
+    spec = copy.deepcopy(SPEC)
+    saint_maurice = {**BRON, "street": "12 Rue du Val d'Osne", "zip": "94410", "city": "Saint-Maurice",
+                     "citycode": "94069", "ban_id": "94069_x_00012"}
+    spec["porteurs"][0]["facility"]["address"] = saint_maurice
+    assert await preflight(spec) == []
+    await import_spec(spec, creator_directory="santelyon3", contacts=False)
+    located = await one(
+        graph,
+        "MATCH (:Facility {street: \"12 Rue du Val d'Osne\"})-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c) RETURN c.uid",
+    )
+    assert located == [["c-sm-94"]]
+
+
+async def test_a_commune_the_department_does_not_have_is_missing_not_guessed(graph):
+    spec = copy.deepcopy(SPEC)
+    spec["porteurs"][0]["facility"]["address"] = {**BRON, "city": "Saint-Maurice", "citycode": "69069"}
+    assert await preflight(spec) == ["vinatier: commune 'Saint-Maurice' (69) is missing"]
+
+
 async def test_a_rerun_after_success_creates_nothing(graph):
     first = await import_spec(SPEC, creator_directory="santelyon3", contacts=False)
     before = await one(graph, "MATCH (n) RETURN count(n)")
@@ -142,7 +170,7 @@ async def test_nothing_is_written_until_every_name_resolves(graph):
     problems = await preflight(spec)
     assert problems == [
         "vinatier: effector type 'no-such-type' is missing",
-        "vinatier: commune 'Atlantis' is missing",
+        "vinatier: commune 'Atlantis' (69) is missing",
         "row-5: unknown manages 'no-such-concern'",
         "row-5: unknown department '99'",
         "row-9: unknown porteur 'nobody'",

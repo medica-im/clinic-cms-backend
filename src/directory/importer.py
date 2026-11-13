@@ -38,6 +38,18 @@ from directory.run_by import set_run_by
 
 PLACES = {"department": "DepartmentOfFrance", "country": "Country"}
 
+#: A commune is told apart from its namesakes by its département: six are called Saint-Maurice.
+COMMUNE = (
+    "MATCH (c:Commune {name_fr: $city})-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->"
+    "(:DepartmentOfFrance {code: $dep})"
+)
+
+
+def department_of(address: dict) -> str:
+    """The département code in the commune code the BAN gives (69029 is Bron, in 69; 97411 is in 974)."""
+    citycode = address["citycode"]
+    return citycode[:3] if citycode.startswith("97") else citycode[:2]
+
 
 @dataclass
 class Report:
@@ -81,9 +93,9 @@ async def preflight(spec: dict, only: set[str] | None = None) -> list[str]:
             if not facility:
                 problems.append(f"{key}: no facility")
             elif "address" in facility:
-                city = facility["address"]["city"]
-                if await _one("MATCH (c:Commune {name_fr: $n}) RETURN c.uid", n=city) is None:
-                    problems.append(f"{key}: commune '{city}' is missing")
+                address = facility["address"]
+                if await _one(COMMUNE + " RETURN c.uid", city=address["city"], dep=department_of(address)) is None:
+                    problems.append(f"{key}: commune '{address['city']}' ({department_of(address)}) is missing")
             elif facility["porteur"] not in keys:
                 problems.append(f"{key}: unknown porteur '{facility['porteur']}'")
         for slug in await unknown_slugs(item.get("manages") or []):
@@ -105,8 +117,7 @@ async def _facility(spec_facility: dict, report: Report) -> str:
         report.reused["facility"] += 1
         return found
     rows = await write(
-        """
-        MATCH (c:Commune {name_fr: $city})
+        COMMUNE + """
         CREATE (f:Facility {uid: replace(randomUUID(), '-', ''), name: $name, label: '', street: $street,
                             zip: $zip, building: $building, ban_id: $ban_id, ban_banId: $ban_banId, zoom: 18,
                             location: point({latitude: $lat, longitude: $lon, crs: 'wgs-84'}),
@@ -114,7 +125,8 @@ async def _facility(spec_facility: dict, report: Report) -> str:
         CREATE (f)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c)
         RETURN f.uid AS uid
         """,
-        city=address["city"], name=spec_facility["name"], street=address["street"], zip=address["zip"],
+        city=address["city"], dep=department_of(address), name=spec_facility["name"],
+        street=address["street"], zip=address["zip"],
         building=spec_facility.get("building"), ban_id=address.get("ban_id"), ban_banId=address.get("ban_banId"),
         lat=address["latitude"], lon=address["longitude"],
     )
