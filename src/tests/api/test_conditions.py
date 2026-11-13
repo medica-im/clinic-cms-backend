@@ -321,3 +321,107 @@ async def test_a_chapter_cannot_be_given_a_parent(
     )
     assert response.status_code == 409
     assert await edges(tree, CHAPTER) == []
+
+
+# What a condition may lead to ("voir aussi": a situation or another condition)
+# and the needs it impacts. Links point at nodes by slug; sending a list replaces
+# the condition's links of that kind, as a parent is replaced.
+
+
+async def links(adb, slug, rel):
+    rows, _ = await adb.cypher_query(
+        f"MATCH (c:Condition {{slug: $slug}})-[:{rel}]->(t) RETURN t.slug ORDER BY t.slug", {"slug": slug}
+    )
+    return [row[0] for row in rows]
+
+
+@pytest.fixture
+async def targets(tree):
+    await tree.cypher_query(
+        "CREATE (:Situation {uid: 's1', slug: 'crise-suicidaire', name_fr: 'Crise suicidaire'}), "
+        "(:Situation {uid: 's2', slug: 'isolement', name_fr: 'Isolement'}), "
+        "(:Situation {uid: 's3', name_fr: 'Sans slug'}), "
+        "(:Need {uid: 'n1', slug: 'sante-mentale', name_fr: 'Santé mentale'}), "
+        "(:Need {uid: 'n2', slug: 'vivre', name_fr: 'Vivre'})"
+    )
+    return tree
+
+
+async def test_a_new_condition_is_created_with_what_it_leads_to_and_impacts(
+    client, patch_jwt, jwt_superuser, mock_neo4j_role, mock_get_site, targets
+):
+    body = {**ALCOOL, "slug": "addiction-cannabis", "name_fr": "Cannabis", "icd_11": ["6C41"], "synonyms_fr": [],
+            "may_lead_to": ["crise-suicidaire", "addiction-alcool"], "impacts": ["sante-mentale"]}
+    response = await post(client, body, patch_jwt, mock_neo4j_role, mock_get_site, jwt_superuser)
+    assert response.status_code == 201, response.text
+    assert response.json()["may_lead_to"] == ["addiction-alcool", "crise-suicidaire"]
+    assert response.json()["impacts"] == ["sante-mentale"]
+    assert await links(targets, "addiction-cannabis", "MAY_LEAD_TO") == ["addiction-alcool", "crise-suicidaire"]
+    assert await links(targets, "addiction-cannabis", "IMPACTS") == ["sante-mentale"]
+
+
+async def test_the_tree_shows_each_condition_s_links(client, targets, mock_neo4j_role, mock_get_site):
+    await targets.cypher_query(
+        "MATCH (c:Condition {slug: 'addiction-alcool'}), (s:Situation {slug: 'crise-suicidaire'}), "
+        "(u:Situation {name_fr: 'Sans slug'}), (n:Need {slug: 'vivre'}) "
+        "CREATE (c)-[:MAY_LEAD_TO]->(s), (c)-[:MAY_LEAD_TO]->(u), (c)-[:IMPACTS]->(n)"
+    )
+    with ExitStack() as stack:
+        stack.enter_context(mock_neo4j_role(None))
+        stack.enter_context(mock_get_site)
+        body = {c["slug"]: c for c in (await client.get(URL)).json()}
+    assert body["addiction-alcool"]["may_lead_to"] == ["crise-suicidaire"]
+    assert body["addiction-alcool"]["impacts"] == ["vivre"]
+    assert body[CHAPTER]["may_lead_to"] == []
+
+
+async def test_a_patch_replaces_the_links_it_sends_and_keeps_the_others(
+    client, patch_jwt, jwt_superuser, mock_neo4j_role, mock_get_site, targets
+):
+    first = await patch(client, "addiction-alcool", {"may_lead_to": ["isolement"], "impacts": ["vivre"]},
+                        patch_jwt, mock_neo4j_role, mock_get_site, jwt_superuser)
+    assert first.status_code == 200, first.text
+    second = await patch(client, "addiction-alcool", {"may_lead_to": ["crise-suicidaire"]},
+                         patch_jwt, mock_neo4j_role, mock_get_site, jwt_superuser)
+    assert second.status_code == 200, second.text
+    assert await links(targets, "addiction-alcool", "MAY_LEAD_TO") == ["crise-suicidaire"]
+    assert await links(targets, "addiction-alcool", "IMPACTS") == ["vivre"]
+    assert await edges(targets, "addiction-alcool") == [["addiction-alcool", CHAPTER]]
+
+
+async def test_an_empty_list_removes_the_links(
+    client, patch_jwt, jwt_superuser, mock_neo4j_role, mock_get_site, targets
+):
+    await patch(client, "addiction-alcool", {"impacts": ["vivre"]}, patch_jwt, mock_neo4j_role, mock_get_site, jwt_superuser)
+    response = await patch(client, "addiction-alcool", {"impacts": []}, patch_jwt, mock_neo4j_role, mock_get_site, jwt_superuser)
+    assert response.status_code == 200
+    assert await links(targets, "addiction-alcool", "IMPACTS") == []
+
+
+async def test_a_link_to_an_unknown_node_is_a_422_and_writes_nothing(
+    client, patch_jwt, jwt_superuser, mock_neo4j_role, mock_get_site, targets
+):
+    to_nothing = await patch(client, "addiction-alcool", {"may_lead_to": ["crise-suicidaire", "nope"]},
+                             patch_jwt, mock_neo4j_role, mock_get_site, jwt_superuser)
+    to_a_situation_as_need = await patch(client, "addiction-alcool", {"impacts": ["isolement"]},
+                                         patch_jwt, mock_neo4j_role, mock_get_site, jwt_superuser)
+    assert to_nothing.status_code == 422
+    assert "nope" in to_nothing.text
+    assert to_a_situation_as_need.status_code == 422
+    assert await links(targets, "addiction-alcool", "MAY_LEAD_TO") == []
+
+
+async def test_a_condition_cannot_lead_to_itself(
+    client, patch_jwt, jwt_superuser, mock_neo4j_role, mock_get_site, targets
+):
+    response = await patch(client, "addiction-alcool", {"may_lead_to": ["addiction-alcool"]},
+                           patch_jwt, mock_neo4j_role, mock_get_site, jwt_superuser)
+    assert response.status_code == 422
+
+
+async def test_null_links_are_refused(
+    client, patch_jwt, jwt_superuser, mock_neo4j_role, mock_get_site, targets
+):
+    response = await patch(client, "addiction-alcool", {"may_lead_to": None},
+                           patch_jwt, mock_neo4j_role, mock_get_site, jwt_superuser)
+    assert response.status_code == 422

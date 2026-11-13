@@ -35,6 +35,20 @@ class ConditionFields(BaseModel):
     kind: Literal["chapter", "condition"] = "condition"
     chapter: int | None = None
     parent: str | None = None
+    # "Voir aussi": the situations or conditions it may lead to, by slug.
+    may_lead_to: list[str] = []
+    # The needs it bears on, by slug.
+    impacts: list[str] = []
+
+    @field_validator("may_lead_to", "impacts")
+    @classmethod
+    def _slugs(cls, values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return None
+        bad = [v for v in values if not SLUG.match(v)]
+        if bad:
+            raise ValueError(f"not slugs: {bad}")
+        return sorted(set(values))
 
     @field_validator("name_fr")
     @classmethod
@@ -85,6 +99,8 @@ class ConditionPost(ConditionFields):
     def _tree_rules(self):
         if self.parent == self.slug:
             raise ValueError("a condition cannot be its own parent")
+        if self.slug in self.may_lead_to:
+            raise ValueError("a condition cannot lead to itself")
         if self.kind == "chapter" and self.parent is not None:
             raise ValueError("a chapter has no parent")
         return self
@@ -103,12 +119,14 @@ class ConditionPatch(ConditionFields):
     icd_11: list[str] | None = None
     synonyms_fr: list[str] | None = None
     synonyms_en: list[str] | None = None
+    may_lead_to: list[str] | None = None
+    impacts: list[str] | None = None
 
     model_config = {"extra": "forbid"}
 
     @model_validator(mode="after")
     def _no_null_where_a_value_is_required(self):
-        for field in ("name_fr", "kind", "icd_11", "synonyms_fr", "synonyms_en"):
+        for field in ("name_fr", "kind", "icd_11", "synonyms_fr", "synonyms_en", "may_lead_to", "impacts"):
             if field in self.model_fields_set and getattr(self, field) is None:
                 raise ValueError(f"{field} cannot be null")
         return self
@@ -135,14 +153,16 @@ PROPERTIES = ("name_fr", "name_en", "label_fr", "icd_11", "synonyms_fr", "synony
 
 
 def node_properties(condition: ConditionPost) -> dict:
-    """What the node stores. The parent is a PART_OF relationship, not a property."""
+    """What the node stores. The parent and the links are relationships, not properties."""
     properties = {"slug": condition.slug}
     properties.update({name: getattr(condition, name) for name in PROPERTIES})
     return properties
 
 
-def condition_from_row(node: dict, parent: str | None) -> Condition:
+def condition_from_row(node: dict, parent: str | None, may_lead_to=(), impacts=()) -> Condition:
     return Condition(
+        may_lead_to=list(may_lead_to),
+        impacts=list(impacts),
         uid=node["uid"],
         slug=node["slug"],
         name_fr=node["name_fr"],
