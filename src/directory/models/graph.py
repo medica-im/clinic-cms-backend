@@ -436,6 +436,8 @@ class Entry(StructuredNode):
     access = StringProperty(default='anonymous')
     #: The SIREN of the legal unit this entry is (a porteur's); see directory/siret_rule.py.
     siren = StringProperty()
+    #: What the service offers, for whom and on what terms, in the site's language.
+    description = StringProperty()
     #: Who the entry is for and how to reach it; null is unknown. See directory/facets.py.
     age_min = IntegerProperty()
     age_max = IntegerProperty()

@@ -107,6 +107,26 @@ async def test_what_it_manages_where_it_answers_and_its_facets_are_written(graph
     assert facets == [[["emergency"], "anyone", ["phone"], None]]
 
 
+def with_description(text):
+    spec = copy.deepcopy(SPEC)
+    spec["entries"][0]["description"] = text
+    return spec
+
+
+async def test_the_description_goes_on_the_entry(graph):
+    await import_spec(with_description("Ligne nationale, 24 h/24."), creator_directory="santelyon3", contacts=False)
+    line = await entry_of(graph, "3114 (Numéro national de prévention du suicide)")
+    assert await one(graph, "MATCH (e:Entry {uid: $e}) RETURN e.description", e=line) == [["Ligne nationale, 24 h/24."]]
+
+
+async def test_a_rerun_never_overwrites_a_description_edited_in_the_app(graph):
+    await import_spec(with_description("Ligne nationale, 24 h/24."), creator_directory="santelyon3", contacts=False)
+    line = await entry_of(graph, "3114 (Numéro national de prévention du suicide)")
+    await graph.cypher_query("MATCH (e:Entry {uid: $e}) SET e.description = $d", {"e": line, "d": "Corrigée dans l'annuaire"})
+    await import_spec(with_description("Ligne nationale, 24 h/24."), creator_directory="santelyon3", contacts=False)
+    assert await one(graph, "MATCH (e:Entry {uid: $e}) RETURN e.description", e=line) == [["Corrigée dans l'annuaire"]]
+
+
 async def test_entries_at_the_same_street_share_one_facility(graph):
     await import_spec(SPEC, creator_directory="santelyon3", contacts=False)
     rows = await one(graph, "MATCH (f:Facility {street: '95 Boulevard Pinel', zip: '69500'}) RETURN f.name")

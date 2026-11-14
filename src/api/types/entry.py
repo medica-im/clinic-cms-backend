@@ -64,6 +64,18 @@ def a_siren_or_nothing(value: str|None) -> str|None:
         raise ValueError("not a SIREN: 9 digits, ending in the right check digit")
     return siren
 
+
+#: The longest description a page shows: a summary, not a brochure.
+DESCRIPTION_MAX = 2000
+
+
+def a_description_or_nothing(value: str|None) -> str|None:
+    """The text without its surrounding blanks, None when nothing is left, or a refusal when too long."""
+    text = (value or "").strip()
+    if len(text) > DESCRIPTION_MAX:
+        raise ValueError(f"a description is at most {DESCRIPTION_MAX} characters")
+    return text or None
+
 SLUG = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
@@ -119,9 +131,12 @@ class EntryPatch(EntryFacets):
     manages: list[str]|None = None
     #: Replaces the places the entry answers for; sent as null or empty, clears them; left out, leaves them alone.
     coverage: list[str]|None = None
+    #: Sent as null or blank, removes the description; left out, leaves it alone.
+    description: str|None = None
 
     _siren = field_validator("siren")(a_siren_or_nothing)
     _manages = field_validator("manages")(slugs_or_nothing)
+    _description = field_validator("description")(a_description_or_nothing)
 
 
 class EffectorType(BaseModel):
@@ -161,3 +176,5 @@ class Entry(EntryFacets):
     manages: list[str]|None = None
     #: The uids of the places it answers for, as set on the entry itself.
     coverage: list[str]|None = None
+    #: What the service offers, for whom and on what terms, in the site's language.
+    description: str|None = None

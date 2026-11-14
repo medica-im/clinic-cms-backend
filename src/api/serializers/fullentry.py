@@ -406,6 +406,7 @@ async def createFullEntryResource(node) -> dict:
         "redeemEmail": entry_node.redeemEmail,
         "access": getattr(entry_node, 'access', 'anonymous'),
         "siren": getattr(entry_node, 'siren', None),
+        "description": getattr(entry_node, 'description', None),
         **{facet: getattr(entry_node, facet, None) for facet in ENTRY_FACETS},
     }
 

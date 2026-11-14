@@ -470,6 +470,9 @@ async def update_entry(uid:str, update_data: EntryPatch, request: Request, jwt: 
         if facet in keys:
             setattr(entry, facet, getattr(update_data, facet))
             should_clear_cache = True
+    if 'description' in keys:
+        entry.description = update_data.description
+        should_clear_cache = True
     if 'manages' in keys:
         await apply_manages(str(entry.uid), update_data.manages)
         should_clear_cache = True

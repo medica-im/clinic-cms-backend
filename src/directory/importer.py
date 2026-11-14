@@ -206,10 +206,14 @@ async def _entry(effector: str, type_slug: str, facility: str, directory: str, r
 
 
 async def _describe(uid: str, item: dict) -> None:
-    """Identity, facets, what it manages and where it answers: replaced each run."""
+    """Identity, facets, what it manages and where it answers: replaced each run. The
+    description only fills an empty one: once edited in the app, the text is the app's."""
     facets = {name: (item.get("facets") or {}).get(name) for name in ENTRY_FACETS}
     await write("MATCH (e:Entry {uid: $e}) SET e += $props", e=uid,
                 props={**facets, **({"siren": item["siren"]} if item.get("siren") else {})})
+    if item.get("description"):
+        await write("MATCH (e:Entry {uid: $e}) SET e.description = coalesce(e.description, $d)",
+                    e=uid, d=item["description"])
     await set_manages(uid, item.get("manages") or [])
     places = []
     for place in item.get("coverage") or []:
@@ -220,7 +224,7 @@ async def _describe(uid: str, item: dict) -> None:
 
 async def _contacts(uid: str, item: dict, organization, changed_by) -> None:
     from access.models import Role
-    from addressbook.models import Contact, Email, PhoneNumber, Profile, Website
+    from addressbook.models import Contact, Email, PhoneNumber, Website
 
     roles = [r async for r in Role.objects.all()]
     contact, _ = await Contact.objects.aget_or_create(neomodel_uid=uid)
@@ -234,12 +238,6 @@ async def _contacts(uid: str, item: dict, organization, changed_by) -> None:
             await made.roles.aset(roles)
             if organization is not None:
                 await made.organization.aset([organization])
-    if item.get("description") and organization is not None and changed_by is not None:
-        profile, created = await Profile.objects.aget_or_create(
-            contact=contact,
-            defaults={"text": item["description"], "organization": organization, "changed_by": changed_by})
-        if created:
-            await profile.roles.aset(roles)
 
 
 async def _organization(directory: str):

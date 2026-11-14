@@ -206,6 +206,8 @@ class FullEntry(BaseModel):
     services: list[RelatedEntry]|None = None
     #: The SIREN of the legal unit this entry is, if it is one.
     siren: str|None = None
+    #: What the service offers, for whom and on what terms, in the site's language.
+    description: str|None = None
     #: The slugs of what this entry handles, as set on the entry itself (MANAGES).
     manages: list[str] = []
     #: Where the entry answers (COVERS), widest first; what an immaterial entry shows in place of an address.
