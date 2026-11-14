@@ -23,14 +23,13 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from asgiref.sync import sync_to_async
 from neomodel import adb
 
 from api.neo4j_auth import get_neo4j_role, get_neo4j_user
 from api.utils import get_site_from_request
 from directory.entry_shape import entry_shape_problems
 from directory.entry_type_edit import TypeEditPermission, type_edit_permission
-from directory.models import EntrySlug
+from directory.entry_slug import record_former_slug
 from directory.models.agraph import Entry as AgraphEntry
 from directory.models.agraph import EffectorType as AgraphEffectorType
 from directory.offered_types import TypeNotOffered, check_type_offered, site_directory_name
@@ -185,10 +184,7 @@ async def change_entry_type(context: TypeEditContext, type_uid: str) -> dict:
             raise EntryTypeRefused("malformed", problems=problems)
 
     if context.slug and new_slug != context.slug:
-        await sync_to_async(EntrySlug.objects.update_or_create)(
-            slug=context.slug,
-            defaults={"entry_uid": context.uid, "replaced_by": context.caller_uid or ""},
-        )
+        await record_former_slug(context.slug, context.uid, context.caller_uid)
     from api.serializers.entries import ensure_health_worker_label
 
     await ensure_health_worker_label(effector.uid, new_type)

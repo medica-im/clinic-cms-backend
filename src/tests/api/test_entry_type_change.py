@@ -61,7 +61,7 @@ async def entry(neo4j_graph):
     )
     with (
         patch("api.serializers.entry_type.generate_entry_slugs", AsyncMock(return_value=["dupont-jean-ipa-69"])),
-        patch("api.serializers.entry_type.EntrySlug", MagicMock()),
+        patch("api.serializers.entry_type.record_former_slug", AsyncMock()),
     ):
         yield
 
