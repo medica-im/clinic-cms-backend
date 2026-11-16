@@ -158,3 +158,8 @@ def bearer(request: Request) -> str | None:
     if scheme.lower() != "bearer" or not value:
         return None
     return value.strip()
+
+
+def token_reads(claims, name: str) -> bool:
+    """Whether a request may read this directory: a session any of its site's, a token only its own."""
+    return claims is None or claims.directory == name

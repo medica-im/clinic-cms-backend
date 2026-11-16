@@ -23,11 +23,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from api.auth import JWT, check_cookie_jwt
 from api.neo4j_auth import get_neo4j_role
-from api.serializers.clone import detect, execute
+from api.serializers.clone import detect, directory_settings, execute
 from api.serializers.clone import token as clone_token
 from api.types.clone import (
-    Blocker, EntryPreflight, ExecuteRequest, ExecuteResponse,
-    ExportTokenRequest, ExportTokenResponse, PeerInstanceOut, PreflightRequest,
+    Blocker, DirectorySettingsApplied, DirectorySettingsApply, DirectorySnapshot,
+    EntryPreflight, ExecuteRequest, ExecuteResponse, ExportTokenRequest,
+    ExportTokenResponse, PeerInstanceOut, PreflightRequest, SettingDifference,
 )
 from asgiref.sync import sync_to_async
 
@@ -206,14 +207,27 @@ async def source_entries(request: Request, jwt: Annotated[dict | None, Depends(c
     from api.serializers.allentries import createEntryResources
     from directory.utils import get_entries
 
+    chosen = await _source_directory(request, jwt, directory)
+    return await createEntryResources(await get_entries(chosen, active=None, listed_only=False), request)
+
+
+@router.get("/clone/source/directory")
+async def source_directory(request: Request, jwt: Annotated[dict | None, Depends(check_cookie_jwt)],
+                           directory: str | None = None) -> DirectorySnapshot:
+    """On the SOURCE: what decides the directory's lists, for a clone to copy."""
+    chosen = await _source_directory(request, jwt, directory)
+    return await directory_settings.read(chosen.name) or DirectorySnapshot()
+
+
+async def _source_directory(request: Request, jwt: dict | None, directory: str | None) -> Directory:
+    """The directory a superuser reads on the source, through a session or the token minted for it."""
     site = await get_site_from_request(request)
     if (await get_neo4j_role(jwt, site) if jwt else None) not in CLONE_ROLES:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     chosen = await _directory(request, directory)
-    claims = getattr(request.state, "clone_claims", None)
-    if claims is not None and claims.directory != chosen.name:
+    if not clone_token.token_reads(getattr(request.state, "clone_claims", None), chosen.name):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="this token reads another directory")
-    return await createEntryResources(await get_entries(chosen, active=None, listed_only=False), request)
+    return chosen
 
 
 @router.get("/clone/relay/entries")
@@ -245,6 +259,47 @@ async def relay_entries(instance: str, token: str, request: Request,
         "already_here": await detect.already_here(entries),
         "origin": peer.origin.rstrip("/"),
     }
+
+
+@router.get("/clone/relay/directory")
+async def relay_directory(instance: str, token: str, request: Request,
+                          _: Annotated[str, Depends(require_superuser)],
+                          directory: str | None = None) -> list[SettingDifference]:
+    """How the source directory's settings differ from this one's."""
+    source = await _source_settings(await _peer(instance), token, directory)
+    here = await directory_settings.read((await _directory(request, directory)).name) or DirectorySnapshot()
+    return directory_settings.differences(source, here, await directory_settings.unknown_here(source))
+
+
+@router.post("/clone/directory/apply")
+async def apply_directory(body: DirectorySettingsApply, request: Request,
+                          _: Annotated[str, Depends(require_superuser)]) -> DirectorySettingsApplied:
+    """Copy the chosen settings, read again from the source rather than taken from the page."""
+    from neomodel import adb
+    from django.core.cache import cache
+    from api.routers.directories import SIBLINGS
+    from api.serializers.allentries import directory_access_key
+
+    keys = [k for k in body.keys if k in directory_settings.KEYS]
+    source = await _source_settings(await _peer(body.instance), body.token, body.directory)
+    target = await _directory(request, body.directory)
+    main = target.name == (await get_directory(request)).name
+    warnings = await directory_settings.apply(target.name, source, keys, main=main)
+    if keys:
+        site = await get_site_from_request(request)
+        await clear_cache("v2:entries", site=site)
+        await clear_cache("v2:public/facilities", site=site)
+        rows, _ = await adb.cypher_query(SIBLINGS, {"name": target.name}, resolve_objects=False)
+        cache.delete_many([directory_access_key(own, target.name) for own in {target.name, *(r[0] for r in rows)}])
+    return DirectorySettingsApplied(applied=keys, warnings=warnings)
+
+
+async def _source_settings(peer: PeerInstance, token: str, directory: str | None) -> DirectorySnapshot:
+    r = await _fetch(peer, "/api/v2/clone/source/directory" + (f"?directory={quote(directory)}" if directory else ""), token)
+    if r.status_code != 200:
+        raise HTTPException(status_code=r.status_code,
+                            detail=f"{peer.display_name} refused the directory settings")
+    return DirectorySnapshot(**r.json())
 
 
 @router.post("/clone/preflight")

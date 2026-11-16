@@ -103,3 +103,34 @@ class CloneResult(BaseModel):
 
 class ExecuteResponse(BaseModel):
     results: list[CloneResult]
+
+
+class DirectorySnapshot(BaseModel):
+    """What decides a directory's lists, by keys every server shares."""
+    #: Need slugs (LISTS_NEED), sorted.
+    lists_needs: list[str] = Field(default_factory=list)
+    #: EffectorType name_fr (OFFERS_EFFECTOR_TYPE), sorted.
+    offered_types: list[str] = Field(default_factory=list)
+    list_owner_entry: bool = True
+    minimum_role: str = "anonymous"
+
+
+class SettingDifference(BaseModel):
+    key: str
+    source: list[str] | bool | str
+    here: list[str] | bool | str
+    #: What the source names that does not exist here: skipped when applied.
+    missing_here: list[str] = Field(default_factory=list)
+    applied_by_default: bool
+
+
+class DirectorySettingsApply(BaseModel):
+    instance: str
+    token: str
+    directory: str | None = None
+    keys: list[str]
+
+
+class DirectorySettingsApplied(BaseModel):
+    applied: list[str]
+    warnings: list[str] = Field(default_factory=list)
