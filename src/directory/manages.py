@@ -59,3 +59,18 @@ async def get_manages(entry_uid: str) -> list[str]:
         uid=entry_uid,
     )
     return [row["slug"] for row in rows]
+
+
+#: The order a page reads them in: what is treated, then what is lived, then the goal.
+KINDS = ("condition", "situation", "need")
+
+
+async def get_managed(entry_uid: str) -> list[dict]:
+    """What the entry manages, by name and kind, for a reader."""
+    rows = await read(
+        f"MATCH (:Entry {{uid: $uid}})-[:MANAGES]->(t) WHERE {TARGET} AND t.slug IS NOT NULL "
+        "RETURN t.slug AS slug, coalesce(t.name_fr, t.name, t.slug) AS name, "
+        "CASE WHEN t:Condition THEN 'condition' WHEN t:Situation THEN 'situation' ELSE 'need' END AS kind",
+        uid=entry_uid,
+    )
+    return sorted(rows, key=lambda row: (KINDS.index(row["kind"]), row["name"].casefold()))

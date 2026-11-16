@@ -9,7 +9,7 @@ is changed: a refusal leaves the entry's edges exactly as they were.
 """
 import pytest
 
-from directory.manages import ManagesRefused, get_manages, set_manages, unknown_slugs
+from directory.manages import ManagesRefused, get_managed, get_manages, set_manages, unknown_slugs
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
@@ -106,3 +106,20 @@ async def test_get_manages_returns_the_slugs_sorted(graph):
     await set_manages("cmp", ["troubles-anxieux", "addictions"])
     assert await get_manages("cmp") == ["addictions", "troubles-anxieux"]
     assert await get_manages("other") == []
+
+
+async def test_what_it_manages_reads_by_name_conditions_then_situations_then_the_need(graph):
+    """What the entry page shows as étiquettes: a reader sees names, not slugs."""
+    await graph.cypher_query(
+        "MATCH (a {uid: 'c1'}), (b {uid: 'c2'}), (s {uid: 's1'}), (n {uid: 'n1'}) "
+        "SET a.name_fr = 'Addictions', b.name_fr = 'Troubles anxieux', s.name_fr = 'Crise suicidaire', "
+        "n.name_fr = 'santé mentale'"
+    )
+    await set_manages("cmp", ["sante-mentale", "crise-suicidaire", "troubles-anxieux", "addictions"])
+    assert await get_managed("cmp") == [
+        {"slug": "addictions", "name": "Addictions", "kind": "condition"},
+        {"slug": "troubles-anxieux", "name": "Troubles anxieux", "kind": "condition"},
+        {"slug": "crise-suicidaire", "name": "Crise suicidaire", "kind": "situation"},
+        {"slug": "sante-mentale", "name": "santé mentale", "kind": "need"},
+    ]
+    assert await get_managed("other") == []

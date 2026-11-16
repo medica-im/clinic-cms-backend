@@ -2,7 +2,7 @@ import logging
 from django.conf import settings
 from directory.facets import ENTRY_FACETS
 from directory.coverage import get_coverage
-from directory.manages import get_manages
+from directory.manages import get_managed, get_manages
 from directory.run_by import related_entries, visible_around
 from directory.utils import find_entry, async_find_entry
 from directory.serializers import (
@@ -417,6 +417,7 @@ async def add_entries_around(entry_dct: dict, uid: str, role: str) -> None:
     entry_dct["run_by"] = around["run_by"]
     entry_dct["services"] = around["services"]
     entry_dct["manages"] = await get_manages(uid)
+    entry_dct["managed"] = await get_managed(uid)
     entry_dct["coverage"] = await get_coverage(uid)
 
 

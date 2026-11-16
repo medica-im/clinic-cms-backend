@@ -56,6 +56,12 @@ class CoverageItem(BaseModel):
     department: str|None = None
 
 
+class ManagedItem(BaseModel):
+    slug: str
+    name: str
+    kind: Literal["condition", "situation", "need"]
+
+
 class EffectorType(BaseModel):
     definition: str|None = None
     label: str
@@ -213,6 +219,8 @@ class FullEntry(BaseModel):
     description: str|None = None
     #: The slugs of what this entry handles, as set on the entry itself (MANAGES).
     manages: list[str] = []
+    #: The same, by name and kind, for the page's étiquettes.
+    managed: list[ManagedItem] = []
     #: Where the entry answers (COVERS), widest first; what an immaterial entry shows in place of an address.
     coverage: list[CoverageItem] = []
     age_min: int|None = None
