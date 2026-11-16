@@ -83,6 +83,11 @@ def a_description_or_nothing(value: str|None) -> str|None:
         raise ValueError(f"a description is at most {DESCRIPTION_MAX} characters")
     return text or None
 
+def a_list_or_nothing(values: list[str]|None) -> list[str]|None:
+    """The list, or None for an empty one: nothing is no property, never `[]`."""
+    return values or None
+
+
 SLUG = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
@@ -144,6 +149,7 @@ class EntryPatch(EntryFacets):
     _siren = field_validator("siren")(a_siren_or_nothing)
     _manages = field_validator("manages")(slugs_or_nothing)
     _description = field_validator("description")(a_description_or_nothing)
+    _payers = field_validator("payment", "third_party_payer")(a_list_or_nothing)
 
 
 class EffectorType(BaseModel):

@@ -209,8 +209,9 @@ async def clone_one(full: dict, resolution, *, directory_name: str, org_uid: str
             {
                 "access": full.get("access") or "anonymous",
                 "carte_vitale": full.get("carte_vitale"),
-                "payment": [p.get("name") for p in (full.get("payment_methods") or [])],
-                "tpp": [t.get("name") for t in (full.get("third_party_payers") or [])],
+                # `or None`: nothing is no property, never `[]`, as the importer and the entry edit.
+                "payment": [p.get("name") for p in (full.get("payment_methods") or [])] or None,
+                "tpp": [t.get("name") for t in (full.get("third_party_payers") or [])] or None,
                 "convention": (full.get("convention") or {}).get("name"),
                 "effector": effector_uid, "etype": et_uid,
                 "facility": facility_uid, "dir": directory_name,

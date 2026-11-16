@@ -180,6 +180,19 @@ class TestAHappyClone:
             "MATCH (f:Facility {uid:$uid}) RETURN f.label", {"uid": r.facility_uid})
         assert rows[0][0] == ""
 
+    async def test_nothing_to_pay_with_leaves_no_property_not_an_empty_list(self, graph):
+        r = await _clone(full_entry(uid="no-payers", payment_methods=None, third_party_payers=None), graph)
+        rows, _ = await adb.cypher_query(
+            "MATCH (e:Entry {uid:$uid}) RETURN e.payment, e.third_party_payer", {"uid": r.entry_uid})
+        assert rows[0] == [None, None]
+
+    async def test_payers_and_payment_methods_are_kept_by_name(self, graph):
+        r = await _clone(full_entry(uid="with-payers", payment_methods=[{"name": "Carte bancaire"}],
+                                    third_party_payers=[{"name": "CPAM"}]), graph)
+        rows, _ = await adb.cypher_query(
+            "MATCH (e:Entry {uid:$uid}) RETURN e.payment, e.third_party_payer", {"uid": r.entry_uid})
+        assert rows[0] == [["Carte bancaire"], ["CPAM"]]
+
     async def test_the_facility_keeps_its_siret(self, graph):
         source = full_entry(uid="siret-source",
                             facility={"name": "Cabinet Cloné", "slug": f"{TAG}-siret-fac", "label": "",
