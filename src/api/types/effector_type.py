@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Annotated, Literal, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from api.types.need import NeedPy
 from api.types.situation import SituationPy
 
@@ -8,6 +8,11 @@ from api.types.situation import SituationPy
 # label agrees with that person's grammatical gender; a service or an activity
 # has one form whoever the effector is.
 Nature = Literal["profession", "service", "activity"]
+
+
+def synonyms_or_nothing(values: list[str]|None) -> list[str]|None:
+    """The synonyms, or None for no synonyms: nothing is no property, never `[]`."""
+    return values or None
 
 
 class EffectorTypePost(BaseModel):
@@ -34,6 +39,8 @@ class EffectorTypePost(BaseModel):
     immaterial: bool = False
     facility_noun_fr: str|None = None
 
+    _synonyms = field_validator("synonyms_fr", "synonyms_en")(synonyms_or_nothing)
+
 
 class EffectorTypePatch(BaseModel):
     name_fr: str|None = None
@@ -56,6 +63,8 @@ class EffectorTypePatch(BaseModel):
     nature: Nature|None = None
     immaterial: bool|None = None
     facility_noun_fr: str|None = None
+
+    _synonyms = field_validator("synonyms_fr", "synonyms_en")(synonyms_or_nothing)
 
 
 class EffectorType(BaseModel):
