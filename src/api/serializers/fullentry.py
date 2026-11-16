@@ -248,6 +248,11 @@ def get_fullentry(uid):
     entry_pydantic = FullEntry.model_validate(entry_object.__dict__)
     return entry_pydantic
 
+def facility_ban(facility) -> dict:
+    """The facility's Base Adresse Nationale ids."""
+    return {"ban_id": getattr(facility, "ban_id", None), "ban_banId": getattr(facility, "ban_banId", None)}
+
+
 async def createFullEntryResource(node) -> dict:
     entry_node = node["entry"]
     effector_node = node["effector"]
@@ -376,6 +381,7 @@ async def createFullEntryResource(node) -> dict:
         "gender": gender,
         "slug": slug,
         "entrySlug": entry_node.slug,
+        **facility_ban(node["facility"]),
         "uid": uid,
         "effector_uid": effector_uid,
         "effector_type": effector_type,

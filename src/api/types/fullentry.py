@@ -195,6 +195,9 @@ class FullEntry(BaseModel):
     rpps: RPPS|None = None
     slug: str
     entrySlug: str|None = None
+    #: The facility's Base Adresse Nationale ids, which a clone keeps.
+    ban_id: str|None = None
+    ban_banId: str|None = None
     socialnetworks: list[SocialNetwork]|None = None
     spoken_languages: list[SpokenLanguage]|None = None
     third_party_payers: list[ThirdPartyPayer]|None = None
