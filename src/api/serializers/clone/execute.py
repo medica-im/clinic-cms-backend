@@ -276,10 +276,10 @@ async def _assign_slug(entry_uid: str, full: dict) -> str | None:
     from api.serializers.clone.detect import slug_taken_here
 
     entry = await AsyncEntry.nodes.get(uid=entry_uid)
-    if full.get("slug"):
-        if await slug_taken_here(full["slug"]):
-            raise RuntimeError(f"slug '{full['slug']}' is already used here")
-        entry.slug = full["slug"]
+    if full.get("entrySlug"):
+        if await slug_taken_here(full["entrySlug"]):
+            raise RuntimeError(f"slug '{full['entrySlug']}' is already used here")
+        entry.slug = full["entrySlug"]
         await entry.save()
         return entry.slug
     effector = (await entry.effector.all())[0]

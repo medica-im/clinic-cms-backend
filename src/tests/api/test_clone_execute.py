@@ -39,7 +39,9 @@ def full_entry(**over):
         "uid": "source-entry-uid",
         "name": f"Claude Testeur{_PERSON}",
         "label": f"Claude Testeur{_PERSON}",
+        # `slug` is the person's; the entry's own is `entrySlug`, as the real payload has them.
         "slug": f"claude-testeur{_PERSON}",
+        "entrySlug": f"claude-testeur-testeur-clonetown-00-{_PERSON}",
         "gender": "M",
         "access": "anonymous",
         "carte_vitale": True,
@@ -139,7 +141,20 @@ class TestAHappyClone:
         source = full_entry(uid="second-source")
         r = await _clone(source, graph)
         assert r.status == "created", r.error
-        assert r.entry_slug == source["slug"]
+        assert r.entry_slug == source["entrySlug"]
+
+    async def test_the_persons_slug_is_not_the_entrys(self, graph):
+        """The payload's `slug` is the effector's: copying it onto the entry named every
+        cloned entry after its person, and « 3919 » is not the slug of « 3919 hotline »."""
+        source = full_entry(uid="person-slug")
+        r = await _clone(source, graph)
+        assert r.entry_slug != source["slug"]
+
+    async def test_a_source_without_an_entry_slug_gets_a_generated_one(self, graph):
+        source = full_entry(uid="no-entry-slug", entrySlug=None)
+        r = await _clone(source, graph)
+        assert r.status == "created", r.error
+        assert r.entry_slug
 
     async def test_a_slug_taken_here_fails_the_clone_and_leaves_nothing(self, graph):
         """Preflight blocks a taken slug; one taken since fails rather than renames.
@@ -147,7 +162,7 @@ class TestAHappyClone:
         A regenerated slug would break the promise that a clone is identical.
         """
         first = await _clone(full_entry(uid="slug-holder"), graph)
-        source = full_entry(uid="slug-collider", slug=first.entry_slug)
+        source = full_entry(uid="slug-collider", entrySlug=first.entry_slug)
         r = await _clone(source, graph)
         assert r.status == "failed"
         assert first.entry_slug in r.error

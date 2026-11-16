@@ -363,11 +363,11 @@ async def preflight(body: PreflightRequest, request: Request,
                 detail="this person, occupation and place already exist here",
                 local_slug=existing,
             ))
-        elif await detect.slug_taken_here(full.get("slug")):
+        elif await detect.slug_taken_here(full.get("entrySlug")):
             blockers.append(Blocker(
                 reason="slug_taken",
-                detail=f"slug '{full.get('slug')}' is already used here by another entry",
-                local_slug=full.get("slug"),
+                detail=f"slug '{full.get('entrySlug')}' is already used here by another entry",
+                local_slug=full.get("entrySlug"),
             ))
 
         out.append(EntryPreflight(
