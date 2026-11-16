@@ -51,6 +51,9 @@ class CoverageItem(BaseModel):
     uid: str
     name: str|None = None
     kind: Literal["country", "region", "department", "commune"]
+    code: str|None = None
+    #: A commune's département code: what tells the six Saint-Maurice apart.
+    department: str|None = None
 
 
 class EffectorType(BaseModel):

@@ -26,10 +26,11 @@ async def graph(neo4j_graph):
         """
         CREATE (:Entry {uid: 'line', active: true, access: 'anonymous'})
         CREATE (:Entry {uid: 'other', active: true, access: 'anonymous'})
-        CREATE (:Country {uid: 'fr', name: 'France'})
-        CREATE (:RegionOfFrance {uid: 'ara', name: 'Auvergne-Rhône-Alpes'})
-        CREATE (:DepartmentOfFrance {uid: 'd69', name: 'Rhône', code: '69'})
+        CREATE (:Country {uid: 'fr', name: 'France', code: 'FR'})
+        CREATE (:RegionOfFrance {uid: 'ara', name: 'Auvergne-Rhône-Alpes', code: '84'})
+        CREATE (d69:DepartmentOfFrance {uid: 'd69', name: 'Rhône', code: '69'})
         CREATE (:Commune:AdministrativeTerritorialEntityOfFrance {uid: 'lyon', name_fr: 'Lyon'})
+            -[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d69)
         CREATE (:Tag {uid: 'nope'})
         """
     )
@@ -74,13 +75,13 @@ async def test_a_refusal_has_a_code_and_changes_nothing(graph, entry, uids, code
     assert await edges(graph) == ["ara"]
 
 
-async def test_it_is_read_with_a_name_and_a_kind(graph):
+async def test_it_is_read_with_a_name_a_kind_and_a_commune_with_its_departement(graph):
     await set_coverage("line", ["fr", "d69", "lyon", "ara"])
     assert await get_coverage("line") == [
-        {"uid": "fr", "name": "France", "kind": "country"},
-        {"uid": "ara", "name": "Auvergne-Rhône-Alpes", "kind": "region"},
-        {"uid": "d69", "name": "Rhône", "kind": "department"},
-        {"uid": "lyon", "name": "Lyon", "kind": "commune"},
+        {"uid": "fr", "name": "France", "kind": "country", "code": "FR", "department": None},
+        {"uid": "ara", "name": "Auvergne-Rhône-Alpes", "kind": "region", "code": "84", "department": None},
+        {"uid": "d69", "name": "Rhône", "kind": "department", "code": "69", "department": None},
+        {"uid": "lyon", "name": "Lyon", "kind": "commune", "code": None, "department": "69"},
     ]
     assert await get_coverage("other") == []
 

@@ -55,9 +55,11 @@ async def get_coverage(entry_uid: str) -> list[dict]:
     rows = await read(
         f"""
         MATCH (:Entry {{uid: $uid}})-[:COVERS]->(t) WHERE {PLACE}
+        OPTIONAL MATCH (t:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(d:DepartmentOfFrance)
         RETURN t.uid AS uid, coalesce(t.name_fr, t.name) AS name,
                CASE WHEN t:Country THEN 'country' WHEN t:RegionOfFrance THEN 'region'
-                    WHEN t:DepartmentOfFrance THEN 'department' ELSE 'commune' END AS kind
+                    WHEN t:DepartmentOfFrance THEN 'department' ELSE 'commune' END AS kind,
+               t.code AS code, d.code AS department
         """,
         uid=entry_uid,
     )
