@@ -86,6 +86,8 @@ class Facility(BaseModel):
     #: As stored, empty or unset included: a page falls back to the name itself.
     label: str|None = None
     slug: str|None = None
+    #: The establishment's SIRET; see directory/siret_rule.py.
+    siret: str|None = None
 
 
 class Contact(BaseModel):

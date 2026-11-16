@@ -24,3 +24,11 @@ def test_no_label_is_served_as_none():
 
 def test_a_label_is_served_as_stored():
     assert facility_resource(facility(label="CMP Les Quadrilles"))["label"] == "CMP Les Quadrilles"
+
+
+def test_the_siret_is_served_so_a_clone_keeps_it():
+    assert facility_resource(facility(siret="13003075200013"))["siret"] == "13003075200013"
+
+
+def test_a_facility_without_a_siret_serves_none():
+    assert facility_resource(facility())["siret"] is None

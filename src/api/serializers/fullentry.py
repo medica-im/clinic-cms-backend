@@ -245,7 +245,8 @@ def get_fullentry(uid):
 
 def facility_resource(facility) -> dict:
     """The facility as stored: a page that wants the name for a missing label falls back itself."""
-    return {"uid": facility.uid, "slug": facility.slug, "name": facility.name, "label": facility.label}
+    return {"uid": facility.uid, "slug": facility.slug, "name": facility.name, "label": facility.label,
+            "siret": getattr(facility, "siret", None)}
 
 
 def facility_ban(facility) -> dict:

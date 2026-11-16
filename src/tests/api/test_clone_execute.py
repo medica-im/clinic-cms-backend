@@ -180,6 +180,24 @@ class TestAHappyClone:
             "MATCH (f:Facility {uid:$uid}) RETURN f.label", {"uid": r.facility_uid})
         assert rows[0][0] == ""
 
+    async def test_the_facility_keeps_its_siret(self, graph):
+        source = full_entry(uid="siret-source",
+                            facility={"name": "Cabinet Cloné", "slug": f"{TAG}-siret-fac", "label": "",
+                                      "siret": "13003075200013"})
+        r = await _clone(source, graph)
+        assert r.status == "created", r.error
+        rows, _ = await adb.cypher_query(
+            "MATCH (f:Facility {uid:$uid}) RETURN f.siret", {"uid": r.facility_uid})
+        assert rows[0][0] == "13003075200013"
+
+    async def test_the_facility_starts_with_the_counters_every_facility_has(self, graph):
+        """Created by Cypher, not neomodel, so the defaults neomodel gives (`updated`,
+        `contactUpdatedAt` = 0) have to be written: on dev they are on every facility."""
+        r = await _clone(full_entry(uid="counters-source"), graph)
+        rows, _ = await adb.cypher_query(
+            "MATCH (f:Facility {uid:$uid}) RETURN f.updated, f.contactUpdatedAt", {"uid": r.facility_uid})
+        assert rows[0] == [0, 0]
+
     async def test_the_facility_sits_in_exactly_one_commune(self, graph):
         """Facility.commune is cardinality One.
 

@@ -81,7 +81,10 @@ async def _create_facility(full: dict, commune_uid: str, org_uid: str,
             f.street = $street, f.zip = $zip, f.building = $building,
             f.geographical_complement = $complement,
             f.ban_id = $ban_id, f.ban_banId = $ban_banId,
-            f.zoom = $zoom
+            f.siret = $siret,
+            f.zoom = $zoom,
+            // neomodel's defaults, which Cypher does not apply: every facility has them.
+            f.updated = 0, f.contactUpdatedAt = 0
         """ + ("""
         SET f.location = point({longitude: $lng, latitude: $lat, crs:'wgs-84'})
         """ if address.get("longitude") and address.get("latitude") else "") + """
@@ -102,6 +105,7 @@ async def _create_facility(full: dict, commune_uid: str, org_uid: str,
             "building": address.get("building"),
             "complement": address.get("geographical_complement"),
             "ban_id": full.get("ban_id"), "ban_banId": full.get("ban_banId"),
+            "siret": facility.get("siret"),
             "zoom": address.get("zoom") or 18,
             "lng": float(address["longitude"]) if address.get("longitude") else None,
             "lat": float(address["latitude"]) if address.get("latitude") else None,
