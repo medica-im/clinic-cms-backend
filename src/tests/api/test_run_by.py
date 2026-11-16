@@ -139,7 +139,7 @@ async def named(neo4j_graph):
         CREATE (l)-[:HAS_EFFECTOR_TYPE]->(:EffectorType {uid: 't-hdj', label_fr: 'hôpital de jour', name_fr: 'hôpital de jour'})
         CREATE (z:Entry {uid: 'zeta', slug: 'zeta', active: true, access: 'anonymous'})
         CREATE (z)-[:HAS_EFFECTOR]->(:Effector {uid: 'e-zeta', name_fr: 'Annexe Zeta', label_fr: 'Zeta'})
-        CREATE (z)-[:HAS_EFFECTOR_TYPE]->(:EffectorType {uid: 't-hdj2', label_fr: 'hôpital de jour', name_fr: 'hôpital de jour'})
+        CREATE (z)-[:HAS_EFFECTOR_TYPE]->(:EffectorType {uid: 't-cdj', label_fr: 'centre de jour', name_fr: 'centre de jour'})
         """
     )
     await set_run_by("lyon", "mgen")

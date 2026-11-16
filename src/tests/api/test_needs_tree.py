@@ -27,7 +27,7 @@ LOGEMENT = {"slug": "logement", "name_fr": "Logement"}
 async def edges(adb, slug=None):
     rows, _ = await adb.cypher_query(
         "MATCH (n:Need)-[:PART_OF]->(p:Need) WHERE $slug IS NULL OR n.slug = $slug "
-        "RETURN n.slug, p.slug ORDER BY n.slug",
+        "RETURN n.slug, p.slug ORDER BY n.slug, p.slug",
         {"slug": slug},
     )
     return rows
@@ -98,7 +98,7 @@ async def test_a_need_is_created_under_several_parents(
     response = await post(client, {"slug": "abri", "name_fr": "Abri", "parents": ["soin", "logement"]},
                           patch_jwt, mock_neo4j_role, mock_get_site, jwt_superuser)
     assert response.status_code == 201, response.text
-    assert response.json()["parents"] == ["logement", "soin"]
+    assert sorted(response.json()["parents"]) == ["logement", "soin"]
     assert response.json()["uid"]
     assert await edges(tree, "abri") == [["abri", "logement"], ["abri", "soin"]]
 
@@ -171,7 +171,7 @@ async def test_a_need_with_several_parents_is_one_row_that_lists_them_all(client
     assert len(rows) == 1
     (soin,) = [n for n in response.json() if n["slug"] == "soin"]
     (logement,) = [n for n in response.json() if n["slug"] == "logement"]
-    assert rows[0]["parents"] == ["logement", "soin"]
+    assert sorted(rows[0]["parents"]) == ["logement", "soin"]
     assert sorted(rows[0]["parent_uids"]) == sorted([logement["uid"], soin["uid"]])
     assert [n["uid"] for n in response.json()].count("x") == 1
 
@@ -197,7 +197,7 @@ async def test_the_parents_sent_replace_the_edges(client, patch_jwt, jwt_superus
     response = await patch(client, f"{URL}/suivi-psychologique", {"parents": parents}, patch_jwt, mock_neo4j_role,
                            mock_get_site, jwt_superuser)
     assert response.status_code == 200, response.text
-    assert response.json()["parents"] == parents
+    assert sorted(response.json()["parents"]) == parents
     assert await edges(tree) == [["suivi-psychologique", p] for p in parents]
 
 
