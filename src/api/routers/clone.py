@@ -16,6 +16,7 @@ the writes follow create_facility's and create_entry's own rules.
 """
 import logging
 from typing import Annotated
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -159,6 +160,30 @@ async def _fetch(peer: PeerInstance, path: str, token: str) -> httpx.Response:
         )
 
 
+def avatar_url(origin: str, path: str | None) -> str | None:
+    """Where to download a picture the source names: on the source's origin, or nowhere."""
+    if not path:
+        return None
+    url = urljoin(origin.rstrip("/") + "/", path)
+    return url if urlparse(url).netloc == urlparse(origin).netloc else None
+
+
+async def _schedules(peer: PeerInstance, uid: str, token: str) -> list[dict]:
+    r = await _fetch(peer, f"/api/v2/entries/{uid}/schedules", token)
+    return r.json() if r.status_code == 200 else []
+
+
+async def _avatar(peer: PeerInstance, full: dict) -> tuple[str, bytes] | None:
+    url = avatar_url(peer.origin, (full.get("avatar") or {}).get("raw"))
+    if not url:
+        return None
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT, follow_redirects=False) as client:
+        r = await client.get(url)
+    if r.status_code != 200 or not r.content:
+        return None
+    return url.rsplit("/", 1)[-1] or "avatar", r.content
+
+
 @router.get("/clone/relay/entries")
 async def relay_entries(instance: str, token: str, request: Request,
                         _: Annotated[str, Depends(require_superuser)]) -> dict:
@@ -212,6 +237,7 @@ async def preflight(body: PreflightRequest, request: Request,
             continue
         full = r.json()
         eff, warnings = await detect.plan_effector(full)
+        warnings = warnings + await execute.missing_here(full, batch=set(body.entry_uids))
         fac = await detect.plan_facility(full, org_uid)
 
         blockers: list[Blocker] = []
@@ -273,20 +299,30 @@ async def execute_clone(body: ExecuteRequest, request: Request,
     if user:
         creator_uid = str(user.uid)
 
-    results = []
+    # Everything read first: the batch clones porteurs before their services, whatever
+    # the order the superuser picked them in.
+    refused, items, avatars = [], [], {}
     for res in body.resolutions[: clone_token.MAX_ENTRIES]:
         r = await _fetch(peer, f"/api/v2/fullentries/{res.source_uid}", body.token)
         if r.status_code != 200:
-            results.append(execute.CloneResult(
+            refused.append(execute.CloneResult(
                 source_uid=res.source_uid, status="failed",
                 error=f"the source refused this entry ({r.status_code})"))
             continue
-        results.append(await execute.clone_one(
-            r.json(), res,
-            directory_name=directory.name, org_uid=org_uid,
-            source_org_entry=source_org_entry,
-            creator_uid=creator_uid,
-        ))
+        full = r.json()
+        full["schedules"] = await _schedules(peer, res.source_uid, body.token)
+        picture = await _avatar(peer, full)
+        if picture:
+            avatars[full.get("uid")] = picture
+        items.append((full, res))
+
+    organization = await Organization.objects.filter(site=site).afirst()
+    results = refused + await execute.clone_batch(
+        items, avatars=avatars,
+        directory_name=directory.name, org_uid=org_uid,
+        source_org_entry=source_org_entry,
+        creator_uid=creator_uid, organization=organization,
+    )
 
     if any(x.status == "created" for x in results):
         # Once per batch: each call walks every Role x Directory key.

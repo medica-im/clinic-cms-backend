@@ -10,13 +10,24 @@ while contacts, images and tags are enrichment they can retry. An entry with no
 phone is recoverable by hand; a half-written graph is not.
 """
 import logging
+import uuid
 
+from asgiref.sync import sync_to_async
+from django.core.files.base import ContentFile
 from django.db import IntegrityError
 from neomodel import adb
+from pydantic import ValidationError
 
-from addressbook.models import Contact
+from access.models import Role
+from addressbook.models import Contact, Email, PhoneNumber, SocialNetwork, Website
 from api.serializers.clone import detect
 from api.types.clone import CloneResult
+from api.types.entry import EntryFacets
+from api.types.schedule import SchedulePut, node_properties
+from directory.coverage import set_coverage
+from directory.facets import ENTRY_FACETS
+from directory.manages import set_manages, unknown_slugs
+from directory.run_by import set_run_by
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +142,9 @@ async def _create_effector(full: dict, directory_name: str, comp: Compensation) 
 
 
 async def clone_one(full: dict, resolution, *, directory_name: str, org_uid: str,
-                    source_org_entry: str | None, creator_uid: str | None) -> CloneResult:
+                    source_org_entry: str | None, creator_uid: str | None,
+                    organization=None, porteurs: dict[str, str] | None = None,
+                    avatar: tuple[str, bytes] | None = None) -> CloneResult:
     """Clone one entry, in the order that keeps a failure recoverable."""
     comp = Compensation()
     warnings: list[str] = []
@@ -236,6 +249,11 @@ async def clone_one(full: dict, resolution, *, directory_name: str, org_uid: str
             entry_uid, full, source_org_entry=source_org_entry, org_uid=org_uid
         )
 
+        # 8. What the entry says and manages, where it answers, who runs it, how to
+        #    reach it, its hours, picture and tags: each failure a warning.
+        warnings += await _enrich(entry_uid, full, porteurs=porteurs or {},
+                                  organization=organization, avatar=avatar)
+
         return CloneResult(
             source_uid=source_uid, status="created", entry_uid=entry_uid,
             entry_slug=slug, effector_uid=effector_uid, facility_uid=facility_uid,
@@ -298,3 +316,264 @@ async def _clone_memberships(entry_uid: str, full: dict, *,
             # organization, is worse than a missing link the superuser can add.
             warnings.append(f"membership {uid} does not exist here and was not created")
     return warnings
+
+
+# --- Enrichment: past the point of no rollback ------------------------------------------
+#
+# Reference data is matched, never created, as effector types are: what an entry manages
+# by slug, a tag by name, a place by its kind and code. What is not here is named in a
+# warning, so the superuser knows what to sync (the console) before cloning again.
+
+
+async def _enrich(entry_uid: str, full: dict, *, porteurs: dict[str, str], organization,
+                  avatar: tuple[str, bytes] | None) -> list[str]:
+    steps = (
+        ("facets", lambda: _say(entry_uid, full)),
+        ("manages", lambda: _manage(entry_uid, full)),
+        ("coverage", lambda: _cover(entry_uid, full)),
+        ("run_by", lambda: _run_by(entry_uid, full, porteurs)),
+        ("contacts", lambda: _reach(entry_uid, full, organization)),
+        ("schedules", lambda: _hours(entry_uid, full)),
+        ("avatar", lambda: _picture(entry_uid, full, avatar)),
+        ("tags", lambda: _tag(entry_uid, full)),
+    )
+    warnings: list[str] = []
+    for name, step in steps:
+        try:
+            warnings += await step()
+        except Exception as exc:
+            logger.exception("clone of %s: %s failed", entry_uid, name)
+            warnings.append(f"{name}: {exc}")
+    return warnings
+
+
+async def _say(entry_uid: str, full: dict) -> list[str]:
+    """The description, the SIREN and every facet this instance's vocabulary accepts."""
+    props, warnings = {}, []
+    for name in ("description", "siren"):
+        if full.get(name):
+            props[name] = full[name]
+    for facet in ENTRY_FACETS:
+        if full.get(facet) is None:
+            continue
+        try:
+            props[facet] = getattr(EntryFacets.model_validate({facet: full[facet]}), facet)
+        except ValidationError:
+            warnings.append(f"facets: {facet} left out, unknown here: {full[facet]!r}")
+    if props:
+        await adb.cypher_query("MATCH (e:Entry {uid: $e}) SET e += $props", {"e": entry_uid, "props": props})
+    return warnings
+
+
+async def _manage(entry_uid: str, full: dict) -> list[str]:
+    slugs = list(dict.fromkeys(full.get("manages") or []))
+    if not slugs:
+        return []
+    unknown = await unknown_slugs(slugs)
+    known = [slug for slug in slugs if slug not in unknown]
+    if known:
+        await set_manages(entry_uid, known)
+    return [f"manages: not on this instance: {', '.join(unknown)}"] if unknown else []
+
+
+PLACE_BY_CODE = {"country": "Country", "region": "RegionOfFrance", "department": "DepartmentOfFrance"}
+
+
+async def _local_place(place: dict) -> str | None:
+    """The same place here: by its code, or a commune by its name and its département's code."""
+    kind = place.get("kind")
+    if kind in PLACE_BY_CODE and place.get("code"):
+        rows, _ = await adb.cypher_query(
+            f"MATCH (t:{PLACE_BY_CODE[kind]} {{code: $code}}) RETURN t.uid LIMIT 1", {"code": place["code"]})
+    elif kind == "commune" and place.get("name") and place.get("department"):
+        rows, _ = await adb.cypher_query(
+            "MATCH (c:Commune {name_fr: $name})-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->"
+            "(:DepartmentOfFrance {code: $department}) RETURN c.uid LIMIT 1",
+            {"name": place["name"], "department": place["department"]})
+    else:
+        rows = []
+    return rows[0][0] if rows else None
+
+
+async def _cover(entry_uid: str, full: dict) -> list[str]:
+    found, missing = [], []
+    for place in full.get("coverage") or []:
+        uid = await _local_place(place)
+        if uid:
+            found.append(uid)
+        else:
+            missing.append(place.get("name") or place.get("code") or "?")
+    if found:
+        await set_coverage(entry_uid, found)
+    return [f"coverage: not on this instance: {', '.join(missing)}"] if missing else []
+
+
+async def _run_by(entry_uid: str, full: dict, porteurs: dict[str, str]) -> list[str]:
+    """The porteur the batch cloned, or one already here under the same slug."""
+    source = full.get("run_by")
+    if not source:
+        return []
+    local = porteurs.get(source.get("uid"))
+    if not local and source.get("slug"):
+        rows, _ = await adb.cypher_query("MATCH (p:Entry {slug: $s}) RETURN p.uid LIMIT 1", {"s": source["slug"]})
+        local = rows[0][0] if rows else None
+    if not local:
+        name = source.get("name") or source.get("slug") or source.get("uid")
+        return [f"run_by: porteur not on this instance, clone it first: {name}"]
+    await set_run_by(entry_uid, local)
+    return []
+
+
+#: Each kind of contact detail: the source's list key, the model, what identifies an item
+#: on its contact, and what else it carries.
+CONTACT_KINDS = (
+    ("phones", PhoneNumber, lambda i: ({"phone": i["phone"]}, {"type": i.get("type") or PhoneNumber.TelephoneType.WORK})),
+    ("emails", Email, lambda i: ({"email": i["email"]}, {})),
+    ("websites", Website, lambda i: ({"url": i["url"]}, {})),
+    ("socialnetworks", SocialNetwork, lambda i: ({"type": i["type"], "url": i.get("url") or ""},
+                                                {"handle": i.get("handle") or ""})),
+)
+
+
+@sync_to_async
+def _reach_sync(entry_uid: str, full: dict, organization) -> list[str]:
+    """Each detail with the roles that may see it on the source; public when anonymous may."""
+    contact, _ = Contact.objects.get_or_create(neomodel_uid=entry_uid)
+    roles = {role.name: role for role in Role.objects.all()}
+    for key, model, identify in CONTACT_KINDS:
+        for item in full.get(key) or []:
+            lookup, extra = identify(item)
+            names = item.get("roles") or []
+            obj, created = model.objects.get_or_create(
+                contact=contact, **lookup,
+                defaults={**extra, "public_visible": "anonymous" in names, "contact_visible": True})
+            if created:
+                obj.roles.set([roles[name] for name in names if name in roles])
+                if organization is not None:
+                    obj.organization.set([organization])
+    return []
+
+
+async def _reach(entry_uid: str, full: dict, organization) -> list[str]:
+    return await _reach_sync(entry_uid, full, organization)
+
+
+async def _hours(entry_uid: str, full: dict) -> list[str]:
+    warnings = []
+    for item in full.get("schedules") or []:
+        try:
+            schedule = SchedulePut(
+                entry=entry_uid, channel=item["channel"], label=item.get("label"),
+                holidays=item.get("holidays") or "closed",
+                days={int(day): periods for day, periods in (item.get("days") or {}).items()},
+            )
+        except (ValidationError, KeyError, ValueError) as exc:
+            warnings.append(f"schedules: one left out: {exc}")
+            continue
+        await adb.cypher_query(
+            "MATCH (e:Entry {uid: $e}) CREATE (e)-[:HAS_SCHEDULE]->(s:Schedule {uid: $uid}) SET s += $props",
+            {"e": entry_uid, "uid": uuid.uuid4().hex, "props": node_properties(schedule)})
+    return warnings
+
+
+async def _picture(entry_uid: str, full: dict, avatar: tuple[str, bytes] | None) -> list[str]:
+    """The picture file, downloaded from the source by the router, and who may see it."""
+    source = full.get("avatar")
+    if not source:
+        return []
+    if not avatar:
+        return ["avatar: the picture could not be downloaded from the source"]
+    filename, content = avatar
+
+    @sync_to_async
+    def save():
+        contact, _ = Contact.objects.get_or_create(neomodel_uid=entry_uid)
+        contact.profile_image.save(filename, ContentFile(content), save=False)
+        contact.avatar_access = source.get("access") or "anonymous"
+        contact.save()
+
+    await save()
+    return []
+
+
+async def _tag(entry_uid: str, full: dict) -> list[str]:
+    names = [tag.get("name") for tag in full.get("tags") or [] if tag.get("name")]
+    if not names:
+        return []
+    rows, _ = await adb.cypher_query(
+        "MATCH (t:Tag) WHERE t.name IN $names MATCH (e:Entry {uid: $e}) MERGE (t)-[:TAGS]->(e) RETURN t.name",
+        {"names": names, "e": entry_uid})
+    found = {row[0] for row in rows}
+    missing = [name for name in names if name not in found]
+    return [f"tags: not on this instance: {', '.join(missing)}"] if missing else []
+
+
+async def missing_here(full: dict, *, batch: set[str]) -> list[str]:
+    """What cloning `full` here would leave out, by the same matching the clone uses: for
+    preflight, before anything is written. A porteur in the batch is not missing."""
+    missing: list[str] = []
+    unknown = await unknown_slugs(list(dict.fromkeys(full.get("manages") or [])))
+    if unknown:
+        missing.append(f"manages: not on this instance: {', '.join(unknown)}")
+    places = [p.get("name") or p.get("code") or "?" for p in full.get("coverage") or [] if not await _local_place(p)]
+    if places:
+        missing.append(f"coverage: not on this instance: {', '.join(places)}")
+    source = full.get("run_by")
+    if source and source.get("uid") not in batch:
+        rows, _ = await adb.cypher_query("MATCH (p:Entry {slug: $s}) RETURN p.uid LIMIT 1", {"s": source.get("slug")})
+        if not rows:
+            name = source.get("name") or source.get("slug") or source.get("uid")
+            missing.append(f"run_by: porteur not on this instance, clone it first: {name}")
+    names = [tag.get("name") for tag in full.get("tags") or [] if tag.get("name")]
+    if names:
+        rows, _ = await adb.cypher_query("MATCH (t:Tag) WHERE t.name IN $n RETURN t.name", {"n": names})
+        absent = [name for name in names if name not in {row[0] for row in rows}]
+        if absent:
+            missing.append(f"tags: not on this instance: {', '.join(absent)}")
+    return missing
+
+
+# --- A batch -------------------------------------------------------------------------------
+
+
+def porteurs_first(batch: list[dict]) -> list[dict]:
+    """The batch with each porteur before the services it runs, otherwise in its order."""
+    by_uid = {full.get("uid"): full for full in batch}
+    ordered, seen = [], set()
+
+    def visit(full: dict, path: tuple = ()):
+        uid = full.get("uid")
+        if uid in seen or uid in path:
+            return
+        porteur = (full.get("run_by") or {}).get("uid")
+        if porteur in by_uid:
+            visit(by_uid[porteur], path + (uid,))
+        seen.add(uid)
+        ordered.append(full)
+
+    for full in batch:
+        visit(full)
+    return ordered
+
+
+async def clone_batch(items: list[tuple[dict, "Resolution"]], *,
+                      avatars: dict[str, tuple[str, bytes]] | None = None, **context) -> list[CloneResult]:
+    """Clone a batch: a porteur before the services it runs, so each finds its porteur's
+    local uid, and a service without premises reuses the facility its porteur just got.
+    Results come back in the order asked."""
+    resolution_of = {full.get("uid"): res for full, res in items}
+    porteurs: dict[str, str] = {}
+    facilities: dict[str, str] = {}
+    results: dict[str, CloneResult] = {}
+    for full in porteurs_first([full for full, _ in items]):
+        res = resolution_of[full.get("uid")]
+        source_facility = (full.get("facility") or {}).get("uid")
+        if res.facility == "create" and source_facility in facilities:
+            res = res.model_copy(update={"facility": "reuse", "facility_local_uid": facilities[source_facility]})
+        result = await clone_one(full, res, porteurs=porteurs, avatar=(avatars or {}).get(full.get("uid")), **context)
+        if result.status == "created":
+            porteurs[full.get("uid")] = result.entry_uid
+            if source_facility:
+                facilities[source_facility] = result.facility_uid
+        results[full.get("uid")] = result
+    return [results[full.get("uid")] for full, _ in items]
