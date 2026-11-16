@@ -240,7 +240,7 @@ async def clone_one(full: dict, resolution, *, directory_name: str, org_uid: str
                 {"e": entry_uid, "u": creator_uid},
             )
 
-        # A fresh slug, never the source's: Entry.slug is globally unique.
+        # The source's slug: unique per server, so the clone answers at the same /e/{slug}.
         slug = await _assign_slug(entry_uid, full)
 
         # 7b. Memberships — Entry edges only. The neo4j Organization node is
@@ -273,7 +273,15 @@ async def _assign_slug(entry_uid: str, full: dict) -> str | None:
     )
     from directory.slug import generate_entry_slugs
 
+    from api.serializers.clone.detect import slug_taken_here
+
     entry = await AsyncEntry.nodes.get(uid=entry_uid)
+    if full.get("slug"):
+        if await slug_taken_here(full["slug"]):
+            raise RuntimeError(f"slug '{full['slug']}' is already used here")
+        entry.slug = full["slug"]
+        await entry.save()
+        return entry.slug
     effector = (await entry.effector.all())[0]
     effector_type = (await entry.effector_type.all())[0]
     facility = (await entry.facility.all())[0]

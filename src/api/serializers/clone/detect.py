@@ -333,6 +333,13 @@ async def entry_already_here(effector_uid: str | None, effector_type_uid: str | 
     return rows[0][0] if rows else None
 
 
+async def slug_taken_here(slug: str | None) -> bool:
+    """Whether an entry here carries this slug, or carried it and still redirects from it."""
+    from directory.slug import _filter_existing_slugs
+
+    return bool(slug) and not await _filter_existing_slugs([slug])
+
+
 async def already_here(entries: list[dict]) -> dict[str, str]:
     """Which of these source entries this instance already has.
 

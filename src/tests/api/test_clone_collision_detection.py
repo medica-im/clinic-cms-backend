@@ -217,6 +217,19 @@ class TestTheEntryItself:
         ) is None
 
 
+class TestTheSlug:
+    """A clone keeps its source's slug, so preflight says when another entry holds it."""
+
+    async def test_a_slug_an_entry_carries_here_is_taken(self, graph):
+        assert await detect.slug_taken_here(f"{TAG}-entry-slug") is True
+
+    async def test_an_unused_slug_is_free(self, graph):
+        assert await detect.slug_taken_here(f"{TAG}-nobody-has-this") is False
+
+    async def test_no_slug_is_never_taken(self, graph):
+        assert await detect.slug_taken_here(None) is False
+
+
 class TestWhatIsAlreadyHere:
     """Which of a source directory's entries this instance already holds.
 

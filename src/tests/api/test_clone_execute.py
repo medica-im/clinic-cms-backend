@@ -130,16 +130,30 @@ class TestAHappyClone:
         assert (type_uid, fac_name) == (f"{TAG}-type", "Cabinet Cloné")
         assert active is True and access == "anonymous"
 
-    async def test_the_slug_is_regenerated_never_copied(self, graph):
-        """Entry.slug is globally unique.
+    async def test_the_slug_is_copied(self, graph):
+        """A clone answers at the same /e/{slug} as its source.
 
-        Copying the source's would either violate the constraint or, worse,
-        make the clone answer for the original at /e/{slug}.
+        Slugs are unique per server, not across servers: the same entry on dev and
+        on staging carries the same slug, so links and comparisons hold.
         """
         source = full_entry(uid="second-source")
         r = await _clone(source, graph)
         assert r.status == "created", r.error
-        assert r.entry_slug and r.entry_slug != source["slug"]
+        assert r.entry_slug == source["slug"]
+
+    async def test_a_slug_taken_here_fails_the_clone_and_leaves_nothing(self, graph):
+        """Preflight blocks a taken slug; one taken since fails rather than renames.
+
+        A regenerated slug would break the promise that a clone is identical.
+        """
+        first = await _clone(full_entry(uid="slug-holder"), graph)
+        source = full_entry(uid="slug-collider", slug=first.entry_slug)
+        r = await _clone(source, graph)
+        assert r.status == "failed"
+        assert first.entry_slug in r.error
+        rows, _ = await adb.cypher_query(
+            "MATCH (e:Entry {slug: $s}) RETURN count(e)", {"s": first.entry_slug})
+        assert rows[0][0] == 1
 
     async def test_the_facility_sits_in_exactly_one_commune(self, graph):
         """Facility.commune is cardinality One.
