@@ -11,6 +11,8 @@ class PeerInstanceOut(BaseModel):
 class ExportTokenRequest(BaseModel):
     target_origin: str
     entry_uids: list[str] | None = None
+    #: One of the source site's directories; the site's own when absent.
+    directory: str | None = None
 
 
 class ExportTokenResponse(BaseModel):
@@ -81,6 +83,8 @@ class ExecuteRequest(BaseModel):
     instance: str
     token: str
     resolutions: list[Resolution]
+    #: One of this site's directories, the one cloned into; the site's own when absent.
+    directory: str | None = None
     #: The source's organization Entry uid, from the export-token response.
     #: See ExportTokenResponse.org_entry for why it cannot come from the token.
     source_org_entry: str | None = None

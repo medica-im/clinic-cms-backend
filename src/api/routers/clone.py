@@ -16,7 +16,7 @@ the writes follow create_facility's and create_entry's own rules.
 """
 import logging
 from typing import Annotated
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -33,7 +33,7 @@ from asgiref.sync import sync_to_async
 
 from api.utils import clear_cache, get_directory, get_site_from_request
 from directory.models.core import sync_clear_effector_type_labels_cache
-from directory.models import PeerInstance
+from directory.models import Directory, PeerInstance
 from facility.models import Organization
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ async def export_token(body: ExportTokenRequest, request: Request,
         )
 
     site = await get_site_from_request(request)
-    directory = await get_directory(request)
+    directory = await _directory(request, body.directory)
 
     org_entry = await _org_entry_uid(site)
     token, ttl = clone_token.mint(
@@ -142,6 +142,21 @@ async def burn_token(request: Request) -> dict:
     if raw:
         clone_token.burn(raw, request_host=request.url.hostname)
     return {"burnt": bool(raw)}
+
+
+async def directory_of_site(site, name: str) -> Directory:
+    """The named directory, when it is one of this site's; 404 otherwise, whoever owns it."""
+    directory = await Directory.objects.select_related("site").filter(site=site, name=name).afirst()
+    if directory is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"no directory {name!r} on this site")
+    return directory
+
+
+async def _directory(request: Request, name: str | None) -> Directory:
+    """The directory a clone reads or writes: the one named, or the site's own."""
+    if name:
+        return await directory_of_site(await get_site_from_request(request), name)
+    return await get_directory(request)
 
 
 async def _peer(name: str) -> PeerInstance:
@@ -186,7 +201,8 @@ async def _avatar(peer: PeerInstance, full: dict) -> tuple[str, bytes] | None:
 
 @router.get("/clone/relay/entries")
 async def relay_entries(instance: str, token: str, request: Request,
-                        _: Annotated[str, Depends(require_superuser)]) -> dict:
+                        _: Annotated[str, Depends(require_superuser)],
+                        directory: str | None = None) -> dict:
     """The source's entries, fetched server-side, marked with what is already here.
 
     Relayed rather than fetched by the browser so the token never leaves this
@@ -202,7 +218,7 @@ async def relay_entries(instance: str, token: str, request: Request,
     relative to the *source*.
     """
     peer = await _peer(instance)
-    r = await _fetch(peer, "/api/v2/entries", token)
+    r = await _fetch(peer, "/api/v2/entries" + (f"?directory={quote(directory)}" if directory else ""), token)
     if r.status_code != 200:
         raise HTTPException(status_code=r.status_code,
                             detail=f"{peer.display_name} refused the entry list")
@@ -280,7 +296,7 @@ async def execute_clone(body: ExecuteRequest, request: Request,
     """Clone the entries, one at a time; one failure never aborts the batch."""
     peer = await _peer(body.instance)
     site = await get_site_from_request(request)
-    directory = await get_directory(request)
+    directory = await _directory(request, body.directory)
     org_uid = await _org_entry_uid(site)
     # The source's organization entry, taken from the request rather than the
     # token.
