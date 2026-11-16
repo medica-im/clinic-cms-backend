@@ -21,7 +21,7 @@ from urllib.parse import quote, urljoin, urlparse
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from api.auth import JWT
+from api.auth import JWT, check_cookie_jwt
 from api.neo4j_auth import get_neo4j_role
 from api.serializers.clone import detect, execute
 from api.serializers.clone import token as clone_token
@@ -110,11 +110,6 @@ async def export_token(body: ExportTokenRequest, request: Request,
                 f"(manage.py seed_peer_instances --write), not only on the target."
             ),
         )
-    if body.entry_uids and len(body.entry_uids) > clone_token.MAX_ENTRIES:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"at most {clone_token.MAX_ENTRIES} entries per token",
-        )
 
     site = await get_site_from_request(request)
     directory = await _directory(request, body.directory)
@@ -199,6 +194,28 @@ async def _avatar(peer: PeerInstance, full: dict) -> tuple[str, bytes] | None:
     return url.rsplit("/", 1)[-1] or "avatar", r.content
 
 
+@router.get("/clone/source/entries")
+async def source_entries(request: Request, jwt: Annotated[dict | None, Depends(check_cookie_jwt)],
+                         directory: str | None = None) -> list:
+    """On the SOURCE: every entry the directory node holds, for a clone to pick from.
+
+    Not the public list, which hides a porteur (it manages nothing): cloning a directory
+    takes all of it. A superuser's, through the clone token or a session; a token reads
+    only the directory it was minted for.
+    """
+    from api.serializers.allentries import createEntryResources
+    from directory.utils import get_entries
+
+    site = await get_site_from_request(request)
+    if (await get_neo4j_role(jwt, site) if jwt else None) not in CLONE_ROLES:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    chosen = await _directory(request, directory)
+    claims = getattr(request.state, "clone_claims", None)
+    if claims is not None and claims.directory != chosen.name:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="this token reads another directory")
+    return await createEntryResources(await get_entries(chosen, active=None, listed_only=False), request)
+
+
 @router.get("/clone/relay/entries")
 async def relay_entries(instance: str, token: str, request: Request,
                         _: Annotated[str, Depends(require_superuser)],
@@ -218,7 +235,7 @@ async def relay_entries(instance: str, token: str, request: Request,
     relative to the *source*.
     """
     peer = await _peer(instance)
-    r = await _fetch(peer, "/api/v2/entries" + (f"?directory={quote(directory)}" if directory else ""), token)
+    r = await _fetch(peer, "/api/v2/clone/source/entries" + (f"?directory={quote(directory)}" if directory else ""), token)
     if r.status_code != 200:
         raise HTTPException(status_code=r.status_code,
                             detail=f"{peer.display_name} refused the entry list")
@@ -241,19 +258,30 @@ async def preflight(body: PreflightRequest, request: Request,
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail="this site has no organization entry to attach facilities to")
 
-    out: list[EntryPreflight] = []
-    for uid in body.entry_uids[: clone_token.MAX_ENTRIES]:
+    async def read_full(uid: str) -> dict | None:
         r = await _fetch(peer, f"/api/v2/fullentries/{uid}", body.token)
-        if r.status_code != 200:
+        return r.json() if r.status_code == 200 else None
+
+    out: list[EntryPreflight] = []
+    fulls: list[dict] = []
+    for uid in body.entry_uids:
+        full = await read_full(uid)
+        if full is None:
             out.append(EntryPreflight(
                 source_uid=uid, name="", effector={}, facility={},
-                blockers=[Blocker(reason="unreadable",
-                                  detail=f"the source refused this entry ({r.status_code})")],
+                blockers=[Blocker(reason="unreadable", detail="the source refused this entry")],
             ))
-            continue
-        full = r.json()
+        else:
+            fulls.append(full)
+    # A porteur of another directory is in no list: it comes along, so its services are
+    # run by it here too.
+    fulls += await execute.porteurs_to_add(fulls, read_full, batch=set(body.entry_uids))
+    batch = {full.get("uid") for full in fulls}
+
+    for full in fulls:
+        uid = full.get("uid")
         eff, warnings = await detect.plan_effector(full)
-        warnings = warnings + await execute.missing_here(full, batch=set(body.entry_uids))
+        warnings = warnings + await execute.missing_here(full, batch=batch)
         fac = await detect.plan_facility(full, org_uid)
 
         blockers: list[Blocker] = []
@@ -318,7 +346,7 @@ async def execute_clone(body: ExecuteRequest, request: Request,
     # Everything read first: the batch clones porteurs before their services, whatever
     # the order the superuser picked them in.
     refused, items, avatars = [], [], {}
-    for res in body.resolutions[: clone_token.MAX_ENTRIES]:
+    for res in body.resolutions:
         r = await _fetch(peer, f"/api/v2/fullentries/{res.source_uid}", body.token)
         if r.status_code != 200:
             refused.append(execute.CloneResult(

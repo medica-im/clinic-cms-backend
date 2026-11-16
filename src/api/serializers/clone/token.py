@@ -34,11 +34,10 @@ SALT = "clone-export-v1"
 #: Long enough for a batch of entries with per-entry confirmation, short enough
 #: that a token pasted into a bug report is dead before anyone reads it.
 TTL_SECONDS = 900
-#: One read per entry per object plus slack. A batch is capped at MAX_ENTRIES,
-#: so this bounds what a single token can pull even if it leaks mid-run.
-MAX_USES = 200
-#: Also the cap on how many entries one token may name.
-MAX_ENTRIES = 50
+#: Each source read uses the token once: the list, then per entry its preflight read, its
+#: execute read and its opening hours. Enough for a whole directory in one batch, still a
+#: bound on what a token that leaks mid-run can pull.
+MAX_USES = 1000
 
 
 def _key() -> str:

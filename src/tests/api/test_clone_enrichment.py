@@ -297,6 +297,106 @@ class TestWhatPreflightAnnounces:
         assert await execute.missing_here(full, batch={"src-hospital"}) == []
 
 
+class TestPorteursComeAlong:
+    """A porteur manages nothing, so it is not listed and the source's entry list never offers
+    it: on 2026-11-16, 22 of the santé mentale porteurs could not be picked, and their services
+    arrived run by nobody. Preflight brings along the porteur of each selected entry that is
+    neither in the batch nor here, read from the source by uid, and its own porteur too."""
+
+    async def test_a_missing_porteur_and_its_own_porteur_are_read_from_the_source(self, graph):
+        source = {
+            "src-line": {"uid": "src-line", "run_by": {"uid": "src-pole", "slug": "pole"}},
+            "src-pole": {"uid": "src-pole", "run_by": {"uid": "src-hospital", "slug": "hospital"}},
+            "src-hospital": {"uid": "src-hospital"},
+        }
+        read = []
+
+        async def fetch(uid):
+            read.append(uid)
+            return source.get(uid)
+
+        added = await execute.porteurs_to_add([source["src-line"]], fetch, batch={"src-line"})
+        assert [full["uid"] for full in added] == ["src-pole", "src-hospital"]
+        assert read == ["src-pole", "src-hospital"]
+
+    async def test_a_porteur_in_the_batch_or_already_here_is_not_read(self, graph):
+        services = [{"uid": "a", "run_by": {"uid": "src-in-batch", "slug": "x"}},
+                    {"uid": "b", "run_by": {"uid": "src-here", "slug": f"{TAG}-porteur-slug"}},
+                    {"uid": "c", "run_by": {"uid": "src-in-batch", "slug": "x"}}]
+        read = []
+
+        async def fetch(uid):
+            read.append(uid)
+            return {"uid": uid}
+
+        added = await execute.porteurs_to_add(services, fetch, batch={"a", "b", "c", "src-in-batch"})
+        assert added == [] and read == []
+
+    async def test_a_porteur_the_source_refuses_is_left_out(self, graph):
+        async def fetch(uid):
+            return None
+
+        added = await execute.porteurs_to_add([{"uid": "a", "run_by": {"uid": "src-gone", "slug": "gone"}}],
+                                              fetch, batch={"a"})
+        assert added == []
+
+
+class TestTheSourceOffersEveryEntryOfTheDirectory:
+    """Cloning a directory takes every entry its node holds (HAS_ENTRY), not what the public
+    list shows: the list hides a porteur, which manages nothing, so 22 santé mentale porteurs
+    could not be picked. The public list stays as it was."""
+
+    async def test_an_unlisted_porteur_is_offered_with_the_listed_entries(self, graph):
+        await adb.cypher_query(
+            """
+            MATCH (c:Commune {uid: $tag+'-commune'}), (n:Need {uid: $tag+'-n'}), (t:EffectorType {uid: $tag+'-type'})
+            CREATE (d:Directory {uid: $tag+'-listing', name: $tag+'-listing'})-[:LISTS_NEED]->(n)
+            CREATE (f:Facility {uid: $tag+'-lf', name: 'Lieu listé'})-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c)
+            CREATE (d)-[:HAS_ENTRY]->(listed:Entry {uid: $tag+'-listed', active: true})-[:MANAGES]->(n)
+            CREATE (d)-[:HAS_ENTRY]->(porteur:Entry {uid: $tag+'-unlisted', active: true})
+            FOREACH (e IN [listed, porteur] |
+                CREATE (e)-[:HAS_EFFECTOR]->(:Effector {uid: e.uid + '-x', name_fr: e.uid})
+                CREATE (e)-[:HAS_EFFECTOR_TYPE]->(t)
+                CREATE (e)-[:HAS_FACILITY]->(f))
+            """, {"tag": TAG})
+        from types import SimpleNamespace
+        from directory.utils import get_entries_query
+
+        async def uids(**option):
+            query, params = get_entries_query(SimpleNamespace(name=f"{TAG}-listing"), active=None, **option)
+            rows, _ = await adb.cypher_query(query, params)
+            return sorted(row[0] for row in rows)
+
+        assert await uids() == [f"{TAG}-listed"]
+        assert await uids(listed_only=False) == [f"{TAG}-listed", f"{TAG}-unlisted"]
+
+    def test_the_relay_reads_the_clone_listing_not_the_public_one(self):
+        import inspect
+        import api.routers.clone as clone_router
+        source = inspect.getsource(clone_router.relay_entries)
+        assert "/api/v2/clone/source/entries" in source and '"/api/v2/entries"' not in source
+
+
+class TestABatchIsNeverCutShort:
+    """A batch capped at 50 entries cloned 50 of the 73 santé mentale entries asked for, and
+    said nothing of the other 23. The token already bounds what can be read (one superuser,
+    one directory, 15 minutes); a whole directory goes in one batch."""
+
+    def test_neither_preflight_nor_execute_drops_what_was_asked(self):
+        import inspect
+        import api.routers.clone as clone_router
+        for route in (clone_router.preflight, clone_router.execute_clone):
+            source = inspect.getsource(route)
+            assert "MAX_ENTRIES" not in source and "[:" not in source, route.__name__
+
+    def test_a_token_lasts_the_clone_of_a_whole_directory(self):
+        """Each source read uses the token once: the list, then per entry its preflight read,
+        its execute read and its opening hours, porteurs included."""
+        from api.serializers.clone import token as clone_token
+        entries_in_a_large_directory = 200
+        assert clone_token.MAX_USES >= 1 + 3 * entries_in_a_large_directory
+
+
 class TestWhereThePictureIsFetched:
     """The avatar path comes from the source's payload: it is fetched from the source's own
     origin only, never from a host the payload names."""

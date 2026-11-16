@@ -508,6 +508,30 @@ async def _tag(entry_uid: str, full: dict) -> list[str]:
     return [f"tags: not on this instance: {', '.join(missing)}"] if missing else []
 
 
+async def porteurs_to_add(fulls: list[dict], fetch, *, batch: set[str]) -> list[dict]:
+    """The porteurs these entries are run by that are neither in the batch nor here, read
+    from the source with `fetch(uid)`, and their own porteurs: an unlisted porteur is never
+    in the source's entry list, so nobody could pick it."""
+    added: list[dict] = []
+    seen = set(batch)
+    queue = list(fulls)
+    while queue:
+        source = queue.pop(0).get("run_by") or {}
+        uid = source.get("uid")
+        if not uid or uid in seen:
+            continue
+        seen.add(uid)
+        if source.get("slug"):
+            rows, _ = await adb.cypher_query("MATCH (p:Entry {slug: $s}) RETURN p.uid LIMIT 1", {"s": source["slug"]})
+            if rows:
+                continue
+        porteur = await fetch(uid)
+        if porteur:
+            added.append(porteur)
+            queue.append(porteur)
+    return added
+
+
 async def missing_here(full: dict, *, batch: set[str]) -> list[str]:
     """What cloning `full` here would leave out, by the same matching the clone uses: for
     preflight, before anything is written. A porteur in the batch is not missing."""

@@ -725,7 +725,10 @@ def get_entries_query(
     directory: Directory,
     uid = None,
     active: bool|None = True,
+    listed_only: bool = True,
 )->tuple[str, dict]:
+    """`listed_only=False`: every entry the directory node holds, as a clone takes them,
+    not only those its public list shows."""
     params = {"uid": uid, "directory": directory.name if directory else None, "active": active}
     if uid:
         query=f"""MATCH (entry:Entry) WHERE entry.uid=$uid WITH entry MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector) WITH * OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
@@ -737,10 +740,11 @@ def get_entries_query(
         WITH entry,e,et,f,rel,o,memberships,commune,dpt,country,creator_uids,COLLECT(DISTINCT owner.uid) as owner_uids
         RETURN entry,e,et,f,rel,o,memberships,commune,dpt,country,creator_uids,owner_uids;"""
     else:
+        listed = f"{owner_listed('d', 'entry')} AND {lists_need('d', 'entry')}"
         query=f"""MATCH (d:Directory) WHERE d.name=$directory
         WITH d
         MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
-        WHERE {owner_listed('d', 'entry')} AND {lists_need('d', 'entry')} AND ($active IS NULL OR entry.active = $active)
+        WHERE {listed + ' AND ' if listed_only else ''}($active IS NULL OR entry.active = $active)
         WITH entry
         MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
         WITH entry, COLLECT(DISTINCT directory) as directories
@@ -761,8 +765,9 @@ async def get_entries(
         directory: Directory,
         uid = None,
         active: bool|None=True,
+        listed_only: bool = True,
     ):
-    query, params = get_entries_query(directory, uid=uid, active=active)
+    query, params = get_entries_query(directory, uid=uid, active=active, listed_only=listed_only)
     results, _meta = await adb.cypher_query(query, params, resolve_objects = True)
     #logger.debug(f"{results[:1]=} {len(results)=}")
     entries=[]
