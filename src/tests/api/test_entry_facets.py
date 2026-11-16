@@ -20,7 +20,7 @@ from api.types.fullentry import FullEntry
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
-FACETS = ("age_min", "age_max", "care_levels", "who_can_contact", "access_modes", "audiences", "free", "anonymous_care")
+FACETS = ("age_min", "age_max", "care_levels", "who_can_contact", "access_modes", "audiences", "free", "anonymous_care", "offers")
 
 
 @pytest.fixture
@@ -61,9 +61,11 @@ async def test_every_facet_is_stored_and_returned(graph):
         "audiences": ["students"],
         "free": True,
         "anonymous_care": False,
+        "offers": ["training", "listening"],
     }
     entry = await patch_entry("lyon", body)
-    expected = {**body, "care_levels": ["emergency", "primary"], "access_modes": ["phone", "online"]}
+    expected = {**body, "care_levels": ["emergency", "primary"], "access_modes": ["phone", "online"],
+                "offers": ["listening", "training"]}
     assert {facet: getattr(entry, facet) for facet in FACETS} == expected
     assert await stored(graph) == expected
 
@@ -94,6 +96,7 @@ async def test_a_staff_owner_may_describe_the_public_of_an_entry(graph):
         {"care_levels": ["emergency", "quaternary"]},
         {"access_modes": ["fax"]},
         {"audiences": ["everybody"]},
+        {"offers": ["massage"]},
         {"age_min": -1},
         {"age_max": 200},
         {"age_min": 30, "age_max": 20},

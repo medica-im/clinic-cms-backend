@@ -127,6 +127,22 @@ async def test_a_rerun_never_overwrites_a_description_edited_in_the_app(graph):
     assert await one(graph, "MATCH (e:Entry {uid: $e}) RETURN e.description", e=line) == [["Corrigée dans l'annuaire"]]
 
 
+async def test_a_rerun_never_erases_what_an_entry_offers_as_set_in_the_app(graph):
+    await import_spec(SPEC, creator_directory="santelyon3", contacts=False)
+    line = await entry_of(graph, "3114 (Numéro national de prévention du suicide)")
+    await graph.cypher_query("MATCH (e:Entry {uid: $e}) SET e.offers = ['listening', 'orientation']", {"e": line})
+    await import_spec(SPEC, creator_directory="santelyon3", contacts=False)
+    assert await one(graph, "MATCH (e:Entry {uid: $e}) RETURN e.offers", e=line) == [[["listening", "orientation"]]]
+
+
+async def test_the_spec_fills_what_an_entry_offers_when_it_says_nothing(graph):
+    spec = copy.deepcopy(SPEC)
+    spec["entries"][0]["facets"]["offers"] = ["listening"]
+    await import_spec(spec, creator_directory="santelyon3", contacts=False)
+    line = await entry_of(graph, "3114 (Numéro national de prévention du suicide)")
+    assert await one(graph, "MATCH (e:Entry {uid: $e}) RETURN e.offers", e=line) == [[["listening"]]]
+
+
 async def test_entries_at_the_same_street_share_one_facility(graph):
     await import_spec(SPEC, creator_directory="santelyon3", contacts=False)
     rows = await one(graph, "MATCH (f:Facility {street: '95 Boulevard Pinel', zip: '69500'}) RETURN f.name")

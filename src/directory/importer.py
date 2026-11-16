@@ -37,6 +37,8 @@ from directory.manages import set_manages, unknown_slugs
 from directory.run_by import set_run_by
 
 PLACES = {"department": "DepartmentOfFrance", "country": "Country"}
+#: Facets the spec only fills, never replaces: they are edited in the app.
+FILLED_ONCE = {"offers"}
 
 #: A commune is told apart from its namesakes by its département: six are called Saint-Maurice.
 COMMUNE = (
@@ -206,11 +208,14 @@ async def _entry(effector: str, type_slug: str, facility: str, directory: str, r
 
 
 async def _describe(uid: str, item: dict) -> None:
-    """Identity, facets, what it manages and where it answers: replaced each run. The
-    description only fills an empty one: once edited in the app, the text is the app's."""
-    facets = {name: (item.get("facets") or {}).get(name) for name in ENTRY_FACETS}
+    """Identity, facets, what it manages and where it answers: replaced each run. What it
+    offers and its description only fill empty ones: once edited in the app, they are the app's."""
+    given = item.get("facets") or {}
+    facets = {name: given.get(name) for name in ENTRY_FACETS if name not in FILLED_ONCE}
     await write("MATCH (e:Entry {uid: $e}) SET e += $props", e=uid,
                 props={**facets, **({"siren": item["siren"]} if item.get("siren") else {})})
+    if given.get("offers"):
+        await write("MATCH (e:Entry {uid: $e}) SET e.offers = coalesce(e.offers, $o)", e=uid, o=given["offers"])
     if item.get("description"):
         await write("MATCH (e:Entry {uid: $e}) SET e.description = coalesce(e.description, $d)",
                     e=uid, d=item["description"])

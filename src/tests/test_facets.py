@@ -14,6 +14,7 @@ from directory.facets import (
     ACCESS_MODES,
     AUDIENCES,
     CARE_LEVELS,
+    OFFERS,
     WHO_CAN_CONTACT,
     check_age_range,
     check_choice,
@@ -77,6 +78,23 @@ def test_the_vocabularies_are_the_ones_of_the_plan():
     assert WHO_CAN_CONTACT == ("anyone", "referral", "professionals")
     assert ACCESS_MODES == ("phone", "walk_in", "appointment", "admission", "online", "teleexpertise", "home_visit")
     assert AUDIENCES == ("students", "caregivers", "parents", "women", "men", "lgbtqia", "older_adults")
+
+
+def test_what_an_entry_offers_is_a_short_vocabulary_of_its_own():
+    """What a service does for the person who comes (UNAFAM: listening, information, peer support,
+    training, advocacy), not its level of care nor how to reach it."""
+    assert OFFERS == (
+        "listening", "information", "orientation", "accompaniment", "peer_support", "support_group",
+        "training", "advocacy", "consultation", "assessment", "psychotherapy", "full_time_hospitalisation",
+        "day_hospitalisation", "coordination", "harm_reduction", "screening", "therapeutic_education",
+    )
+    assert check_choices(["training", "listening"], OFFERS, "offers") == ["listening", "training"]
+    # A stay day and night and a day at the hospital answer different needs: a patient in crisis
+    # who cannot stay at home, or one who can but needs intensive care.
+    with pytest.raises(ValueError, match="offers"):
+        check_choices(["hospitalisation"], OFFERS, "offers")
+    with pytest.raises(ValueError, match="offers"):
+        check_choices(["massage"], OFFERS, "offers")
 
 
 def test_a_node_gives_its_facets_with_null_for_what_it_never_stored():

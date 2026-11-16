@@ -6,6 +6,7 @@ from directory.facets import (
     ACCESS_MODES,
     AUDIENCES,
     CARE_LEVELS,
+    OFFERS,
     WHO_CAN_CONTACT,
     check_age_range,
     check_choice,
@@ -24,6 +25,7 @@ class EntryFacets(BaseModel):
     audiences: list[str]|None = None
     free: bool|None = None
     anonymous_care: bool|None = None
+    offers: list[str]|None = None
 
     @field_validator("age_min", "age_max")
     @classmethod
@@ -49,6 +51,11 @@ class EntryFacets(BaseModel):
     @classmethod
     def _audiences(cls, value):
         return check_choices(value, AUDIENCES, "audiences")
+
+    @field_validator("offers")
+    @classmethod
+    def _offers(cls, value):
+        return check_choices(value, OFFERS, "offers")
 
     @model_validator(mode="after")
     def _age_range(self):

@@ -218,5 +218,6 @@ class FullEntry(BaseModel):
     who_can_contact: str|None = None
     access_modes: list[str]|None = None
     audiences: list[str]|None = None
+    offers: list[str]|None = None
     free: bool|None = None
     anonymous_care: bool|None = None

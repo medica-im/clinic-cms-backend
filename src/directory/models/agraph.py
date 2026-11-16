@@ -467,6 +467,7 @@ class Entry(AsyncStructuredNode):
     who_can_contact = StringProperty()
     access_modes = ArrayProperty(base_property=StringProperty())
     audiences = ArrayProperty(base_property=StringProperty())
+    offers = ArrayProperty(base_property=StringProperty())
     free = BooleanProperty()
     anonymous_care = BooleanProperty()
     appointments = AsyncRelationshipTo(

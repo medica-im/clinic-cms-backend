@@ -15,6 +15,29 @@ WHO_CAN_CONTACT = ("anyone", "referral", "professionals")
 #: it fits any who_can_contact.
 ACCESS_MODES = ("phone", "walk_in", "appointment", "admission", "online", "teleexpertise", "home_visit")
 AUDIENCES = ("students", "caregivers", "parents", "women", "men", "lgbtqia", "older_adults")
+#: What the service does for the person who comes, as the page shows it at a glance: not its
+#: level of care (CARE_LEVELS) nor how to reach it (ACCESS_MODES).
+OFFERS = (
+    "listening",
+    "information",
+    "orientation",
+    "accompaniment",
+    "peer_support",
+    "support_group",
+    "training",
+    "advocacy",
+    "consultation",
+    "assessment",
+    "psychotherapy",
+    # A stay day and night (« hospitalisation complète »), or the day only (« hospitalisation de
+    # jour », the patient sleeps at home): they answer different needs.
+    "full_time_hospitalisation",
+    "day_hospitalisation",
+    "coordination",
+    "harm_reduction",
+    "screening",
+    "therapeutic_education",
+)
 
 #: The names of the facets on the Entry node and in the entry payloads.
 ENTRY_FACETS = (
@@ -26,6 +49,7 @@ ENTRY_FACETS = (
     "audiences",
     "free",
     "anonymous_care",
+    "offers",
 )
 
 MAX_AGE = 120
