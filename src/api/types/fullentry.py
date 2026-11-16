@@ -83,6 +83,7 @@ class Email(BaseModel):
 class Facility(BaseModel):
     uid: str
     name: str|None = None
+    #: As stored, empty or unset included: a page falls back to the name itself.
     label: str|None = None
     slug: str|None = None
 

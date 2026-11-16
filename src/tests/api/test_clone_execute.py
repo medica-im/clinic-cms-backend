@@ -170,6 +170,16 @@ class TestAHappyClone:
             "MATCH (e:Entry {slug: $s}) RETURN count(e)", {"s": first.entry_slug})
         assert rows[0][0] == 1
 
+    async def test_the_facility_keeps_its_stored_label(self, graph):
+        """An empty label stays empty: it is not replaced by the name."""
+        source = full_entry(uid="label-source",
+                            facility={"name": "Cabinet Cloné", "slug": f"{TAG}-label-fac", "label": ""})
+        r = await _clone(source, graph)
+        assert r.status == "created", r.error
+        rows, _ = await adb.cypher_query(
+            "MATCH (f:Facility {uid:$uid}) RETURN f.label", {"uid": r.facility_uid})
+        assert rows[0][0] == ""
+
     async def test_the_facility_sits_in_exactly_one_commune(self, graph):
         """Facility.commune is cardinality One.
 

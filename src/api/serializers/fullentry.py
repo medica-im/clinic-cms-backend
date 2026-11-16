@@ -132,12 +132,7 @@ def createEffectorRessource(node):
     effector_type_dict["labels"]=node["effector_type_labels"]
     phones = node["phones"]
     updatedAt = entry_updated_at(node["entry"], effector_node, node["facility"])
-    facility = {
-        "uid": node["facility"].uid,
-        "slug": node["facility"].slug,
-        "name": node["facility"].name,
-        "label": node["facility"].label or node["facility"].name
-    }
+    facility = facility_resource(node["facility"])
     emails = node["emails"]
     websites = node["websites"]
     socialnetworks = node["socialnetworks"]
@@ -248,6 +243,11 @@ def get_fullentry(uid):
     entry_pydantic = FullEntry.model_validate(entry_object.__dict__)
     return entry_pydantic
 
+def facility_resource(facility) -> dict:
+    """The facility as stored: a page that wants the name for a missing label falls back itself."""
+    return {"uid": facility.uid, "slug": facility.slug, "name": facility.name, "label": facility.label}
+
+
 def facility_ban(facility) -> dict:
     """The facility's Base Adresse Nationale ids."""
     return {"ban_id": getattr(facility, "ban_id", None), "ban_banId": getattr(facility, "ban_banId", None)}
@@ -292,12 +292,7 @@ async def createFullEntryResource(node) -> dict:
     # updatedAt
     updatedAt = entry_updated_at(node["entry"], effector_node, node["facility"])
     # facility
-    facility = {
-        "uid": node["facility"].uid,
-        "slug": node["facility"].slug,
-        "name": node["facility"].name,
-        "label": node["facility"].label or node["facility"].name,
-    }
+    facility = facility_resource(node["facility"])
     # pre-fetched contact data
     emails = node["emails"]
     websites = node["websites"]
