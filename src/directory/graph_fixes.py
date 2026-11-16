@@ -44,3 +44,30 @@ def null_blank_facility_ban_ids() -> int:
         for endpoint in ("v1:facilities", "v2:public/facilities"):
             sync_clear_cache(endpoint)
     return count
+
+
+def fill_two_state_booleans() -> tuple[int, int]:
+    """Store the default where a two-state boolean has no value.
+
+    neomodel applies a default when it saves a node, so nodes written before the
+    property existed, or by Cypher, had none. Readers take a missing value as the
+    default (`coalesce(t.immaterial, false)`), so what is displayed does not change
+    and no cache needs clearing. Not the entry facets: for those null is unknown.
+
+    Returns the effector types and the directories it filled.
+    """
+    types, _ = db.cypher_query(
+        """
+        MATCH (t:EffectorType) WHERE t.immaterial IS NULL
+        SET t.immaterial = false
+        RETURN count(t)
+        """
+    )
+    directories, _ = db.cypher_query(
+        """
+        MATCH (d:Directory) WHERE d.list_owner_entry IS NULL
+        SET d.list_owner_entry = true
+        RETURN count(d)
+        """
+    )
+    return types[0][0], directories[0][0]
