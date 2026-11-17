@@ -1,6 +1,6 @@
 Django>=5.2,<5.3
 python-decouple
-djangorestframework>=3.17,<3.18
+djangorestframework
 gunicorn==23.0.0
 psycopg2-binary==2.9.11
 django-modeltranslation
