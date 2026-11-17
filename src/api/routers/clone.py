@@ -65,6 +65,12 @@ async def _org_entry_uid(site) -> str | None:
     return org.neomodel_uid.hex if org.neomodel_uid else None
 
 
+def is_this_instance(origin: str | None, here: str | None) -> bool:
+    """Whether the peer's origin is this instance: the same hostname, not one that contains it."""
+    host = urlparse(origin).hostname if origin else None
+    return bool(host and here and host == here.lower())
+
+
 @router.get("/clone/instances")
 async def instances(request: Request,
                     _: Annotated[str, Depends(require_superuser)]) -> list[PeerInstanceOut]:
@@ -78,7 +84,7 @@ async def instances(request: Request,
         PeerInstanceOut(name=p.name, display_name=p.display_name, origin=p.origin)
         for p in peers
         # Never offer this instance to itself.
-        if not (p.origin and here and here in p.origin)
+        if not is_this_instance(p.origin, here)
     ]
 
 
