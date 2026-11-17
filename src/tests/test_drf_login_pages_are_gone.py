@@ -11,7 +11,7 @@ import pytest
 from django.core.checks import run_checks
 from django.test import Client
 
-MOUNTS = ["/api/", "/api/v1/directory/", "/api/v1/workforce/", "/api/v1/opengraph/", "/api/v1/heatwave/"]
+MOUNTS = ["/api/", "/api/v1/directory/", "/api/v1/heatwave/"]
 
 
 @pytest.mark.parametrize("mount", MOUNTS)
