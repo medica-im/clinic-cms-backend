@@ -6,7 +6,8 @@ Postgres. This writes them into this backend's model:
 
 - Postgres: the Site, the Directory, the Organization; one Contact per entry
   and per facility (keyed by neomodel_uid), with its phones, emails, websites,
-  social networks, profile and avatar; an EntrySlug per old public slug.
+  social networks and avatar (the old profile text is reported, not imported:
+  the model is gone); an EntrySlug per old public slug.
 - Neo4j: the Directory node, a Facility per old facility (PART_OF the
   organization's Entry), an Effector per person and an Entry per occupation,
   each listed in the directory and MEMBER_OF the organization's Entry.
@@ -32,7 +33,6 @@ Run it in the fastapi container: it reuses api helpers, which import fastapi.
     python manage.py import_entries /tmp/vedene/vedene.json \\
         --site dev.msp-vedene.fr --directory vedene --organization msp-vedene \\
         --main-facility pole_sante_vedene --media-dir /tmp/vedene/media \\
-        --changed-by jerome@medecinelibre.com \\
         --redirects-out /tmp/vedene/redirects.json [--dry-run]
 """
 import asyncio
@@ -49,8 +49,7 @@ from django.utils.text import slugify
 from neomodel import adb
 
 from access.models import Role
-from accounts.models import User
-from addressbook.models import Contact, Email, PhoneNumber, Profile, SocialNetwork, Website
+from addressbook.models import Contact, Email, PhoneNumber, SocialNetwork, Website
 from api.serializers.entries import ensure_health_worker_label
 from api.utils import clear_cache
 from directory.entry_shape import entry_shape_problems
@@ -166,7 +165,6 @@ class Command(BaseCommand):
         parser.add_argument("--organization", required=True, help="name of the Organization, e.g. msp-vedene")
         parser.add_argument("--main-facility", required=True, help="old name of the organization's own facility")
         parser.add_argument("--media-dir", help="old MEDIA_ROOT, for avatars")
-        parser.add_argument("--changed-by", help="email of the user recorded as the profiles' author")
         parser.add_argument("--redirects-out", help="write old path -> new path as JSON here")
         parser.add_argument("--dry-run", action="store_true")
 
@@ -222,15 +220,6 @@ class Command(BaseCommand):
         if PUBLIC_ROLE not in roles:
             problems.append(f"role '{PUBLIC_ROLE}' is missing")
         self.roles = {r.name: r async for r in Role.objects.all()}
-        self.author = None
-        if any(
-            PUBLIC_ROLE in profile["roles"]
-            for w in data["workers"] if w["contact"] for profile in w["contact"]["profiles"]
-        ):
-            email = self.options["changed_by"]
-            self.author = await User.objects.filter(email=email).afirst() if email else None
-            if self.author is None:
-                problems.append("profiles to import: --changed-by must name an existing user")
         if not await Category.objects.filter(name=data["organization"]["category"]).aexists():
             problems.append(f"category '{data['organization']['category']}' is missing")
         return problems
@@ -461,18 +450,7 @@ class Command(BaseCommand):
                 s["roles"],
             )
         for profile in old["profiles"][:1]:
-            # The API serves a profile to anyone, whatever its roles, so one
-            # the old site kept from the public stays behind.
-            if PUBLIC_ROLE not in profile["roles"]:
-                self.report.dropped.append(f"{who}: profile restricted to {', '.join(profile['roles'])}")
-                continue
-            item, created = await Profile.objects.aget_or_create(
-                contact=contact,
-                defaults={"text": profile["text"], "organization": self.organization,
-                          "changed_by": self.author},
-            )
-            if created:
-                await item.roles.aset(self.role_set(profile["roles"]))
+            self.report.dropped.append(f"{who}: profile (the model is gone)")
         if old["profile_image"] and not contact.profile_image:
             await sync_to_async(self.copy_avatar)(contact, old["profile_image"], who)
 

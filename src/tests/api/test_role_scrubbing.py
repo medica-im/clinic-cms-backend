@@ -43,16 +43,14 @@ VIEWER_ROLES = ["anonymous", "registered", "staff", "administrator", "superuser"
 # the models that declare a `roles` M2M. Resolved lazily inside the tests
 # because it touches the Django app registry.
 #
-# Two of the seven models are excluded there on purpose:
+# appointments are not role-bearing and are not scrubbed: they are public, and
+# are read from the graph, so the dicts have no `roles` key. Filtering them
+# raised KeyError: 'roles' and made every /e/{slug} a 500 in staging. (The
+# Appointment and Profile models were dropped; the key stays in the payload.)
 #
-#   profile      is serialised as a plain string, not a list of items.
-#   appointments are public, and are read from the graph, so the dicts have no
-#                `roles` key. Filtering them raised KeyError: 'roles' and made
-#                every /e/{slug} a 500 in staging.
-#
-# Both keep their own tests below.
+# They keep their own tests below.
 ROLE_BEARING = ["phones", "emails", "socialnetworks", "websites"]
-NOT_FILTERABLE = ["profile", "appointments"]
+NOT_FILTERABLE = ["appointments"]
 
 
 def attributes() -> list[str]:

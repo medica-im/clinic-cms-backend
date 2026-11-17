@@ -34,8 +34,6 @@ from addressbook.api.serializers import (
     WebsiteSerializer,
     AsyncWebsiteSerializer,
     SocialNetworkSerializer,
-    ProfileSerializer,
-    AsyncProfileSerializer,
 )
 from api.serializers.appointment import AppointmentSerializer
 from rest_framework.serializers import ModelSerializer
@@ -59,7 +57,6 @@ class EntryDict(TypedDict):
     websites: list
     socialnetworks: list
     appointments: list | None
-    profile: list
     third_party_payers: list[ThirdPartyPayer] | None
     payment_methods: list[PaymentMethod] | None
     health_worker: HealthWorker
@@ -173,7 +170,7 @@ async def async_get_contact_related_elements(
         many: bool
     ):
     try:
-        contact = await Contact.objects.prefetch_related('phonenumbers', 'phonenumbers__roles', 'emails', 'emails__roles', 'websites', 'websites__roles', 'socialnetworks', 'socialnetworks__roles', 'profile', 'profile__roles').aget(neomodel_uid=neo_entity.uid)
+        contact = await Contact.objects.prefetch_related('phonenumbers', 'phonenumbers__roles', 'emails', 'emails__roles', 'websites', 'websites__roles', 'socialnetworks', 'socialnetworks__roles').aget(neomodel_uid=neo_entity.uid)
     except (Contact.DoesNotExist, AttributeError):
         return None
     try:
@@ -282,28 +279,6 @@ async def async_get_contact_related_neomodel(
         except AttributeError:
             return
         return serializer.data
-
-def get_profile_neomodel(entry: Entry, e: Effector, ef: EffectorFacility, f: Facility):
-    return get_contact_related_neomodel(
-        entry=entry,
-        e=e,
-        ef=ef,
-        f=f,
-        attribute="profile",
-        Serializer=ProfileSerializer,
-        many=False
-    )
-
-async def async_get_profile_neomodel(entry: Entry, e: Effector, ef: EffectorFacility, f: Facility):
-    return await async_get_contact_related_neomodel(
-        entry=entry,
-        e=e,
-        ef=ef,
-        f=f,
-        attribute="profile",
-        Serializer=AsyncProfileSerializer,
-        many=False
-    )
 
 def appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment):
     def get_location(node: Appointment):
@@ -979,12 +954,6 @@ def entry_dict(results, cols):
         entry=entry.uid,
         nodes=appointment_nodes
     )
-    profile = get_profile_neomodel(
-        entry=entry,
-        e=effector,
-        ef=effector_facility,
-        f=facility
-    )
     try:
         health_worker = HealthWorker.nodes.get(uid=effector.uid)
     except Exception as e:
@@ -1008,7 +977,6 @@ def entry_dict(results, cols):
         "websites": websites,
         "socialnetworks": socialnetworks,
         "appointments": appointments,
-        "profile": profile,
         "third_party_payers": third_party_payers,
         "payment_methods": payment_methods,
         "health_worker": health_worker,
@@ -1065,12 +1033,6 @@ async def async_entry_dict(results, cols) -> EntryDict:
         entry=entry.uid,
         nodes=appointment_nodes
     )
-    profile = await async_get_profile_neomodel(
-        entry=entry,
-        e=effector,
-        ef=effector_facility,
-        f=facility
-    )
     try:
         health_worker = await AsyncHealthWorker.nodes.get(uid=effector.uid)
     except Exception as e:
@@ -1093,7 +1055,6 @@ async def async_entry_dict(results, cols) -> EntryDict:
         "websites": websites,
         "socialnetworks": socialnetworks,
         "appointments": appointments,
-        "profile": profile,
         "third_party_payers": third_party_payers,
         "payment_methods": payment_methods,
         "health_worker": health_worker,

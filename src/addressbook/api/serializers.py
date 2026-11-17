@@ -1,7 +1,6 @@
 import logging
 from addressbook.models import (
     Contact,
-    Profile,
     App,
     AppLink,
     AppStore,
@@ -63,35 +62,6 @@ class SocialNetworkSerializer(serializers.ModelSerializer):
             'roles',
         ]
         depth = 2
-
-
-class AsyncProfileSerializer(AsyncModelSerializer):
-    # Names, not nested objects — see AsyncPhoneNumberModelSerializer.
-    roles = serializers.SlugRelatedField(
-        slug_field='name', read_only=True, many=True
-    )
-
-    class Meta:
-        model = Profile
-        fields = [
-            'id', 'contact', 'roles', 'organization', 'text', 'changed_by',
-            'created', 'updated',
-        ]
-        extra_kwargs = {'changed_by': {'required': False}}
-
-
-class ProfileSerializer(serializers.ModelSerializer):
-    # Names, not nested objects — see AsyncPhoneNumberModelSerializer.
-    roles = serializers.SlugRelatedField(
-        slug_field='name', read_only=True, many=True
-    )
-    class Meta:
-        model = Profile
-        fields = [
-            'id', 'contact', 'roles', 'organization', 'text', 'changed_by',
-            'created', 'updated',
-        ]
-        extra_kwargs = {'changed_by': {'required': False}}
 
 
 class AppStoreSerializer(serializers.ModelSerializer):

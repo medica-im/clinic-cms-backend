@@ -498,6 +498,6 @@ class TestTheAddressSerializerIsGone:
 
         for expected in (
             "ContactSerializer", "PhoneNumberSerializer", "EmailSerializer",
-            "WebsiteSerializer", "SocialNetworkSerializer", "ProfileSerializer",
+            "WebsiteSerializer", "SocialNetworkSerializer",
         ):
             assert hasattr(serializers, expected), f"lost {expected}"

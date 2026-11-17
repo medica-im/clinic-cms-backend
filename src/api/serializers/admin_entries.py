@@ -83,13 +83,6 @@ def last_modified_of(contact):
             stamp = getattr(obj, "updatedAt", None)
             if stamp is not None:
                 stamps.append(stamp)
-    # Profile carries `updated` rather than `updatedAt` — it predates this and
-    # keeps its own name.
-    profile = getattr(contact, "profile", None)
-    if profile is not None:
-        stamp = getattr(profile, "updated", None)
-        if stamp is not None:
-            stamps.append(stamp)
     return max(stamps) if stamps else None
 
 

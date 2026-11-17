@@ -43,7 +43,6 @@ class EffectorObj(object):
             websites,
             socialnetworks,
             appointments,
-            profile,
             convention,
             carte_vitale,
             third_party_payers,
@@ -73,7 +72,6 @@ class EffectorObj(object):
         self.websites = websites
         self.socialnetworks = socialnetworks
         self.appointments = appointments
-        self.profile = profile
         self.convention = convention
         self.carte_vitale = carte_vitale
         self.third_party_payers = third_party_payers
@@ -137,7 +135,6 @@ def createEffectorRessource(node):
     websites = node["websites"]
     socialnetworks = node["socialnetworks"]
     appointments = node["appointments"]
-    profile = node["profile"]
     # convention
     convention_db = node["convention"]
     if convention_db:
@@ -220,7 +217,6 @@ def createEffectorRessource(node):
         websites,
         socialnetworks,
         appointments,
-        profile,
         convention,
         carte_vitale,
         third_party_payers,
@@ -299,7 +295,6 @@ async def createFullEntryResource(node) -> dict:
     websites = node["websites"]
     socialnetworks = node["socialnetworks"]
     appointments = node["appointments"]
-    profile = node["profile"]
     # convention
     convention_db = node["convention"]
     if convention_db:
@@ -389,7 +384,6 @@ async def createFullEntryResource(node) -> dict:
         "websites": websites,
         "socialnetworks": socialnetworks,
         "appointments": appointments,
-        "profile": profile,
         "convention": convention,
         "carte_vitale": carte_vitale,
         "third_party_payers": third_party_payers,
@@ -460,9 +454,7 @@ async def async_get_fullentry(uid: str, req: Request, jwt)->FullEntry:
     logger.debug(f"{entry_dct=}")
     # Derived, not listed. websites and appointments carry a `roles` M2M and
     # were absent from the literal list that used to be here, so an
-    # administrator-only website was served to anonymous callers. (profile
-    # carries one too but is serialised as a plain string, so it cannot be
-    # filtered item by item — see role_bearing_attributes.)
+    # administrator-only website was served to anonymous callers.
     attributes = role_bearing_attributes()
     # Owners and creators always see their own avatar, whatever its access level,
     # so they can review and change the setting.

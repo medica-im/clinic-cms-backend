@@ -48,13 +48,6 @@ EDITABLE_MODELS = [
     "SocialNetwork",
 ]
 
-# Profile already carries `created`/`updated` (and a HistoricalRecords trail),
-# which is the precedent the fields above follow. It is excluded from the
-# parametrised cases only because creating one requires a changed_by user;
-# TestProfileAlreadyHadThis keeps it covered.
-LEGACY_TIMESTAMPED = ["Profile"]
-
-
 @pytest.fixture
 def contact(transactional_db):
     from addressbook.models import Contact
@@ -118,23 +111,6 @@ class TestEveryEditableObjectCarriesItsOwnTimestamp:
         obj = make(model_name, contact)
 
         assert (timezone.now() - obj.updatedAt).total_seconds() < 60
-
-
-class TestProfileAlreadyHadThis:
-    """The model the others are modelled on.
-
-    Profile has carried `updated` (auto_now) and a simple_history trail since
-    before this work. Named here so the inconsistency is deliberate and
-    visible: if the field names are ever unified, this test is the one that
-    says which way to go.
-    """
-
-    def test_profile_keeps_its_own_updated_field(self):
-        from addressbook.models import Profile
-
-        names = {f.name for f in Profile._meta.get_fields()}
-        assert "updated" in names
-        assert "created" in names
 
 
 class TestTheEntryTimestampCoversItsOwnRecord:

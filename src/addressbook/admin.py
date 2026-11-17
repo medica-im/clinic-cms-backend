@@ -9,12 +9,10 @@ from addressbook.models import (
     AppLink,
     AppStore,
     Email,
-    Profile,
 )
 from facility.models import Organization, Facility
 from django.utils.translation import gettext_lazy as _
 from django.utils.safestring import mark_safe
-from simple_history.admin import SimpleHistoryAdmin
 from django.db.models import F
 from django.contrib.postgres.search import SearchVector, SearchQuery
 from neomodel import db
@@ -128,11 +126,8 @@ class EmailInline(admin.TabularInline):
 # addressbook.Appointment is not registered because the model no longer
 # exists: appointments live on the graph, and the table was dropped once its
 # last reader went with the /api/v1/workforce/user/ endpoint. See
-# tests/test_appointment_table_is_dropped.py.
-
-class ProfileInline(admin.StackedInline):
-    model = Profile
-    extra = 0
+# tests/test_appointment_table_is_dropped.py. addressbook.Profile went the same
+# way: see tests/test_profile_table_is_dropped.py.
 
 
 @admin.register(Contact)
@@ -144,7 +139,6 @@ class ContactAdmin(admin.ModelAdmin):
         'phone_tag',
         'user_tag',
         'email_tag',
-        'profile_tag',
     )
     fields = (
         'formatted_name',
@@ -173,7 +167,6 @@ class ContactAdmin(admin.ModelAdmin):
         PhoneInline,
         SocialInline,
         WebsiteInline,
-        ProfileInline,
     ]
     list_filter = [
         #ContactOrganizationFilter,
@@ -253,11 +246,6 @@ class ContactAdmin(admin.ModelAdmin):
             except Exception as e:
                 logger.error(e)
                 return
-    
-    @admin.display(description=_('Profile'))
-    def profile_tag(self, obj):
-        return obj.profile.text[:35]
-
 
 @admin.register(App)
 class AppAdmin(admin.ModelAdmin):
@@ -307,4 +295,3 @@ class WebsiteAdmin(admin.ModelAdmin):
 
 admin.site.register(SocialNetwork, admin.ModelAdmin)
 admin.site.register(Email, admin.ModelAdmin)
-admin.site.register(Profile, SimpleHistoryAdmin)

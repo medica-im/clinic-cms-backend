@@ -17,7 +17,6 @@ from django_countries.fields import CountryField
 from taggit.managers import TaggableManager
 from django.contrib.auth import get_user_model
 from access.models import Role
-from simple_history.models import HistoricalRecords
 from easy_thumbnails.signals import saved_file
 from easy_thumbnails.signal_handlers import generate_aliases
 from django.db.models import UniqueConstraint
@@ -334,65 +333,6 @@ class SocialNetwork(models.Model):
             update_contact_timestamp(self.contact.neomodel_uid)
         except TypeError as e:
             logger.warning(f'uid is {self.contact.neomodel_uid} {e}')
-
-
-class Profile(models.Model):
-    contact = models.OneToOneField(
-        Contact,
-        on_delete=models.CASCADE,
-        related_name="profile",
-    )
-    roles = models.ManyToManyField(
-        Role,
-        blank=True,
-        help_text="Roles allowed so see the related object",
-    )
-    organization = models.ForeignKey(
-        "facility.Organization",
-        on_delete=models.SET_NULL,
-        related_name="profiles",
-        null=True,
-        blank=True, 
-    )
-    text = models.TextField(
-        blank=True    
-    )
-    changed_by = models.ForeignKey(
-      settings.AUTH_USER_MODEL,
-      on_delete=models.PROTECT
-    )
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
-    history = HistoricalRecords()
-
-    def __str__(self):
-        return (
-            f"{self.contact.formatted_name} {self.text[0:35]}"
-        )
-
-    @property
-    def _history_user(self):
-        return self.changed_by
-
-    @_history_user.setter
-    def _history_user(self, value):
-        self.changed_by = value
-
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=['contact', 'organization'],
-                name='unique_profile',
-            ),
-        ]
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)  # Call the "real" save() method.
-        try:
-            update_contact_timestamp(self.contact.neomodel_uid)
-        except TypeError as e:
-            logger.warn(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class App(models.Model):

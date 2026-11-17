@@ -8,7 +8,7 @@ node — see tests/api/test_appointments_in_the_payload.py.
 The Postgres table was residue from before that move: 66 rows against 101
 nodes, last written by the retired transfer_appointments command. Its last
 reader, workforce's WorkforceUserSerializer.get_appointments, went with the
-/api/v1/workforce/user/ endpoint (tests/test_workforce_user_is_retired.py).
+/api/v1/workforce/ API (tests/test_workforce_api_is_retired.py).
 
 The scrub half of this — that the derivation can no longer produce
 "appointments" at all — lives in tests/api/test_appointment_scrub_is_moot.py,

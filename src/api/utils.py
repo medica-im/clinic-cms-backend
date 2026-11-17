@@ -232,31 +232,26 @@ def filter_by_access(entries: list[dict[str, Any]], role: str) -> list[dict[str,
 def role_bearing_attributes() -> list[str]:
     """Payload keys holding a list of items that carry their own `roles`.
 
-    Derived from the models rather than hand-listed. Seven addressbook models
+    Derived from the models rather than hand-listed. Five addressbook models
     declare a `roles` M2M meaning "roles allowed so see the related object" —
-    Address, PhoneNumber, Email, Website, SocialNetwork, Profile, Appointment —
-    and every one of them was a field somebody had to remember to add to a
-    literal list at each call site. Three were missed: websites, appointments
-    and profile reached anonymous callers unfiltered because fullentry.py
-    passed only ["phones", "emails", "socialnetworks"].
+    Address, PhoneNumber, Email, Website, SocialNetwork — and every one of
+    them was a field somebody had to remember to add to a literal list at each
+    call site. Websites were missed: they reached anonymous callers unfiltered
+    because fullentry.py passed only ["phones", "emails", "socialnetworks"].
+    (Profile and Appointment were role-bearing too, until their tables were
+    dropped: tests/test_profile_table_is_dropped.py.)
 
     Deriving it means the next role-bearing field is covered by existing to be
     serialised, not by being noticed.
 
-    Three of the seven are deliberately excluded, and the exclusion is the
-    reason this is a function rather than a comprehension over the app
-    registry. `process` filters a *list of dicts that each carry `roles`*, and
+    One of the five is deliberately excluded, and the exclusion is the reason
+    this is a function rather than a comprehension over the app registry.
+    `process` filters a *list of dicts that each carry `roles`*, and
 
       address      is serialised as a single dict  (types.fullentry.Address)
-      profile      is serialised as a plain string (types.fullentry.profile)
-      appointments are public, and are read from the graph rather than from
-                   the Postgres row, so the dicts have no `roles` key at all
-                   (types.appointment.Appointment: entry, url, phone,
-                   location, uid). Including it raised KeyError: 'roles' and
-                   turned every /e/{slug} into a 500.
 
-    None of the three can be filtered item-by-item. If one ever becomes a list
-    of role-bearing rows, give it a payload key and it is covered again.
+    It cannot be filtered item-by-item. If it ever becomes a list of
+    role-bearing rows, give it a payload key and it is covered again.
     """
     from django.apps import apps
 
@@ -271,7 +266,6 @@ def role_bearing_attributes() -> list[str]:
         "Email": "emails",
         "Website": "websites",
         "SocialNetwork": "socialnetworks",
-        "Profile": None,        # serialised as a plain string
         "Appointment": None,        # public, and built from the graph
     }
 
