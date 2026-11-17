@@ -71,3 +71,25 @@ def fill_two_state_booleans() -> tuple[int, int]:
         """
     )
     return types[0][0], directories[0][0]
+
+
+def unset_empty_effector_type_synonyms() -> int:
+    """Remove `synonyms_fr` and `synonyms_en` where an effector type stores `[]`.
+
+    The console sent `[]` on every create and the API stored it; no synonyms is now
+    no property. Readers take both as none, so what is displayed does not change and
+    no cache needs clearing. Only effector types: conditions, situations and needs
+    get their synonyms from other APIs.
+
+    Returns the effector types it changed.
+    """
+    rows, _ = db.cypher_query(
+        """
+        MATCH (t:EffectorType) WHERE t.synonyms_fr = [] OR t.synonyms_en = []
+        WITH t, t.synonyms_fr = [] AS fr, t.synonyms_en = [] AS en
+        FOREACH (_ IN CASE WHEN fr THEN [1] ELSE [] END | REMOVE t.synonyms_fr)
+        FOREACH (_ IN CASE WHEN en THEN [1] ELSE [] END | REMOVE t.synonyms_en)
+        RETURN count(t)
+        """
+    )
+    return rows[0][0]
