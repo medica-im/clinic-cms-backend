@@ -24,7 +24,10 @@ echo "==> Building $IMAGE:$TAG (target=$TARGET)..."
 # --pull: a fresh base image brings current ca-certificates and pip, and
 # invalidates the pip layer so certifi is re-resolved, so a revoked CA cannot
 # survive in a cached image. certifi is transitive (via requests), not pinned.
+# APT_REFRESH: the first build of each day reruns apt-get upgrade, which --pull
+# alone does not when the base image is unchanged.
 docker build --pull -f "$DOCKERFILE" --target "$TARGET" \
+  --build-arg APT_REFRESH="$(date -u +%F)" \
   --label "git.sha=$CODE_SHA" \
   -t "$IMAGE:latest" \
   -t "$IMAGE:$TAG" \

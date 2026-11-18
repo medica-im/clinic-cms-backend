@@ -1,4 +1,4 @@
-FROM python:3.14-trixie AS prod
+FROM python:3.14-slim-trixie AS prod
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -6,19 +6,14 @@ ENV PYTHONDONTWRITEBYTECODE=1
 WORKDIR /app
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get clean && apt-get update && apt-get install -y \
+# A new APT_REFRESH (build-push-prod.sh passes the date) reruns this layer, so
+# Debian security updates land even when the base image has not changed.
+ARG APT_REFRESH
+RUN echo "apt refresh: $APT_REFRESH" \
+ && apt-get update && apt-get upgrade -y \
+ && apt-get install -y --no-install-recommends \
     locales \
-    build-essential \
-    python3-yaml \
-    binutils \
-    libcairo2-dev \
-    pkg-config \
-    python3-dev \
-    python3-pip \
-    gcc \
-    libglib2.0-dev \
-    libgirepository1.0-dev \
-    python3-cairo \
+    tzdata \
  && rm -rf /var/lib/apt/lists/*
 
 RUN echo "Europe/Paris" > /etc/timezone && \
@@ -44,7 +39,7 @@ COPY ./src /app
 
 FROM prod AS dev
 
-RUN apt-get clean && apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     gettext \
  && rm -rf /var/lib/apt/lists/*

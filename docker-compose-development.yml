@@ -48,7 +48,7 @@ services:
       - .env
     build:
       context: .
-      dockerfile: docker/django/Dockerfile
+      dockerfile: docker/backend/Dockerfile
       target: dev
     command: bash -c "DJANGO_SETTINGS_MODULE=backend.settings python manage.py collectstatic --noinput && python manage.py migrate --noinput && gunicorn --reload backend.wsgi:application --workers=${GUNICORN_WORKERS} --log-file=${GUNICORN_LOG}/gunicorn.log --log-level=${GUNICORN_LOG_LEVEL} -b '[::]:80' --worker-tmp-dir /dev/shm --timeout ${GUNICORN_TIMEOUT} "
     volumes:
@@ -79,7 +79,7 @@ services:
       - .env
     build:
       context: .
-      dockerfile: docker/fastapi/Dockerfile
+      dockerfile: docker/backend/Dockerfile
       target: dev
     command: bash -c "fastapi run main.py --root-path /api/v2 --port 80 --reload --proxy-headers --forwarded-allow-ips='*'"
     volumes:
@@ -194,7 +194,7 @@ services:
       - .env
     build:
       context: .
-      dockerfile: docker/django/Dockerfile
+      dockerfile: docker/backend/Dockerfile
       target: dev
     command: celery -A backend worker --loglevel=info
     working_dir: /app
