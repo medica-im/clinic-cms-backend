@@ -1,4 +1,4 @@
-fastapi[standard]>=0.115.0,<0.116.0
+fastapi[standard]>=0.163.0,<0.164.0
 pydantic-extra-types
 fastapi-jwt[authlib]
 google-auth
