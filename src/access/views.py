@@ -1,8 +1,3 @@
-from rest_framework import viewsets
-from .models import AccessControl
-from .serializers import AccessControlSerializer
+from django.shortcuts import render
 
-class AccessControlViewSet(viewsets.ReadOnlyModelViewSet):
-
-    queryset = AccessControl.objects.all()
-    serializer_class = AccessControlSerializer
+# Create your views here.

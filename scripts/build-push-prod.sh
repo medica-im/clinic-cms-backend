@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+IMAGE="${IMAGE:-ghcr.io/medica-im/clinic-cms-backend}"
+DOCKERFILE="${DOCKERFILE:-docker/backend/Dockerfile}"
+TARGET="${TARGET:-prod}"
+
+cd "$(git rev-parse --show-toplevel)"
+
+# Named after the last commit that changed what the image is built from
+# (scripts/image-inputs), not HEAD: a commit to a script alone builds the same
+# image, under the same name. The label says it too, so the commit can still
+# be read from a running image once no local tag is left (skcms versions.sh).
+mapfile -t INPUTS < <(grep -Ev '^[[:space:]]*(#|$)' scripts/image-inputs)
+CODE_SHA="$(git rev-list -1 HEAD -- "${INPUTS[@]}")"
+TAG="${CODE_SHA:0:7}"
+if [[ -n "$(git status --porcelain -- "${INPUTS[@]}")" ]]; then
+  echo "==> WARNING: building with uncommitted changes to the image's files:" >&2
+  git status --short -- "${INPUTS[@]}" >&2
+  echo "    $IMAGE:$TAG names a commit that does not contain what is in this image." >&2
+fi
+
+echo "==> Building $IMAGE:$TAG (target=$TARGET)..."
+# --pull: a fresh base image brings current ca-certificates and pip, and
+# invalidates the pip layer so certifi is re-resolved, so a revoked CA cannot
+# survive in a cached image. certifi is transitive (via requests), not pinned.
+# APT_REFRESH: the first build of each day reruns apt-get upgrade, which --pull
+# alone does not when the base image is unchanged.
+docker build --pull -f "$DOCKERFILE" --target "$TARGET" \
+  --build-arg APT_REFRESH="$(date -u +%F)" \
+  --label "git.sha=$CODE_SHA" \
+  -t "$IMAGE:latest" \
+  -t "$IMAGE:$TAG" \
+  .
+
+echo "==> Pushing $IMAGE:latest and $IMAGE:$TAG..."
+docker push "$IMAGE:latest"
+docker push "$IMAGE:$TAG"
+
+echo "==> Done: pushed $IMAGE:latest and $IMAGE:$TAG"
+
+# --- The other image this backend needs --------------------------------------
+# The database runs ghcr.io/medica-im/postgres-non-root:14, built from
+# docker/postgres/Dockerfile in this repository but published separately, by
+# infra/scripts/build-postgres-image.sh. Two images, one repository, and only
+# one of them gets rebuilt when you run this.
+#
+# That asymmetry is the whole reason for this block. This script runs often;
+# the postgres one runs when somebody remembers, which in practice means when
+# something has already gone wrong. A published tag does not move on its own,
+# so a change to docker/postgres/Dockerfile can sit unpublished indefinitely
+# with nothing to say so.
+#
+# Reported, never run: rebuilding postgres as a side effect of building the
+# backend would republish, unasked, the image every server pulls for its
+# database. The check is cheap and the decision stays yours.
+#
+# Not fatal either. The backend image is built and pushed by this point, and
+# failing here would imply otherwise.
+# Anchored to this script's own location, not the working directory: infra is
+# a sibling of this repository, and resolving "../infra" against wherever the
+# caller happened to be would find it only by luck.
+_repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+POSTGRES_CHECK="${POSTGRES_CHECK:-$_repo_root/../infra/scripts/build-postgres-image.sh}"
+if [[ -x "$POSTGRES_CHECK" ]]; then
+    echo
+    if ! "$POSTGRES_CHECK" --check; then
+        echo
+        echo "    ^ the postgres image is stale. It is not part of this build;"
+        echo "      rebuild it with:  $POSTGRES_CHECK   (without --check)"
+    fi
+else
+    echo
+    echo "note: could not find build-postgres-image.sh to check the database"
+    echo "      image (looked at $POSTGRES_CHECK). Set POSTGRES_CHECK to point"
+    echo "      at it, or check by hand from the infra repository."
+fi

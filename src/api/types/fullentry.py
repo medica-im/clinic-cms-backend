@@ -1,0 +1,239 @@
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
+from typing import Any, Literal
+from decimal import Decimal
+from api.types.appointment import Appointment
+from api.types.convention import Convention
+from api.types.shared import Roles
+from api.types.payment_method import PaymentMethod
+from api.types.third_party_payer import ThirdPartyPayer
+from enum import Enum
+from api.types.effector import RPPS
+from api.types.effector_type import Nature
+
+class EntryPost(BaseModel):
+    effector: str
+    effector_type: str
+    facility: str
+    organizations: list[str]|None
+
+
+class EntryPatch(BaseModel):
+    carte_vitale: bool|None = None
+    payment: list[str]|None = None
+    third_party_payer: list[str]|None = None
+    convention: str|None = None
+
+
+class Address(BaseModel):
+    building: str|None = None
+    city: str|None = None
+    country: str|None = None
+    facility_uid: str
+    geographical_complement: str|None = None
+    latitude: Decimal|None = None
+    longitude: Decimal|None = None
+    street: str|None = None
+    tooltip_direction: str|None = None
+    tooltip_text: str|None = None
+    tooltip_permanent: bool|None = None
+    zip: str|None = None
+    zoom: NonNegativeInt|None = None
+
+
+class Avatar(BaseModel):
+    sm: str|None = None
+    lg: str|None = None
+    raw: str|None = None
+    access: str = 'anonymous'
+
+
+class CoverageItem(BaseModel):
+    uid: str
+    name: str|None = None
+    kind: Literal["country", "region", "department", "commune"]
+    code: str|None = None
+    #: A commune's département code: what tells the six Saint-Maurice apart.
+    department: str|None = None
+
+
+class ManagedItem(BaseModel):
+    slug: str
+    name: str
+    kind: Literal["condition", "situation", "need"]
+
+
+class EffectorType(BaseModel):
+    definition: str|None = None
+    label: str
+    labels: list[str]
+    name: str
+    slug: str
+    synonyms: list[str]|None = None
+    uid: str
+    nature: Nature|None = None
+    immaterial: bool = False
+
+
+class Email(BaseModel):
+    id: int
+    email: str
+    roles: list[Roles]|None = None
+
+
+class Facility(BaseModel):
+    uid: str
+    name: str|None = None
+    #: As stored, empty or unset included: a page falls back to the name itself.
+    label: str|None = None
+    slug: str|None = None
+    #: The establishment's SIRET; see directory/siret_rule.py.
+    siret: str|None = None
+
+
+class Contact(BaseModel):
+        id: int
+        blurb: str|None = None
+        first_name: str
+        formatted_name: str
+        formatted_name_definite_article: str
+        id: int
+        last_name: str
+        middle_name: str
+        neomodel_uid: str
+        organization: str
+        person_type: str
+        profile_image: str|None = None
+        qr_image: str|None = None
+        title: str
+        twitter_handle: str|None = None
+        url: str
+        user: str|None = None
+        worked_with: list[Any]
+
+class PhoneType(str, Enum):
+    MOBILE = 'M'
+    MOBILE_WORK = 'MW'
+    WORK = 'W'
+    FAX = 'F'
+    ANSWERING_SERVICE = 'AS'
+
+
+class Phone(BaseModel):
+    id: int
+    phone: str
+    type: PhoneType
+    type_display: str
+    roles: list[Roles]|None = None
+    model_config = ConfigDict(use_enum_values=True)
+
+
+class SocialNetwork(BaseModel):
+    id: int
+    handle: str|None = None
+    url: str
+    type: str
+    type_display: str|None = None
+    roles: list[Roles]|None = None
+
+
+class Website(BaseModel):
+    id: int
+    roles: list[Roles]
+    url: str
+
+
+class SpokenLanguage(BaseModel):
+    tag: str
+    name: str
+
+
+class TagCategory(BaseModel):
+    name: str
+    label: str
+    labelShort: str
+
+
+class Tag(BaseModel):
+    uid: str
+    name: str
+    label: str
+    labelShort: str
+    category: TagCategory
+    effector_types: list[str]|None
+
+
+class RelatedEntry(BaseModel):
+    """An entry around another: its porteur, or a service it runs. Enough to link to it."""
+    uid: str
+    slug: str|None = None
+    name: str|None = None
+    label: str|None = None
+    effector_type: str|None = None
+    #: The legal unit's SIREN when it has one: what a page shows to explain the link.
+    siren: str|None = None
+
+
+class FullEntry(BaseModel):
+    active: bool
+    address: Address
+    appointments: list[Appointment]|None = None
+    avatar: Avatar|None = None
+    carte_vitale: bool|None = None
+    convention: Convention|None = None
+    deactivation_datetime: str|None = None
+    deactivation_reason: str|None = None
+    effector_uid: str
+    emails: list[Email]|None = None
+    facility: Facility
+    label: str|None = None
+    name: str
+    gender: str|None = None
+    contactUpdatedAt: int = 0
+    effector_type: EffectorType
+    #organizations: Any = Field(exclude=True)
+    #memberships: Any = Field(exclude=True)
+    payment_methods: list[PaymentMethod]|None = None
+    phones: list[Phone]|None = None
+    rpps: RPPS|None = None
+    slug: str
+    entrySlug: str|None = None
+    #: The facility's Base Adresse Nationale ids, which a clone keeps.
+    ban_id: str|None = None
+    ban_banId: str|None = None
+    socialnetworks: list[SocialNetwork]|None = None
+    spoken_languages: list[SpokenLanguage]|None = None
+    third_party_payers: list[ThirdPartyPayer]|None = None
+    uid: str
+    updatedAt: int = 0
+    websites: list[Website]|None = None
+    organizations: list[str]|None = None
+    memberships: list[str]|None = None
+    tags: list[Tag]|None = None
+    directories: list[str]|None = None
+    creator: list[str]|None = None
+    owner: list[str]|None = None
+    redeemEmail: str|None = None
+    access: str = 'anonymous'
+    #: The entry of the organization that runs this one, if any (RUN_BY).
+    run_by: RelatedEntry|None = None
+    #: The entries this one runs, by name (RUN_BY, the other way).
+    services: list[RelatedEntry]|None = None
+    #: The SIREN of the legal unit this entry is, if it is one.
+    siren: str|None = None
+    #: What the service offers, for whom and on what terms, in the site's language.
+    description: str|None = None
+    #: The slugs of what this entry handles, as set on the entry itself (MANAGES).
+    manages: list[str] = []
+    #: The same, by name and kind, for the page's étiquettes.
+    managed: list[ManagedItem] = []
+    #: Where the entry answers (COVERS), widest first; what an immaterial entry shows in place of an address.
+    coverage: list[CoverageItem] = []
+    age_min: int|None = None
+    age_max: int|None = None
+    care_levels: list[str]|None = None
+    who_can_contact: str|None = None
+    access_modes: list[str]|None = None
+    audiences: list[str]|None = None
+    offers: list[str]|None = None
+    free: bool|None = None
+    anonymous_care: bool|None = None

@@ -1,15 +1,18 @@
 import logging, os
+import logging.config
+import colorlog
 from datetime import timedelta
 from django.utils.log import DEFAULT_LOGGING
 from pathlib import Path
-from decouple import AutoConfig, Csv
+from decouple import Config, RepositoryEnv, AutoConfig, Csv
 from django.utils.translation import gettext_lazy as _
-from django.conf.global_settings import EMAIL_BACKEND
+from neomodel import get_config as get_neomodel_config
 
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-config = AutoConfig(search_path = BASE_DIR)
+CONFIG_DIR = Path(BASE_DIR)
+config = AutoConfig(search_path = CONFIG_DIR)
 
 # We do not set the SITE_ID so that the http request's host name is used to
 # determine which organization's data to return
@@ -21,112 +24,74 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', cast=bool, default=False)
 
-LOG_LEVEL = config('LOG_LEVEL', default='DEBUG')
+DJANGO_LOG_LEVEL = config('DJANGO_LOG_LEVEL', default='DEBUG')
+DJANGO_LOG_DIR = str(config('DJANGO_LOG_DIR', default=str(BASE_DIR / 'logs')))
+os.makedirs(DJANGO_LOG_DIR, exist_ok=True)
+CELERY_LOG_DIR = str(config('CELERY_LOG_DIR', default=str(BASE_DIR / 'logs')))
+os.makedirs(CELERY_LOG_DIR, exist_ok=True)
 
-DICT_CONFIG = {
+LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    'filters': {
-        'require_debug_false': {
-            '()': 'django.utils.log.RequireDebugFalse',
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
         },
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(DJANGO_LOG_DIR, "django.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10 MB
+            "backupCount": 5,
+            "formatter": "verbose",
+            "level": DJANGO_LOG_LEVEL,
+        },
+        "celery_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(CELERY_LOG_DIR, "celery.log"),
+            "maxBytes": 10 * 1024 * 1024,  # 10 MB
+            "backupCount": 5,
+            "formatter": "verbose",
+            "level": "DEBUG",
         },
     },
     "formatters": {
-        "default": {
-            "format": "%(asctime)s %(name)s %(pathname)s:%(lineno)s:%(funcName)s %(levelname)s %(message)s",
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {funcName} {process:d} {thread:d} {message}",
+            "style": "{",
         },
-        "django.server": DEFAULT_LOGGING['formatters']['django.server'],
-    },
-
-    "handlers": {
-        'console': {
-            'level': LOG_LEVEL,
-            'class': 'logging.StreamHandler',
-            'formatter': 'default',
-            'filters': ['require_debug_true'],
-    },
-        "console_debug_false": {
-            "level": LOG_LEVEL,
-            "filters": ["require_debug_false"],
-            "class": "logging.StreamHandler",
+        "simple": {
+            "format": "{levelname} {asctime} {module} {funcName} {message}",
+            "style": "{",
         },
-
-        "mail_admins": {
-            "level": "ERROR",
-            "filters": ["require_debug_false"],
-            "class": "django.utils.log.AdminEmailHandler"
-        },
-        #"applogfile": {
-        #    "level": "DEBUG",
-        #    "class": "logging.FileHandler",
-        #    "filename": LOG_FILE,
-        #},
-        "django.server": DEFAULT_LOGGING["handlers"]["django.server"],
     },
-
     "loggers": {
-        '': {
-            'level': LOG_LEVEL,
-            'handlers': ['console', 'console_debug_false',],
-            'propagate': True,
+        "celery": {
+            "handlers": ["console", "celery_file"],
+            "level": "DEBUG",
+            "propagate": False,
         },
-        "django": {
-            "handlers": [
-                "console",
-                "console_debug_false",
-                "mail_admins",
-            ],
-            "level": LOG_LEVEL,
+        "celery.task": {
+            "handlers": ["console", "celery_file"],
+            "level": "DEBUG",
+            "propagate": False,
         },
-        "bot.stream": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
+        "django.security.DisallowedHost": {
+            "handlers": ["file"],
+            "propagate": False,
         },
-        "bot.tasks": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "bot.doctoctocbot": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "messenger.tasks": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "tagging.tasks": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "timeline": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "django-invitations": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "bot.bin.thread": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "moderation.tasks": {
-            "handlers": ["console", "console_debug_false", "mail_admins"],
-            "level": LOG_LEVEL,
-        },
-        "django.server": DEFAULT_LOGGING["loggers"]["django.server"],
+    },
+    "root": {
+        "handlers": ["console", "file"],
+        "level": DJANGO_LOG_LEVEL,
     },
 }
-logging.config.dictConfig(DICT_CONFIG)
 
-ADMIN = config('ADMIN', cast=Csv(post_process=tuple))
+ADMIN = config('ADMIN', cast=Csv(post_process=tuple))  # type: ignore[arg-type]
 ADMINS = [ADMIN]
 MANAGERS = ADMINS
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 
 # Application definition
 
@@ -142,21 +107,15 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'django.contrib.postgres',
-    'rest_framework_simplejwt',
     'rest_framework',
     'rest_framework.authtoken',
-    'rest_framework_simplejwt.token_blacklist',
     'easy_thumbnails',
-    'constance.backends.database',
-    'constance',
     'addressbook',
     'taggit',
     'taggit_labels',
     'crispy_forms',
     'crispy_bootstrap5',
     'simple_history',
-    'verify_email.apps.VerifyEmailConfig',
-    'dj_rest_auth',
     # local apps
     'backend',
     'accounts',
@@ -166,17 +125,24 @@ INSTALLED_APPS = [
     'staff',
     'directory',
     'access',
-    'contact',
     'opengraph',
     'nlp',
-    'survey',
-    'anymail',
+    'heatwave',
+    'auditor',
+    'mailer',
 ]
 
 if DEBUG:
-    INSTALLED_APPS += [
-        'corsheaders',
-    ]
+    try:
+        import django_extensions
+        INSTALLED_APPS += ['django_extensions']
+    except ImportError:
+        logger.info("django_extensions not installed, skipping")
+    try:
+        import corsheaders
+        INSTALLED_APPS += ['corsheaders']
+    except ImportError:
+        logger.info("corsheaders not installed, skipping")
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -223,6 +189,10 @@ DATABASES = {
         'USER': config('POSTGRES_USER', default='postgres'),
         'PASSWORD': config('POSTGRES_PASSWORD', default=''),
         #'PORT': config('DATABASE_PORT', cast=int, default=5432),
+        # Reused across requests, tested before reuse and replaced if Postgres
+        # closed it. FastAPI needs api/db_connections.py for either to apply.
+        'CONN_MAX_AGE': 300,
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 
@@ -247,14 +217,14 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'fr'
 
 LANGUAGES = [
-    ('en', _('English')),
     ('fr', _('French')),
+    ('en', _('English')),
 ]
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = config('TIME_ZONE', default='Europe/Paris')
 
 USE_I18N = True
 
@@ -281,7 +251,6 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'accounts.exceptions.core_exception_handler',
     'NON_FIELD_ERRORS_KEY': 'error',
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ),
@@ -296,128 +265,131 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', cast=Csv())
 
-SHELL_PLUS = "ipython"
-
-SHELL_PLUS_PRINT_SQL = True
-
-NOTEBOOK_ARGUMENTS = [
-    "--ip",
-    "0.0.0.0",
-    "--port",
-    "8888",
-    "--allow-root",
-    "--no-browser",
-]
-
-IPYTHON_ARGUMENTS = [
-    "--ext",
-    "django_extensions.management.notebook_extension",
-    "--debug",
-]
-
-IPYTHON_KERNEL_DISPLAY_NAME = "Django Shell-Plus"
-
-#SHELL_PLUS_POST_IMPORTS = [ # extra things to import in notebook
-#    ("module1.submodule", ("func1", "func2", "class1", "etc")),
-#    ("module2.submodule", ("func1", "func2", "class1", "etc"))
-#]
-
 THUMBNAIL_ALIASES = {
     'addressbook.Contact.profile_image': {
-        'avatar_facebook': {'size': (170, 170), 'crop': False},
-        'avatar_linkedin_twitter': {'size': (400, 400), 'crop': False},
+        'avatar_sm': {'size': (256, 256), 'crop': 'smart'},
+        'avatar_lg': {'size': (512, 512), 'crop': 'smart'},
+    },
+    'facility.Organization.logo': {
+        'avatar_sm': {'size': (256, 256), 'crop': 'smart'},
+        'avatar_lg': {'size': (512, 512), 'crop': 'smart'},
+    },
+    # Photographs of a place are wide, not square: a building is recognized by
+    # its facade or its entrance, and a 1:1 crop throws away exactly that.
+    'facility.PlaceImage.image': {
+        'place_sm': {'size': (640, 360), 'crop': 'smart'},
+        'place_lg': {'size': (1280, 720), 'crop': 'smart'},
+    },
+    # A gallery tile: the whole picture, shrunk to fit, never cropped -- a
+    # banner cropped to a square would be unrecognizable.
+    'mailer.EmailImage.image': {
+        'email_thumb': {'size': (320, 320), 'crop': False},
     },
 }
 
-DEFAULT_FILE_STORAGE='django.core.files.storage.FileSystemStorage'
 AVATAR_FILE_STORAGE = config('AVATAR_FILE_STORAGE', default="")
 
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': False,
-    'BLACKLIST_AFTER_ROTATION': False,
-    'UPDATE_LAST_LOGIN': False,
+# Kept apart from AVATAR_FILE_STORAGE: these are photographs of buildings, not
+# of people, and mixing them makes the media directory unreadable.
+PLACE_IMAGE_FILE_STORAGE = config('PLACE_IMAGE_FILE_STORAGE', default="place_images")
 
-    'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY,
-    'VERIFYING_KEY': None,
-    'AUDIENCE': None,
-    'ISSUER': None,
-    'JWK_URL': None,
-    'LEEWAY': 0,
+# Pictures organizations link from their HTML emails; see mailer.gallery.
+EMAIL_IMAGE_FILE_STORAGE = config('EMAIL_IMAGE_FILE_STORAGE', default="email_images")
+EMAIL_IMAGE_MAX_BYTES = 5 * 1024 * 1024
 
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
-    #'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
-
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    'TOKEN_TYPE_CLAIM': 'token_type',
-    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
-
-    'JTI_CLAIM': 'jti',
-
-    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
-    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
-}
+# Celery
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='amqp://guest:guest@rabbitmq:5672//')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://redis:6379/0')
 
 # Redis
-REDIS_HOST = config('REDIS_HOST', default='redis')
+REDIS_HOST = config('REDIS_HOST', cast=str, default='redis_development')
 REDIS_PORT = config('REDIS_PORT', cast=str, default='6379')
-REDIS_DATABASE_ID = config('REDIS_DATABASE_ID', default='0')
+REDIS_DATABASE_ID = config('REDIS_DATABASE_ID', cast=str, default='0')
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": "redis://" + REDIS_HOST + ":" + REDIS_PORT + "/" + REDIS_DATABASE_ID#,
+        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DATABASE_ID}",
     }
 }
 
-#Constance
-CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
-CONSTANCE_DATABASE_CACHE_BACKEND = 'default'
-CONSTANCE_IGNORE_ADMIN_VERSION_CHECK = True
+# Email: Django's own mail (error reports to ADMINS) goes through Mailgun,
+# configured after the MAILGUN_* settings below. No SMTP.
 
-CONSTANCE_CONFIG = {
-    'ADMIN_SEARCH_CONFIG': (
-        'french',
-        'You can specify the config attribute to a SearchVector and '
-        'SearchQuery to use a different search configuration. This allows '
-        'using different language parsers and dictionaries as defined by the '
-        'database'
-    ),
-    'CONTACT_NOSMOKING_RECIPIENT_LIST': (
-        'jerome4@gmail.com',
-        'List of email addresses separated by a comma.',
-        str
-    ),
-}
+# neo4j
+NEO4J_URI = config('NEO4J_URI', default="neo4j://localhost:7687")
+NEO4J_DATABASE = config('NEO4J_DATABASE')
+NEO4J_USERNAME = config('NEO4J_USERNAME', default="neo4j")
+NEO4J_PASSWORD = config('NEO4J_PASSWORD', default="neo4j")
+NEO4J_AUTH = (NEO4J_USERNAME, NEO4J_PASSWORD)
+NEO4J_7687_EXTERNAL_PORT= config('{NEO4J_7687_EXTERNAL_PORT}', default='7687')
+neo4j_log = logging.getLogger("neo4j")
+neo4j_log.setLevel(logging.ERROR)
 
-#Email
-EMAIL_BACKEND=config('EMAIL_BACKEND')
+#neomodel
+get_neomodel_config().database_url = f"bolt://{NEO4J_USERNAME}:{NEO4J_PASSWORD}@neo4j:{NEO4J_7687_EXTERNAL_PORT}"
+
+#heatwave
+PUBLIC_API_METEOFRANCE = config('PUBLIC_API_METEOFRANCE')
+PUBLIC_API_METEOFRANCE_TTL = config('PUBLIC_API_METEOFRANCE_TTL', cast=int, default=600)
+
+LOGIN_URL = '/admin/login/'
+
+# FAST API JWT
+JWT_SECRET_KEY=config('JWT_SECRET_KEY')
+ACCESS_TOKEN_EXPIRE_MINUTES=config('ACCESS_TOKEN_EXPIRE_MINUTES', cast=int, default=30)
+OIDC_GOOGLE_CLIENT_ID=config('OIDC_GOOGLE_CLIENT_ID')
+
+# mailer
+from mailer.endpoints import build_api_url as build_mailgun_api_url
+
+# The default Mailgun identity. An organization with an active
+# mailer.MailgunAccount row sends under its own instead -- see
+# mailer.config.get_sender.
+# Rows one invitation spreadsheet may hold, for an organization that has not
+# set its own (Organization.batch_invitation_max_rows).
+BATCH_INVITATION_MAX_ROWS = config('BATCH_INVITATION_MAX_ROWS', default=1000, cast=int)
+
+MAILGUN_DOMAIN = config('MAILGUN_DOMAIN', default="mail.medica.im")
+MAILGUN_REGION = config('MAILGUN_REGION', default="eu")
+MAILGUN_API_URL = build_mailgun_api_url(MAILGUN_DOMAIN, region=MAILGUN_REGION)
+MAILGUN_SENDING_KEY = config('MAILGUN_SENDING_KEY')
+MAILGUN_SENDING_KEY_ID = config('MAILGUN_SENDING_KEY_ID')
+MAILGUN_FROM_EMAIL = config('MAILGUN_FROM_EMAIL', default="noreply@mail.medica.im")
+MAILGUN_FROM_NAME = config('MAILGUN_FROM_NAME', default="")
+# Mailgun's HTTP webhook signing key for the .env account: delivery events
+# (POST /api/v2/mail/events/mailgun) signed with anything else are refused.
+MAILGUN_WEBHOOK_SIGNING_KEY = config('MAILGUN_WEBHOOK_SIGNING_KEY', default="")
+# An account API key (Mailgun > API Security), used only by
+# manage.py register_mail_webhooks: a domain sending key cannot manage
+# webhooks. Blank: the sending key is tried.
+MAILGUN_API_KEY = config('MAILGUN_API_KEY', default="")
+# Where replies go when the organization has not set reply_to_email.
+MAIL_DEFAULT_REPLY_TO = config('MAIL_DEFAULT_REPLY_TO', default=f"noreply@{MAILGUN_DOMAIN}")
+MAILGUN_FROM_ADDRESS = (
+    f"{MAILGUN_FROM_NAME} <{MAILGUN_FROM_EMAIL}>"
+    if MAILGUN_FROM_NAME
+    else MAILGUN_FROM_EMAIL
+)
+
+# Django's own mail -- the error reports AdminEmailHandler sends to ADMINS
+# when DEBUG is off -- through django-anymail's Mailgun backend, from the same
+# domain, key and address as the app's mail. Overridable, e.g. with
+# django.core.mail.backends.console.EmailBackend on a machine that must not
+# send. See tests/test_django_mail_through_mailgun.py.
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='anymail.backends.mailgun.EmailBackend')
+DEFAULT_FROM_EMAIL = MAILGUN_FROM_ADDRESS
+SERVER_EMAIL = MAILGUN_FROM_ADDRESS
+# NEVER leave this unset. Error reports are sent synchronously, inside the
+# failing request. On 13 Sep 2026 a mail connection with no timeout hung until
+# gunicorn killed the worker; the respawned worker took the next request and
+# hung again, and six workers trapped that way took every staging site down --
+# an erroring endpoint became a total outage because the error REPORTING hung.
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)
 ANYMAIL = {
-    "MAILGUN_API_KEY": config('MAILGUN_API_KEY'),
-    "DEBUG_API_REQUESTS": config("DEBUG_API_REQUESTS", cast=bool, default=False),
-    "MAILGUN_API_URL": "https://api.eu.mailgun.net/v3",
+    "MAILGUN_API_KEY": MAILGUN_SENDING_KEY,
+    "MAILGUN_SENDER_DOMAIN": MAILGUN_DOMAIN,
+    # Everything before /<domain>/messages: the region's API root.
+    "MAILGUN_API_URL": MAILGUN_API_URL.rsplit(f"/{MAILGUN_DOMAIN}/", 1)[0],
+    "REQUESTS_TIMEOUT": EMAIL_TIMEOUT,
 }
-DEFAULT_FROM_EMAIL=config('DEFAULT_FROM_EMAIL', default="webmaster@localhost")
-EMAIL_HOST=config('EMAIL_HOST')
-EMAIL_PORT=config('EMAIL_PORT')
-EMAIL_HOST_USER=config('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD=config('EMAIL_HOST_PASSWORD')
-EMAIL_USE_TLS=True
-#EMAIL_USE_SSL
-#EMAIL_TIMEOUT
-#EMAIL_SSL_KEYFILE
-#EMAIL_SSL_CERTFILE
 
-REST_AUTH = {
-    'PASSWORD_RESET_USE_SITES_DOMAIN': True,
-    'PASSWORD_RESET_SERIALIZER': 'dj_rest_auth.serializers.PasswordResetSerializer',
-    'PASSWORD_RESET_CONFIRM_SERIALIZER': 'dj_rest_auth.serializers.PasswordResetConfirmSerializer',
-    'USE_JWT': True,
-    'JWT_AUTH_COOKIE': 'jwt-auth',
-    'JWT_AUTH_REFRESH_COOKIE': 'my-refresh-token',
-}

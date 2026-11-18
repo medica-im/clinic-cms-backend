@@ -6,9 +6,9 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
 )
+from django.contrib.sites.models import Site
 from django.utils.translation import gettext_lazy as _
 from django.db import models
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class UserManager(BaseUserManager):
@@ -43,7 +43,6 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     username = models.CharField(
         db_index=True,
@@ -72,9 +71,25 @@ class User(AbstractBaseUser, PermissionsMixin):
         null=True,
         blank=True,
     )
+    effector = models.UUIDField(
+        null=True,
+        blank=True
+    )
+    site = models.ForeignKey(
+        Site,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+    )
+    role = models.ForeignKey(
+        "access.Role",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        help_text="Access Role of the user in the context of the Site",
+    )
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
 
     # Tells Django that the UserManager class defined above should manage
     # objects of this type.
@@ -82,24 +97,13 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         """Return a string representation of this `User`."""
-        #string = self.email if self.email != '' else self.get_full_name()
-        try:
-            formatted_name = self.contact.formatted_name
-        except:
-            formatted_name = ""
-        return f'{formatted_name} {self.username or ""} {self.email or ""}'
-
-    @property
-    def tokens(self) -> dict[str, str]:
-        """Allow us to get a user's token by calling `user.token`."""
-        refresh = RefreshToken.for_user(self)
-        return {'refresh': str(refresh), 'access': str(refresh.access_token)}
+        return f'{self.full_name or ""} {self.email or ""}'
 
     def get_full_name(self) -> Optional[str]:
         """Return the full name of the user."""
         return self.full_name
 
-    def get_short_name(self) -> str:
+    def get_short_name(self) -> str|None:
         """Return user username."""
         return self.username
 

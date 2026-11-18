@@ -1,15 +1,52 @@
+import uuid
 from django.contrib import admin
-from django import forms
-from taggit_labels.widgets import LabelWidget
-from taggit.forms import TagField
-from addressbook.models import *
+from addressbook.models import (
+    Contact,
+    PhoneNumber,
+    Website,
+    SocialNetwork,
+    App,
+    AppLink,
+    AppStore,
+    Email,
+)
 from facility.models import Organization, Facility
 from django.utils.translation import gettext_lazy as _
 from django.utils.safestring import mark_safe
-from simple_history.admin import SimpleHistoryAdmin
 from django.db.models import F
 from django.contrib.postgres.search import SearchVector, SearchQuery
-from constance import config
+from neomodel import db
+from directory.models import Effector, Entry, Directory
+from directory.models import Facility as NeoFacility
+from directory.utils import contact_uids
+from access.utils import get_access
+import logging
+
+logger=logging.getLogger(__name__)
+
+
+class ContactDirectoryFilter(admin.SimpleListFilter):
+    title = 'Directory'
+    parameter_name = 'directory'
+
+    def lookups(self, request, model_admin):
+        lookups = list(
+            Directory.objects.values_list('name', 'display_name')
+        )
+        return lookups
+
+    def queryset(self, request, queryset):
+        if not self.value():
+            return queryset
+        try:
+            directory=Directory.objects.get(name=self.value())
+        except Directory.DoesNotExist:
+            return Contact.objects.none()
+        uids=contact_uids(directory=directory)
+        try:
+            return queryset.filter(neomodel_uid__in=uids)
+        except TypeError:
+            return Contact.objects.none()
 
 
 class ContactOrganizationFilter(admin.SimpleListFilter):
@@ -22,17 +59,18 @@ class ContactOrganizationFilter(admin.SimpleListFilter):
         )
         lookups.append((0, _('None')))
         return lookups
-        
+
     def queryset(self, request, queryset):
-        if not self.value():
+        id = self.value()
+        if not id:
             return queryset
-        if self.value() == '0':
+        elif id == '0':
             org = None
         else:
-            org = Organization.objects.get(id=int(self.value()))
+            org = Organization.objects.get(id=int(id))
         return queryset.filter(organisation=org)
-    
-    
+
+
 class ContactFacilityFilter(admin.SimpleListFilter):
     title = 'Facility'
     parameter_name = 'facility'
@@ -70,49 +108,120 @@ class EmailInline(admin.TabularInline):
     model = Email
     extra = 0
 
-class AddressInline(admin.StackedInline):
-    model = Address
-    extra = 0
-    
-class AppointmentInline(admin.TabularInline):
-    model = Appointment
-    extra = 0
+# addressbook.Address is not registered, and AddressInline is not attached to
+# ContactAdmin.
+#
+# Nothing reads the table. A facility's address lives on the Facility node —
+# street, zip, building, geographical_complement, location — and
+# ContactSerializer.get_address() resolves it through neomodel_uid rather than
+# from here, so the footer, the contact page and the organisation payload all
+# come from the graph. The 131 remaining rows are residue from before that
+# move, plus 17 written by the retired create_organization command.
+#
+# The rows are left in place; only the editing surface is withdrawn. An
+# administrator filling in a street here would have seen it save and change
+# nothing on the site, which is a worse failure than the field being absent.
+# Re-registering is a one-line change if a reader ever appears.
+
+# addressbook.Appointment is not registered because the model no longer
+# exists: appointments live on the graph, and the table was dropped once its
+# last reader went with the /api/v1/workforce/user/ endpoint. See
+# tests/test_appointment_table_is_dropped.py. addressbook.Profile went the same
+# way: see tests/test_profile_table_is_dropped.py.
 
 
-
-#class ContactForm(forms.ModelForm):
-#    tags = TagField(required=False, widget=LabelWidget)
-
+@admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
-    #form = ContactForm
     list_display = (
-        'formatted_name',
+        'name_tag',
         'profile_image_tag',
-        'type_tag',
-        'user',
-        'last_name',
-        'first_name',
-        #'middle_name',
-        'title',
-        'organization',
+        'neomodel_uid',
         'phone_tag',
+        'user_tag',
         'email_tag',
     )
-    search_fields = ['formatted_name']
-    readonly_fields = ('profile_image_tag',)
+    fields = (
+        'formatted_name',
+        'formatted_name_definite_article',
+        'user',
+        'name_tag',
+        'profile_image_tag',
+        'phone_tag',
+        'user_tag',
+        'email_tag',
+        'profile_image',
+        'neomodel_uid',
+    )
+    search_fields = ['id', 'neomodel_uid']
+    readonly_fields = (
+        'name_tag',
+        'profile_image_tag',
+        'phone_tag',
+        'user_tag',
+        'email_tag',
+        'profile_image_tag',
+    )
     autocomplete_fields = ['user']
     inlines = [
-        AddressInline,
         EmailInline,
         PhoneInline,
         SocialInline,
         WebsiteInline,
-        AppointmentInline,
     ]
     list_filter = [
-        ContactOrganizationFilter,
-        ContactFacilityFilter,
+        #ContactOrganizationFilter,
+        #ContactFacilityFilter,
+        #("neomodel_uid", admin.EmptyFieldListFilter),
+        #ContactDirectoryFilter,
     ]
+
+    @admin.display(description='User')
+    def user_tag(self, obj):
+        if not obj.user:
+            return "∅"
+        try:
+            return f"{str(obj.user)[:10]}.."
+        except TypeError:
+            return "∅"
+
+    @admin.display(description=_('Building'))
+    def building_tag(self, obj):
+        return
+
+    @admin.display(description=_('Street'))
+    def street_tag(self, obj):
+        return
+
+    @admin.display(description=_('Geo complement'))
+    def geographical_complement_tag(self, obj):
+        return
+
+    @admin.display(description='zip')
+    def zip_tag(self, obj):
+        return
+
+    @admin.display(description=_('City'))
+    def city_tag(self, obj):
+        return
+        
+    @admin.display(description='GPS')
+    def gps_tag(self, obj):
+        return
+
+    @admin.display(description='Name')
+    def name_tag(self, obj):
+        if not obj.neomodel_uid:
+            return
+        try:
+            entry = Entry.nodes.get(uid=obj.neomodel_uid.hex)
+        except Exception as e:
+            logger.error(e)
+            return
+        effector: list[Effector]= entry.effector.all()
+        try:
+            return effector[0].name_fr
+        except Exception as e:
+            return
 
     @admin.display(description='Phones')
     def phone_tag(self, obj):
@@ -125,30 +234,18 @@ class ContactAdmin(admin.ModelAdmin):
     @admin.display(description='Profile img')
     def profile_image_tag(self, obj):
         if obj.profile_image:
-            return mark_safe('<img src="/media/%s" alt="profile picture" width="42" height="42">' % (obj.profile_image))
-
-    @admin.display(description='Type')
-    def type_tag(self, obj):
-        if obj.user:
-            return _("Django User")
-        elif obj.organization:
-            return _("Organization")
-        elif obj.facility:
-            return _("Facility")
-
-    def get_search_results(self, request, queryset, search_term):
-        queryset, may_have_duplicates = super().get_search_results(
-            request, queryset, search_term,
-        )
-        _config = config.ADMIN_SEARCH_CONFIG
-        queryset |= self.model.objects.annotate(
-            search=SearchVector('formatted_name', config=_config) \
-            + SearchVector('last_name', config=_config) \
-            + SearchVector('first_name', config=_config) \
-            + SearchVector('middle_name', config=_config),
-            ).filter(search=SearchQuery(search_term, config=_config))
-        return queryset, True
-
+            try:
+                return mark_safe(
+                    '<img src="%s" alt="profile picture" width="%s" height="%s">'
+                    % (
+                        obj.profile_image["avatar_facebook"].url,
+                        obj.profile_image["avatar_facebook"].thumbnail_options["size"][0],
+                        "100%"
+                    )
+                )
+            except Exception as e:
+                logger.error(e)
+                return
 
 @admin.register(App)
 class AppAdmin(admin.ModelAdmin):
@@ -165,37 +262,36 @@ class AppStoreAdmin(admin.ModelAdmin):
     pass
 
 
-@admin.register(Appointment)
-class AppointmentAdmin(admin.ModelAdmin):
-    autocomplete_fields = ['contact']
-    
-    
-@admin.register(Address)
-class AddressAdmin(admin.ModelAdmin):
-    autocomplete_fields = ['contact']
-
-
-@admin.register(Profile)
-class ProfileAdmin(admin.ModelAdmin):
-    autocomplete_fields = ['contact']
+@admin.register(PhoneNumber)
+class PhoneNumberAdmin(admin.ModelAdmin):
     list_display = (
-        'id',
-        'contact',
-        'roles_tag',
-        'organization',
-        'text',
-        'changed_by',
-        'created',
-        'updated',
+        "pk",
+        "contact",
+        "type",
+        "phone",
     )
+    list_filter = ["type"]
 
-    @admin.display(description="roles")
-    def roles_tag(self, obj):
-        return [role.name for role in obj.roles.all()]
 
-admin.site.register(Contact, ContactAdmin)
-admin.site.register(ContactGroup, admin.ModelAdmin)
-admin.site.register(PhoneNumber, admin.ModelAdmin)
-admin.site.register(Website, admin.ModelAdmin)
+@admin.register(Website)
+class WebsiteAdmin(admin.ModelAdmin):
+    list_display = (
+        'url',
+        'access_tag',
+        'contact',
+    )
+    fields = (
+        'url',
+        'access_tag',
+        'contact',
+    )
+    readonly_fields = (
+        'access_tag',
+    )
+    @admin.display(description=_('Access'))
+    def access_tag(self, obj):
+        return get_access(obj.roles.all())
+
+
 admin.site.register(SocialNetwork, admin.ModelAdmin)
 admin.site.register(Email, admin.ModelAdmin)

@@ -1,0 +1,566 @@
+import logging
+from common.utils import timestamp
+from uuid import uuid4
+from neomodel.contrib import spatial_properties as neomodel_spatial
+from neomodel import (
+    AsyncStructuredNode,
+    BooleanProperty,
+    StringProperty,
+    IntegerProperty,
+    DateTimeFormatProperty,
+    UniqueIdProperty,
+    ArrayProperty,
+    AsyncRelationshipTo,
+    AsyncRelationshipFrom,
+    AsyncRelationship,
+    AsyncStructuredRel,
+    AsyncZeroOrMore,
+    AsyncZeroOrOne,
+    OneOrMore,
+    AsyncOne,
+    EmailProperty,
+)
+from django.utils.translation import get_language
+
+logger=logging.getLogger(__name__)
+
+class PaymentMethod(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    label_fr = StringProperty()
+    label_en = StringProperty()
+    definition_fr = StringProperty()
+    definition_en = StringProperty()
+
+
+class ThirdPartyPayer(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    label_fr = StringProperty()
+    label_en = StringProperty()
+    definition_fr = StringProperty()
+    definition_en = StringProperty()
+
+
+class Convention(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    label = StringProperty()
+    definition = StringProperty()
+
+
+class Need(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    #: The key the console and entry-level MANAGES use: a uid differs per Neo4j server.
+    slug = StringProperty()
+    name_fr = StringProperty(unique_index=True)
+    name_en = StringProperty(unique_index=True)
+    definition_fr = StringProperty()
+    definition_en = StringProperty()
+    need = AsyncRelationshipTo('Need', 'PART_OF')
+
+
+class EffectorType(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    label_fr = StringProperty(unique_index=True)
+    label_en = StringProperty(unique_index=True)
+    name_fr = StringProperty(unique_index=True)
+    name_en = StringProperty(unique_index=True)
+    slug_en = StringProperty(unique_index=True)
+    slug_fr = StringProperty(unique_index=True)
+    synonyms_fr = ArrayProperty(base_property=StringProperty())
+    synonyms_en = ArrayProperty(base_property=StringProperty())
+    definition_fr = StringProperty()
+    definition_en = StringProperty()
+    unique_ID = StringProperty(unique_index=True)
+    # The MeSH concept's names; any type with a MeSH id has them, not only HCW.
+    concept_en = StringProperty(unique_index=True)
+    concept_fr = StringProperty(unique_index=True)
+    # False: a category that only groups other types; entries never have it.
+    # Absent on older nodes, which entries may have: read as true.
+    assignable = BooleanProperty(default=True)
+    # What its entries do; api.types.effector_type.Nature says what each means.
+    nature = StringProperty(choices={n: n for n in ("profession", "service", "activity")})
+    # True: its entries have no premises of their own (a help line); orthogonal to nature.
+    # Absent on older nodes: read as false.
+    immaterial = BooleanProperty(default=False)
+    facility_noun_fr = StringProperty()
+    need = AsyncRelationshipTo('Need', 'MANAGES')
+    situation = AsyncRelationshipTo('Situation', 'MANAGES')
+    effector_type = AsyncRelationshipTo(
+        'EffectorType',
+        'IS_A'
+    )
+    tag_category = AsyncRelationshipTo(
+        'TagCategory',
+        'HAS_TAG_CATEGORY'
+    )
+
+
+class HCW(EffectorType):
+    hcw = AsyncRelationshipTo('HCW', 'IS_A')
+
+
+class RPPS(HCW):
+    pass
+
+
+class MESH(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    label_fr = StringProperty(unique_index=True)
+    label_en = StringProperty(unique_index=True)
+    definition_en = StringProperty()
+    definition_fr = StringProperty()
+    concept_en = StringProperty(unique_index=True)
+    concept_fr = StringProperty(unique_index=True)
+    unique_ID = StringProperty(unique_index=True)
+    is_a = AsyncRelationshipTo('MESH', 'IS_A')
+    need = AsyncRelationshipTo('Need', 'MANAGES')
+    situation = AsyncRelationshipTo('Situation', 'MANAGES')
+
+
+class Situation(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    #: The key the console and entry-level MANAGES use: a uid differs per Neo4j server.
+    slug = StringProperty()
+    name_en = StringProperty(unique_index=True)
+    name_fr = StringProperty(unique_index=True)
+    definition_en = StringProperty()
+    definition_fr = StringProperty()
+    ICD_11 = ArrayProperty(StringProperty())
+    synonyms_fr = ArrayProperty(base_property=StringProperty())
+    synonyms_en = ArrayProperty(base_property=StringProperty())
+    impacts_need = AsyncRelationshipTo('Need', 'IMPACTS')
+    situation = AsyncRelationshipTo('Situation', 'PART_OF')
+
+
+class OrganizationType(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    label_en = StringProperty(unique_index=True)
+    label_fr = StringProperty(unique_index=True)
+    name_en = StringProperty(unique_index=True)
+    name_fr = StringProperty(unique_index=True)
+    synonyms_fr = ArrayProperty(base_property=StringProperty())
+    synonyms_en = ArrayProperty(base_property=StringProperty())
+    organization_type = AsyncRelationshipTo(
+        'OrganizationType',
+        'PART_OF'
+    )
+
+
+class Website(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    url = StringProperty(unique_index=True)
+
+
+class Organization(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    label_en = StringProperty()
+    label_fr = StringProperty()
+    name_en = StringProperty(unique_index=True)
+    name_fr = StringProperty(unique_index=True)
+    type = AsyncRelationshipTo(
+        'OrganizationType',
+        'IS_A'
+    )
+    organization = AsyncRelationshipTo(
+        'Organization',
+        'PART_OF'
+    )
+    commune = AsyncRelationshipTo(
+        'Commune',
+        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY',
+        cardinality=AsyncOne
+    )
+    website = AsyncRelationshipTo(
+        'Website',
+        'OFFICIAL_WEBSITE'
+    )
+    division = AsyncRelationshipTo(
+        'Effector',
+        'HAS_DIVISION'
+    )
+
+
+class EffectorFacility(AsyncStructuredRel):
+    """
+    Location relationship between an Effector and a Facility. Includes relevant
+    directory.
+    """
+    #TODO switch uid to UniqueIdProperty() when we upgrade neo4j to version 5
+    uid = StringProperty(default=uuid4)
+    directories = ArrayProperty(base_property=StringProperty())
+    thirdPartyPayment = ArrayProperty(base_property=StringProperty())
+    contactUpdatedAt = IntegerProperty(default=0)
+    active = BooleanProperty(
+        index=True,
+        default=True
+    )
+    carteVitale = BooleanProperty(
+        index=True,
+        default=None
+    )
+
+
+class Effector(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    label_en = StringProperty()
+    label_fr = StringProperty()
+    name_en = StringProperty()
+    name_fr = StringProperty()
+    slug_en = StringProperty()
+    slug_fr = StringProperty()
+    type = AsyncRelationshipTo('EffectorType', 'IS_A')
+    organization = AsyncRelationshipTo('Organization', 'MEMBER_OF')
+    facility = AsyncRelationshipTo(
+        "Facility",
+        "LOCATION",
+        model = EffectorFacility
+    )
+    effector = AsyncRelationshipTo('Effector', 'PART_OF')
+    #commune = RelationshipTo(
+    #    'Commune',
+    #    'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
+    #)
+    updatedAt = IntegerProperty(default=0)
+    createdAt = IntegerProperty(default=timestamp)
+    creator = AsyncRelationshipTo('access.asyncneomodels.User', 'CREATED_BY')
+    owner = AsyncRelationshipTo('access.asyncneomodels.User', 'OWNED_BY')
+    gender = StringProperty(
+        choices=(("F","Feminine"), ("M","Masculine"),("N", "Neutral"))
+    )
+    creator_directory = StringProperty()
+
+    @property
+    def serialize(self):
+        #language = get_language()
+        #label=getattr(self, f'label_{language}', None)
+        #name=getattr(self, f'name_{language}', None)
+        return {
+            'label': 'label',
+            'name': 'name'
+        }
+
+    @property
+    def types(self):
+        language = get_language()
+        logger.debug(f"{language=}")
+        _types = []
+        try:
+            types_array = self.type.all()
+        except Exception as e:
+            logger.error(f"{self.label_fr=} {e=}")
+            return []
+        for _type in types_array:
+            name=getattr(_type, f'concept_{language}', None)
+            if not name:
+                name=getattr(_type, f'name_{language}', None)
+            if not name:
+                name=getattr(_type, f'label_{language}', None)
+            uid=getattr(_type, 'uid', None)
+            _dict = {"name": name, "uid": uid}
+            _types.append(_dict)
+        logger.debug(f"{_types=}")
+        return _types
+
+    @property
+    def communes(self):
+        language = get_language()
+        _communes = []
+        for _facility in self.facility.all():
+            try:
+                _commune = _facility.commune[0]
+            except:
+                continue
+            name=getattr(_commune, f'name_{language}', None)
+            uid=getattr(_commune, 'uid', None)
+            _dict = {"name": name, "uid": uid}
+            _communes.append(_dict)
+        return _communes
+
+
+class CareHome(Effector):
+    regular_permanent_bed = IntegerProperty(default=0)
+    regular_temporary_bed = IntegerProperty(default=0)
+    alzheimer_permanent_bed = IntegerProperty(
+        default=0,
+        help_text="Unité Alzheimer (unité de vie Alzheimer)",
+    )
+    alzheimer_temporary_bed = IntegerProperty(default=0)
+    uvpha_permanent_bed = IntegerProperty(
+        default=0,
+        help_text="Unité de vie pour personnes handicapées âgées",
+    )
+    uhr_permanent_bed = IntegerProperty(
+        default=0,
+        help_text="Unité d’hébergement renforcée",
+    )
+    day_care = IntegerProperty(
+        default=0,
+        help_text="Accueil de jour",
+    )
+    usld_permanent_bed = IntegerProperty(
+        default=0,
+        help_text="Unité de soins de longue durée"
+    )
+
+
+class HealthWorker(Effector):
+    rpps = IntegerProperty(unique_index=True)
+    spoken_languages = ArrayProperty(base_property=StringProperty())
+
+
+class AdministrativeTerritorialEntityOfFrance(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    name_en = StringProperty(unique_index=False)
+    name_fr = StringProperty(unique_index=False)
+    slug_en = StringProperty(unique_index=False)
+    slug_fr = StringProperty(unique_index=False)
+    wikidata = StringProperty(unique_index=True)
+
+
+class Commune(AdministrativeTerritorialEntityOfFrance):
+    department = AsyncRelationshipTo(
+        'DepartmentOfFrance',
+        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
+    )
+
+
+class DepartmentOfFrance(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    code = StringProperty(unique_index=True)
+    slug = StringProperty(unique_index=True)
+    wikidata = StringProperty(unique_index=True)
+    region = AsyncRelationshipTo(
+        'RegionOfFrance',
+        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
+    )
+    public_holiday_zone = AsyncRelationshipTo(
+        'PublicHolidayZone',
+        'PART_OF'
+    )
+
+
+class RegionOfFrance(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    code = StringProperty(unique_index=True)
+    slug = StringProperty(unique_index=True)
+    country = AsyncRelationshipTo(
+        'Country',
+        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY'
+    )
+
+
+class Country(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    code = StringProperty(unique_index=True)
+    slug = StringProperty(unique_index=True)
+
+
+class PublicHolidayZone(AsyncStructuredNode):
+    """School holiday zone A/B/C, hanging off the department.
+
+    The async twin of the class in graph.py. It exists here because the
+    organisation payload's `public_holidays_zone` is reached by four hops —
+    Facility → Commune → Department → PublicHolidayZone — and the frontend's
+    publicHolidaysStore picks its calendar from it. Without the async
+    definition the last hop has nothing to resolve to and the key would
+    quietly serialise as null.
+    """
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    label = StringProperty(unique_index=True)
+    departments = AsyncRelationshipFrom(
+        'DepartmentOfFrance',
+        'PART_OF'
+    )
+
+
+class MunicipalArrondissement(AdministrativeTerritorialEntityOfFrance):
+    commune = AsyncRelationshipTo('Commune', 'PART_OF')
+
+
+class Facility(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    organization = AsyncRelationshipTo('Organization', 'PART_OF')
+    organizations = AsyncRelationshipTo('Entry', 'PART_OF')
+    commune = AsyncRelationshipTo(
+        'Commune',
+        'LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY',
+        # A building stands in one commune. Organization.commune above has said
+        # AsyncOne since it was written; this said nothing, so neomodel allowed
+        # any number and a seeder's MERGE could add a second without complaint.
+        # The damage lands far away: the entries query joins through the commune,
+        # so a facility with two emits every entry at it twice, which doubles
+        # every count a page renders and kills the team carousel on Svelte's
+        # each_key_duplicate (it keys slides on uid). See
+        # tests/test_facility_graph_model.py.
+        cardinality=AsyncOne
+    )
+    contactUpdatedAt = IntegerProperty(default=0)
+    updated = IntegerProperty(default=0)
+    createdAt = IntegerProperty()
+    creator = AsyncRelationshipTo('access.asyncneomodels.User', 'CREATED_BY')
+    owner = AsyncRelationshipTo('access.asyncneomodels.User', 'OWNED_BY')
+    name = StringProperty()
+    label = StringProperty()
+    slug = StringProperty()
+    location = neomodel_spatial.PointProperty(crs='wgs-84')
+    entries = AsyncRelationshipFrom(
+        'Entry',
+        "HAS_FACILITY"
+    )
+    zoom = IntegerProperty(default=18)
+    building = StringProperty()
+    street = StringProperty()
+    geographical_complement = StringProperty()
+    zip = StringProperty()
+    tooltip_permanent = BooleanProperty()
+    tooltip_text = StringProperty()
+    DIRECTIONS = {'top': 'Top', 'bottom': 'Bottom', 'left': 'Left', 'right': 'Right'}
+    tooltip_direction = StringProperty(choices=DIRECTIONS)
+    ban_id = StringProperty()
+    ban_banId = StringProperty()
+    #: The SIRET of the establishment this facility is; see directory/siret_rule.py.
+    siret = StringProperty()
+
+
+class Entry(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    slug = StringProperty(unique_index=True)
+    active = BooleanProperty(
+        index=True,
+        default=True
+    )
+    deactivation_datetime = DateTimeFormatProperty(format="%Y-%m-%dT%H:%M:%S.%fZ")
+    deactivation_reason = StringProperty()
+    updatedAt = IntegerProperty(default=0)
+    createdAt = IntegerProperty(default=timestamp)
+    contactUpdatedAt = IntegerProperty(default=0)
+    owner = AsyncRelationshipTo('access.asyncneomodels.User', 'OWNED_BY')
+    creator = AsyncRelationshipTo('access.asyncneomodels.User', 'CREATED_BY')
+    redeemEmail: str = EmailProperty() # type: ignore
+    effector = AsyncRelationshipTo('Effector', 'HAS_EFFECTOR')
+    facility = AsyncRelationshipTo('Facility', 'HAS_FACILITY')
+    effector_type = AsyncRelationshipTo('EffectorType', 'HAS_EFFECTOR_TYPE')
+    organizations = AsyncRelationshipTo('Organization', 'MEMBER_OF')
+    memberships = AsyncRelationshipTo('Entry', 'MEMBER_OF')
+    carte_vitale = BooleanProperty(
+        index=True,
+        default=None
+    )
+    payment = ArrayProperty(base_property=StringProperty())
+    third_party_payer = ArrayProperty(base_property=StringProperty())
+    convention = StringProperty()
+    access = StringProperty(default='anonymous')
+    #: The SIREN of the legal unit this entry is (a porteur's); see directory/siret_rule.py.
+    siren = StringProperty()
+    #: What the service offers, for whom and on what terms, in the site's language.
+    description = StringProperty()
+    #: Who the entry is for and how to reach it; null is unknown. See directory/facets.py.
+    age_min = IntegerProperty()
+    age_max = IntegerProperty()
+    care_levels = ArrayProperty(base_property=StringProperty())
+    who_can_contact = StringProperty()
+    access_modes = ArrayProperty(base_property=StringProperty())
+    audiences = ArrayProperty(base_property=StringProperty())
+    offers = ArrayProperty(base_property=StringProperty())
+    free = BooleanProperty()
+    anonymous_care = BooleanProperty()
+    appointments = AsyncRelationshipTo(
+        'Appointment',
+        'HAS_APPOINTMENT',
+        cardinality=AsyncZeroOrMore
+    )
+    membership_categories = AsyncRelationshipFrom(
+        'organization.models.MembershipCategory',
+        'CATEGORY_OF',
+        cardinality=AsyncZeroOrMore
+    )
+    tags = AsyncRelationshipFrom(
+        'Tag',
+        'TAGS'
+    )
+    directories = AsyncRelationshipFrom(
+        'Directory',
+        'HAS_ENTRY'
+    )
+
+
+class Directory(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    entries = AsyncRelationshipTo('Entry', 'HAS_ENTRY')
+    owner = AsyncRelationshipTo('Entry', 'OWNED_BY')
+    # Whether the owner (the organization's entry) shows in this directory's
+    # lists. Absent on older nodes: queries read coalesce(..., true).
+    list_owner_entry = BooleanProperty(default=True)
+    # The least role that may list this directory's entries when a site
+    # reaches it as a sibling (GET /entries?directory=); lesser callers get a
+    # 403. A site's own directory is always public. Absent on older nodes:
+    # queries read coalesce(..., 'anonymous').
+    minimum_role = StringProperty(
+        default="anonymous",
+        choices={r: r for r in ("anonymous", "staff", "administrator", "superuser")},
+    )
+
+
+class Monkey(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+
+
+class Appointment(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    url = StringProperty()
+    phone = StringProperty()
+    entry = AsyncRelationshipFrom(
+        'Entry',
+        'HAS_APPOINTMENT',
+        cardinality=AsyncOne
+    )
+
+
+class Office(Appointment):
+    pass
+
+
+class HouseCall(Appointment):
+    pass
+
+
+class TagCategory(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    label = StringProperty(unique_index=True)
+    labelShort = StringProperty()
+    name = StringProperty(unique_index=True)
+    definition = StringProperty()
+    synonyms = ArrayProperty(base_property=StringProperty())
+    effector_type = AsyncRelationshipFrom(
+        'EffectorType',
+        'HAS_TAG_CATEGORY'
+    )
+    tags = AsyncRelationshipFrom(
+        'Tag',
+        'IS_A'
+    )
+
+
+class Tag(AsyncStructuredNode):
+    uid = UniqueIdProperty()
+    label = StringProperty()
+    labelShort = StringProperty()
+    name = StringProperty(unique_index=True)
+    definition = StringProperty()
+    synonyms = ArrayProperty(base_property=StringProperty())
+    tag_category = AsyncRelationshipTo(
+        'TagCategory',
+        'IS_A'
+    )
+    entry = AsyncRelationshipTo(
+        'Entry',
+        'TAGS'
+    )

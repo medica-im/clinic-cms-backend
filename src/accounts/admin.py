@@ -3,9 +3,7 @@ from django import forms
 from django.contrib.auth import authenticate, get_user_model, password_validation
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
-from rest_framework_simplejwt.token_blacklist.admin import OutstandingTokenAdmin
 from django.utils.translation import gettext_lazy as _
-from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 from modeltranslation.admin import TranslationAdmin
 
 from .models import User, GrammaticalGender
@@ -43,11 +41,15 @@ class CustomUserAdmin(UserAdmin):
         'created_at',
         'grammatical_gender',
         'last_login',
+        'effector',
+        'site',
+        'role',
     )
     list_filter = (
         'is_staff',
         'is_active',
         'grammatical_gender',
+        'site',
     )
     fieldsets = (
         (
@@ -62,6 +64,9 @@ class CustomUserAdmin(UserAdmin):
                     'birth_date',
                     'grammatical_gender',
                     'node',
+                    'effector',
+                    'site',
+                    'role',
                 )
             },
         ),
@@ -84,20 +89,12 @@ class CustomUserAdmin(UserAdmin):
     search_fields = (
         'email',
         'username',
+        'effector',
     )
     ordering = (
         'email',
         'username',
     )
-
-
-admin.site.unregister(OutstandingToken)
-
-@admin.register(OutstandingToken)
-class OutstandingTokenAdmin(OutstandingTokenAdmin):
-
-    def has_delete_permission(self, *args, **kwargs):
-        return True # or whatever logic you want
 
 
 @admin.register(GrammaticalGender)

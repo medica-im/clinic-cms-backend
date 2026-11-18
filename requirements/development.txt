@@ -1,7 +1,10 @@
 -r common.txt
+django-debug-toolbar
 django-cors-headers
 django-extensions
-jupyter
-notebook
 Werkzeug
-matplotlib
+colorlog
+pytest
+pytest-asyncio
+pytest-django
+httpx

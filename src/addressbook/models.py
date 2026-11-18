@@ -1,3 +1,4 @@
+import logging
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
@@ -16,11 +17,15 @@ from django_countries.fields import CountryField
 from taggit.managers import TaggableManager
 from django.contrib.auth import get_user_model
 from access.models import Role
-from simple_history.models import HistoricalRecords
 from easy_thumbnails.signals import saved_file
 from easy_thumbnails.signal_handlers import generate_aliases
+from django.db.models import UniqueConstraint
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+from django.utils import timezone
+from directory.timestamp import update_contact_timestamp
 
-from facility.models import Organization
+logger = logging.getLogger(__name__)
 
 CharField.register_lookup(Length)
 
@@ -42,23 +47,11 @@ social_net_prefixes = dict(
 )
 
 
-class ContactGroup(models.Model):
-    #user = models.ForeignKey(settings.AUTH_USER_MODEL)
-    name = models.CharField(max_length=255, verbose_name='Group Name', unique=True)
-
-    class Meta:
-        ordering = ['name']
-        #unique_together = ('user', 'name')
-
-    def __str__(self):
-        return self.name
-
-
 class Contact(models.Model):
     formfield_overrides = {
         ThumbnailerField: {'widget': ImageClearableFileInput},
     }
-    
+
     class PersonType(models.TextChoices):
         NATURAL = 'Natural', _('Natural person')
         LEGAL = 'Legal', _('Legal person')
@@ -74,7 +67,6 @@ class Contact(models.Model):
         null=True,
         blank=True,
     )
-    groups = models.ManyToManyField(ContactGroup, blank=True)
     formatted_name = models.CharField(max_length=255, blank=True)
     formatted_name_definite_article = models.CharField(
         max_length=255,
@@ -92,90 +84,52 @@ class Contact(models.Model):
         blank=True,
         null=True
     )
+    avatar_access = models.CharField(
+        max_length=20,
+        default='anonymous',
+        help_text=(
+            "Minimum role required to see the profile image: "
+            "anonymous (public), staff (team), administrator."
+        ),
+    )
     qr_image = models.ImageField(upload_to="qr_images/", blank=True, null=True)
     twitter_handle = models.CharField(max_length=15, blank=True, null=True)
     worked_with = models.ManyToManyField('self', blank=True)
     tags = TaggableManager(blank=True,)
-
-    class Meta:
-        ordering = ['formatted_name', 'last_name', 'first_name']
-
-
-    def __str__(self):
-        if self.formatted_name:
-            return "%s %s" % (self.id, self.formatted_name)
-        else:
-            return "%s %s %s" % (self.id, self.first_name, self.last_name)
-
-
-class Address(models.Model):
-
-    class AddressType(models.TextChoices):
-        HOME = 'Home', pgettext_lazy('Address', 'Home')
-        WORK = 'Work', pgettext_lazy('Address', 'Work')
-
-    contact = models.ForeignKey(
-        Contact,
-        on_delete=models.CASCADE,
-        related_name="addresses",
-    )
-    roles = models.ManyToManyField(
-        Role,
-        blank=True,
-        help_text="Roles allowed so see the related object",
-    )
-    street = models.CharField(max_length=255, null=True, blank=True)
-    city = models.CharField(max_length=255)
-    state = models.CharField(max_length=255, null=True, blank=True)
-    country = CountryField()
-    zip = models.CharField(max_length=255, null=True, blank=True)
-    type = models.CharField(max_length=255, choices=AddressType.choices)
-    public_visible = models.BooleanField(default=False)
-    contact_visible = models.BooleanField(default=False)
-    latitude = models.DecimalField(
-        max_digits=17,
-        decimal_places=15,
+    neomodel_uid = models.UUIDField(
         null=True,
         blank=True,
-    )
-    longitude = models.DecimalField(
-        max_digits=17,
-        decimal_places=15,
-        null=True,
-        blank=True,
-    )
-    zoom = models.PositiveSmallIntegerField(
-        null=True,
-        blank=True,
-        validators=[
-            MinValueValidator(1),
-            MaxValueValidator(21)
-        ]
+        unique=True,
     )
 
-    def __str__(self):
-        return '%s %s: %s %s, %s, %s' % (
-            self.contact.first_name,
-            self.contact.last_name,
-            self.street,
-            self.city,
-            self.state,
-            self.country
-        )
+    # The contact's own last-modified stamp, and the only one that survives a
+    # related object being deleted. A deleted phone takes its updatedAt with
+    # it, so a max() over the survivors can move backwards in time — see
+    # the post_delete receiver at the end of this module.
+    updatedAt = models.DateTimeField(auto_now=True, null=True)
 
+    def natural_key(self):
+        return (self.neomodel_uid,)
     
-    class Meta:
-        verbose_name_plural = "Addresses"
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        try:
+            update_contact_timestamp(self.neomodel_uid)
+        except TypeError as e:
+            logger.warning(f'uid is {self.neomodel_uid} {e}')
+        # The avatar (and its access level) is embedded in the cached entry
+        # payloads, so those must be rebuilt when it changes.
+        from directory.models.core import sync_clear_cache
+        sync_clear_cache("v2:entries")
 
 
 class PhoneNumber(models.Model):
-    
+
     class TelephoneType(models.TextChoices):
         MOBILE = 'M', _('Mobile')
         MOBILE_WORK = 'MW', _('Mobile Work')
         WORK = 'W', _('Work')
         FAX = 'F', _('Fax')
-        SKYPE = 'S', _('Skype')
         ANSWERING_SERVICE = 'AS', _('Answering service')
 
     contact = models.ForeignKey(
@@ -197,6 +151,11 @@ class PhoneNumber(models.Model):
     public_visible = models.BooleanField(default=False)
     contact_visible = models.BooleanField(default=False)
 
+    class Meta:
+        constraints = [
+            UniqueConstraint(fields=["contact", "phone", "type"], name="unique_contact_phone_type"),
+        ]
+
     def __str__(self):
         return "%s %s: %s" % (
             self.contact.first_name,
@@ -204,14 +163,31 @@ class PhoneNumber(models.Model):
             self.phone
         )
 
+#    def natural_key(self):
+#        return (self.phone,) + self.contact.natural_key()
+
+#    natural_key.dependencies = [
+#        'addressbook.contact',
+#        'facility.organization'
+#    ]
+
+    # Maintained by the ORM rather than by a save() override, so a write path
+    # that bypasses save() — a queryset .update(), the Django admin, a data
+    # migration — still leaves a mark. The administrative entries table reads
+    # the max of these across an entry's objects for its "last modified"
+    # column, and the entry detail page reads them individually to say which
+    # part changed.
+    updatedAt = models.DateTimeField(auto_now=True, null=True)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        try:
+            update_contact_timestamp(self.contact.neomodel_uid)
+        except TypeError as e:
+            logger.warning(f'uid is {self.contact.neomodel_uid} {e}')
+
 
 class Email(models.Model):
-    
-    class EmailType(models.TextChoices):
-        PERSONAL = 'P', _('Personal')
-        WORK = 'W', _('Work')
-        MSSANTE = 'M', 'MSSanté'
-
     contact = models.ForeignKey(
         Contact,
         on_delete=models.CASCADE,
@@ -227,9 +203,13 @@ class Email(models.Model):
         blank=True
     )
     email = models.EmailField()
-    type = models.CharField(max_length=255, choices=EmailType.choices)
     public_visible = models.BooleanField(default=False)
     contact_visible = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(fields=["contact", "email"], name="unique_contact_email"),
+        ]
 
     def __str__(self):
         return "%s %s: %s" % (
@@ -238,15 +218,24 @@ class Email(models.Model):
             self.email
         )
 
+    # Maintained by the ORM rather than by a save() override, so a write path
+    # that bypasses save() — a queryset .update(), the Django admin, a data
+    # migration — still leaves a mark. The administrative entries table reads
+    # the max of these across an entry's objects for its "last modified"
+    # column, and the entry detail page reads them individually to say which
+    # part changed.
+    updatedAt = models.DateTimeField(auto_now=True, null=True)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        try:
+            update_contact_timestamp(self.contact.neomodel_uid)
+        except TypeError as e:
+            logger.warning(f'uid is {self.contact.neomodel_uid} {e}')
+
 
 class Website(models.Model):
     
-    class WebsiteType(models.TextChoices):
-        WORK = 'W', _('Work')
-        PERSONAL = 'PE', _('Personal')
-        PORTFOLIO = 'PO', _('Portfolio')
-        BLOG = 'Blog', _('Blog')
-
     contact = models.ForeignKey(
         Contact,
         on_delete=models.CASCADE,
@@ -261,20 +250,38 @@ class Website(models.Model):
         "facility.Organization",
         blank=True
     )
-    website = models.URLField(blank=True)
-    type = models.CharField(max_length=255, choices=WebsiteType.choices)
+    url = models.URLField(blank=True)
     public_visible = models.BooleanField(default=False)
     contact_visible = models.BooleanField(default=False)
 
+    class Meta:
+        constraints = [
+            UniqueConstraint(fields=["contact", "url"], name="unique_contact_url"),
+        ]
+
     def __str__(self):
-        return "%s %s: %s" % (self.contact.first_name, self.type, self.website)
+        return "%s: %s" % (self.contact.neomodel_uid, self.url)
+
+    # Maintained by the ORM rather than by a save() override, so a write path
+    # that bypasses save() — a queryset .update(), the Django admin, a data
+    # migration — still leaves a mark. The administrative entries table reads
+    # the max of these across an entry's objects for its "last modified"
+    # column, and the entry detail page reads them individually to say which
+    # part changed.
+    updatedAt = models.DateTimeField(auto_now=True, null=True)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        try:
+            update_contact_timestamp(self.contact.neomodel_uid)
+        except TypeError as e:
+            logger.warning(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class SocialNetwork(models.Model):
 
     class SocialNetworkType(models.TextChoices):
-        SKYPE = 'S', 'Skype'
-        TWITTER = 'T', 'Twitter'
+        TWITTER = 'T', 'X'
         LINKEDIN = 'LI', 'LinkedIn'
         FACEBOOK = 'F', 'Facebook'
         PINTEREST = 'P', 'Pinterest'
@@ -283,6 +290,8 @@ class SocialNetwork(models.Model):
         TIKTOK = 'TT', 'TikTok'
         SNAPCHAT = 'SC', 'Snapchat'
         TWITCH = 'TH', 'Twitch'
+        BLUESKY = 'B', 'Bluesky'
+        MASTODON = 'M', 'Mastodon'
 
     contact = models.ForeignKey(
         Contact,
@@ -310,93 +319,20 @@ class SocialNetwork(models.Model):
             f"{self.handle or self.url}"
         )
 
-def get_default_organization():
-    return Organization.objects.first().id
+    # Maintained by the ORM rather than by a save() override, so a write path
+    # that bypasses save() — a queryset .update(), the Django admin, a data
+    # migration — still leaves a mark. The administrative entries table reads
+    # the max of these across an entry's objects for its "last modified"
+    # column, and the entry detail page reads them individually to say which
+    # part changed.
+    updatedAt = models.DateTimeField(auto_now=True, null=True)
 
-class Profile(models.Model):
-    contact = models.ForeignKey(
-        Contact,
-        on_delete=models.CASCADE,
-        related_name="profiles",
-    )
-    roles = models.ManyToManyField(
-        Role,
-        blank=True,
-        help_text="Roles allowed so see the related object",
-    )
-    organization = models.ForeignKey(
-        "facility.Organization",
-        on_delete=models.PROTECT,
-        related_name="profiles",
-        default=get_default_organization
-    )
-    text = models.TextField(
-        blank=True
-    )
-    changed_by = models.ForeignKey(
-      settings.AUTH_USER_MODEL,
-      on_delete=models.PROTECT
-    )
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
-    history = HistoricalRecords()
-
-    @property
-    def _history_user(self):
-        return self.changed_by
-
-    @_history_user.setter
-    def _history_user(self, value):
-        self.changed_by = value
-
-    class Meta:
-        unique_together = [["contact", "organization"]]
-
-
-class Appointment(models.Model):
-    contact = models.ForeignKey(
-        Contact,
-        on_delete=models.CASCADE,
-        related_name="appointments"
-    )
-    roles = models.ManyToManyField(
-        Role,
-        blank=True,
-        help_text="Roles allowed so see the related object",
-    )
-    organization = models.ManyToManyField(
-        "facility.Organization",
-        blank=True
-    )
-    url = models.URLField(blank=True)
-    phone = models.CharField(max_length=255, blank=True)
-    app = models.ForeignKey(
-        'addressbook.App',
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-    )
-
-
-    class Meta:
-        constraints = [
-            models.CheckConstraint(
-                check=(
-                    Q(url__length__gt=0,phone__length__lte=0,app__isnull=True)
-                    |
-                    Q(url__length__lte=0,phone__length__gt=0,app__isnull=True)
-                    |
-                    Q(url__length__lte=0,phone__length__lte=0,app__isnull=False)
-                ),
-                name='one_and_only_one_field_not_null_among_url_phone_app'
-            )
-        ]
-
-    def __str__(self):
-        return "%s: %s" % (
-            self.contact.formatted_name,
-            self.phone or self.url or self.app.name
-        )
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Call the "real" save() method.
+        try:
+            update_contact_timestamp(self.contact.neomodel_uid)
+        except TypeError as e:
+            logger.warning(f'uid is {self.contact.neomodel_uid} {e}')
 
 
 class App(models.Model):
@@ -438,3 +374,31 @@ class AppStore(models.Model):
 
     def __str__(self):
         return self.name
+
+
+# Deletion has to move the contact's stamp, and it cannot be done in a model's
+# delete(): every delete route in api/routers/ calls
+# `.filter(id=...).adelete()`, a queryset delete that never loads the instance.
+# post_delete fires for both forms, and for the Django admin and data
+# migrations besides.
+@receiver(post_delete, sender=PhoneNumber)
+@receiver(post_delete, sender=Email)
+@receiver(post_delete, sender=Website)
+@receiver(post_delete, sender=SocialNetwork)
+def touch_contact_on_delete(sender, instance, **kwargs):
+    """Stamp the contact when one of its objects is deleted.
+
+    Without this the administrative table shows an entry growing *younger*
+    after an edit: the deleted row's timestamp was the maximum, and removing it
+    leaves an older one behind.
+
+    contact_id rather than instance.contact: the related object may already be
+    gone from the session, and this only needs the key. save(update_fields=...)
+    keeps it to one column and still triggers auto_now.
+    """
+    contact_id = getattr(instance, "contact_id", None)
+    if not contact_id:
+        return
+    # update() rather than save(): auto_now does not fire on a queryset update,
+    # so the value is set explicitly, and no other field is touched.
+    Contact.objects.filter(pk=contact_id).update(updatedAt=timezone.now())

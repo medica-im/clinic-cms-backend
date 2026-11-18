@@ -1,0 +1,502 @@
+import logging
+from time import time_ns
+from uuid import uuid4
+
+from django.contrib.sites.models import Site
+from neomodel import adb
+from access.asyncneomodels import (
+    Account as AsyncAccount,
+    User as AsyncUser,
+)
+from facility.models import Organization
+from api.utils import clear_cache
+
+logger = logging.getLogger(__name__)
+
+
+async def get_or_create_neo4j_user(jwt: dict, site: Site) -> dict | None:
+    """Look up or create a Neo4j User from JWT claims.
+
+    Returns a /users/me-shaped response dict, or None to fall through
+    to Django auth.
+    """
+    sub = jwt.get("providerAccountId")
+    if not sub:
+        return None
+
+    iss = jwt.get("iss", "")
+    email = jwt.get("email", "")
+
+    # Get the organization's Entry uid for this site
+    entry_uid = await _get_entry_uid(site)
+    logger.debug(f"Looking up Neo4j user for sub={sub}, email={email}, entry_uid={entry_uid}")
+    if not entry_uid:
+        return None
+
+    # 1. Look up existing Account by sub
+    result = await _find_user_by_sub(sub, entry_uid)
+    if result:
+        user_props, role = result
+        if role:
+            # Case A: user exists and already has Access for this entry
+            return _build_response(user_props, role, jwt)
+
+        # A suspended user reaches here too — the role lookup withholds their
+        # role — and must stop here. Falling through would offer them the
+        # invitee and sandbox paths below, either of which would grant a fresh
+        # access carrying no suspension: the account would let itself back in
+        # simply by signing in again.
+        suspension = await _find_suspension(sub, entry_uid)
+        if suspension:
+            return _build_response(user_props, None, jwt, suspension)
+
+        # Case B: user exists but has no Access for this entry — fall through
+
+    # 2. Look up active Invitee by email + Entry
+    if not email:
+        if result:
+            if await _is_sandbox(site):
+                role = await _ensure_sandbox_access(result[0]["uid"], entry_uid)
+                return _build_response(result[0], role, jwt)
+            return _build_response(result[0], None, jwt)
+        return None
+
+    try:
+        invitee, entry = await _find_invitee(email, entry_uid)
+    except LookupError:
+        if not result:
+            # Another request of the same sign-in may have created the user and
+            # redeemed the invitation since the first lookup.
+            result = await _find_user_by_sub(sub, entry_uid)
+            if result and result[1]:
+                return _build_response(result[0], result[1], jwt)
+        if result:
+            # User exists but no Invitee — sandbox auto-grant
+            if await _is_sandbox(site):
+                role = await _ensure_sandbox_access(result[0]["uid"], entry_uid)
+                return _build_response(result[0], role, jwt)
+            return _build_response(result[0], None, jwt)
+        # No user, no Invitee — sandbox auto-create
+        if await _is_sandbox(site):
+            try:
+                user_props, role = await _create_sandbox_user(
+                    sub, iss, email, jwt.get("name", ""), entry_uid,
+                )
+                return _build_response(user_props, role, jwt)
+            except Exception:
+                logger.exception("Failed to create sandbox user")
+                return None
+        return None
+
+    # 3. Create or augment Access from Invitee
+    if result:
+        # Case B: add a new Access to an existing User
+        try:
+            user_props, role = await _add_access_to_existing_user(
+                result[0], invitee, entry
+            )
+            await _claim_entries_by_redeem_email(user_props["uid"], email, entry_uid)
+            return _build_response(user_props, role, jwt)
+        except Exception:
+            logger.exception("Failed to add Access to existing Neo4j user")
+            return None
+    else:
+        # Case C: brand-new user — create User + Account + Access
+        try:
+            user_props, role = await _create_user_from_invitee(
+                invitee, sub, iss, email, jwt.get("name", ""),
+                entry_uid,
+            )
+            await _claim_entries_by_redeem_email(user_props["uid"], email, entry_uid)
+            return _build_response(user_props, role, jwt)
+        except Exception:
+            logger.exception("Failed to create Neo4j user from invitee")
+            return None
+
+
+async def _get_entry_uid(site: Site) -> str | None:
+    try:
+        organization = await Organization.objects.aget(site=site)
+    except Organization.DoesNotExist:
+        return None
+    if not organization.neomodel_uid:
+        return None
+    return organization.neomodel_uid.hex
+
+
+async def _find_user_by_sub(sub: str, entry_uid: str) -> tuple[dict, str] | None:
+    """Find an existing User via their Account sub, with role scoped to entry.
+
+    A suspended access yields no role. The node stays active and keeps its role
+    so the account remains identifiable and the dashboard can say why nothing
+    works — but every authorization decision reads the role from here, so
+    returning it would leave a suspended administrator with an administrator's
+    powers and make the suspension purely cosmetic.
+    """
+    query = """
+    MATCH (a:Account {sub: $sub})<-[:HAS_ACCOUNT]-(u:User)
+    OPTIONAL MATCH (u)-[:HAS_ACCESS]->(ac:Access {active: true})-[:ACCESS_TO]->(e:Entry {uid: $entry_uid})
+    WHERE ac.suspendedAt IS NULL
+    RETURN u, ac.role
+    """
+    results, _ = await adb.cypher_query(
+        query, {"sub": sub, "entry_uid": entry_uid}, resolve_objects=True
+    )
+    logger.debug(f"{results=}")
+    if not results:
+        return None
+    user_node = results[0][0]
+    logger.debug(f"{user_node=}")
+    role = results[0][1]
+    logger.debug(f"{role=}")
+    return user_node.__properties__, role
+
+
+async def _find_invitee(email: str, entry_uid: str):
+    """Find an active Invitee by email linked to the organization's Entry.
+
+    Returns (invitee_node, entry_node) or raises LookupError.
+    """
+    query = """
+    MATCH (i:Invitee {active: true})-[:INVITED_TO]->(e:Entry {uid: $entry_uid})
+    WHERE toLower(i.email) = toLower($email) AND i.redeemedAt IS NULL
+    RETURN i, e
+    """
+    results, _ = await adb.cypher_query(
+        query, {"email": email, "entry_uid": entry_uid}, resolve_objects=True
+    )
+    if not results:
+        raise LookupError("No active invitee found")
+    return results[0][0], results[0][1]
+
+
+async def _create_user_from_invitee(
+    invitee, sub: str, iss: str, email: str, name: str,
+    entry_uid: str,
+) -> tuple[dict, str]:
+    """Create Account, User, and Access nodes from an Invitee, idempotently.
+
+    Several requests of one first sign-in arrive together, and each may get
+    here. Every node is MERGEd on a uniquely constrained property — Account.sub,
+    User.email, Access.activeKey — so they all converge on the same nodes and
+    all succeed. A user who already holds a role on this site keeps it.
+
+    Returns (user_properties, role_name); the role is None while suspended.
+    """
+    now = time_ns() // 1_000_000
+    query = """
+    MATCH (i:Invitee {uid: $invitee_uid})
+    SET i.redeemedAt = coalesce(i.redeemedAt, $now)
+
+    WITH i
+
+    MERGE (a:Account {sub: $sub})
+    ON CREATE SET a.uid = $account_uid, a.iss = $iss, a.createdAt = $now
+
+    MERGE (u:User {email: $email})
+    ON CREATE SET u.uid = $user_uid, u.name = $name,
+                  u.invitee = $invitee_uid, u.createdAt = $now
+
+    MERGE (u)-[:HAS_ACCOUNT]->(a)
+
+    WITH u, i
+    MATCH (e:Entry {uid: $entry_uid})
+    MERGE (ac:Access {activeKey: u.uid + ':' + e.uid})
+    ON CREATE SET ac.uid = $access_uid, ac.role = i.role, ac.active = true,
+                  ac.createdAt = $now
+    MERGE (u)-[:HAS_ACCESS]->(ac)
+    MERGE (ac)-[:ACCESS_TO]->(e)
+    FOREACH (_ IN CASE WHEN ac.uid = $access_uid THEN [1] ELSE [] END |
+        MERGE (ac)-[:CREATED_BY]->(u)
+    )
+
+    RETURN u {.*} AS user_props,
+           CASE WHEN ac.suspendedAt IS NULL THEN ac.role END AS role
+    """
+    params = {
+        "invitee_uid": invitee.uid,
+        "now": now,
+        "sub": sub,
+        "iss": iss,
+        "email": email,
+        "name": name,
+        "entry_uid": entry_uid,
+        "account_uid": uuid4().hex,
+        "user_uid": uuid4().hex,
+        "access_uid": uuid4().hex,
+    }
+    results, _ = await adb.cypher_query(query, params)
+    if not results:
+        raise RuntimeError(
+            f"Invitee {invitee.uid} or Entry {entry_uid} no longer exists"
+        )
+
+    user_props = results[0][0]
+    role = results[0][1]
+
+    logger.info(
+        f"Created Neo4j User {user_props.get('uid')} from Invitee {invitee.uid} "
+        f"with role {role}"
+    )
+
+    return user_props, role
+
+async def _add_access_to_existing_user(
+    user_props: dict, invitee, entry
+) -> tuple[dict, str]:
+    """Give an existing User the invited role on this site, idempotently.
+
+    The Access is MERGEd on its activeKey, so concurrent requests converge on
+    one node, and a user who already holds a role on this site keeps it.
+
+    Access.createdBy is taken from the Invitee's createdBy relationship
+    (i.e. the admin who issued the invitation).
+    """
+    now = time_ns() // 1_000_000
+    query = """
+    MATCH (i:Invitee {uid: $invitee_uid})
+    SET i.redeemedAt = coalesce(i.redeemedAt, $now)
+
+    WITH i
+    MATCH (u:User {uid: $user_uid})
+    MATCH (e:Entry {uid: $entry_uid})
+
+    MERGE (ac:Access {activeKey: u.uid + ':' + e.uid})
+    ON CREATE SET ac.uid = $access_uid, ac.role = i.role, ac.active = true,
+                  ac.createdAt = $now
+    MERGE (u)-[:HAS_ACCESS]->(ac)
+    MERGE (ac)-[:ACCESS_TO]->(e)
+
+    WITH u, ac, i
+    OPTIONAL MATCH (i)-[:CREATED_BY]->(creator:User)
+    FOREACH (_ IN CASE WHEN creator IS NOT NULL AND ac.uid = $access_uid
+                       THEN [1] ELSE [] END |
+        MERGE (ac)-[:CREATED_BY]->(creator)
+    )
+
+    RETURN u {.*} AS user_props,
+           CASE WHEN ac.suspendedAt IS NULL THEN ac.role END AS role
+    """
+    params = {
+        "invitee_uid": invitee.uid,
+        "now": now,
+        "user_uid": user_props["uid"],
+        "entry_uid": entry.uid,
+        "access_uid": uuid4().hex,
+    }
+    results, _ = await adb.cypher_query(query, params)
+    if not results:
+        raise RuntimeError(
+            f"Invitee {invitee.uid}, User or Entry {entry.uid} no longer exists"
+        )
+
+    user_props = results[0][0]
+    role = results[0][1]
+
+    logger.info(
+        f"Added Access (role={role}) to existing User {user_props.get('uid')} "
+        f"from Invitee {invitee.uid}"
+    )
+    return user_props, role
+
+
+async def _is_sandbox(site: Site) -> bool:
+    """Check if the organization for this site has sandbox mode enabled."""
+    try:
+        org = await Organization.objects.aget(site=site)
+        return org.sandbox
+    except Organization.DoesNotExist:
+        return False
+
+
+async def _ensure_sandbox_access(user_uid: str, entry_uid: str) -> str:
+    """Grant staff Access to a user for a sandbox org's Entry.
+
+    If an active Access already exists, returns the existing role.
+    Otherwise creates a new Access with role='staff'.
+    """
+    now = time_ns() // 1_000_000
+    query = """
+    MATCH (u:User {uid: $user_uid})
+    MATCH (e:Entry {uid: $entry_uid})
+    MERGE (ac:Access {activeKey: u.uid + ':' + e.uid})
+    ON CREATE SET ac.uid = $access_uid, ac.role = 'staff', ac.active = true,
+                  ac.createdAt = $now
+    MERGE (u)-[:HAS_ACCESS]->(ac)
+    MERGE (ac)-[:ACCESS_TO]->(e)
+    RETURN ac.role AS role
+    """
+    params = {
+        "user_uid": user_uid,
+        "entry_uid": entry_uid,
+        "access_uid": uuid4().hex,
+        "now": now,
+    }
+    results, _ = await adb.cypher_query(query, params)
+    role = results[0][0]
+    logger.info(f"Sandbox: ensured Access (role={role}) for User {user_uid}")
+    return role
+
+
+async def _create_sandbox_user(
+    sub: str, iss: str, email: str, name: str, entry_uid: str,
+) -> tuple[dict, str]:
+    """Create User + Account + Access with staff role for a sandbox org.
+
+    Used when a brand-new user signs in on a sandbox site with no Invitee.
+    """
+    now = time_ns() // 1_000_000
+    query = """
+    MERGE (a:Account {sub: $sub})
+    ON CREATE SET a.uid = $account_uid, a.iss = $iss, a.createdAt = $now
+
+    MERGE (u:User {email: $email})
+    ON CREATE SET u.uid = $user_uid, u.name = $name, u.createdAt = $now
+
+    MERGE (u)-[:HAS_ACCOUNT]->(a)
+
+    WITH u
+    MATCH (e:Entry {uid: $entry_uid})
+    MERGE (ac:Access {activeKey: u.uid + ':' + e.uid})
+    ON CREATE SET ac.uid = $access_uid, ac.role = 'staff', ac.active = true,
+                  ac.createdAt = $now
+    MERGE (u)-[:HAS_ACCESS]->(ac)
+    MERGE (ac)-[:ACCESS_TO]->(e)
+
+    RETURN u {.*} AS user_props,
+           CASE WHEN ac.suspendedAt IS NULL THEN ac.role END AS role
+    """
+    params = {
+        "sub": sub,
+        "iss": iss,
+        "email": email,
+        "name": name,
+        "entry_uid": entry_uid,
+        "account_uid": uuid4().hex,
+        "user_uid": uuid4().hex,
+        "access_uid": uuid4().hex,
+        "now": now,
+    }
+    results, _ = await adb.cypher_query(query, params)
+    user_props = results[0][0]
+    role = results[0][1]
+    logger.info(f"Sandbox: created User {user_props.get('uid')} with role={role}")
+    return user_props, role
+
+
+async def get_neo4j_role(jwt: dict, site: Site) -> str|None:
+    """Resolve role from Neo4j Access graph. Returns role name string or None."""
+    try:
+        sub = jwt.get("providerAccountId")
+        logger.debug(f"{sub=}")
+    except AttributeError:
+        return
+    if not sub:
+        return
+    entry_uid = await _get_entry_uid(site)
+    logger.debug(f"{entry_uid=}")
+    if not entry_uid:
+        return
+    result = await _find_user_by_sub(sub, entry_uid)
+    if result:
+        _, role = result
+        return role
+
+def normalize_neo4j_role(role: str|None) -> str:
+    if role == "registered" or role is None:
+        return "anonymous"
+    return role
+
+async def get_neo4j_user(jwt: dict) -> AsyncUser | None:
+    """Return the Neo4j User node for the requesting user, or None."""
+    sub = jwt.get("providerAccountId")
+    if not sub:
+        return None
+    try:
+        account = await AsyncAccount.nodes.get(sub=sub)
+    except AsyncAccount.DoesNotExist:
+        return None
+    return await account.user.single()
+
+
+async def _claim_entries_by_redeem_email(
+    user_uid: str, email: str, entry_uid: str
+) -> None:
+    """Claim Entry ownership when redeemEmail matches the user's email.
+
+    Finds all entries in the site's directories where redeemEmail matches,
+    creates OWNED_BY relationships, and removes the redeemEmail property.
+    """
+    query = """
+    MATCH (org_entry:Entry {uid: $entry_uid})<-[:HAS_ENTRY]-(d:Directory)-[:HAS_ENTRY]->(e:Entry)
+    WHERE toLower(e.redeemEmail) = toLower($email)
+    WITH e
+    MATCH (u:User {uid: $user_uid})
+    CREATE (e)-[:OWNED_BY]->(u)
+    REMOVE e.redeemEmail
+    RETURN e.uid AS claimed_uid
+    """
+    try:
+        results, _ = await adb.cypher_query(
+            query,
+            {"entry_uid": entry_uid, "email": email, "user_uid": user_uid},
+        )
+        if results:
+            for row in results:
+                logger.info(f"Claimed Entry {row[0]} ownership for User {user_uid}")
+            try:
+                org = await Organization.objects.select_related('site').aget(
+                    neomodel_uid=entry_uid
+                )
+                await clear_cache("v2:entries", site=org.site)
+            except Organization.DoesNotExist:
+                logger.warning(f"Could not find Organization for entry_uid={entry_uid} to clear cache")
+    except Exception:
+        logger.exception(
+            f"Failed to claim entries by redeemEmail for User {user_uid}"
+        )
+
+
+async def _find_suspension(sub: str, entry_uid: str) -> dict | None:
+    """The suspension on this user's active access, if there is one.
+
+    Asked separately from the role because the role lookup deliberately
+    withholds a suspended user's role — so by the time the caller has "no
+    role", the reason is exactly what has been thrown away. Without this a
+    suspended user and a user who was never granted anything are the same
+    response, and the dashboard can only stay silent.
+    """
+    query = """
+    MATCH (a:Account {sub: $sub})<-[:HAS_ACCOUNT]-(u:User)
+          -[:HAS_ACCESS]->(ac:Access {active: true})
+          -[:ACCESS_TO]->(e:Entry {uid: $entry_uid})
+    WHERE ac.suspendedAt IS NOT NULL
+    RETURN ac.suspendedAt AS suspendedAt, ac.suspensionReason AS reason
+    """
+    results, _ = await adb.cypher_query(
+        query, {"sub": sub, "entry_uid": entry_uid}
+    )
+    if not results:
+        return None
+    return {"suspendedAt": results[0][0], "reason": results[0][1]}
+
+
+def _build_response(
+    user_props: dict, role: str | None, jwt: dict, suspension: dict | None = None
+) -> dict:
+    return {
+        "uid": user_props.get("uid"),
+        "name": user_props.get("name"),
+        "email": user_props.get("email"),
+        "picture": jwt.get("picture"),
+        "role": role,
+        "gender": None,
+        "effector": None,
+        "full_name": user_props.get("name"),
+        # Stated rather than inferred from a missing role: "no role" is also
+        # what a brand-new account with no access looks like, and telling
+        # somebody they are suspended when they simply have not been granted
+        # anything is its own kind of wrong.
+        "suspended": suspension is not None,
+        "suspensionReason": suspension.get("reason") if suspension else None,
+    }

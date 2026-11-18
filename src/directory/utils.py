@@ -1,0 +1,1110 @@
+import logging
+import re
+import time
+from typing import TypedDict
+from asgiref.sync import sync_to_async
+from django.contrib.sites.shortcuts import get_current_site
+from directory.models import (
+    Directory,
+    Effector,
+    CareHome,
+    EffectorType,
+    Facility,
+    EffectorFacility,
+    Commune,
+    Country,
+    ThirdPartyPayer,
+    PaymentMethod,
+    HealthWorker,
+    Entry,
+    Timestamp,
+    Endpoint,
+    Label,
+)
+from django.contrib.sites.models import Site
+from directory.models.graph import Appointment, Office, HouseCall, Convention, Tag, Directory as GraphDirectory
+from directory.models.agraph import HealthWorker as AsyncHealthWorker
+from addressbook.models import Contact
+from neomodel import db, adb
+from addressbook.api.serializers import (
+    PhoneNumberSerializer,
+    AsyncPhoneNumberModelSerializer,
+    AsyncEmailSerializer,
+    EmailSerializer,
+    WebsiteSerializer,
+    AsyncWebsiteSerializer,
+    SocialNetworkSerializer,
+)
+from api.serializers.appointment import AppointmentSerializer
+from rest_framework.serializers import ModelSerializer
+from django.conf import settings
+from django.core.cache import cache
+from facility.models import Organization
+
+logger = logging.getLogger(__name__)
+
+class EntryDict(TypedDict):
+    entry: Entry
+    effector: Effector
+    location: EffectorFacility | None
+    address: str
+    effector_type: EffectorType
+    flex_effector_type_label: str
+    effector_type_labels: list
+    facility: Facility
+    phones: list
+    emails: list
+    websites: list
+    socialnetworks: list
+    appointments: list | None
+    third_party_payers: list[ThirdPartyPayer] | None
+    payment_methods: list[PaymentMethod] | None
+    health_worker: HealthWorker
+    avatar: str | None
+    convention: Convention | None
+    memberships: list[Entry] | None
+    tags: list[Tag] | None
+    directories: list[GraphDirectory] | None
+
+def flex_effector_type_label(
+        effector,
+        effector_type,
+    ):
+    try:
+        effector_type_label=Label.get_label(
+            effector_type.uid,
+            effector.gender,
+            "S",
+            settings.LANGUAGE_CODE
+        )
+    except Label.DoesNotExist as e:
+        logger.error(e)
+        effector_type_label=None
+    return effector_type_label
+
+async def async_flex_effector_type_label(
+        effector,
+        effector_type,
+    ):
+    try:
+        effector_type_label= await Label.async_get_label(
+            effector_type.uid,
+            effector.gender,
+            "S",
+            settings.LANGUAGE_CODE
+        )
+    except Label.DoesNotExist as e:
+        logger.error(e)
+        effector_type_label=None
+    return effector_type_label
+
+def generate_cache_key(api_name, resource_name, request):
+        site=get_current_site(request)
+        domain=site.domain
+        cache_key = "%s:%s:%s" % (api_name, resource_name, domain)
+        return cache_key
+
+def get_directory_for_site(site):
+    """Core logic: resolve a single Directory for a given Site.
+    Checks Organization.directory first, then falls back to single directory."""
+    from facility.models import Organization
+    try:
+        org = Organization.objects.select_related('directory', 'directory__site').get(site=site)
+        if org.directory:
+            return org.directory
+    except Organization.DoesNotExist:
+        pass
+    directories = list(Directory.objects.select_related("site").filter(site=site))
+    if len(directories) == 1:
+        return directories[0]
+    if len(directories) == 0:
+        raise Directory.DoesNotExist
+    raise Directory.MultipleObjectsReturned(
+        f"Multiple directories for site {site.domain} and no default set on Organization"
+    )
+
+def get_directory(request):
+    site = get_current_site(request)
+    return get_directory_for_site(site)
+
+async def async_get_directory_for_site(site):
+    """Async core logic: resolve a single Directory for a given Site.
+    Checks Organization.directory first, then falls back to single directory."""
+    from facility.models import Organization
+    try:
+        org = await Organization.objects.select_related('directory', 'directory__site').aget(site=site)
+        if org.directory:
+            return org.directory
+    except Organization.DoesNotExist:
+        pass
+    directories = [d async for d in Directory.objects.select_related("site").filter(site=site)]
+    if len(directories) == 1:
+        return directories[0]
+    if len(directories) == 0:
+        raise Directory.DoesNotExist
+    raise Directory.MultipleObjectsReturned(
+        f"Multiple directories for site {site.domain} and no default set on Organization"
+    )
+
+def get_contact_related_elements(
+        neo_entity,
+        attribute,
+        many: bool
+    ):
+    try:
+        contact = Contact.objects.get(neomodel_uid=neo_entity.uid)
+    except (Contact.DoesNotExist, AttributeError):
+        return None
+    try:
+        related = getattr(contact, attribute)
+        if many:
+            return list(related.all()) or None
+        else:
+            return related
+    except AttributeError:
+        return None
+
+async def async_get_contact_related_elements(
+        neo_entity,
+        attribute,
+        many: bool
+    ):
+    try:
+        contact = await Contact.objects.prefetch_related('phonenumbers', 'phonenumbers__roles', 'emails', 'emails__roles', 'websites', 'websites__roles', 'socialnetworks', 'socialnetworks__roles').aget(neomodel_uid=neo_entity.uid)
+    except (Contact.DoesNotExist, AttributeError):
+        return None
+    try:
+        related = getattr(contact, attribute)
+        if many:
+            elements=[]
+            async for element in related.all():
+                elements.append(element)
+            return elements or None
+        else:
+            return related
+    except AttributeError:
+        return None
+
+def get_contact_related_neomodel(
+        entry: Entry|None = None,
+        e: Effector|None = None,
+        ef: EffectorFacility|None = None,
+        f: Facility|None = None,
+        attribute: str = "",
+        Serializer:  ModelSerializer|None = None,
+        many: bool = True,
+        first_hit = False,
+    ):
+    if not many:
+        # See async_get_contact_related_neomodel.
+        for neo_entity in [entry, e, ef, f]:
+            element = get_contact_related_elements(
+                neo_entity=neo_entity, attribute=attribute, many=False
+            )
+            if element is not None:
+                return Serializer(element).data
+        return None
+    elements = set()
+    for neo_entity in [entry, e, ef, f]:
+        new_elements = get_contact_related_elements(
+            neo_entity=neo_entity,
+            attribute=attribute,
+            many=many
+        )
+        if new_elements:
+            try:
+                elements.add(new_elements)
+            except TypeError:
+                elements.update(new_elements)
+        if len(elements) and first_hit:
+            break
+    try:
+        elements.remove(None)
+    except KeyError:
+        pass
+    if elements:
+        try:
+            serializer = Serializer(
+                elements,
+                many=many
+            )
+        except AttributeError:
+            return
+        return serializer.data
+
+async def async_get_contact_related_neomodel(
+        entry: Entry|None = None,
+        e: Effector|None = None,
+        ef: EffectorFacility|None = None,
+        f: Facility|None = None,
+        attribute: str = "",
+        Serializer:  ModelSerializer|None = None,
+        many: bool = True,
+        first_hit = False,
+    ):
+    if not many:
+        # A single object (a profile): the first contact that has one, in the
+        # order entry, effector, location, facility.
+        for neo_entity in [entry, e, ef, f]:
+            element = await async_get_contact_related_elements(
+                neo_entity=neo_entity, attribute=attribute, many=False
+            )
+            if element is not None:
+                return Serializer(element).data
+        return None
+    elements = set()
+    for neo_entity in [entry, e, ef, f]:
+        new_elements = await async_get_contact_related_elements(
+            neo_entity=neo_entity,
+            attribute=attribute,
+            many=many
+        )
+        if new_elements:
+            try:
+                elements.add(new_elements)
+            except TypeError:
+                elements.update(new_elements)
+        if len(elements) and first_hit:
+            break
+    try:
+        elements.remove(None)
+    except KeyError:
+        pass
+    if elements:
+        try:
+            serializer = Serializer(
+                elements,
+                many=many
+            )
+        except AttributeError:
+            return
+        return serializer.data
+
+def appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment):
+    def get_location(node: Appointment):
+        labels = node.labels()
+        if 'HouseCall' in labels:
+            return 'house_call'
+        elif 'Office' in labels:
+            return 'office'
+        else:
+            return None
+    if not nodes or nodes==[[]]:
+        return None
+    if type(nodes) in [Appointment, Office, HouseCall]:
+        nodes = [nodes]
+    data = [
+        {
+            'uid': node.uid,
+            'entry': entry,
+            'phone': node.phone,
+            'url': node.url,
+            'location': get_location(node)
+        } for node in nodes
+    ]
+    serializer = AppointmentSerializer(data=data, many=True)
+    if serializer.is_valid():
+        return serializer.validated_data
+    else:
+        logger.error(serializer.errors)
+
+async def async_appointments_from_neomodel(entry: str, nodes: list[Appointment]|Appointment):
+    async def get_location(node: Appointment):
+        labels = await node.labels()
+        if 'HouseCall' in labels:
+            return 'house_call'
+        elif 'Office' in labels:
+            return 'office'
+        else:
+            return None
+    if not nodes or nodes==[[]]:
+        return None
+    if type(nodes) in [Appointment, Office, HouseCall]:
+        nodes = [nodes]
+    data = [
+        {
+            'uid': node.uid,
+            'entry': entry,
+            'phone': node.phone,
+            'url': node.url,
+            'location': await get_location(node)
+        } for node in nodes
+    ]
+    serializer = AppointmentSerializer(data=data, many=True)
+    if serializer.is_valid():
+        return serializer.validated_data
+    else:
+        logger.error(serializer.errors)
+
+def get_websites_neomodel(
+        entry: Entry|None=None,
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None
+    ):
+    return get_contact_related_neomodel(
+        entry=entry,
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="websites",
+        Serializer=WebsiteSerializer
+    )
+
+async def async_get_websites_neomodel(
+    entry: Entry|None=None,
+    e: Effector | None = None,
+    ef: EffectorFacility | None = None,
+    f: Facility | None = None
+    ):
+    return await async_get_contact_related_neomodel(
+        entry=entry,
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="websites",
+        Serializer=AsyncWebsiteSerializer,
+        first_hit=False,
+        many=True,
+    )
+
+def get_socialnetworks_neomodel(
+        entry: Entry|None=None,
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None,
+    ):
+    return get_contact_related_neomodel(
+        entry=entry,
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="socialnetworks",
+        Serializer=SocialNetworkSerializer
+    )
+
+async def async_get_socialnetworks_neomodel(
+        entry: Entry|None=None,
+        facility: Facility | None = None,
+    ):
+    return await async_get_contact_related_neomodel(
+        entry=entry,
+        f=facility,
+        attribute="socialnetworks",
+        Serializer=SocialNetworkSerializer
+    )
+
+def get_phones_neomodel(
+        entry: Entry|None = None,
+        facility: Facility|None = None,
+    ):
+    return get_contact_related_neomodel(
+        entry=entry,
+        f=facility,
+        attribute="phonenumbers",
+        Serializer=PhoneNumberSerializer,
+        first_hit=True,
+        many=True,
+    )
+
+async def async_get_phones_neomodel(
+        entry: Entry|None=None,
+        facility: Facility|None=None,
+    ):
+    return await async_get_contact_related_neomodel(
+        entry=entry,
+        f=facility,
+        attribute="phonenumbers",
+        Serializer=AsyncPhoneNumberModelSerializer,
+        first_hit=False,
+        many=True,
+    )
+
+def get_emails_neomodel(
+        entry: Entry|None=None,
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None
+    ):
+    return get_contact_related_neomodel(
+        entry=entry,
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="emails",
+        Serializer=EmailSerializer,
+        first_hit=False,
+        many=True,
+    )
+
+async def async_get_emails_neomodel(
+        entry: Entry|None=None,
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None
+    ):
+    return await async_get_contact_related_neomodel(
+        entry=entry,
+        e=e,
+        ef=ef,
+        f=f,
+        attribute="emails",
+        Serializer=AsyncEmailSerializer,
+        first_hit=False,
+        many=True,
+    )
+
+def get_avatar_url(
+        entry: Entry|None=None,
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None
+    ):
+    def get_avatar_dict(profile_image):
+        if not profile_image:
+            return
+        try:
+            sm = profile_image["avatar_sm"].url
+        except:
+            sm = None
+        try:
+            lg = profile_image["avatar_lg"].url
+        except:
+            lg = None
+        try:
+            raw = profile_image.url
+        except:
+            raw = None
+        return {
+            "sm": sm,
+            "lg": lg,
+            "raw": raw
+        }
+    try:
+        entry_avatar = Contact.objects.get(neomodel_uid=entry.uid).profile_image
+    except (Contact.DoesNotExist, AttributeError):
+        entry_avatar = None
+    try:
+        effector_avatar = Contact.objects.get(neomodel_uid=e.uid).profile_image
+    except (Contact.DoesNotExist, AttributeError):
+        effector_avatar = None
+    try:
+        ef_avatar = Contact.objects.get(neomodel_uid=ef.uid).profile_image
+    except (Contact.DoesNotExist, AttributeError):
+        ef_avatar = None
+    try:
+        f_avatar = Contact.objects.get(neomodel_uid=f.uid).profile_image
+    except (Contact.DoesNotExist, AttributeError):
+        f_avatar = None
+    if (entry_avatar):
+        return get_avatar_dict(entry_avatar)
+    if (ef_avatar):
+        return get_avatar_dict(ef_avatar)
+    if (effector_avatar):
+        return get_avatar_dict(effector_avatar)
+    if (f_avatar):
+        return get_avatar_dict(f_avatar)
+
+async def async_get_avatar_url(
+        entry: Entry|None=None,
+        e: Effector | None = None,
+        ef: EffectorFacility | None = None,
+        f: Facility | None = None
+    ):
+    def get_avatar_dict(profile_image):
+        if not profile_image:
+            return
+        try:
+            sm = profile_image["avatar_sm"].url
+        except Exception as e:
+            logger.error(f"avatar_sm error: {e}")
+            sm = None
+        try:
+            lg = profile_image["avatar_lg"].url
+        except Exception as e:
+            logger.error(f"avatar_lg error: {e}")
+            lg = None
+        try:
+            raw = profile_image.url
+        except Exception as e:
+            logger.error(f"avatar raw error: {e}")
+            raw = None
+        return {
+            "sm": sm,
+            "lg": lg,
+            "raw": raw
+        }
+    entry_avatar = entry_access = None
+    try:
+        contact = await Contact.objects.aget(neomodel_uid=entry.uid)
+        entry_avatar = contact.profile_image
+        entry_access = contact.avatar_access
+    except (Contact.DoesNotExist, AttributeError):
+        pass
+    effector_avatar = effector_access = None
+    try:
+        contact = await Contact.objects.aget(neomodel_uid=e.uid)
+        effector_avatar = contact.profile_image
+        effector_access = contact.avatar_access
+    except (Contact.DoesNotExist, AttributeError):
+        pass
+    ef_avatar = ef_access = None
+    try:
+        contact = await Contact.objects.aget(neomodel_uid=ef.uid)
+        ef_avatar = contact.profile_image
+        ef_access = contact.avatar_access
+    except (Contact.DoesNotExist, AttributeError):
+        pass
+    f_avatar = f_access = None
+    try:
+        contact = await Contact.objects.aget(neomodel_uid=f.uid)
+        f_avatar = contact.profile_image
+        f_access = contact.avatar_access
+    except (Contact.DoesNotExist, AttributeError):
+        pass
+    async_get_avatar_dict = sync_to_async(get_avatar_dict)
+
+    async def build(profile_image, access):
+        avatar = await async_get_avatar_dict(profile_image)
+        if avatar is not None:
+            # Minimum role required to see this picture. Enforced in api.utils.process()
+            avatar["access"] = access or "anonymous"
+        return avatar
+
+    if (entry_avatar):
+        return await build(entry_avatar, entry_access)
+    if (ef_avatar):
+        return await build(ef_avatar, ef_access)
+    if (effector_avatar):
+        return await build(effector_avatar, effector_access)
+    if (f_avatar):
+        return await build(f_avatar, f_access)
+
+def get_address(facility: Facility, commune: Commune, country: Country):
+    if facility.location:
+        longitude=facility.location.longitude
+        latitude=facility.location.latitude
+    else:
+        longitude=None
+        latitude=None
+    _dct = {
+       "facility_uid": facility.uid,
+       "country": country.name,
+       "city": commune.name_fr,
+       "zip": facility.zip,
+       "geographical_complement": facility.geographical_complement,
+       "street": facility.street,
+       "building": facility.building,
+       "longitude": longitude,
+       "latitude": latitude,
+       "zoom": facility.zoom,
+       "tooltip_direction": facility.tooltip_direction,
+       "tooltip_permanent": facility.tooltip_permanent,
+       # tooltip_text completes the trio the map reads. It was missing while
+       # tooltip_direction was listed twice — a copy/paste that silently
+       # dropped the tooltip's actual content from every address.
+       "tooltip_text": facility.tooltip_text,
+    }
+    return _dct
+
+def node_uids(entries):
+    if entries and not isinstance(entries, list):
+        entries=[entries]
+    try:
+        return [entry.uid for entry in entries]
+    except Exception as e:
+        return []
+
+def contact_uids(directory: Directory=None, active=True, search=""):
+    params = {
+        "directory": directory.name if directory else None,
+        "pattern": f"(?i).*{re.escape(search)}.*" if search else None,
+    }
+    if directory:
+        directory_query = 'WHERE d.name=$directory'
+    else:
+        directory_query = ""
+    if search:
+        search_query = 'WHERE e.name_fr =~ $pattern'
+    else:
+        search_query = ""
+    query=(
+        f"""
+        MATCH (d:Directory)
+        {directory_query}
+        WITH d
+        MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
+        WITH entry
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune),
+        (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
+        (entry)-[:HAS_EFFECTOR]->(e:Effector)
+        {search_query}
+        WITH *
+        MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
+        RETURN et,e,rel,f,c;
+        """
+    )
+    results, cols = db.cypher_query(query, params)
+    if results:
+        contacts=[]
+        for row in results:
+            effector=Effector.inflate(row[cols.index('e')])
+            location=EffectorFacility.inflate(row[cols.index('rel')])
+            facility=Facility.inflate(row[cols.index('f')])
+            contacts.append(effector.uid)
+            contacts.append(location.uid)
+            contacts.append(facility.uid)
+        return contacts
+
+def display(_list):
+    for idx,e in enumerate(_list):
+        logger.debug(f'{idx}: {e}\n')
+
+def owner_listed(directory: str, entry: str) -> str:
+    """Cypher condition: `entry` may be listed in `directory`.
+
+    False only for the directory's owner (the organization's entry) when the
+    directory says not to list it. Absent property means listed. A filter, not
+    an unlink: the HAS_ENTRY edge stays (redeem-email claiming walks it).
+    """
+    return (
+        f"(coalesce({directory}.list_owner_entry, true)"
+        f" OR NOT ({directory})-[:OWNED_BY]->({entry}))"
+    )
+
+
+def lists_need(directory: str, entry: str) -> str:
+    """Cypher condition: `entry` is one `directory` lists.
+
+    A directory with no LISTS_NEED edge lists all its entries. One with the edge lists
+    only the entries that manage the Need or a descendant Need, or a Condition or
+    Situation that IMPACTS it, directly or through its PART_OF parents; on the entry
+    itself or on its type, subtypes included. A filter, not an unlink: the entry stays
+    in the directory, so a service can still name its porteur and its page answers.
+    """
+    reached = (
+        "(x:Need AND (x)-[:PART_OF*0..]->(n))"
+        " OR ((x:Condition OR x:Situation)"
+        " AND (x)-[:PART_OF*0..]->()-[:IMPACTS]->(:Need)-[:PART_OF*0..]->(n))"
+    )
+    return (
+        f"(NOT ({directory})-[:LISTS_NEED]->(:Need)"
+        f" OR EXISTS {{ MATCH ({directory})-[:LISTS_NEED]->(n:Need), ({entry})-[:MANAGES]->(x) WHERE {reached} }}"
+        f" OR EXISTS {{ MATCH ({directory})-[:LISTS_NEED]->(n:Need),"
+        f" ({entry})-[:HAS_EFFECTOR_TYPE]->(:EffectorType)-[:IS_A*0..]->(:EffectorType)-[:MANAGES]->(x)"
+        f" WHERE {reached} }})"
+    )
+
+
+def get_entries_query(
+    directory: Directory,
+    uid = None,
+    active: bool|None = True,
+    listed_only: bool = True,
+)->tuple[str, dict]:
+    """`listed_only=False`: every entry the directory node holds, as a clone takes them,
+    not only those its public list shows."""
+    params = {"uid": uid, "directory": directory.name if directory else None, "active": active}
+    if uid:
+        query=f"""MATCH (entry:Entry) WHERE entry.uid=$uid WITH entry MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country) MATCH (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) MATCH (entry)-[:HAS_EFFECTOR]->(e:Effector) WITH * OPTIONAL MATCH (e:Effector)-[rel:LOCATION]-(f:Facility)
+        OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(o:Organization)
+        OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(memberships:Entry)
+        OPTIONAL MATCH (entry)-[:CREATED_BY]->(creator:User)
+        WITH entry,e,et,f,rel,o,COLLECT(DISTINCT memberships) as memberships,commune,dpt,country,COLLECT(DISTINCT creator.uid) as creator_uids
+        OPTIONAL MATCH (entry)-[:OWNED_BY]->(owner:User)
+        WITH entry,e,et,f,rel,o,memberships,commune,dpt,country,creator_uids,COLLECT(DISTINCT owner.uid) as owner_uids
+        RETURN entry,e,et,f,rel,o,memberships,commune,dpt,country,creator_uids,owner_uids;"""
+    else:
+        listed = f"{owner_listed('d', 'entry')} AND {lists_need('d', 'entry')}"
+        query=f"""MATCH (d:Directory) WHERE d.name=$directory
+        WITH d
+        MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
+        WHERE {listed + ' AND ' if listed_only else ''}($active IS NULL OR entry.active = $active)
+        WITH entry
+        MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
+        WITH entry, COLLECT(DISTINCT directory) as directories
+        MATCH (e:Effector)<-[:HAS_EFFECTOR]-(entry)-[:HAS_FACILITY]->(f:Facility)-[]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(dpt:DepartmentOfFrance)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country), (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType)
+        WITH DISTINCT entry, directories, e, et, f, commune, dpt, country
+        OPTIONAL MATCH (entry:Entry)-[:MEMBER_OF]->(membership:Entry)
+        WITH entry, directories, e, et, f, commune, dpt, country, COLLECT(DISTINCT membership) as memberships
+        OPTIONAL MATCH (entry:Entry)<-[:TAGS]-(tag:Tag)-[IS_A]->(tagcat:TagCategory)<-[:HAS_TAG_CATEGORY]-(et)
+        With entry, directories, e, et, f, commune, dpt, country, memberships, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
+        OPTIONAL MATCH (entry)-[:CREATED_BY]->(creator:User)
+        WITH entry, directories, e, et, f, commune, dpt, country, memberships, tags, tagcats, COLLECT(DISTINCT creator.uid) as creator_uids
+        OPTIONAL MATCH (entry)-[:OWNED_BY]->(owner:User)
+        WITH entry, directories, e, et, f, commune, dpt, country, memberships, tags, tagcats, creator_uids, COLLECT(DISTINCT owner.uid) as owner_uids
+        RETURN DISTINCT entry.uid as uid, entry, directories, e, et, f, memberships, commune, dpt, country, tags, tagcats, creator_uids, owner_uids;"""
+    return query, params
+
+async def get_entries(
+        directory: Directory,
+        uid = None,
+        active: bool|None=True,
+        listed_only: bool = True,
+    ):
+    query, params = get_entries_query(directory, uid=uid, active=active, listed_only=listed_only)
+    results, _meta = await adb.cypher_query(query, params, resolve_objects = True)
+    #logger.debug(f"{results[:1]=} {len(results)=}")
+    entries=[]
+    for row in results:
+        (
+            _,
+            entry,
+            directories,
+            effector,
+            effector_type,
+            facility,
+            memberships,
+            commune,
+            department,
+            country,
+            tags,
+            tagcats,
+            creator_uids,
+            owner_uids,
+        ) = row
+        #logger.debug(f"> {memberships=}")
+        #logger.debug(f">> {tags=}")
+        #logger.debug(f">>> {tagcats=}")
+        address = get_address(facility,commune,country)
+        avatar = await async_get_avatar_url(entry=entry)
+        memberships_uids = node_uids(memberships) if memberships else []
+        #if memberships:
+        #    logger.debug(f"********\n-------> {effector.name_fr=} {memberships=}\n********")
+        entries.append(
+            {
+                "effector": effector,
+                "entry": entry,
+                "address": address,
+                "commune": commune,
+                "department": department,
+                "effector_type": effector_type,
+                "facility": facility,
+                "avatar": avatar,
+                "memberships": memberships_uids,
+                "tags": tags,
+                "tagcats": tagcats,
+                "directories": directories,
+                "creator_uids": creator_uids,
+                "owner_uids": owner_uids,
+            }
+        )
+    #logger.debug(f"{len(entries)=}\n{entries[0]=}")
+    return entries
+
+async def async_entries_of_situation(directory, situation):
+    entries=[]
+    params = {"situation": situation.uid, "directory": directory.name}
+    q1="""
+        MATCH (s:Situation)
+        WHERE s.uid = $situation
+        MATCH (et:EffectorType)-[:MANAGES]->(s)
+        MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
+        WHERE d.name = $directory
+        RETURN e
+        """
+    q2="""
+        MATCH (s:Situation)
+        WHERE s.uid = $situation
+        MATCH (s)-[:IMPACTS]->(n:Need)<-[:MANAGES]-(et:EffectorType)
+        MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
+        WHERE d.name = $directory
+        RETURN e
+        """
+    q3="""
+        MATCH (s:Situation)
+        WHERE s.uid = $situation
+        MATCH (s)-[:IMPACTS]->(n:Need)<-[:PART_OF]-(n2:Need)<-[:MANAGES]-(et:EffectorType)
+        MATCH (et)<-[:IS_A*]-(:Effector)<-[:HAS_EFFECTOR]-(e:Entry)<-[:HAS_ENTRY]-(d:Directory)
+        WHERE d.name = $directory
+        RETURN e
+        """
+    for q in [q1,q2,q3]:
+        results, _meta = await adb.cypher_query(q, params, resolve_objects = True)
+        if results:
+            for row in results:
+                (entry,)=row
+                entries.append(entry)
+    entries_uids = [e.uid for e in entries]
+    return entries_uids
+
+def get_uid_query(uid: str):
+    return f"""
+        MATCH (entry:Entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country),
+        (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
+        (entry)-[:HAS_EFFECTOR]->(e:Effector)
+        WHERE entry.uid=$uid
+        OPTIONAL MATCH (entry)-[:MEMBER_OF]->(memberships:Entry)
+        WITH *, COLLECT(memberships) AS memberships
+        OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
+        WITH *
+        OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN entry.third_party_payer
+        WITH *, COLLECT(tpp) AS tpp
+        OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN entry.payment
+        WITH *, COLLECT(pm) AS pm
+        OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
+        OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
+        WITH *, COLLECT(DISTINCT a) AS a
+        MATCH (et)-[:IS_A*0..]->(b:EffectorType)
+        WITH *, et, collect(DISTINCT labels(b)) AS bLabels
+        WITH *, bLabels + labels(et) AS allLabels
+        UNWIND allLabels AS labelList
+        UNWIND labelList AS label
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a,COLLECT(DISTINCT label) AS effector_type_labels,memberships
+        OPTIONAL MATCH (entry:Entry)<-[:TAGS]-(tag:Tag)-[IS_A]->(tagcat:TagCategory)<-[:HAS_TAG_CATEGORY]-(et)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
+        MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, COLLECT(DISTINCT directory) as directories
+        OPTIONAL MATCH (entry)-[:CREATED_BY]->(creator:User)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, directories, COLLECT(DISTINCT creator.uid) as creator_uids
+        OPTIONAL MATCH (entry)-[:OWNED_BY]->(owner:User)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, directories, creator_uids, COLLECT(DISTINCT owner.uid) as owner_uids
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats,directories,creator_uids,owner_uids;"""
+
+def get_slug_query(directory, effector_slug, effector_type_slug, facility_slug):
+    return f"""MATCH (d:Directory) WHERE d.name=$directory
+        WITH d
+        MATCH (d)-[:HAS_ENTRY]->(entry:Entry)
+        WITH entry
+        MATCH (entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY*]->(country:Country),
+        (entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType),
+        (entry)-[:HAS_EFFECTOR]->(e:Effector)
+        WHERE e.slug_fr=$effector_slug
+        AND f.slug=$facility_slug
+        AND et.slug_fr=$effector_type_slug
+        OPTIONAL MATCH (entry)-[:MEMBER_OF]->(memberships:Entry)
+        WITH *, COLLECT(memberships) AS memberships
+        OPTIONAL MATCH (e:Effector)-[rel:LOCATION]->(f:Facility)
+        WITH *
+        OPTIONAL MATCH (tpp:ThirdPartyPayer) WHERE tpp.name IN entry.third_party_payer
+        WITH *, COLLECT(tpp) AS tpp
+        OPTIONAL MATCH (pm:PaymentMethod) WHERE pm.name IN entry.payment
+        OPTIONAL MATCH (convention:Convention) WHERE convention.name=entry.convention
+        OPTIONAL MATCH (entry)-[:HAS_APPOINTMENT]->(a:Appointment)
+        WITH *, COLLECT(DISTINCT a) AS a
+        MATCH (et)-[:IS_A*0..]->(b:EffectorType)
+        WITH *, et, collect(DISTINCT labels(b)) AS bLabels
+        WITH *, bLabels + labels(et) AS allLabels
+        UNWIND allLabels AS labelList
+        UNWIND labelList AS label
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a,COLLECT(DISTINCT label) AS effector_type_labels,memberships
+        OPTIONAL MATCH (entry:Entry)<-[:TAGS]-(tag:Tag)-[IS_A]->(tagcat:TagCategory)<-[:HAS_TAG_CATEGORY]-(et)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, COLLECT(DISTINCT tag) as tags, COLLECT(DISTINCT tagcat) as tagcats
+        MATCH (entry)<-[:HAS_ENTRY]-(directory:Directory)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, COLLECT(DISTINCT directory) as directories
+        OPTIONAL MATCH (entry)-[:CREATED_BY]->(creator:User)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, directories, COLLECT(DISTINCT creator.uid) as creator_uids
+        OPTIONAL MATCH (entry)-[:OWNED_BY]->(owner:User)
+        WITH entry,et,e,rel,f,c,country,tpp,pm,convention,a, effector_type_labels,memberships, tags, tagcats, directories, creator_uids, COLLECT(DISTINCT owner.uid) as owner_uids
+        RETURN entry,et,e,rel,f,c,country,tpp,pm,convention,a,effector_type_labels,memberships,tags,tagcats,directories,creator_uids,owner_uids;"""
+
+def entry_dict(results, cols):
+    #logger.debug(f"{results[:1]=} {len(results)=}")
+    try:
+        row=results[0]
+    except Exception as e:
+        logger.error(e)
+        return
+    #logger.debug(f"{row=} {len(row)=}")
+    [
+        entry,
+        effector_type,
+        effector,
+        effector_facility,
+        facility,
+        commune,
+        country,
+        third_party_payers,
+        payment_methods,
+        convention,
+        appointment_nodes,
+        effector_type_labels,
+        memberships,
+        tags,
+        tagcats,
+        directories,
+        creator_uids,
+        owner_uids,
+    ] = row
+    #logger.debug(f"{entry=}")
+    #logger.debug(f"{appointment_nodes=}")
+    #logger.debug(f"{third_party_payers=}")
+    #logger.debug(f"{effector_type_labels=}")
+    address = get_address(facility,commune,country)
+    phones = get_phones_neomodel(entry=entry)
+    emails = get_emails_neomodel(
+        entry=entry,
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
+    websites = get_websites_neomodel(
+        entry=entry,
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
+    socialnetworks = get_socialnetworks_neomodel(
+        entry=entry,
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
+    appointments = appointments_from_neomodel(
+        entry=entry.uid,
+        nodes=appointment_nodes
+    )
+    try:
+        health_worker = HealthWorker.nodes.get(uid=effector.uid)
+    except Exception as e:
+        logger.warning(e)
+        health_worker = None
+    avatar=get_avatar_url(entry, effector, effector_facility, facility)
+    fetl=flex_effector_type_label(effector, effector_type)
+    directories=[d.name for d in directories]
+    return {
+        "entry": entry,
+        "effector": effector,
+        "location": effector_facility,
+        "address": address,
+        #"commune": commune,
+        "effector_type": effector_type,
+        "flex_effector_type_label": fetl,
+        "effector_type_labels": effector_type_labels,
+        "facility": facility,
+        "phones": phones,
+        "emails": emails,
+        "websites": websites,
+        "socialnetworks": socialnetworks,
+        "appointments": appointments,
+        "third_party_payers": third_party_payers,
+        "payment_methods": payment_methods,
+        "health_worker": health_worker,
+        "avatar": avatar,
+        "convention": convention,
+        "memberships": memberships,
+        "tags": tags,
+        "tagcats": tagcats,
+        "directories": directories,
+        "creator_uids": creator_uids,
+        "owner_uids": owner_uids,
+    }
+
+async def async_entry_dict(results, cols) -> EntryDict:
+    try:
+        row=results[0]
+    except Exception as e:
+        logger.error(f"Entry not found: {e}")
+        return {}
+    [
+        entry,
+        effector_type,
+        effector,
+        effector_facility,
+        facility,
+        commune,
+        country,
+        third_party_payers,
+        payment_methods,
+        convention,
+        appointment_nodes,
+        effector_type_labels,
+        memberships,
+        tags,
+        tagcats,
+        directories,
+        creator_uids,
+        owner_uids,
+    ] = row
+    address = get_address(facility,commune,country)
+    phones = await async_get_phones_neomodel(entry=entry)
+    emails = await async_get_emails_neomodel(
+        entry=entry,
+        e=effector,
+        ef=effector_facility,
+        f=facility
+    )
+    websites = await async_get_websites_neomodel(entry)
+    socialnetworks = await async_get_socialnetworks_neomodel(
+        entry=entry,
+        facility=facility
+    )
+    appointments = await async_appointments_from_neomodel(
+        entry=entry.uid,
+        nodes=appointment_nodes
+    )
+    try:
+        health_worker = await AsyncHealthWorker.nodes.get(uid=effector.uid)
+    except Exception as e:
+        logger.warning(e)
+        health_worker = None
+    avatar= await async_get_avatar_url(entry, effector, effector_facility, facility)
+    fetl= await async_flex_effector_type_label(effector, effector_type)
+    return {
+        "entry": entry,
+        "effector": effector,
+        "location": effector_facility,
+        "address": address,
+        #"commune": commune,
+        "effector_type": effector_type,
+        "flex_effector_type_label": fetl,
+        "effector_type_labels": effector_type_labels,
+        "facility": facility,
+        "phones": phones,
+        "emails": emails,
+        "websites": websites,
+        "socialnetworks": socialnetworks,
+        "appointments": appointments,
+        "third_party_payers": third_party_payers,
+        "payment_methods": payment_methods,
+        "health_worker": health_worker,
+        "avatar": avatar,
+        "convention": convention,
+        "memberships": memberships,
+        "tags": tags,
+        "tagcats": tagcats,
+        "directories": directories,
+        "creator_uids": creator_uids,
+        "owner_uids": owner_uids,
+    }
+
+def entry_query_params(directory, facility_slug, effector_type_slug, effector_slug, uid) -> dict:
+    """The parameters get_uid_query and get_slug_query refer to."""
+    return {
+        "uid": uid,
+        "directory": directory.name if directory else None,
+        "facility_slug": facility_slug,
+        "effector_type_slug": effector_type_slug,
+        "effector_slug": effector_slug,
+    }
+
+def find_entry(
+        directory: Directory|None = None,
+        facility_slug: str|None = None,
+        effector_type_slug: str|None = None,
+        effector_slug: str|None = None,
+        uid: str|None = None,
+    ):
+    if uid:
+        query = get_uid_query(uid)
+    else:
+        query= get_slug_query(directory, effector_slug, effector_type_slug, facility_slug)
+    params = entry_query_params(directory, facility_slug, effector_type_slug, effector_slug, uid)
+    results, cols = db.cypher_query(query, params, resolve_objects=True)
+    return entry_dict(results, cols)
+
+async def async_find_entry(
+        directory: Directory|None = None,
+        facility_slug: str|None = None,
+        effector_type_slug: str|None = None,
+        effector_slug: str|None = None,
+        uid: str|None = None,
+    ):
+    if uid:
+        query = get_uid_query(uid)
+    else:
+        query = get_slug_query(directory, effector_slug, effector_type_slug, facility_slug)
+    params = entry_query_params(directory, facility_slug, effector_type_slug, effector_slug, uid)
+    results, cols = await adb.cypher_query(query, params, resolve_objects=True)
+    return await async_entry_dict(results, cols)
+

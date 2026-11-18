@@ -1,0 +1,22 @@
+{% load i18n %}
+<div class="filter-iat-range">
+  <form method="get">
+    {% for key, val in cl.params.items %}
+      {% if key != 'iat_after' and key != 'iat_before' %}
+        <input type="hidden" name="{{ key }}" value="{{ val }}">
+      {% endif %}
+    {% endfor %}
+    <div style="margin-bottom:6px;">
+      <label style="display:block;font-weight:600;">From</label>
+      <input type="datetime-local" name="iat_after" value="{{ request.GET.iat_after|default:'' }}" />
+    </div>
+    <div style="margin-bottom:6px;">
+      <label style="display:block;font-weight:600;">To</label>
+      <input type="datetime-local" name="iat_before" value="{{ request.GET.iat_before|default:'' }}" />
+    </div>
+    <div>
+      <button type="submit" class="default">Apply</button>
+      <a class="button" href="{{ cl.get_query_string({}, ['iat_after','iat_before']) }}">Reset</a>
+    </div>
+  </form>
+</div>

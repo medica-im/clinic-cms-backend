@@ -8,6 +8,7 @@ services:
       args:
         USER_ID: ${USER_ID:-0}
         GROUP_ID: ${GROUP_ID:-0}
+        BASE_DIGEST: ${POSTGRES_BASE_DIGEST:-}
     shm_size: ${DATABASE_SHM_SIZE}
     command: >
       postgres
@@ -20,36 +21,196 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    volumes:                                                                    
+    volumes:
       - "${DATABASE_DATA_DIR}:/var/lib/postgresql/data:z"
       - "${DATABASE_CONF_FILE}:/etc/postgresql.conf"
       - "${DATABASE_BACKUP_DIR}:/backup"
       - "${DATABASE_LOG_DIR}:/var/log/postgresql:z"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
   redis:
     restart: always
     image: redis:latest
     sysctls:
       net.core.somaxconn: 1024
-  django_development:
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  django:
     restart: always
     env_file:
       - .env
     build:
       context: .
-      dockerfile: docker/django/Dockerfile
+      dockerfile: docker/backend/Dockerfile
       target: dev
-    image: backend_dev
-    command: bash -c "DJANGO_SETTINGS_MODULE=backend.settings python manage.py collectstatic --noinput && gunicorn --reload backend.wsgi:application --workers=${GUNICORN_WORKERS} --log-file=${GUNICORN_LOG}/gunicorn.log --log-level=${GUNICORN_LOG_LEVEL} -b '[::]:80' --worker-tmp-dir /dev/shm --timeout ${GUNICORN_TIMEOUT} "
+    command: bash -c "DJANGO_SETTINGS_MODULE=backend.settings python manage.py collectstatic --noinput && python manage.py migrate --noinput && gunicorn --reload backend.wsgi:application --workers=${GUNICORN_WORKERS} --log-file=${GUNICORN_LOG}/gunicorn.log --log-level=${GUNICORN_LOG_LEVEL} -b '[::]:80' --worker-tmp-dir /dev/shm --timeout ${GUNICORN_TIMEOUT} "
     volumes:
-      - ./src:/backend/src
+      - ./src:/app
       - ${STATIC_ROOT}:${STATIC_ROOT}
       - ${MEDIA_ROOT}:${MEDIA_ROOT}
       - ${GUNICORN_LOG}:${GUNICORN_LOG}
       - ${DJANGO_LOG_DIR}:${DJANGO_LOG_DIR}
     depends_on:
-      - database
-      - redis
-    working_dir: /backend/src
+      database:
+        condition: service_started
+      redis:
+        condition: service_started
+      neo4j:
+        condition: service_healthy
+    working_dir: /app
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import socket; s=socket.create_connection((\"localhost\",80),2); s.close()'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     ports:
-      - "${EXTERNAL_PORT_DEVELOPMENT}:80"
-      - "8888:8888" # ipython notebook
+      - "127.0.0.1:${EXTERNAL_PORT_DEVELOPMENT}:80"
+  fastapi:
+    restart: always
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: dev
+    command: bash -c "fastapi run main.py --root-path /api/v2 --port 80 --reload --proxy-headers --forwarded-allow-ips='*'"
+    volumes:
+      - ./src:/app
+      - ${MEDIA_ROOT}:${MEDIA_ROOT}
+      - ${FASTAPI_LOG_DIR}:${FASTAPI_LOG_DIR}
+      # let testcontainers spawn throwaway containers (e.g. Neo4j) from inside the test run
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      database:
+        condition: service_started
+      redis:
+        condition: service_started
+      neo4j:
+        condition: service_healthy
+      django:
+        condition: service_started
+    working_dir: /app
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import socket; s=socket.create_connection((\"localhost\",80),2); s.close()'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    ports:
+      - "127.0.0.1:${FASTAPI_PORT}:80"
+  neo4j:
+    image: neo4j:4.4-enterprise
+    restart: always
+    ports:
+      - 127.0.0.1:${NEO4J_7474_EXTERNAL_PORT}:7474
+      - 127.0.0.1:${NEO4J_7687_EXTERNAL_PORT}:7687
+      - 127.0.0.1:5001:5000
+      - 127.0.0.1:6001:6000
+      - 127.0.0.1:7001:7000
+    volumes:
+      - ${NEO4J_CONF}:/conf
+      - ${NEO4J_DATA}:/data
+      - ${NEO4J_IMPORT}:/import
+      - ${NEO4J_LOGS}:/logs
+      - ${NEO4J_PLUGINS}:/plugins
+      - ${NEO4J_BACKUP}:/backup
+      - ${NEO4J_CERTIFICATES}:/ssl
+    environment: 
+      # Memory, sized to the store rather than to the host. Left unset, the JVM
+      # sizes the heap ergonomically at 1/4 of RAM — 4GB on a 15GB dev box, two
+      # orders of magnitude beyond a ~40MB store. That reservation is not free:
+      # the frontend's 4-worker Playwright suite runs 4 Chromiums and 4 Vite
+      # servers on the same machine, and renderers starved of memory die
+      # mid-step, reporting "Target crashed" or an assertion whose Received is
+      # `undefined` rather than a count.
+      #
+      # Initial == max on purpose: a heap that grows mid-run spikes latency
+      # exactly when the browsers are competing for what it takes.
+      #
+      # Neo4j 4.4 reads these as dbms.* settings with '.' -> '_' and a literal
+      # '_' -> '__'. The dotted form (NEO4J_dbms.memory.heap.initial_size) that
+      # stood here commented out is not recognised and is silently ignored.
+      - NEO4J_dbms_memory_heap_initial__size=${NEO4J_HEAP_INITIAL:-512m}
+      - NEO4J_dbms_memory_heap_max__size=${NEO4J_HEAP_MAX:-512m}
+      - NEO4J_dbms_memory_pagecache_size=${NEO4J_PAGECACHE:-256m}
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+      - NEO4J_dbms_logs_query_enabled=OFF
+      #- NEO4J_dbms_security_auth__enabled=false
+      #- NEO4J_dbms.security.auth_lock_time=0s
+      - NEO4J_dbms.connector.http.enabled=true
+      - NEO4J_dbms.connector.https.enabled=true
+      - NEO4J_dbms.connector.bolt.enabled=true
+      - NEO4J_dbms.connector.bolt.listen_address=0.0.0.0:7687
+      - NEO4J_dbms.connector.bolt.tls_level=OPTIONAL
+      - NEO4J_dbms.connector.bolt.advertised_address=${NEO4J_BOLT_ADVERTISED_ADDRESS}
+      - NEO4J_dbms.connector.http.advertised_address=${NEO4J_HTTP_ADVERTISED_ADDRESS}
+      - NEO4J_dbms.ssl.policy.bolt.enabled=true
+      - NEO4J_dbms.ssl.policy.bolt.base_directory=certificates/bolt
+      - NEO4J_dbms.ssl.policy.bolt.private_key=privkey.pem
+      - NEO4J_dbms.ssl.policy.bolt.public_certificate=fullchain.pem
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+      - NEO4J_apoc_trigger_enabled=true
+      - NEO4JLABS_PLUGINS=["apoc"]
+      - NEO4J_dbms_logs_debug_level=${NEO4J_dbms_logs_debug_level:-INFO}
+    healthcheck:
+      test: wget -q --spider http://neo4j:7474 || exit 1
+      interval: ${NEO4J_HEALTHCHECK_INTERVAL:-1s}
+      timeout: ${NEO4J_HEALTHCHECK_TIMEOUT:-10s}
+      retries: ${NEO4J_HEALTHCHECK_RETRIES:-30}
+      start_period: ${NEO4J_HEALTHCHECK_START_PERIOD:-10s}
+
+  rabbitmq:
+    # Every other long-running service here restarts; without this one the
+    # broker stays down after a reboot and celery waits on a broker that is
+    # never coming back.
+    restart: always
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    volumes:
+      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    ports:
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  celery:
+    restart: always
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: dev
+    command: celery -A backend worker --loglevel=info
+    working_dir: /app
+    volumes:
+      - ./src:/app
+      - ${CELERY_LOG_DIR}:${CELERY_LOG_DIR}
+    depends_on:
+      django:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A backend inspect ping -d celery@$$HOSTNAME"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s

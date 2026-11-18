@@ -1,0 +1,227 @@
+import logging
+from common.utils import timestamp
+from django.utils.text import slugify
+from neomodel import adb, db
+from pydantic import ValidationError
+from directory.models.agraph import (
+    HealthWorker as AsyncHealthWorker,
+    Effector as AsyncEffector,
+    Directory as AsyncDirectory,
+)
+from api.types.effector import Effector, EffectorPost
+from api.utils import clear_cache
+from api.neo4j_auth import get_neo4j_user
+from rest_framework import serializers
+from adrf.serializers import Serializer
+
+logger = logging.getLogger(__name__)
+
+def get_effector(
+        effector_type: str|None = None,
+        facility: str|None = None,
+        directory: str|None = None,
+        uid: str|None = None,
+        active: bool = True,
+    ) -> Effector:
+    try:
+        return get_effectors(
+            effector_type=effector_type,
+            facility=facility,
+            directory=directory,
+            uid=uid,
+            active=active
+        )[0]
+    except Exception as e:
+        logger.debug(e)
+        raise Exception(e)
+
+def get_effectors(
+        effector_type: str|None = None,
+        department_of_france: str|None = None,
+        commune: str|None = None,
+        facility: str|None = None,
+        directory: str|None = None,
+        uid: str|None = None,
+        active: bool = True,
+        owner: str|None = None,
+    )->list[Effector]:
+    params = {
+        "uid": uid,
+        "owner": owner,
+        "effector_type": effector_type,
+        "facility": facility,
+        "commune": commune,
+        "department_of_france": department_of_france,
+        "directory": directory,
+    }
+    def get_user_snippet(owner):
+        return '(u:User {uid: $owner})<-[:OWNED_BY]-'
+    def get_filter_snippet():
+        filter: list = []
+        if effector_type:
+            filter.append('et.uid=$effector_type')
+        if facility:
+            filter.append('f.uid=$facility')
+        elif commune:
+            filter.append('commune.uid=$commune')
+        elif department_of_france:
+            filter.append('dof.code=$department_of_france')
+        if directory:
+            filter.append('effector.creator_directory=$directory')
+        if filter:
+            return f'WHERE {" AND ".join(filter)}'
+        else:
+            return ''
+    if uid:
+        query = """MATCH (effector:Effector) WHERE effector.uid=$uid RETURN effector;"""
+    elif owner:
+        query = """MATCH (u:User {uid: $owner})<-[:OWNED_BY]-(effector:Effector)
+        RETURN DISTINCT effector"""
+    elif not filter and not owner:
+        query=(f"""MATCH (effector:Effector) RETURN effector;""")
+    else:
+        query=(f"""MATCH (entry:Entry)-[:HAS_FACILITY]->(f:Facility)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY
+]->(commune:Commune)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY
+]->(dof:DepartmentOfFrance), {get_user_snippet(owner) if owner else ''}(effector:Effector)<-[:HAS_EFFECTOR]-(entry)-[:HAS_EFFECTOR_TYPE]->(et:EffectorType) {get_filter_snippet()} RETURN DISTINCT effector;""")
+    logger.debug(f"{query=}")
+    q = db.cypher_query(query, params, resolve_objects = True)
+    effectors: list[Effector]=[]
+    if q:
+        for row in q[0]:
+            logger.debug(row)
+            (
+                effector,
+            ) = row
+            effector_dct=effector.__properties__
+            try:
+                e=Effector.model_validate(effector_dct)
+                effectors.append(e)
+            except ValidationError as e:
+                logger.error(e)
+    return effectors
+
+async def get_effectors_by_user(user_uid: str) -> list[Effector]:
+    query = (
+        'MATCH (u:User {uid: $user_uid})<-[:OWNED_BY|CREATED_BY]-(effector:Effector) '
+        'RETURN DISTINCT effector'
+    )
+    results, _ = await adb.cypher_query(
+        query, {"user_uid": user_uid}, resolve_objects=True
+    )
+    effectors: list[Effector] = []
+    for row in results:
+        effector_node = row[0]
+        try:
+            effectors.append(Effector.model_validate(effector_node.__properties__))
+        except ValidationError as e:
+            logger.error(e)
+    return effectors
+
+
+async def get_all_effectors() -> list[Effector]:
+    query = 'MATCH (effector:Effector) RETURN effector'
+    results, _ = await adb.cypher_query(query, resolve_objects=True)
+    effectors: list[Effector] = []
+    for row in results:
+        effector_node = row[0]
+        try:
+            effectors.append(Effector.model_validate(effector_node.__properties__))
+        except ValidationError as e:
+            logger.error(e)
+    return effectors
+
+
+async def get_effectors_by_entry_colleagues(user_uid: str) -> list[Effector]:
+    query = (
+        'MATCH (requester:User {uid: $user_uid})-[:HAS_ACCESS]->(:Access)-[:ACCESS_TO]->'
+        '(:Entry)<-[:ACCESS_TO]-(:Access)<-[:HAS_ACCESS]-(colleague:User)'
+        '<-[:OWNED_BY|CREATED_BY]-(effector:Effector) '
+        'RETURN DISTINCT effector'
+    )
+    results, _ = await adb.cypher_query(
+        query, {"user_uid": user_uid}, resolve_objects=True
+    )
+    effectors: list[Effector] = []
+    for row in results:
+        effector_node = row[0]
+        try:
+            effectors.append(Effector.model_validate(effector_node.__properties__))
+        except ValidationError as e:
+            logger.error(e)
+    return effectors
+
+
+async def create_effector(effector: EffectorPost, directory_name: str, jwt: dict)->Effector:
+    try:
+        existing_effector: Effector = await AsyncEffector.nodes.get(
+            name_fr=effector.name_fr,
+            gender=effector.gender,
+            slug_fr=effector.slug_fr,
+        )
+        ts = timestamp()
+        createdAt = existing_effector.createdAt
+        if createdAt and (ts - createdAt < 5000):
+            effector_dct = existing_effector.__properties__
+            _effector = Effector.model_validate(effector_dct)
+            return _effector
+    except:
+        pass
+    neo4j_directory = await AsyncDirectory.nodes.get(name=directory_name)
+    node = await AsyncEffector(
+        name_fr=effector.name_fr,
+        label_fr=effector.label_fr or effector.name_fr,
+        slug_fr=effector.slug_fr or slugify(effector.name_fr),
+        gender=effector.gender,
+        creator_directory=neo4j_directory.name,
+    ).save()
+    neo4j_user = await get_neo4j_user(jwt)
+    logger.debug(f"{neo4j_user=}")
+    if neo4j_user:
+        await node.creator.connect(neo4j_user)
+        await node.owner.connect(neo4j_user)
+    _effector = await AsyncEffector.nodes.get(uid=node.uid)
+    effector_dct=_effector.__properties__
+    new_effector=Effector.model_validate(effector_dct)
+    logger.debug(new_effector)
+    return new_effector
+
+
+class EffectorSerializer(Serializer):
+    spoken_languages = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_null=True
+    )
+    rpps = serializers.IntegerField(required=False, allow_null=True)
+    name_fr = serializers.CharField(required=False, allow_null=False)
+    label_fr = serializers.CharField(required=False, allow_null=True)
+    slug_fr = serializers.CharField(required=False, allow_null=False)
+    gender = serializers.CharField(required=False, allow_null=True)
+
+    async def update(self, instance, validated_data):
+        for attribute in validated_data.keys():
+            logger.debug(f"{attribute=}")
+            try:
+                value = validated_data.get(attribute)
+                setattr(instance, attribute, value)
+            except validated_data.DoesNotExist:
+                pass
+        await instance.save()
+        return instance
+
+
+async def update_effector(uid, kwargs, request)->Effector:
+    logger.debug(f"{kwargs=}")
+    hw=["rpps", "spoken_languages"]
+    if (any(x in kwargs.keys() for x in hw)):
+        node = await AsyncHealthWorker.nodes.get(uid=uid)
+    else:
+        node = await AsyncEffector.nodes.get(uid=uid)
+    serializer = EffectorSerializer(node, data=kwargs, partial=True)
+    if serializer.is_valid(raise_exception=True):
+        node = await serializer.save()
+    effector_dct=node.__properties__
+    effector=Effector.model_validate(effector_dct)
+    logger.debug(effector)
+    await clear_cache("v2:entries", request)
+    return effector

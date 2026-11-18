@@ -1,18 +1,35 @@
 from datetime import timedelta
-from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models, transaction
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.contrib.sites.models import Site
 from workforce.models import NodeSet
 import logging
 from django.conf import settings
-#import reversion
+from easy_thumbnails.fields import (
+    ThumbnailerImageField,
+    ThumbnailerField,
+)
+from django.utils.text import slugify
 from django.core.exceptions import ValidationError
+
 from django.utils.translation import gettext_lazy as _
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
-
 
 logger = logging.getLogger(__name__)
+
+def validate_timezone(value):
+    """An IANA name the browser knows: Intl.DateTimeFormat throws on any other."""
+    from zoneinfo import available_timezones
+    if value not in available_timezones():
+        raise ValidationError(f"Unknown time zone: {value}")
+
+def logo_path(instance, filename):
+    # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
+    ext = filename.split('.')[-1]
+    filename = slugify(instance.company_name)
+    path = "organization/logo"
+    return '{0}/{1}.{2}'.format(path, filename, ext)
 
 
 class OrganizationManager(models.Manager):
@@ -35,6 +52,10 @@ class Organization(models.Model):
         max_length=255,
         blank=True,
     )
+    formatted_name_short = models.CharField(
+        max_length=255,
+        blank=True,
+    )
     formatted_name_definite_article = models.CharField(
         max_length=255,
         blank=True,
@@ -46,10 +67,73 @@ class Organization(models.Model):
     website_description = models.TextField(
         blank=True,
     )
+    public_base_url = models.URLField(
+        blank=True,
+        help_text=(
+            "Public URL of the site including any base path, e.g. "
+            "https://unipa.fr/annuaire. Leave blank for https://{domain}. "
+            "Used for links in emails: nginx strips the base path before "
+            "requests reach the backend, so it cannot be derived from the Site."
+        ),
+    )
+    reply_to_email = models.EmailField(
+        blank=True,
+        help_text=(
+            "Where replies to the organization's email go. Mail is sent from a "
+            "shared domain (noreply@mail.medica.im); blank: replies go to "
+            "settings.MAIL_DEFAULT_REPLY_TO."
+        ),
+    )
+    batch_invitation_max_rows = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Most rows one invitation spreadsheet may hold. Blank: the "
+            "default (settings.BATCH_INVITATION_MAX_ROWS, 1000)."
+        ),
+    )
+    invitation_resend_after_days = models.PositiveSmallIntegerField(
+        default=30,
+        validators=[MinValueValidator(1), MaxValueValidator(365)],
+        help_text=(
+            "A pending invitation is preselected for a reminder once its last "
+            "email is this many days old, so someone just reached by a batch "
+            "is not mailed again by reflex."
+        ),
+    )
+    email_template_editor_role = models.CharField(
+        max_length=16,
+        choices=[
+            ("administrator", "Administrators and superusers"),
+            ("superuser", "Superusers only"),
+        ],
+        default="superuser",
+        help_text=(
+            "Who may change the organization's email templates and their "
+            "images. Administrators and higher may always see and preview them."
+        ),
+    )
+    # How long after an entry's creation its effector type may still be
+    # changed from the entry page (directory.entry_type_edit). A superuser
+    # always may; past the window, the page offers to recreate the entry.
+    entry_type_edit_days_administrator = models.PositiveSmallIntegerField(
+        default=30,
+        help_text=(
+            "Days after an entry's creation during which an administrator may "
+            "change its occupation. 0: never."
+        ),
+    )
+    entry_type_edit_days_connected = models.PositiveSmallIntegerField(
+        default=7,
+        help_text=(
+            "Days after an entry's creation during which its creator or an "
+            "owner may change its occupation. 0: never."
+        ),
+    )
     active = models.BooleanField(default=False)
     contact = models.OneToOneField(
         'addressbook.Contact',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name='organisation',
         null=True,
         blank=True,
@@ -68,10 +152,28 @@ class Organization(models.Model):
         blank=True,
         help_text="Google site verification meta tag",
     )
+    google_calendar_id = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Google Calendar ID",
+    )
+    google_calendar_api_key = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Google Calendar API key",
+    )
     language = models.CharField(
         max_length=3,
         blank=True,
         help_text="ISO language code",
+    )
+    # Dates are formatted in this zone on both SSR and hydration; left to
+    # each side's own clock, a post published near midnight shows two days.
+    timezone = models.CharField(
+        max_length=64,
+        default="Europe/Paris",
+        validators=[validate_timezone],
+        help_text="IANA time zone, e.g. Europe/Paris, America/Martinique",
     )
     category = models.ForeignKey(
         'facility.Category',
@@ -93,10 +195,29 @@ class Organization(models.Model):
         null=True,
         blank=True,
     )
-    administrators = models.ManyToManyField(
-        User,
+    neomodel_uid = models.UUIDField(
+        null=True,
         blank=True,
-        related_name="administrator_of"
+        unique=True,
+    )
+    directory = models.OneToOneField(
+        "directory.Directory",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="organization",
+    )
+    sandbox = models.BooleanField(
+        default=False,
+        help_text="Auto-grant staff role to any authenticated user.",
+    )
+    logo = ThumbnailerImageField(
+        upload_to=logo_path,
+        blank=True,
+        null=True
+    )
+    logo_alt = models.TextField(
+        blank=True
     )
 
     objects = OrganizationManager()
@@ -110,6 +231,35 @@ class Organization(models.Model):
 
     def natural_key(self):
         return (self.name,)
+
+
+@receiver(post_save, sender=Organization)
+def link_directory_owner_on_save(sender, instance, raw=False, **kwargs):
+    """Write (Directory)-[:OWNED_BY]->(Entry) once the Organization says it.
+
+    Adds only, after the commit, and never fails the save: the row is already
+    in Postgres by then, and robust=True turns a Neo4j outage into a log line.
+    Raw saves are skipped, loaddata's fixtures carry their own graph. See
+    directory/owner.py.
+    """
+    if raw or not instance.directory_id or not instance.neomodel_uid:
+        return
+    directory_name = instance.directory.name
+    entry_uid = instance.neomodel_uid.hex
+
+    def link():
+        from directory.owner import Link, link_directory_owner
+        result = link_directory_owner(directory_name, entry_uid)
+        if result is Link.NO_DIRECTORY:
+            logger.warning(
+                f'Organization "{instance.name}": no Neo4j Directory "{directory_name}", owner not linked'
+            )
+        elif result is Link.NO_ENTRY:
+            logger.warning(
+                f'Organization "{instance.name}": no Neo4j Entry {entry_uid}, owner of "{directory_name}" not linked'
+            )
+
+    transaction.on_commit(link, robust=True)
 
 
 class CategoryManager(models.Manager):
@@ -150,8 +300,8 @@ class Category(models.Model):
 class FacilityManager(models.Manager):
     def get_by_natural_key(self, name):
         return self.get(name=name)
- 
-    
+
+
 class Facility(models.Model):
     name = models.CharField(
         max_length=255,
@@ -162,7 +312,7 @@ class Facility(models.Model):
     updated = models.DateTimeField(auto_now=True)
     contact = models.OneToOneField(
         'addressbook.Contact',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name='facility',
         null=True,
         blank=True,
@@ -267,3 +417,59 @@ class LegalEntity(models.Model):
 
     class Meta:
         verbose_name_plural = "Legal entities"
+
+
+def place_image_path(instance, filename):
+    ext = filename.split('.')[-1].lower()
+    path = settings.PLACE_IMAGE_FILE_STORAGE
+    return '{0}/{1}.{2}'.format(path, instance.neomodel_uid, ext)
+
+
+class PlaceImage(models.Model):
+    """
+    A wide (16:9) photograph of a physical place.
+
+    Deliberately not stored on addressbook.Contact, even though a few facility
+    pictures ended up there historically: a Contact is a natural or a legal
+    person, and its thumbnails are square, which crops away the facade or the
+    entrance that makes a building recognizable.
+
+    Keyed by the graph uid rather than by a Facility foreign key, so any node
+    that denotes a place can own one without a schema change. The uid is not a
+    database-level reference, so rows outlive a deleted node: see the
+    prune_place_images management command.
+    """
+    neomodel_uid = models.UUIDField(unique=True)
+    image = ThumbnailerImageField(
+        upload_to=place_image_path,
+        blank=True,
+        null=True,
+    )
+    alt = models.TextField(
+        blank=True,
+        help_text="Describes the picture to people who cannot see it.",
+    )
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return str(self.neomodel_uid)
+
+    def _clear_cache(self):
+        # The picture is embedded in the cached facility payloads, so those must
+        # be rebuilt when it changes or it stays invisible until the TTL lapses.
+        from directory.models.core import sync_clear_cache
+        try:
+            sync_clear_cache("v2:public/facilities")
+        except Exception as e:
+            logger.warning(f"could not clear facility cache: {e}")
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self._clear_cache()
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        self._clear_cache()
+
+    class Meta:
+        verbose_name_plural = "Place images"

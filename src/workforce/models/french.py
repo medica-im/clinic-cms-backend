@@ -31,6 +31,15 @@ class RPPS(models.Model):
         "workforce.NetworkNode",
         on_delete=models.CASCADE,
         related_name="rpps",
+        null=True,
+        blank=True,
+    )
+    effector_uid = models.UUIDField(
+        null=True,
+        blank=True,
+        help_text=(
+            "uid of neo4j Effector node"
+        )
     )
     identifier = models.CharField(
         verbose_name=_("RPPS number"),
@@ -62,6 +71,15 @@ class ADELI(models.Model):
         "workforce.NetworkNode",
         on_delete=models.CASCADE,
         related_name="adeli",
+        null=True,
+        blank=True,
+    )
+    effector_uid = models.UUIDField(
+        null=True,
+        blank=True,
+        help_text=(
+            "uid of neo4j Effector node"
+        )
     )
     identifier = models.CharField(
         verbose_name=_("ADELI number"),
@@ -87,6 +105,15 @@ class CarteVitale(models.Model):
         "workforce.NetworkNode",
         on_delete=models.CASCADE,
         related_name="carte_vitale",
+        null=True,
+        blank=True,
+    )
+    effector_facility_uid = models.UUIDField(
+        null=True,
+        blank=True,
+        help_text=(
+            "uid of neo4j LOCATION relationship between Effector and Facility"
+        )
     )
     organization = models.ForeignKey(
         "facility.Organization",
@@ -155,12 +182,21 @@ class Conventionnement(models.Model):
         "workforce.NetworkNode",
         on_delete=models.CASCADE,
         limit_choices_to = limit_to_users,
+        null=True,
+        blank=True,
+    )
+    effector_facility_uid = models.UUIDField(
+        null=True,
+        blank=True,
+        help_text=(
+            "uid of neo4j LOCATION relationship between Effector and Facility"
+        )
     )
     organization = models.ForeignKey(
         "facility.Organization",
         models.PROTECT,
     )
-    
+
     def __str__(self):
         return f'{self.node} {self.convention} {self.organization}'
 

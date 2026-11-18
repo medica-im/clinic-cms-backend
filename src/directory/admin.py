@@ -2,16 +2,26 @@ import logging
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
-from facility.models import Organization
 from .models import (
     Slug,
-    RejectSlug
+    RejectSlug,
+    Asset,
+    AssetFacility,
+    Directory,
+    InputField,
+    Setting,
+    Label,
+    EffectorType,
+    Endpoint,
+    TTL,
+    Timestamp,
+    PeerInstance,
 )
 from modeltranslation.admin import TranslationAdmin
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse
 from django.utils.translation import get_language
-from accounts.models import GrammaticalGender
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,3 +49,157 @@ class RejectSlugAdmin(admin.ModelAdmin):
         'slug',    
     )
     search_fields = ['slug']
+
+
+class AssetFacilityInline(admin.TabularInline):
+    model = AssetFacility
+    extra = 1
+    fk_name = 'asset'
+
+
+@admin.register(Asset)
+class AssetAdmin(admin.ModelAdmin):
+    list_display = (
+        'name',
+        'neomodel_uid',
+    )
+    inlines = (
+        AssetFacilityInline,
+    )
+
+
+@admin.register(Directory)
+class DirectoryAdmin(admin.ModelAdmin):
+    list_display = (
+        'name',
+        'display_name',
+        'presentation',
+        'slug',
+        'postal_codes',
+        'department_default',
+        'commune_default',
+    )
+
+
+@admin.register(InputField)
+class InputFieldAdmin(admin.ModelAdmin):
+    list_display = (
+        'directory',
+        'category',
+        'commune',
+        'department',
+        'facility',
+        'geocoder',
+        'organization',
+        'situation',
+        'search',
+        'tag',
+    )
+
+
+@admin.register(Setting)
+class SettingAdmin(admin.ModelAdmin):
+    list_display = (
+        'directory',
+        'sort_category',
+        'display_facility_organization',
+        'display_association',
+        'list_navigation',
+        'type_slug',
+        'path',
+    )
+
+
+@admin.register(Label)
+class LabelAdmin(admin.ModelAdmin):
+    list_display = (
+        'label',
+        'language',
+        'uid',
+        'effector_type_tag',
+        'genders_tag',
+        'grammatical_number',
+        'term_type',
+    )
+    list_filter = (
+        'language',
+        'gender',
+        'grammatical_number',
+        'term_type',
+        'uid',
+    )
+    fields = (
+        'label',
+        'language',
+        'uid',
+        'effector_type_tag',
+        'gender',
+        'genders_tag',
+        'grammatical_number',
+        'term_type',
+    )
+    readonly_fields = (
+        'effector_type_tag',
+        'genders_tag',
+    )
+
+    @admin.display(description = _("Genders"))
+    def genders_tag(self, obj):
+        return [gender.name for gender in obj.gender.all()]
+
+    @admin.display(description='EffectorType')
+    def effector_type_tag(self, obj):
+        #uid = str(obj.uid).replace("-", "")
+        try:
+            et=EffectorType.nodes.get(uid=obj.uid.hex)
+        except:
+            logger.warning(f'No node found for uid="{obj.uid}"')
+            return
+        return et.label_fr or et.name_fr or et.label_en or et.name_en
+
+
+@admin.register(Endpoint)
+class EndpointAdmin(admin.ModelAdmin):
+    list_display = (
+        'pk',
+        'name',
+    )
+
+
+@admin.register(TTL)
+class TTLAdmin(admin.ModelAdmin):
+    list_display = (
+        'pk',
+        'site',
+        'endpoint',
+        'ttl',
+    )
+
+
+@admin.register(Timestamp)
+class TimestampAdmin(admin.ModelAdmin):
+    list_display = (
+        'pk',
+        'site',
+        'endpoint',
+        'timestamp',
+        'timestamp_iso',
+    )
+
+    @admin.display(description='Timestamp for humans')
+    def timestamp_iso(self, obj):
+        from datetime import datetime, timezone
+        if obj.timestamp:
+            return datetime.fromtimestamp(obj.timestamp / 1000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        return ''
+
+@admin.register(PeerInstance)
+class PeerInstanceAdmin(admin.ModelAdmin):
+    """The peers this instance may clone entries to and from.
+
+    `inbound` is the control worth reaching for in a hurry: unsetting it stops
+    another deployment reading this one's entries, without a deploy.
+    """
+    list_display = ('display_name', 'name', 'origin', 'active', 'outbound', 'inbound')
+    list_filter = ('active', 'outbound', 'inbound')
+    search_fields = ('name', 'display_name', 'origin')

@@ -1,15 +1,23 @@
 from rest_framework import exceptions, serializers
-from access.models import Role, AccessControl, Endpoint
-
-
-class EndpointSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Endpoint
-        fields = ['name']
-
+from access.models import Role
+from adrf.serializers import ModelSerializer as AsyncModelSerializer
 
 class RoleSerializer(serializers.ModelSerializer):
+    """Serialize Role."""
+
+
+    class Meta:
+        model = Role
+        # No 'label': role display text lives in the frontend
+        # (messages/*.json, src/lib/roles.ts). The field was dropped from the
+        # model in access/0005.
+        fields = [
+            'name',
+            'description',
+        ]
+
+
+class AsyncRoleSerializer(AsyncModelSerializer):
     """Serialize Role."""
 
     class Meta:
@@ -17,15 +25,5 @@ class RoleSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'name',
-            'label',
             'description',
         ]
-
-
-class AccessControlSerializer(serializers.ModelSerializer):
-    role = RoleSerializer()
-    endpoint = EndpointSerializer()
-
-    class Meta:
-        model = AccessControl
-        fields = ['endpoint', 'role', 'permissions']

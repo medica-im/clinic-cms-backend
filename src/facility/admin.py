@@ -1,5 +1,5 @@
 from django.contrib import admin
-
+from django.utils.safestring import mark_safe
 from .models import Organization, Category, Facility, LegalEntity
 from modeltranslation.admin import TranslationAdmin
 
@@ -7,8 +7,10 @@ from modeltranslation.admin import TranslationAdmin
 class OrganizationAdmin(TranslationAdmin):
     list_display = (
         'name',
+        'neomodel_uid',
         'company_name',
         'formatted_name',
+        'formatted_name_short',
         'formatted_name_definite_article',
         'website_title',
         'active',
@@ -18,15 +20,77 @@ class OrganizationAdmin(TranslationAdmin):
         'language',
         'category',
         'city',
+        'directory',
+        'sandbox',
     )
     list_filter = (
         'active',
         'category',
         'language',
         'city',
+        'directory',
+        'sandbox',
     )
-    search_fields = ['name', 'formatted_name', 'city', 'company_name']
-    autocomplete_fields = ['contact', 'administrators']
+    raw_id_fields = ["contact"]
+    # city is a ForeignKey: searching it needs the related field (city__name),
+    # or every search crashes with a FieldError. The short name and the site's
+    # domain are what people type -- "unipa" is in neither name field.
+    search_fields = [
+        'name', 'formatted_name', 'formatted_name_short', 'site__domain',
+        'city__name', 'company_name', 'neomodel_uid'
+    ]
+    autocomplete_fields = ['contact',]
+    fields = (
+        'name',
+        'neomodel_uid',
+        'contact',
+        'company_name',
+        'formatted_name',
+        'formatted_name_short',
+        'formatted_name_definite_article',
+        'website_title',
+        'website_description',
+        'public_base_url',
+        'reply_to_email',
+        'batch_invitation_max_rows',
+        'invitation_resend_after_days',
+        'active',
+        'created',
+        'updated',
+        'site',
+        'language',
+        'timezone',
+        'category',
+        'city',
+        'directory',
+        'logo',
+        'logo_tag',
+        'logo_alt',
+        'google_site_verification',
+        'google_calendar_id',
+        'google_calendar_api_key',
+        'sandbox',
+    )
+    readonly_fields = (
+        'created',
+        'updated',
+        'logo_tag',
+    )
+
+    @admin.display(description='Logo thumbnail')
+    def logo_tag(self, obj):
+        if obj.logo:
+            try:
+                return mark_safe(
+                    '<img src="%s" alt="profile picture" width="%s" height="%s">'
+                    % (
+                        obj.logo["avatar_facebook"].url,
+                        obj.logo["avatar_facebook"].thumbnail_options["size"][0],
+                        "100%"
+                    )
+                )
+            except Exception as e:
+                return
 
 
 @admin.register(Category)

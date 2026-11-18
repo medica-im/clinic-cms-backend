@@ -19,8 +19,7 @@ src/static_root/*
 bvn_images/*
 !bvn_images/.gitkeep
 
-# environment files
-
+# ENV files
 .env*
 
 # Python compiled byte code
@@ -87,3 +86,9 @@ frontend/src/lib/assets
 
 # SvelteKit test folder
 frontend/src/routes/test
+
+# fixtures
+src/addressbook/fixtures/
+
+# Claude
+.claude

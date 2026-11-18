@@ -1,0 +1,574 @@
+import io
+import json
+import logging
+from typing import Annotated
+
+import pandas as pd
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
+from asgiref.sync import sync_to_async
+from neomodel import adb
+
+from access.models import BatchInviteeJob
+from api.types.invitee import EmailDelivery
+from mailer.delivery import batch_report
+from mailer.suppression import issue_payload, issues_for, normalize
+from access.roles import ROLES
+from access.tasks import process_batch_invitees, process_batch_resend
+from api.auth import JWT, authorize_api
+from api.types.batch_invitee import (
+    BatchInviteeCreateResponse,
+    BatchInviteeJobDetail,
+    BatchInviteeJobListItem,
+    BatchInviteeMapping,
+    BatchInviteeParseResponse,
+    BatchInviteeProgress,
+    BatchResendRequest,
+)
+from api.utils import get_site_from_request
+from facility.models import Organization
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".ods"}
+
+
+def batch_max_rows(organization) -> int:
+    """Rows one spreadsheet may hold: the organization's own limit, or the default."""
+    from django.conf import settings
+    own = getattr(organization, "batch_invitation_max_rows", None)
+    return own or settings.BATCH_INVITATION_MAX_ROWS
+
+
+async def _site_max_rows(request: Request) -> int:
+    site = await get_site_from_request(request)
+    organization = await Organization.objects.filter(site=site).afirst()
+    return batch_max_rows(organization)
+
+
+def _get_extension(filename: str | None) -> str:
+    if not filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No filename provided",
+        )
+    ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file type: {ext}. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
+        )
+    return ext
+
+
+def _read_file_to_dataframe(contents: bytes, ext: str) -> pd.DataFrame:
+    try:
+        if ext == ".csv":
+            for encoding in ["utf-8", "latin-1", "cp1252"]:
+                try:
+                    return pd.read_csv(
+                        io.BytesIO(contents),
+                        encoding=encoding,
+                        dtype=str,
+                        keep_default_na=False,
+                    )
+                except UnicodeDecodeError:
+                    continue
+            raise ValueError("Could not decode CSV with any supported encoding")
+        elif ext == ".xlsx":
+            return pd.read_excel(
+                io.BytesIO(contents),
+                engine="openpyxl",
+                dtype=str,
+                keep_default_na=False,
+            )
+        elif ext == ".ods":
+            return pd.read_excel(
+                io.BytesIO(contents),
+                engine="odf",
+                dtype=str,
+                keep_default_na=False,
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to parse file: {str(e)}",
+        )
+
+
+def _apply_mapping(df: pd.DataFrame, mapping: BatchInviteeMapping) -> list[dict]:
+    rows = []
+    for _, row in df.iterrows():
+        email = str(row.get(mapping.email_column, "")).strip()
+        if not email:
+            continue
+
+        name = ""
+        if mapping.name_column and mapping.name_column in df.columns:
+            name = str(row.get(mapping.name_column, "")).strip()
+        elif mapping.first_name_column or mapping.last_name_column:
+            parts = []
+            if mapping.first_name_column and mapping.first_name_column in df.columns:
+                parts.append(str(row.get(mapping.first_name_column, "")).strip())
+            if mapping.last_name_column and mapping.last_name_column in df.columns:
+                parts.append(str(row.get(mapping.last_name_column, "")).strip())
+            name = " ".join(p for p in parts if p)
+
+        rows.append({"email": email, "name": name})
+    return rows
+
+
+async def _get_organization_entry_uid(request: Request) -> tuple[str, str]:
+    site = await get_site_from_request(request)
+    try:
+        organization = await Organization.objects.aget(site=site)
+    except Organization.DoesNotExist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found for this site",
+        )
+    if not organization.neomodel_uid:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization does not have a neomodel_uid",
+        )
+    return organization.neomodel_uid.hex, site.domain
+
+
+async def _user_uid_of(sub: str) -> str:
+    query = """
+    MATCH (a:Account {sub: $sub})<-[:HAS_ACCOUNT]-(u:User)
+    RETURN u.uid AS uid
+    """
+    results, _ = await adb.cypher_query(query, {"sub": sub})
+    return results[0][0] if results else ""
+
+
+@router.post("/batch-invitees/check")
+async def check_batch_invitees(
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)],
+    file: UploadFile = File(...),
+    mapping_json: str = Form(...),
+) -> list[dict]:
+    """The rows whose address looks wrong, before anything is sent: a typo
+    suggestion, a domain that cannot receive mail, an address already known
+    to be bad (mailer.addresscheck). Warnings only; read the same way as
+    /create, so the row numbers match its report."""
+    from mailer.addresscheck import check
+
+    await authorize_api("invitees_v2", request, jwt)
+    try:
+        mapping = BatchInviteeMapping(**json.loads(mapping_json))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid mapping: {e}")
+    df = _read_file_to_dataframe(await file.read(), _get_extension(file.filename))
+    if mapping.email_column not in df.columns:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Email column '{mapping.email_column}' not found in file",
+        )
+    site = await get_site_from_request(request)
+    organization = await Organization.objects.filter(site=site).afirst()
+    flagged = []
+    for number, row in enumerate(_apply_mapping(df, mapping), 1):
+        result = await sync_to_async(check)(row["email"], organization)
+        if result["suggestion"] or result["problem"]:
+            flagged.append({"row": number, **result})
+    return flagged
+
+
+@router.post("/batch-invitees/parse", response_model=BatchInviteeParseResponse)
+async def parse_batch_invitees(
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)],
+    file: UploadFile = File(...),
+):
+    await authorize_api("invitees_v2", request, jwt)
+
+    ext = _get_extension(file.filename)
+    contents = await file.read()
+    df = _read_file_to_dataframe(contents, ext)
+
+    if df.empty:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File contains no data",
+        )
+
+    return BatchInviteeParseResponse(
+        columns=df.columns.tolist(),
+        preview_rows=df.head(2).to_dict(orient="records"),
+        total_rows=len(df),
+        max_rows=await _site_max_rows(request),
+    )
+
+
+@router.post(
+    "/batch-invitees/create",
+    response_model=BatchInviteeCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_batch_invitees(
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)],
+    file: UploadFile = File(...),
+    mapping_json: str = Form(...),
+    role: str = Form(...),
+    send_emails: bool = Form(True),
+):
+    await authorize_api("invitees_v2", request, jwt)
+
+    if role not in ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid role: {role}. Allowed: {list(ROLES.keys())}",
+        )
+
+    entry_uid, site_domain = await _get_organization_entry_uid(request)
+
+    if role == "superuser":
+        from api.auth import get_neo4j_role
+        site = await get_site_from_request(request)
+        if await get_neo4j_role(jwt, site) != "superuser":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only superusers can create superuser invitees",
+            )
+
+    try:
+        mapping_data = json.loads(mapping_json)
+        mapping = BatchInviteeMapping(**mapping_data)
+    except (json.JSONDecodeError, Exception) as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid mapping: {str(e)}",
+        )
+
+    ext = _get_extension(file.filename)
+    contents = await file.read()
+    df = _read_file_to_dataframe(contents, ext)
+
+    if df.empty:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File contains no data",
+        )
+
+    if mapping.email_column not in df.columns:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Email column '{mapping.email_column}' not found in file",
+        )
+
+    rows = _apply_mapping(df, mapping)
+
+    if not rows:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No valid rows found after applying column mapping",
+        )
+
+    max_rows = await _site_max_rows(request)
+    if len(rows) > max_rows:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Too many rows: {len(rows)}. Maximum is {max_rows}.",
+        )
+
+    user_sub = jwt.get("providerAccountId", "")
+    if not user_sub:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No providerAccountId in JWT",
+        )
+
+    user_uid = await _user_uid_of(user_sub)
+
+    job = await BatchInviteeJob.objects.acreate(
+        organization_neomodel_uid=entry_uid,
+        user_uid=user_uid,
+        total_rows=len(rows),
+        role=role,
+        send_emails=send_emails,
+        status=BatchInviteeJob.Status.PENDING,
+    )
+
+    task = process_batch_invitees.delay(
+        job_id=job.id,
+        rows=rows,
+        entry_uid=entry_uid,
+        user_sub=user_sub,
+        role=role,
+        send_emails=send_emails,
+        site_domain=site_domain,
+    )
+
+    job.celery_task_id = task.id
+    await job.asave(update_fields=["celery_task_id"])
+
+    return BatchInviteeCreateResponse(
+        job_uid=str(job.uid),
+        status=job.status,
+    )
+
+
+@router.post(
+    "/batch-invitees/resend",
+    response_model=BatchInviteeCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def resend_batch_invitees(
+    body: BatchResendRequest,
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)],
+):
+    """Send the chosen invitations' emails again, as a batch job of kind resend.
+
+    409 batch_running while any batch of the organization is pending or
+    processing: an import's invitations have no email until its sending step
+    reaches them, and a reminder beside it would mail them twice. 403 when one
+    of the invitations is not this organization's.
+    """
+    await authorize_api("invitees_v2", request, jwt)
+    entry_uid, site_domain = await _get_organization_entry_uid(request)
+
+    running = await BatchInviteeJob.objects.filter(
+        organization_neomodel_uid=entry_uid,
+        status__in=[BatchInviteeJob.Status.PENDING, BatchInviteeJob.Status.PROCESSING],
+    ).aexists()
+    if running:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={"code": "batch_running"})
+
+    uids = list(dict.fromkeys(body.uids))
+    results, _ = await adb.cypher_query(
+        """
+        MATCH (:Entry {uid: $entry_uid})<-[:INVITED_TO]-(i:Invitee)
+        WHERE i.uid IN $uids
+        RETURN count(i)
+        """,
+        {"entry_uid": entry_uid, "uids": uids},
+    )
+    if results[0][0] != len(uids):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Some invitations do not belong to this organization",
+        )
+
+    job = await BatchInviteeJob.objects.acreate(
+        organization_neomodel_uid=entry_uid,
+        user_uid=await _user_uid_of(jwt.get("providerAccountId", "")),
+        total_rows=len(uids),
+        role="",
+        send_emails=True,
+        kind=BatchInviteeJob.Kind.RESEND,
+        status=BatchInviteeJob.Status.PENDING,
+    )
+    task = process_batch_resend.delay(job_id=job.id, invitee_uids=uids, site_domain=site_domain)
+    job.celery_task_id = task.id
+    await job.asave(update_fields=["celery_task_id"])
+
+    return BatchInviteeCreateResponse(job_uid=str(job.uid), status=job.status)
+
+
+def _progress_percentage(job: BatchInviteeJob) -> float:
+    if job.phase == BatchInviteeJob.Phase.SENDING:
+        done, total = job.emails_processed, job.emails_total
+    else:
+        done, total = job.processed_rows, job.total_rows
+    return (done / total * 100) if total > 0 else 0
+
+
+@router.get("/batch-invitees/{job_uid}/progress", response_model=BatchInviteeProgress)
+async def get_batch_invitees_progress(
+    job_uid: str,
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)],
+):
+    await authorize_api("invitees_v2", request, jwt)
+    entry_uid, _ = await _get_organization_entry_uid(request)
+
+    try:
+        job = await BatchInviteeJob.objects.aget(
+            uid=job_uid,
+            organization_neomodel_uid=entry_uid,
+        )
+    except BatchInviteeJob.DoesNotExist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Batch job not found",
+        )
+
+    percentage = _progress_percentage(job)
+
+    return BatchInviteeProgress(
+        uid=str(job.uid),
+        status=job.status,
+        total_rows=job.total_rows,
+        processed_rows=job.processed_rows,
+        successful_count=job.successful_count,
+        failed_count=job.failed_count,
+        skipped_duplicate_email_count=job.skipped_duplicate_email_count,
+        skipped_active_user_count=job.skipped_active_user_count,
+        failed_email_count=job.failed_email_count,
+        kind=job.kind,
+        phase=job.phase,
+        emails_total=job.emails_total,
+        emails_processed=job.emails_processed,
+        email_skipped_count=job.email_skipped_count,
+        percentage=round(percentage, 1),
+    )
+
+
+@router.post("/batch-invitees/{job_uid}/cancel")
+async def cancel_batch_invitees(
+    job_uid: str,
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)],
+):
+    await authorize_api("invitees_v2", request, jwt)
+    entry_uid, _ = await _get_organization_entry_uid(request)
+
+    try:
+        job = await BatchInviteeJob.objects.aget(
+            uid=job_uid,
+            organization_neomodel_uid=entry_uid,
+        )
+    except BatchInviteeJob.DoesNotExist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Batch job not found",
+        )
+
+    if job.status not in (
+        BatchInviteeJob.Status.PENDING,
+        BatchInviteeJob.Status.PROCESSING,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot cancel job with status: {job.status}",
+        )
+
+    job.status = BatchInviteeJob.Status.CANCELLED
+    await job.asave(update_fields=["status"])
+
+    if job.celery_task_id:
+        from backend.celery import app as celery_app
+        celery_app.control.revoke(job.celery_task_id, terminate=True)
+
+    return {"message": "Job cancellation requested", "status": "cancelled"}
+
+
+@router.get("/batch-invitees", response_model=list[BatchInviteeJobListItem])
+async def list_batch_invitees(
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)],
+    kind: BatchInviteeJob.Kind | None = None,
+    limit: Annotated[int | None, Query(ge=1)] = None,
+):
+    """The organization's batch jobs, newest first; ?kind=resend&limit=1 is
+    the latest reminder, which the invitation list shows."""
+    await authorize_api("invitees_v2", request, jwt)
+    entry_uid, _ = await _get_organization_entry_uid(request)
+
+    queryset = BatchInviteeJob.objects.filter(organization_neomodel_uid=entry_uid)
+    if kind:
+        queryset = queryset.filter(kind=kind)
+    if limit:
+        queryset = queryset[:limit]
+
+    jobs = []
+    async for job in queryset.values(
+        "uid",
+        "created_at",
+        "status",
+        "total_rows",
+        "successful_count",
+        "failed_count",
+        "skipped_duplicate_email_count",
+        "skipped_active_user_count",
+        "failed_email_count",
+        "role",
+        "kind",
+        "phase",
+        "emails_total",
+        "emails_processed",
+        "email_skipped_count",
+    ):
+        job["uid"] = str(job["uid"])
+        jobs.append(BatchInviteeJobListItem(**job))
+
+    return jobs
+
+
+@router.get("/batch-invitees/{job_uid}", response_model=BatchInviteeJobDetail)
+async def get_batch_invitee_job(
+    job_uid: str,
+    request: Request,
+    jwt: Annotated[dict, Depends(JWT)],
+):
+    await authorize_api("invitees_v2", request, jwt)
+    entry_uid, _ = await _get_organization_entry_uid(request)
+
+    try:
+        job = await BatchInviteeJob.objects.aget(
+            uid=job_uid,
+            organization_neomodel_uid=entry_uid,
+        )
+    except BatchInviteeJob.DoesNotExist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Batch job not found",
+        )
+
+    percentage = _progress_percentage(job)
+
+    # Read now, not copied when the job ran: a resend, or an event from the
+    # mail service, changes where an email stands.
+    report = await sync_to_async(batch_report)(job.uid)
+    # Why an address is not sent to automatically, as on the invitation pages.
+    organization = await Organization.objects.filter(neomodel_uid=job.organization_neomodel_uid).afirst()
+    issues = await sync_to_async(issues_for)([row.get("email") for row in job.summary or []], organization)
+    summary = []
+    for row in job.summary or []:
+        delivery = report.by_invitee.get(row.get("invitee_uid") or "")
+        summary.append({
+            **row,
+            "email_delivery": EmailDelivery.from_row(delivery).model_dump(mode="json") if delivery else None,
+            "addressIssue": issue_payload(issues.get(normalize(row.get("email") or ""))),
+        })
+
+    return BatchInviteeJobDetail(
+        uid=str(job.uid),
+        status=job.status,
+        total_rows=job.total_rows,
+        processed_rows=job.processed_rows,
+        successful_count=job.successful_count,
+        failed_count=job.failed_count,
+        skipped_duplicate_email_count=job.skipped_duplicate_email_count,
+        skipped_active_user_count=job.skipped_active_user_count,
+        failed_email_count=job.failed_email_count,
+        kind=job.kind,
+        email_skipped_count=job.email_skipped_count,
+        percentage=round(percentage, 1),
+        summary=summary,
+        created_at=job.created_at,
+        role=job.role,
+        send_emails=job.send_emails,
+        email_status_counts=report.status_counts,
+        email_error_kind_counts=report.error_kind_counts,
+        address_issue_count=sum(1 for row in summary if row["addressIssue"]),
+    )
