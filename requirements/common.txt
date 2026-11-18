@@ -2,7 +2,7 @@ Django>=5.2,<5.3
 python-decouple
 djangorestframework
 gunicorn==23.0.0
-psycopg2-binary==2.9.11
+psycopg2-binary>=2.9.11,<2.10
 django-modeltranslation
 django-postgresql-dag[transforms]
 the-big-username-blacklist
