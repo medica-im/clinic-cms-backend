@@ -14,6 +14,7 @@ RUN echo "apt refresh: $APT_REFRESH" \
  && apt-get install -y --no-install-recommends \
     locales \
     tzdata \
+    procps \
  && rm -rf /var/lib/apt/lists/*
 
 RUN echo "Europe/Paris" > /etc/timezone && \
