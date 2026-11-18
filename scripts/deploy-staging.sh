@@ -25,7 +25,7 @@ Environment variables:
                 the alias defined and a key that reaches it.
   PROJECT_DIR   Remote project directory (default: /opt/backend)
   COMPOSE_FILE  Compose file to use (default: docker-compose-production.yml)
-  GIT_BRANCH    Branch to pull (default: production)
+  GIT_BRANCH    Branch to pull (default: main)
 USAGE
 }
 
@@ -56,7 +56,7 @@ HOST="${HOST:-staging}"
 # /opt/<what it is>.
 PROJECT_DIR="${PROJECT_DIR:-/opt/backend}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-production.yml}"
-GIT_BRANCH="${GIT_BRANCH:-production}"
+GIT_BRANCH="${GIT_BRANCH:-main}"
 
 SECONDS=0
 

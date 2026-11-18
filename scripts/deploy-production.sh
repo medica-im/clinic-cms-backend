@@ -30,7 +30,7 @@ TARGETS=(
     "annuaire.medica.im:/opt/backend"
 )
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-production.yml}"
-GIT_BRANCH="${GIT_BRANCH:-production}"
+GIT_BRANCH="${GIT_BRANCH:-main}"
 
 # An explicit HOST means that machine and no other.
 if [[ -n "${HOST:-}" ]]; then
