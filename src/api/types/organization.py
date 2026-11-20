@@ -112,3 +112,5 @@ class Organization(BaseModel):
     logo: str|None
     logo_alt: str|None
     sandbox: bool = False
+    #: Where this site's pages are served: '' at the root, '/annuaire' under it.
+    base_path: str = ""

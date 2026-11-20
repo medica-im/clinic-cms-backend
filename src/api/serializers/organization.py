@@ -1,6 +1,7 @@
 import logging
 import json
 from typing import Union
+from urllib.parse import urlparse
 from pydantic import ValidationError
 from api.types.organization_types import OrganizationTypePy
 from api.types.geography import Commune, DepartmentOfFrance
@@ -173,6 +174,17 @@ def get_organization_department(department):
     }
 
 
+def base_path_of(public_base_url: str) -> str:
+    """The path a site's pages are served under: '' at the root, '/annuaire' under it.
+
+    From Organization.public_base_url, the one place the base path is recorded
+    (nginx strips it before a request reaches the backend). Published in the
+    organization payload so that another deployment, which has only this one's
+    origin, can build a link to its pages.
+    """
+    return urlparse(public_base_url or "").path.rstrip("/")
+
+
 async def async_get_django_organization(organization):
     """The whole /api/v2/organization payload as a plain dict."""
     from addressbook.api.serializers import ContactSerializer
@@ -226,6 +238,7 @@ async def async_get_django_organization(organization):
         "logo": organization.logo.url if organization.logo else None,
         "logo_alt": organization.logo_alt,
         "sandbox": organization.sandbox,
+        "base_path": base_path_of(organization.public_base_url),
     }
 
 
