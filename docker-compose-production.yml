@@ -1,23 +1,14 @@
 services:
   database:
-    restart: always                                                                      
-    # Pulled, not built. This was the only service still built on the server,
-    # from `context: .` — the whole repository, .git included, uploaded to
-    # build a Dockerfile that copies no file from it. It was also the only
-    # reason this repository had to be cloned onto a server at all.
-    #
-    # Tagged by postgres major version rather than :latest, because the tag has
-    # to match the on-disk data directory: a tag that silently moved to 15
-    # would refuse to start against a version 14 store, and that failure reads
-    # as a corrupt database rather than a wrong image.
-    #
-    # Built and pushed by infra/scripts/build-postgres-image.sh, which bakes in
-    # USER_ID/GROUP_ID 1000 — the uid owning the postgres data on both staging
-    # and production.
-    image: ghcr.io/medica-im/postgres-non-root:14
+    restart: always
+    # Hardened image (dhi.io, needs `docker login dhi.io`), rebuilt by Docker as
+    # its packages are patched. Postgres 18; the tag is the major version, so it
+    # never moves to a major the data directory cannot open. See infra
+    # docs/postgres-18.md.
+    image: dhi.io/postgres:18-alpine3.23
     shm_size: ${DATABASE_SHM_SIZE}
+    # The image's entrypoint starts postgres itself: only its arguments here.
     command: >
-      postgres
       -c config_file=/etc/postgresql.conf
       -c logging_collector=on
       -c log_directory=/var/log/postgresql
@@ -27,16 +18,18 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      # Read only when the data directory is first created: a new server starts
-      # with page checksums. Existing ones: infra playbooks/postgres-checksums.yml.
-      POSTGRES_INITDB_ARGS: --data-checksums
+      # Read only when the cluster is first created. The builtin provider sorts
+      # the same on every image, so an image update cannot reorder an index.
+      POSTGRES_INITDB_ARGS: --locale-provider=builtin --locale=C.UTF-8
     volumes:
-      - "${DATABASE_DATA_DIR}:/var/lib/postgresql/data:z"
+      # The image keeps the cluster in /var/lib/postgresql/18/data, owned by
+      # uid 70. Required: an unset path would initialise an empty cluster.
+      - "${DATABASE_CLUSTER_DIR:?DATABASE_CLUSTER_DIR is unset: run infra playbooks/postgres-upgrade.yml}:/var/lib/postgresql"
       - "${DATABASE_CONF_FILE}:/etc/postgresql.conf"
       - "${DATABASE_BACKUP_DIR}:/backup"
       - "${DATABASE_LOG_DIR}:/var/log/postgresql:z"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
