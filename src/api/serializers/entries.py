@@ -229,6 +229,12 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         check_run_by_role(role)
     if entry.siren is not None:
         check_run_by_role(role, "siren")
+    if entry.redeemEmail and role not in ("administrator", "superuser"):
+        logger.error(f"Role {role} attempted to set redeemEmail")
+        raise HTTPException(
+            status_code=403,
+            detail="Only administrators and superusers can set redeemEmail"
+        )
     if entry.manages:
         unknown = await unknown_slugs(entry.manages)
         if unknown:
@@ -290,12 +296,6 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         if entry.isOwner:
             await new_entry.owner.connect(neo4j_user)  # type: ignore[reportAttributeAccessIssue]
     if entry.redeemEmail:
-        if role not in ("administrator", "superuser"):
-            logger.error(f"Role {role} attempted to set redeemEmail")
-            raise HTTPException(
-                status_code=403,
-                detail="Only administrators and superusers can set redeemEmail"
-            )
         new_entry.redeemEmail = entry.redeemEmail
         await new_entry.save()
     if entry.memberships:

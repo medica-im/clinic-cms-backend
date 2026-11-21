@@ -152,11 +152,12 @@ async def get_effectors_by_entry_colleagues(user_uid: str) -> list[Effector]:
 
 
 async def create_effector(effector: EffectorPost, directory_name: str, jwt: dict)->Effector:
+    slug_fr = effector.slug_fr or slugify(effector.name_fr)
     try:
         existing_effector: Effector = await AsyncEffector.nodes.get(
             name_fr=effector.name_fr,
             gender=effector.gender,
-            slug_fr=effector.slug_fr,
+            slug_fr=slug_fr,
         )
         ts = timestamp()
         createdAt = existing_effector.createdAt
@@ -170,7 +171,7 @@ async def create_effector(effector: EffectorPost, directory_name: str, jwt: dict
     node = await AsyncEffector(
         name_fr=effector.name_fr,
         label_fr=effector.label_fr or effector.name_fr,
-        slug_fr=effector.slug_fr or slugify(effector.name_fr),
+        slug_fr=slug_fr,
         gender=effector.gender,
         creator_directory=neo4j_directory.name,
     ).save()
