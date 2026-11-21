@@ -9,6 +9,7 @@ from access.asyncneomodels import (
     User as AsyncUser,
 )
 from facility.models import Organization
+from api import graph
 from api.utils import clear_cache
 
 logger = logging.getLogger(__name__)
@@ -225,14 +226,14 @@ async def _create_user_from_invitee(
         "user_uid": uuid4().hex,
         "access_uid": uuid4().hex,
     }
-    results, _ = await adb.cypher_query(query, params)
-    if not results:
+    rows = await graph.write(query, **params)
+    if not rows:
         raise RuntimeError(
             f"Invitee {invitee.uid} or Entry {entry_uid} no longer exists"
         )
 
-    user_props = results[0][0]
-    role = results[0][1]
+    user_props = rows[0]["user_props"]
+    role = rows[0]["role"]
 
     logger.info(
         f"Created Neo4j User {user_props.get('uid')} from Invitee {invitee.uid} "
@@ -284,14 +285,14 @@ async def _add_access_to_existing_user(
         "entry_uid": entry.uid,
         "access_uid": uuid4().hex,
     }
-    results, _ = await adb.cypher_query(query, params)
-    if not results:
+    rows = await graph.write(query, **params)
+    if not rows:
         raise RuntimeError(
             f"Invitee {invitee.uid}, User or Entry {entry.uid} no longer exists"
         )
 
-    user_props = results[0][0]
-    role = results[0][1]
+    user_props = rows[0]["user_props"]
+    role = rows[0]["role"]
 
     logger.info(
         f"Added Access (role={role}) to existing User {user_props.get('uid')} "
@@ -332,8 +333,8 @@ async def _ensure_sandbox_access(user_uid: str, entry_uid: str) -> str:
         "access_uid": uuid4().hex,
         "now": now,
     }
-    results, _ = await adb.cypher_query(query, params)
-    role = results[0][0]
+    rows = await graph.write(query, **params)
+    role = rows[0]["role"]
     logger.info(f"Sandbox: ensured Access (role={role}) for User {user_uid}")
     return role
 
@@ -377,9 +378,9 @@ async def _create_sandbox_user(
         "access_uid": uuid4().hex,
         "now": now,
     }
-    results, _ = await adb.cypher_query(query, params)
-    user_props = results[0][0]
-    role = results[0][1]
+    rows = await graph.write(query, **params)
+    user_props = rows[0]["user_props"]
+    role = rows[0]["role"]
     logger.info(f"Sandbox: created User {user_props.get('uid')} with role={role}")
     return user_props, role
 
