@@ -109,14 +109,11 @@ services:
     ports:
       - "127.0.0.1:${FASTAPI_PORT}:80"
   neo4j:
-    image: neo4j:4.4-enterprise
+    image: neo4j:5.26.33-enterprise-trixie
     restart: always
     ports:
       - 127.0.0.1:${NEO4J_7474_EXTERNAL_PORT}:7474
       - 127.0.0.1:${NEO4J_7687_EXTERNAL_PORT}:7687
-      - 127.0.0.1:5001:5000
-      - 127.0.0.1:6001:6000
-      - 127.0.0.1:7001:7000
     volumes:
       - ${NEO4J_CONF}:/conf
       - ${NEO4J_DATA}:/data
@@ -137,33 +134,22 @@ services:
       # Initial == max on purpose: a heap that grows mid-run spikes latency
       # exactly when the browsers are competing for what it takes.
       #
-      # Neo4j 4.4 reads these as dbms.* settings with '.' -> '_' and a literal
-      # '_' -> '__'. The dotted form (NEO4J_dbms.memory.heap.initial_size) that
-      # stood here commented out is not recognised and is silently ignored.
-      - NEO4J_dbms_memory_heap_initial__size=${NEO4J_HEAP_INITIAL:-512m}
-      - NEO4J_dbms_memory_heap_max__size=${NEO4J_HEAP_MAX:-512m}
-      - NEO4J_dbms_memory_pagecache_size=${NEO4J_PAGECACHE:-256m}
+      # Neo4j reads these as server.* settings with '.' -> '_' and a literal
+      # '_' -> '__'. A dotted name (NEO4J_server.memory.heap.initial_size) is not
+      # a shell variable, so the image never sees it and silently ignores it.
+      - NEO4J_server_memory_heap_initial__size=${NEO4J_HEAP_INITIAL:-512m}
+      - NEO4J_server_memory_heap_max__size=${NEO4J_HEAP_MAX:-512m}
+      - NEO4J_server_memory_pagecache_size=${NEO4J_PAGECACHE:-256m}
       - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
-      - NEO4J_dbms_logs_query_enabled=OFF
+      - NEO4J_db_logs_query_enabled=OFF
       #- NEO4J_dbms_security_auth__enabled=false
       #- NEO4J_dbms.security.auth_lock_time=0s
-      - NEO4J_dbms.connector.http.enabled=true
-      - NEO4J_dbms.connector.https.enabled=true
-      - NEO4J_dbms.connector.bolt.enabled=true
-      - NEO4J_dbms.connector.bolt.listen_address=0.0.0.0:7687
-      - NEO4J_dbms.connector.bolt.tls_level=OPTIONAL
-      - NEO4J_dbms.connector.bolt.advertised_address=${NEO4J_BOLT_ADVERTISED_ADDRESS}
-      - NEO4J_dbms.connector.http.advertised_address=${NEO4J_HTTP_ADVERTISED_ADDRESS}
-      - NEO4J_dbms.ssl.policy.bolt.enabled=true
-      - NEO4J_dbms.ssl.policy.bolt.base_directory=certificates/bolt
-      - NEO4J_dbms.ssl.policy.bolt.private_key=privkey.pem
-      - NEO4J_dbms.ssl.policy.bolt.public_certificate=fullchain.pem
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
       - NEO4J_apoc_export_file_enabled=true
       - NEO4J_apoc_import_file_enabled=true
       - NEO4J_apoc_import_file_use__neo4j__config=true
       - NEO4J_apoc_trigger_enabled=true
-      - NEO4JLABS_PLUGINS=["apoc"]
-      - NEO4J_dbms_logs_debug_level=${NEO4J_dbms_logs_debug_level:-INFO}
+      - NEO4J_PLUGINS=["apoc"]
     healthcheck:
       test: wget -q --spider http://neo4j:7474 || exit 1
       interval: ${NEO4J_HEALTHCHECK_INTERVAL:-1s}

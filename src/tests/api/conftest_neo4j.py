@@ -1,6 +1,6 @@
 """Real-Neo4j integration fixtures.
 
-Spins up a throwaway Neo4j 4.4 Enterprise container (matching production) via
+Spins up a throwaway Neo4j 5.26 Enterprise container (matching production) via
 testcontainers, repoints neomodel's async driver (`adb`) at it per test, and
 wipes the graph between tests.
 
@@ -91,7 +91,7 @@ def scratch_database(request):
 
 @pytest.fixture(scope="session")
 def neo4j_container(scratch_database):
-    """Session-scoped Neo4j 4.4 Enterprise container (the expensive part).
+    """Session-scoped Neo4j 5.26 Enterprise container (the expensive part).
 
     Only started when scratch_database found no running Neo4j to borrow.
     """
@@ -101,14 +101,14 @@ def neo4j_container(scratch_database):
     from testcontainers.neo4j import Neo4jContainer
 
     container = (
-        Neo4jContainer("neo4j:4.4-enterprise")
+        Neo4jContainer("neo4j:5.26.33-enterprise-trixie")
         .with_env("NEO4J_ACCEPT_LICENSE_AGREEMENT", "yes")
-        .with_env("NEO4J_dbms_logs_query_enabled", "OFF")
+        .with_env("NEO4J_db_logs_query_enabled", "OFF")
         # APOC, because production runs with it and part of the schema is
         # implemented in it: directory/migrations/0028 installs four triggers
         # that maintain createdAt/updatedAt on every node. A container without
         # the plugin silently behaves differently from every real database.
-        .with_env("NEO4JLABS_PLUGINS", '["apoc"]')
+        .with_env("NEO4J_PLUGINS", '["apoc"]')
         .with_env("NEO4J_dbms_security_procedures_unrestricted", "apoc.*")
         .with_env("NEO4J_apoc_trigger_enabled", "true")
     )
