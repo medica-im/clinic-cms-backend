@@ -46,21 +46,14 @@ docker exec backend-neo4j-1 bin/neo4j-admin backup --database=neo4j --backup-dir
 
 #### apoc triggers
 
-// Add a timestamp on every node created:
-CALL apoc.trigger.add('create-timestamp','UNWIND $createdNodes AS node
-SET node.updatedAt = timestamp()', {phase:'before'});
+Four APOC triggers keep `createdAt`/`updatedAt` on every node. They are declared
+in `src/directory/neo4j_triggers.py` and installed by `manage.py migrate`
+(migrations 0028 and 0035). After restoring a database into an empty server,
+where those migrations are already recorded as applied, install them with:
 
-// Add a timestamp on every node updated (property added/updated):
-CALL apoc.trigger.add('update-insert-timestamp', 'UNWIND keys($assignedNodeProperties) as key
-UNWIND apoc.trigger.propertiesByKey($assignedNodeProperties, key) as update
-WITH update.node as node
-SET node.updatedAt = timestamp()', {phase:'before'});
-
-//Add a timestamp on every node updated (property removed):
-CALL apoc.trigger.add('update-remove-timestamp', 'UNWIND keys($removedNodeProperties) as key
-UNWIND apoc.trigger.propertiesByKey($removedNodeProperties, key) as update
-WITH update.node as node
-SET node.updatedAt = timestamp()', {phase:'before'});
+```
+python manage.py install_triggers
+```
 
 We are also making use of django-postgresql-dag (Django & Postgresql-based Directed Acyclic Graphs) to build the workforce graph. Each member of the workforce (healthcare professionals, management, administrative and support staff) is included in a graph based on MeSH with metadata such as location, specialty, organization membership. This graph is used to power the addressbook. It may be replaced in the future by a fully fledged graph database such as neo4j.
 

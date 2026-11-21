@@ -13,69 +13,12 @@ Django's signals. Both conclusions were wrong, and the only way to doubt them
 was to query a live database. Declaring them here is most of the point of this
 migration; the third and fourth are new.
 
-apoc.trigger.add is idempotent — it replaces a trigger of the same name — so
-re-running this is safe on a database that already has them.
+The definitions live in directory/neo4j_triggers.py. Installing replaces a
+trigger of the same name, so re-running this is safe on a database that already
+has them.
 """
 from django.db import migrations
 
-
-# Every property write carries its own timestamp, so the application never has
-# to. `before` phase, so the value lands in the same transaction as the change
-# rather than as a second write after it.
-CREATE_TIMESTAMP = """
-UNWIND $createdNodes AS node
-SET node.createdAt = timestamp()
-"""
-
-UPDATE_TIMESTAMP = """
-UNWIND keys($assignedNodeProperties) as key
-UNWIND apoc.trigger.propertiesByKey($assignedNodeProperties, key) as update
-WITH update.node as node
-SET node.updatedAt = timestamp()
-"""
-
-# The gap the two above leave, and the reason this migration adds anything.
-#
-# A relationship change assigns no node property, so neither trigger fires. An
-# entry gaining a tag, joining an organisation, changing owner or moving
-# directory looked untouched — and those are edits an owner or administrator
-# makes from the entry page, so the administrative table reported them as
-# unmodified. Verified rather than assumed: creating a relationship left
-# updatedAt byte-identical before and after.
-#
-# Both endpoints are stamped because either can be the entry. (entry)<-[:TAGS]-
-# runs one way and (entry)-[:MEMBER_OF]->(entry) the other; a trigger that
-# picked one would miss half the cases.
-RELATIONSHIP_CREATED_TIMESTAMP = """
-UNWIND $createdRelationships AS rel
-WITH [startNode(rel), endNode(rel)] AS nodes
-UNWIND nodes AS node
-SET node.updatedAt = timestamp()
-"""
-
-# `before` is required here, not stylistic: in `after` the relationship is
-# already gone and startNode() has nothing to return. Confirmed against a live
-# 4.4.48 database — the `after` form silently stamped nothing.
-#
-# The $deletedNodes guard is not defensive coding, it is required. A DETACH
-# DELETE removes the relationship *and* its nodes in one transaction, so
-# startNode() names something the trigger cannot load, and the whole
-# transaction fails with "Unable to load NODE with id 0" — turning a legitimate
-# delete into a 500. Stamping a node that is itself being deleted would be
-# pointless anyway.
-RELATIONSHIP_DELETED_TIMESTAMP = """
-UNWIND $deletedRelationships AS rel
-WITH [n IN [startNode(rel), endNode(rel)] WHERE NOT n IN $deletedNodes] AS nodes
-UNWIND nodes AS node
-SET node.updatedAt = timestamp()
-"""
-
-TRIGGERS = {
-    "create-timestamp": CREATE_TIMESTAMP,
-    "update-insert-timestamp": UPDATE_TIMESTAMP,
-    "relationship-created-timestamp": RELATIONSHIP_CREATED_TIMESTAMP,
-    "relationship-deleted-timestamp": RELATIONSHIP_DELETED_TIMESTAMP,
-}
 
 # The two this migration introduces. Only these are removed on reverse: the
 # timestamp pair was here first and other things depend on it, so unapplying
@@ -87,20 +30,15 @@ ADDED_BY_THIS_MIGRATION = [
 
 
 def install(apps, schema_editor):
-    from neomodel import db
+    from directory import neo4j_triggers
 
-    for name, query in TRIGGERS.items():
-        db.cypher_query(
-            "CALL apoc.trigger.add($name, $query, {phase: 'before'})",
-            {"name": name, "query": query.strip()},
-        )
+    neo4j_triggers.install()
 
 
 def uninstall(apps, schema_editor):
-    from neomodel import db
+    from directory import neo4j_triggers
 
-    for name in ADDED_BY_THIS_MIGRATION:
-        db.cypher_query("CALL apoc.trigger.remove($name)", {"name": name})
+    neo4j_triggers.remove(ADDED_BY_THIS_MIGRATION)
 
 
 class Migration(migrations.Migration):

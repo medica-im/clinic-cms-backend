@@ -1,8 +1,8 @@
 """Graph edits stamp the node, and the database does it, not the application.
 
 Four APOC triggers maintain `createdAt` and `updatedAt` on every node — see
-directory/migrations/0028_neo4j_timestamp_triggers.py, which is where they are
-declared and which installs them on every `manage.py migrate`.
+directory/neo4j_triggers.py, where they are declared; migrations 0028 and 0035
+install them on `manage.py migrate`.
 
 This file exists because that arrangement is invisible from the Python source.
 An earlier reading of the codebase concluded there was no writer for those
@@ -26,26 +26,19 @@ pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
 @pytest.fixture
 async def triggers(neo4j_graph):
-    """Install the migration's triggers into the throwaway test container.
+    """Install the shipped triggers into the throwaway test database.
 
-    The fixture's Neo4j is a fresh container with an empty database, while the
-    triggers are installed by a Django migration against the real one. Running
-    the migration's own definitions here means these tests exercise the Cypher
-    that ships, not a copy of it that could drift.
+    The fixture's Neo4j is a fresh database, while the triggers are installed
+    by Django migrations against the real one. Installing through the same
+    function the migrations call means these tests exercise the Cypher and the
+    install path that ship (apoc.trigger.add on 4.4, apoc.trigger.install on 5).
     """
-    import importlib
+    from asgiref.sync import sync_to_async
 
-    from neomodel import adb
+    from directory import neo4j_triggers
 
-    module = importlib.import_module(
-        "directory.migrations.0028_neo4j_timestamp_triggers"
-    )
-    for name, query in module.TRIGGERS.items():
-        await adb.cypher_query(
-            "CALL apoc.trigger.add($name, $query, {phase: 'before'})",
-            {"name": name, "query": query.strip()},
-        )
-    return module.TRIGGERS
+    await sync_to_async(neo4j_triggers.install)()
+    return neo4j_triggers.TRIGGERS
 
 
 async def _updated_at(uid: str):
@@ -163,9 +156,6 @@ class TestTheTriggersAreDeclaredInAMigration:
     }
 
     def test_the_migration_declares_every_trigger_the_code_relies_on(self):
-        import importlib
+        from directory import neo4j_triggers
 
-        module = importlib.import_module(
-            "directory.migrations.0028_neo4j_timestamp_triggers"
-        )
-        assert set(module.TRIGGERS) == self.EXPECTED
+        assert set(neo4j_triggers.TRIGGERS) == self.EXPECTED
