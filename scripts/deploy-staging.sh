@@ -81,26 +81,9 @@ else
 fi
 
 echo "==> Pulling latest image..."
-docker compose -f "$COMPOSE_FILE" pull --ignore-buildable $PULL_QUIET_FLAG
-
-# The database image is pulled with everything else now, not built here. It
-# still records the postgres:14 digest it was built from, so this reports when
-# upstream has moved — but rebuilding is a job for
-# infra/scripts/build-postgres-image.sh on a workstation, not for a server that
-# no longer has the repository to build from.
-echo "==> Checking postgres:14 base image..."
-base_digest=\$(docker buildx imagetools inspect postgres:14 --format '{{.Manifest.Digest}}' 2>/dev/null || true)
-built_digest=\$(docker image inspect ghcr.io/medica-im/postgres-non-root:14 --format '{{index .Config.Labels "base.digest"}}' 2>/dev/null || true)
-built_digest="\${built_digest##*@}"
-
-if [[ -z "\$base_digest" || -z "\$built_digest" ]]; then
-    echo "    could not compare digests, skipping the check"
-elif [[ "\$base_digest" == "\$built_digest" ]]; then
-    echo "    up to date (\${base_digest:0:19})"
-else
-    echo "    update available: \${built_digest:0:19} -> \${base_digest:0:19}"
-    echo "    rebuild with: infra/scripts/build-postgres-image.sh"
-fi
+# Not the database: infra's postgres-image-update timer pulls that one, with a
+# dump and a scan, and \`up -d\` below would recreate it on a new image unasked.
+docker compose -f "$COMPOSE_FILE" pull --ignore-buildable $PULL_QUIET_FLAG \$(docker compose -f "$COMPOSE_FILE" config --services | grep -vx database)
 
 echo "==> Restarting..."
 docker compose -f "$COMPOSE_FILE" up -d
