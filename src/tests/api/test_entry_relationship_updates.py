@@ -14,6 +14,7 @@ from neomodel import adb
 from access.asyncneomodels import User as AsyncUser
 from api.serializers.entries import (
     connect_member_of,
+    unknown_memberships,
     update_entry_directories,
     update_entry_memberships,
     update_entry_owners,
@@ -187,7 +188,23 @@ class TestConnectingAFreshEntry:
         assert await member_of(graph["entry"]) == set()
 
     async def test_a_uid_that_names_nothing_connects_nothing_and_raises_nothing(self, graph):
-        """connect_member_of's "No node found" error is unreachable: the MERGE's MATCH finds
-        no row and Neo4j reports no failure. The fresh entry is left unlinked, silently."""
+        """The MERGE's MATCH finds no row and Neo4j reports no failure, so this never raises:
+        create_entry refuses the uid beforehand (unknown_memberships)."""
         await connect_member_of(graph["node"], self.post([new_uid()]))
         assert await member_of(graph["entry"]) == set()
+
+
+class TestRefusingUnknownMemberships:
+
+    async def test_every_known_uid_is_accepted(self, graph):
+        assert await unknown_memberships([graph["a"], graph["org"]]) == []
+
+    async def test_the_unknown_ones_are_named_in_the_order_given(self, graph):
+        first, second = new_uid(), new_uid()
+        assert await unknown_memberships([first, graph["a"], second]) == [first, second]
+
+    async def test_empty_uids_and_repeats_are_ignored(self, graph):
+        assert await unknown_memberships(["", graph["a"], graph["a"]]) == []
+
+    async def test_an_empty_list_names_nothing(self, graph):
+        assert await unknown_memberships([]) == []

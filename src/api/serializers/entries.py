@@ -21,6 +21,7 @@ from api.types.fullentry import FullEntry, EffectorType
 from api.types.facility import Facility
 from api.utils import clear_cache, get_site_from_request
 from access.asyncneomodels import User as AsyncUser
+from api import graph
 from api.neo4j_auth import get_neo4j_user, get_neo4j_role
 from api.routers.utils import get_directory_from_hostname
 from directory.slug import generate_entry_slugs
@@ -106,6 +107,17 @@ async def entry_if_exists(effector: Effector, effector_type: EffectorType, facil
         entry = await entry.save()
         logger.debug(f"Existing Entry found: {entry}")
         return entry
+
+async def unknown_memberships(uids: list[str]) -> list[str]:
+    """The uids that name neither an Organization nor an Entry, in the order given."""
+    wanted = [uid for uid in dict.fromkeys(uids) if uid]
+    found = await graph.read(
+        "MATCH (t) WHERE (t:Organization OR t:Entry) AND t.uid IN $uids RETURN DISTINCT t.uid AS uid",
+        uids=wanted,
+    )
+    known = {row["uid"] for row in found}
+    return [uid for uid in wanted if uid not in known]
+
 
 async def connect_member_of(new_entry, entry: EntryPost):
     if entry.memberships:
@@ -225,6 +237,10 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         unknown = await unknown_places(entry.coverage)
         if unknown:
             raise HTTPException(status_code=422, detail={"code": "unknown_place", "uids": unknown})
+    if entry.memberships:
+        unknown = await unknown_memberships(entry.memberships)
+        if unknown:
+            raise HTTPException(status_code=422, detail={"code": "unknown_membership", "uids": unknown})
     if entry.directory and role == "superuser":
         dir_name=entry.directory
     else:

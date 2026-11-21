@@ -75,10 +75,6 @@ class TestTagCategories:
         assert by_name["langues"]["labelShort"] == "L"
         assert by_name["accès"]["labelShort"] is None
 
-    @pytest.mark.xfail(strict=True, reason=(
-        "tag_category() hands the serializer the effector_type relation manager "
-        "where tag_categories() resolves it to a list of uids: a 500"
-    ))
     async def test_a_category_serves_its_effector_types(self, client, graph):
         from neomodel import adb
 
@@ -89,6 +85,12 @@ class TestTagCategories:
         r = await client.get(f"/tag_categories/{graph['category']}")
         assert r.status_code == 200
         assert r.json()["uid"] == graph["category"]
+        assert r.json()["effector_types"] == ["et-1"]
+
+
+    async def test_an_unknown_category_is_not_found(self, client, graph):
+        r = await client.get(f"/tag_categories/{uuid.uuid4().hex}")
+        assert r.status_code == 404
 
 
 class TestTags:
@@ -107,9 +109,6 @@ class TestTags:
         assert [t["uid"] for t in r.json()] == [graph["tag"]]
         assert r.json()[0]["category"] == graph["category"]
 
-    @pytest.mark.xfail(strict=True, reason=(
-        "tags() validates `serializer.data or None`, so an empty list becomes None: a 500"
-    ))
     async def test_a_category_without_tags_lists_none(self, client, graph):
         from neomodel import adb
 
@@ -118,9 +117,6 @@ class TestTags:
         assert r.status_code == 200
         assert r.json() == []
 
-    @pytest.mark.xfail(strict=True, reason=(
-        "tags() validates `serializer.data or None`, so an empty list becomes None: a 500"
-    ))
     async def test_no_tags_at_all_lists_none(self, client, neo4j_graph):
         r = await client.get("/tags")
         assert r.status_code == 200

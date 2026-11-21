@@ -46,8 +46,12 @@ async def tag_categories()->list[TagCategoryPy]:
     return ta.validate_python(serializer.data)
 
 async def tag_category(uid: str)->TagCategoryPy:
-    tag_categories = await TagCategory.nodes.get(uid=uid)
-    serializer=TagCategorySerializer(tag_categories)
+    try:
+        category = await TagCategory.nodes.get(uid=uid)
+    except TagCategory.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Tag category {uid} not found")
+    category.effector_type = [et.uid for et in await category.effector_type.all()]
+    serializer=TagCategorySerializer(category)
     return TagCategoryPy.model_validate(serializer.data)
 
 async def tags(category: str|None)->list[TagPy]:
@@ -70,8 +74,8 @@ async def tags(category: str|None)->list[TagPy]:
             item.tag_category = category_node.uid
             tags[idx] = item
     serializer=TagSerializer(tags, many=True)
-    ta = TypeAdapter(list[TagPy] or None)
-    return ta.validate_python(serializer.data or None)
+    ta = TypeAdapter(list[TagPy])
+    return ta.validate_python(serializer.data)
 
 async def update_tags(item: TagEntry, request: Request):
     try:
