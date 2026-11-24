@@ -38,7 +38,7 @@ services:
       start_period: 10s
   redis:
     restart: always
-    image: redis:latest
+    image: redis:8
     sysctls:
       net.core.somaxconn: 1024
     healthcheck:
