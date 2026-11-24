@@ -16,9 +16,10 @@ dev, and a production server has no business pulling from a development box; a
 compromised dev instance should not be able to present itself as a peer that
 production will answer. Flip `inbound` in the admin if a genuine case appears.
 
-The instance running this command is skipped: a peer list that offers you
-yourself is a confusing way to discover that cloning an entry onto its own
-instance does nothing.
+Nothing is skipped. One backend serves several sites (the dev backend answers
+for every dev.* host, sharing one database), so a peer on one of its own sites
+is still another site's source. The clone page hides only the host the request
+came in on (api.routers.clone.is_this_instance).
 
     python manage.py seed_peer_instances            # show what would change
     python manage.py seed_peer_instances --write
@@ -30,10 +31,8 @@ checks `inbound` on its own row for the target. Seeding only the target gives
 "This instance refused the request (403)" from the source, which has never heard
 of the caller — the first thing this tool did in anger.
 
-The instance running the command is skipped, so the same list is safe to apply
-everywhere: on dev the dev rows drop out as self, on staging they are created.
+The same list is applied everywhere.
 """
-from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
 
 from directory.models import PeerInstance
@@ -95,18 +94,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         write = options["write"]
-        # Every hostname this deployment answers on, so it does not offer
-        # itself as a peer.
-        mine = {s.domain.lower() for s in Site.objects.all()}
-
-        created = updated = skipped = 0
+        created = updated = 0
         for name, display, origin, outbound, inbound in PEERS:
-            host = origin.split("//", 1)[-1].rstrip("/").lower()
-            if host in mine:
-                self.stdout.write(f"  self     {display} ({origin})")
-                skipped += 1
-                continue
-
             existing = PeerInstance.objects.filter(name=name).first()
             if existing:
                 changes = [
@@ -143,7 +132,7 @@ class Command(BaseCommand):
 
         verb = "wrote" if write else "would write"
         self.stdout.write(self.style.SUCCESS(
-            f"{verb}: {created} created, {updated} updated, {skipped} skipped as self"
+            f"{verb}: {created} created, {updated} updated"
         ))
         if not write:
             self.stdout.write("Nothing changed. Re-run with --write to apply.")
