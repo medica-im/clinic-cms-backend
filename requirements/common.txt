@@ -100,7 +100,7 @@ easy-thumbnails==2.10.1
     # via -r requirements/common.in
 et-xmlfile==2.0.0
     # via openpyxl
-gunicorn==23.0.0
+gunicorn==27.0.1
     # via -r requirements/common.in
 h11==0.16.0
     # via httpcore
@@ -139,8 +139,6 @@ odfpy==1.4.1
     # via -r requirements/common.in
 openpyxl==3.1.5
     # via -r requirements/common.in
-packaging==26.4
-    # via gunicorn
 pandas==3.1.1
     # via
     #   -r requirements/common.in

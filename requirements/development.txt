@@ -66,9 +66,7 @@ markupsafe==3.0.4
     #   -c requirements/fastapi.txt
     #   werkzeug
 packaging==26.4
-    # via
-    #   -c requirements/common.txt
-    #   pytest
+    # via pytest
 pluggy==1.7.0
     # via pytest
 pygments==2.21.0
