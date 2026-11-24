@@ -1,0 +1,8 @@
+-c common.txt
+-c fastapi.txt
+-c development.txt
+pytest
+pytest-asyncio
+pytest-django
+httpx
+testcontainers[neo4j]

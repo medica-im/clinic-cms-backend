@@ -1,0 +1,8 @@
+-c common.txt
+fastapi[standard]>=0.163.0,<0.164.0
+pydantic-extra-types
+fastapi-jwt[authlib]
+google-auth
+fastapi-nextauth-jwt
+pyjwt[crypto]
+dnspython
