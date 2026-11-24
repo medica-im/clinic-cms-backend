@@ -82,7 +82,10 @@ services:
     # every request behind the one in progress; the app keeps no state in
     # memory (caches are in Redis), so workers can share the load safely.
     # About 320 MB of RAM each.
-    command: bash -c "fastapi run main.py --root-path /api/v2 --port 80 --workers ${FASTAPI_WORKERS:-1} --proxy-headers --forwarded-allow-ips='*'"
+    # uvicorn directly, not `fastapi run`: the CLI imports the app (and with it
+    # Django) in the parent process to find it, which held ~245 MB doing nothing.
+    # Unlike the CLI, uvicorn binds 127.0.0.1 unless told otherwise.
+    command: bash -c "uvicorn main:app --host 0.0.0.0 --root-path /api/v2 --port 80 --workers ${FASTAPI_WORKERS:-1} --proxy-headers --forwarded-allow-ips='*'"
     volumes:
       - ${MEDIA_ROOT}:${MEDIA_ROOT}
       - ${FASTAPI_LOG_DIR}:${FASTAPI_LOG_DIR}
