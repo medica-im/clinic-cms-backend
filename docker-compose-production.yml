@@ -1,6 +1,8 @@
 services:
   database:
     restart: always
+    # Docker's 10 s default can cut a shutdown checkpoint short.
+    stop_grace_period: 60s
     # Hardened image (dhi.io, needs `docker login dhi.io`), rebuilt by Docker as
     # its packages are patched. Postgres 18; the tag is the major version, so it
     # never moves to a major the data directory cannot open. See infra
@@ -104,6 +106,8 @@ services:
   neo4j:
     image: neo4j:5.26.33-enterprise-trixie
     restart: always
+    # Docker's 10 s default can cut a shutdown checkpoint short.
+    stop_grace_period: 60s
     ports:
       - 127.0.0.1:${NEO4J_7474_EXTERNAL_PORT}:7474
       - 127.0.0.1:${NEO4J_7687_EXTERNAL_PORT}:7687
