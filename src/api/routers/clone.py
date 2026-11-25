@@ -25,10 +25,12 @@ from api.auth import JWT, check_cookie_jwt
 from api.neo4j_auth import get_neo4j_role
 from api.serializers.clone import detect, directory_settings, execute
 from api.serializers.clone import token as clone_token
+from api.serializers.clone.peers import InvalidPeers, apply_peers
 from api.types.clone import (
     Blocker, DirectorySettingsApplied, DirectorySettingsApply, DirectorySnapshot,
     EntryPreflight, ExecuteRequest, ExecuteResponse, ExportTokenRequest,
-    ExportTokenResponse, PeerInstanceOut, PreflightRequest, SettingDifference,
+    ExportTokenResponse, PeerIn, PeerInstanceOut, PeerRecord, PeersApplied,
+    PreflightRequest, SettingDifference,
 )
 from asgiref.sync import sync_to_async
 
@@ -88,6 +90,29 @@ async def instances(request: Request,
     ]
 
 
+@router.get("/clone/peers")
+async def list_peers(_: Annotated[str, Depends(require_superuser)]) -> list[PeerRecord]:
+    """The whole registry, retired peers included: what the console diffs its list against."""
+    rows = [p async for p in PeerInstance.objects.all().order_by("name")]
+    return [
+        PeerRecord(name=p.name, display_name=p.display_name, origin=p.origin,
+                   outbound=p.outbound, inbound=p.inbound, active=p.active)
+        for p in rows
+    ]
+
+
+@router.put("/clone/peers")
+async def put_peers(peers: list[PeerIn],
+                    _: Annotated[str, Depends(require_superuser)]) -> PeersApplied:
+    """Make the registry match this list; a peer it leaves out is retired, not deleted."""
+    try:
+        applied = await sync_to_async(apply_peers, thread_sensitive=True)(
+            [p.model_dump() for p in peers])
+    except InvalidPeers as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.problems)
+    return PeersApplied(**applied)
+
+
 @router.post("/clone/export-token")
 async def export_token(body: ExportTokenRequest, request: Request,
                        jwt: Annotated[dict, Depends(JWT)],
@@ -114,7 +139,7 @@ async def export_token(body: ExportTokenRequest, request: Request,
             detail=(
                 f"{body.target_origin} is not registered here as a peer that may "
                 f"read this instance. Add it with inbound=true on THIS deployment "
-                f"(manage.py seed_peer_instances --write), not only on the target."
+                f"(apply the console's peer list to it), not only on the target."
             ),
         )
 

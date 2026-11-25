@@ -8,6 +8,25 @@ class PeerInstanceOut(BaseModel):
     origin: str
 
 
+class PeerIn(BaseModel):
+    """One row of the peer list the console pushes."""
+    name: str
+    display_name: str
+    origin: str
+    outbound: bool
+    inbound: bool
+
+
+class PeerRecord(PeerIn):
+    active: bool
+
+
+class PeersApplied(BaseModel):
+    created: list[str]
+    updated: list[str]
+    retired: list[str]
+
+
 class ExportTokenRequest(BaseModel):
     target_origin: str
     entry_uids: list[str] | None = None

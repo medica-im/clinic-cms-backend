@@ -26,6 +26,10 @@ REFUSED = ["administrator", "staff", "registered", None]
 # endpoint added without a line here is an endpoint nobody proved is gated.
 ROUTES = [
     ("GET", "/api/v2/clone/instances", None),
+    ("GET", "/api/v2/clone/peers", None),
+    ("PUT", "/api/v2/clone/peers",
+     [{"name": "x", "display_name": "X", "origin": "https://x.example",
+       "outbound": True, "inbound": True}]),
     ("POST", "/api/v2/clone/export-token",
      {"target_origin": "https://example.test", "entry_uids": None}),
     ("GET", "/api/v2/clone/relay/entries?instance=x&token=y", None),

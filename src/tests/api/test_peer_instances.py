@@ -49,7 +49,7 @@ class TestTheOriginIsAnOrigin:
 
 class TestDirectionIsNotSymmetric:
     def test_a_production_peer_is_readable_but_not_a_reader(self):
-        """What seed_peer_instances writes for production.
+        """What the console's peer list gives a production peer.
 
         Cloning runs production → staging → dev; a production server has no
         business pulling from a development box.
