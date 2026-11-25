@@ -347,6 +347,55 @@ class TestWhenItCannot:
         assert await _count_facilities() == before
 
 
+class TestAReusedFacilityJoinsThisOrganization:
+    @staticmethod
+    async def _reusing(full, graph, facility_uid):
+        return await execute.clone_one(
+            full,
+            Resolution(source_uid=full["uid"], effector="create",
+                       facility="reuse", facility_local_uid=facility_uid),
+            directory_name=graph["dir"], org_uid=graph["org"],
+            source_org_entry=None, creator_uid=None,
+        )
+
+    async def test_a_facility_of_another_organization_is_linked_to_this_one(self, graph):
+        """So the next clone finds it among this organization's, without asking.
+
+        Production's Gadagne MSP was linked to another organization only, which
+        hid it from the clone's facility match and let a duplicate be created.
+        """
+        first = await _clone(full_entry(), graph)
+        assert first.status == "created", first.error
+        await adb.cypher_query(
+            """
+            MATCH (f:Facility {uid:$f})-[r:PART_OF]->() DELETE r
+            WITH DISTINCT f
+            CREATE (other:Entry {uid:$tag+'-other-org', slug:$tag+'-other-org'})
+            CREATE (f)-[:PART_OF]->(other)
+            """,
+            {"f": first.facility_uid, "tag": TAG})
+
+        second = await self._reusing(full_entry(uid="reuse-2"), graph, first.facility_uid)
+        assert second.status == "created", second.error
+        assert second.facility_uid == first.facility_uid
+
+        rows, _ = await adb.cypher_query(
+            "MATCH (f:Facility {uid:$f})-[:PART_OF]->(o) RETURN o.uid ORDER BY o.uid",
+            {"f": first.facility_uid})
+        assert [r[0] for r in rows] == sorted([f"{TAG}-org", f"{TAG}-other-org"])
+
+    async def test_reusing_it_twice_links_it_once(self, graph):
+        first = await _clone(full_entry(), graph)
+        for uid in ("twice-1", "twice-2"):
+            r = await self._reusing(full_entry(uid=uid), graph, first.facility_uid)
+            assert r.status == "created", r.error
+
+        rows, _ = await adb.cypher_query(
+            "MATCH (:Facility {uid:$f})-[r:PART_OF]->({uid:$org}) RETURN count(r)",
+            {"f": first.facility_uid, "org": graph["org"]})
+        assert rows[0][0] == 1
+
+
 async def _count_facilities() -> int:
     rows, _ = await adb.cypher_query(
         "MATCH (f:Facility) WHERE f.slug STARTS WITH $tag RETURN count(f)", {"tag": TAG})

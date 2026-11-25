@@ -247,20 +247,8 @@ async def plan_facility(full: dict, org_uid: str) -> ObjectPlan:
         "city": address.get("city"),
     }
 
-    rows, _ = await adb.cypher_query(
-        """
-        MATCH (f:Facility)-[:PART_OF]->(o) WHERE o.uid = $org
-        OPTIONAL MATCH (f)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)
-        RETURN f.uid, f.name, f.label, f.slug, f.street, f.zip, f.building,
-               f.geographical_complement, f.ban_id, f.ban_banId, c.name_fr
-        """,
-        {"org": org_uid},
-    )
-    candidates = [{
-        "uid": r[0], "name": r[1], "label": r[2], "slug": r[3], "street": r[4],
-        "zip": r[5], "building": r[6], "geographical_complement": r[7],
-        "ban_id": r[8], "ban_banId": r[9], "city": r[10],
-    } for r in rows]
+    candidates = await _facilities("MATCH (f:Facility)-[:PART_OF]->(o) WHERE o.uid = $org",
+                                   {"org": org_uid})
 
     def norm(v):
         return (v or "").strip().lower()
@@ -309,7 +297,49 @@ async def plan_facility(full: dict, org_uid: str) -> ObjectPlan:
             auto=False, local_uid=warn_matches[0].local_uid,
         )
 
+    # Outside this organization a namesake is no match, but the same building is,
+    # and so is the same slug, which is unique across the graph. Either is
+    # offered and asked about, never created a second time in silence.
+    elsewhere = await _facilities(
+        """
+        MATCH (f:Facility) WHERE NOT (f)-[:PART_OF]->({uid: $org})
+          AND ((f.ban_id IS NOT NULL AND f.ban_id = $ban_id)
+               OR f.slug = $slug OR toLower(trim(f.zip)) = $zip)
+        """,
+        {"org": org_uid, "ban_id": incoming["ban_id"], "slug": incoming["slug"],
+         "zip": norm(incoming["zip"])},
+    )
+    for reason, same in (
+        ("ban_id", lambda f: incoming["ban_id"] and f["ban_id"] == incoming["ban_id"]),
+        ("address", lambda f: incoming["street"]
+            and all(norm(f[k]) == norm(incoming[k]) for k in ("street", "zip", "city"))),
+        ("slug", lambda f: incoming["slug"] and norm(f["slug"]) == norm(incoming["slug"])),
+    ):
+        for local in elsewhere:
+            if same(local):
+                return ObjectPlan(
+                    matches=[match_for(local, reason, "warn")], default_resolution="reuse",
+                    auto=False, local_uid=local["uid"],
+                )
+
     return ObjectPlan(default_resolution="create", auto=True)
+
+
+async def _facilities(match: str, params: dict) -> list[dict]:
+    """The facilities `match` binds to `f`, with what plan_facility compares."""
+    rows, _ = await adb.cypher_query(
+        match + """
+        OPTIONAL MATCH (f)-[:LOCATED_IN_THE_ADMINISTRATIVE_TERRITORIAL_ENTITY]->(c:Commune)
+        RETURN f.uid, f.name, f.label, f.slug, f.street, f.zip, f.building,
+               f.geographical_complement, f.ban_id, f.ban_banId, c.name_fr
+        """,
+        params,
+    )
+    return [{
+        "uid": r[0], "name": r[1], "label": r[2], "slug": r[3], "street": r[4],
+        "zip": r[5], "building": r[6], "geographical_complement": r[7],
+        "ban_id": r[8], "ban_banId": r[9], "city": r[10],
+    } for r in rows]
 
 
 async def entry_already_here(effector_uid: str | None, effector_type_uid: str | None,

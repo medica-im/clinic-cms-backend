@@ -164,6 +164,10 @@ async def clone_one(full: dict, resolution, *, directory_name: str, org_uid: str
         # 2. Facility.
         if resolution.facility == "reuse" and resolution.facility_local_uid:
             facility_uid = resolution.facility_local_uid
+            # Linked to this organization, so the next clone finds it among its own.
+            await adb.cypher_query(
+                "MATCH (f:Facility {uid: $f}), (o {uid: $org}) MERGE (f)-[:PART_OF]->(o)",
+                {"f": facility_uid, "org": org_uid})
         else:
             commune_uid = await detect.resolve_commune(full.get("address") or {})
             if not commune_uid:

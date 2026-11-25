@@ -193,14 +193,48 @@ class TestFacilitiesCanPrompt:
         assert plan.default_resolution == "create"
         assert plan.auto
 
-    async def test_another_organizations_facility_is_not_a_match(self, graph):
-        """Scoped like assert_slug_is_free.
+    async def test_a_namesake_in_another_organization_is_not_a_match(self, graph):
+        """Two unrelated organizations are each entitled to a "pharmacie"."""
+        plan = await detect.plan_facility(
+            self._incoming(ban_id=None, address={"street": "99 Elsewhere"},
+                           facility={"slug": "a-slug-of-its-own"}),
+            "some-other-org-uid",
+        )
+        assert plan.default_resolution == "create"
+        assert plan.auto
 
-        Two unrelated organizations are each entitled to a "pharmacie"; only a
-        clash within one is a problem.
+    async def test_the_same_building_in_another_organization_asks_instead_of_creating(self, graph):
+        """Production, 2026-11-25: a clone created a second Gadagne MSP.
+
+        The facility was there, but not linked to the site's organization, so it
+        was never a candidate and the clone silently created a copy with the same
+        name, address and slug. A building is the same building whoever it is
+        attached to: ask, offering it.
         """
         plan = await detect.plan_facility(self._incoming(), "some-other-org-uid")
-        assert plan.default_resolution == "create"
+        assert plan.default_resolution == "reuse"
+        assert plan.local_uid == f"{TAG}-fac"
+        assert plan.matches[0].reason == "ban_id"
+        assert not plan.auto, "another organization's facility is never reused silently"
+
+    async def test_the_same_address_in_another_organization_asks(self, graph):
+        plan = await detect.plan_facility(
+            self._incoming(ban_id=None, facility={"name": "Other name", "slug": "other"}),
+            "some-other-org-uid",
+        )
+        assert plan.default_resolution == "reuse"
+        assert plan.matches[0].reason == "address"
+        assert not plan.auto
+
+    async def test_the_same_slug_in_another_organization_asks(self, graph):
+        """Facility slugs are unique across the graph: a second one is unreachable."""
+        plan = await detect.plan_facility(
+            self._incoming(ban_id=None, address={"street": "99 Elsewhere"},
+                           facility={"name": "Totally Different"}),
+            "some-other-org-uid",
+        )
+        assert plan.matches and plan.matches[0].reason == "slug"
+        assert not plan.auto
 
 
 class TestTheEntryItself:
