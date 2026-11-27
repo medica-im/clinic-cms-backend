@@ -119,6 +119,8 @@ class EntryPost(EntryFacets):
     manages: list[str]|None = None
     #: The uids of the places this entry answers for (COVERS): communes, departments, regions, the country.
     coverage: list[str]|None = None
+    #: The uids of the tags to put on the entry; each must belong to a category of its effector type.
+    tags: list[str]|None = None
 
     _siren = field_validator("siren")(a_siren_or_nothing)
     _manages = field_validator("manages")(slugs_or_nothing)

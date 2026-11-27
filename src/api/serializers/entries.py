@@ -30,6 +30,7 @@ from directory.offered_types import TypeNotOffered, check_type_offered
 from api.identity_rights import check_identity_role
 from directory.facets import ENTRY_FACETS, check_age_range
 from directory.coverage import CoverageRefused, get_coverage, set_coverage, unknown_places
+from directory.entry_tags import add_tags, tags_not_for_type, unknown_tags
 from directory.manages import ManagesRefused, get_manages, set_manages, unknown_slugs
 from directory.run_by import RunByRefused, set_run_by
 from directory.siret_rule import SiretMismatch, check_siren
@@ -247,6 +248,13 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         unknown = await unknown_memberships(entry.memberships)
         if unknown:
             raise HTTPException(status_code=422, detail={"code": "unknown_membership", "uids": unknown})
+    if entry.tags:
+        unknown = await unknown_tags(entry.tags)
+        if unknown:
+            raise HTTPException(status_code=422, detail={"code": "unknown_tag", "uids": unknown})
+        foreign = await tags_not_for_type(entry.tags, entry.effector_type)
+        if foreign:
+            raise HTTPException(status_code=422, detail={"code": "tag_not_for_type", "uids": foreign})
     if entry.directory and role == "superuser":
         dir_name=entry.directory
     else:
@@ -313,6 +321,8 @@ async def create_entry(entry: EntryPost, request: Request, jwt)-> FullEntry:
         await apply_manages(str(new_entry.uid), entry.manages)
     if entry.coverage:
         await apply_coverage(str(new_entry.uid), entry.coverage)
+    if entry.tags:
+        await add_tags(str(new_entry.uid), entry.tags)
     await ensure_slug(new_entry, effector, facility, effector_type)
     await neo4j_directory.entries.connect(new_entry)
     try:

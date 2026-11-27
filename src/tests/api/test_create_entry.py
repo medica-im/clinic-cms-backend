@@ -218,6 +218,63 @@ class TestMemberships:
         stubs.clear.assert_not_awaited()
 
 
+class TestTags:
+    """Tags chosen with the occupation, on the creation page: written with the entry.
+
+    A tag category belongs to the occupations it describes (HAS_TAG_CATEGORY); a
+    mention IPA means nothing on a coordinator's entry, so a tag of a category the
+    occupation does not have is refused, whoever asks.
+    """
+
+    @pytest.fixture
+    async def tags(self, graph):
+        uids = {name: new_uid() for name in ("cat", "t1", "t2", "other_cat", "other_tag")}
+        await adb.cypher_query(
+            """
+            MATCH (type:EffectorType {uid: $type}), (hcw:EffectorType {uid: $hcw_type})
+            CREATE (type)-[:HAS_TAG_CATEGORY]->(c:TagCategory {uid: $cat, name: 'mention'})
+            CREATE (:Tag {uid: $t1, name: 't1'})-[:IS_A]->(c), (:Tag {uid: $t2, name: 't2'})-[:IS_A]->(c)
+            CREATE (hcw)-[:HAS_TAG_CATEGORY]->(o:TagCategory {uid: $other_cat, name: 'other'})
+            CREATE (:Tag {uid: $other_tag, name: 'other-tag'})-[:IS_A]->(o)
+            """,
+            {**graph, **uids},
+        )
+        return uids
+
+    async def tags_of(self, entry_uid):
+        rows, _ = await adb.cypher_query(
+            "MATCH (t:Tag)-[:TAGS]->(:Entry {uid: $uid}) RETURN t.uid", {"uid": entry_uid}
+        )
+        return {row[0] for row in rows}
+
+    async def test_the_tags_given_are_attached(self, graph, stubs, tags):
+        await create(graph, tags=[tags["t1"], tags["t2"]])
+        [(uid, *_)] = await new_entries(graph)
+        assert await self.tags_of(uid) == {tags["t1"], tags["t2"]}
+
+    async def test_without_tags_the_entry_has_none(self, graph, stubs, tags):
+        await create(graph)
+        [(uid, *_)] = await new_entries(graph)
+        assert await self.tags_of(uid) == set()
+
+    async def test_an_unknown_tag_is_refused_before_anything_is_written(self, graph, stubs, tags):
+        bad = new_uid()
+        with pytest.raises(HTTPException) as refused:
+            await create(graph, tags=[tags["t1"], bad])
+        assert refused.value.status_code == 422
+        assert refused.value.detail == {"code": "unknown_tag", "uids": [bad]}
+        assert await new_entries(graph) == []
+
+    @pytest.mark.parametrize("role", ["staff", "administrator", "superuser"])
+    async def test_a_tag_of_another_occupation_is_refused_to_everyone(self, graph, stubs, tags, role):
+        stubs.role = role
+        with pytest.raises(HTTPException) as refused:
+            await create(graph, tags=[tags["t1"], tags["other_tag"]])
+        assert refused.value.status_code == 422
+        assert refused.value.detail == {"code": "tag_not_for_type", "uids": [tags["other_tag"]]}
+        assert await new_entries(graph) == []
+
+
 class TestRefusalsBeforeWriting:
 
     async def test_unknown_manages_slugs_are_refused(self, graph, stubs):
